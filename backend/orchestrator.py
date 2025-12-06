@@ -1,0 +1,286 @@
+import os
+import json
+import time
+import subprocess
+import sys
+import threading
+from datetime import datetime
+from pathlib import Path
+
+# Add project root to path
+sys.path.append(str(Path(__file__).parent))
+
+from core.env import ensure_windows_cpu_env
+ensure_windows_cpu_env()
+
+from core.pipeline_map import PIPELINE_SEQUENCE, PIPELINE_DESCRIPTIONS
+from core.run_utils import create_run_folder
+from core.state_manager import StateManager
+from agents.data_sanitizer import DataSanitizer
+
+POLL_TIME = 0.5  # seconds
+
+def load_state(state_path):
+    if not os.path.exists(state_path):
+        return None
+    with open(state_path) as f:
+        return json.load(f)
+
+def save_state(state_path, state):
+    """Persist orchestrator state with safe writes."""
+    state["updated_at"] = iso_now()
+    with open(state_path, "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2)
+
+
+def iso_now():
+    return datetime.utcnow().isoformat(timespec="seconds") + "Z"
+
+
+def initialize_state(run_id, state_path, data_path):
+    steps = {}
+    for step in PIPELINE_SEQUENCE:
+        steps[step] = {
+            "name": step,
+            "description": PIPELINE_DESCRIPTIONS.get(step, step),
+            "status": "pending"
+        }
+
+    state = {
+        "run_id": run_id,
+        "status": "pending",
+        "created_at": iso_now(),
+        "updated_at": iso_now(),
+        "current_step": PIPELINE_SEQUENCE[0],
+        "next_step": PIPELINE_SEQUENCE[0],
+        "steps_completed": [],
+        "failed_steps": [],
+        "steps": steps,
+        "history": [
+            {
+                "timestamp": iso_now(),
+                "event": "Run initialized",
+                "data_path": data_path
+            }
+        ]
+    }
+
+    save_state(state_path, state)
+    return state
+
+
+def update_history(state, message, **payload):
+    entry = {"timestamp": iso_now(), "event": message}
+    if payload:
+        entry.update(payload)
+    state.setdefault("history", []).append(entry)
+
+
+def mark_step_running(state, step):
+    step_state = state["steps"].setdefault(step, {"name": step})
+    if step_state.get("status") == "running":
+        return
+    step_state["status"] = "running"
+    step_state["started_at"] = iso_now()
+    step_state["_start_epoch"] = time.time()
+    state["steps"][step] = step_state
+    state["status"] = "running"
+    state["current_step"] = step
+    update_history(state, f"{step} started")
+
+
+def finalize_step(state, step, success, stdout, stderr):
+    step_state = state["steps"].setdefault(step, {"name": step})
+    step_state["status"] = "completed" if success else "failed"
+    step_state["completed_at"] = iso_now()
+    start_epoch = step_state.pop("_start_epoch", None)
+    if start_epoch:
+        step_state["runtime_seconds"] = round(time.time() - start_epoch, 2)
+
+    tail_len = 2000
+    if stdout:
+        step_state["stdout_tail"] = stdout[-tail_len:]
+    if stderr:
+        step_state["stderr_tail"] = stderr[-tail_len:]
+
+    state["steps"][step] = step_state
+
+    target_list = state["steps_completed"] if success else state["failed_steps"]
+    if step not in target_list:
+        target_list.append(step)
+
+    event = "completed" if success else "failed"
+    update_history(state, f"{step} {event}", returncode=0 if success else 1)
+
+
+def run_agent(agent_name, run_path):
+    print(f"[ORCHESTRATOR] Launching agent: {agent_name}")
+    agent_script = f"agents/{agent_name}.py"
+    
+    # Ensure PYTHONPATH includes the current directory so 'core' module can be found
+    env = os.environ.copy()
+    current_dir = os.getcwd()
+    env["PYTHONPATH"] = current_dir + os.pathsep + env.get("PYTHONPATH", "")
+    
+    # Fix for joblib warning on Windows
+    if os.name == 'nt':
+        env["LOKY_MAX_CPU_COUNT"] = str(os.cpu_count())
+    
+    try:
+        result = subprocess.run(
+            [sys.executable, agent_script, run_path], 
+            capture_output=True, 
+            text=True,
+            env=env
+        )
+        
+        if result.returncode != 0:
+            print(f"[ERROR] Agent {agent_name} failed with code {result.returncode}")
+            print(f"Stdout: {result.stdout}")
+            print(f"Stderr: {result.stderr}")
+            return False, result.stdout, result.stderr
+        else:
+            print(f"[OK] Agent {agent_name} completed.")
+            return True, result.stdout, result.stderr
+            
+    except Exception as e:
+        print(f"[CRITICAL] Failed to subprocess agent {agent_name}: {e}")
+        return False, "", str(e)
+
+def orchestrate_new_run(data_path):
+    print("=== ACE V3 ORCHESTRATOR START ===")
+    
+    # 1. Create Run
+    run_id, run_path = create_run_folder()
+    state_manager = StateManager(run_path)
+    print(f"[RUN] Run ID: {run_id}")
+    print(f"[RUN] Run Path: {run_path}")
+    
+    # 2. Sanitize Data (Step 0 - Pre-pipeline)
+    # We do this here to ensure the run folder has the clean data before the pipeline starts
+    if not os.path.exists(data_path):
+        print(f"[ERROR] Data file not found: {data_path}")
+        return None, None
+
+    print(f"Sanitizing dataset: {data_path}")
+    try:
+        import pandas as pd
+        raw_df = pd.read_csv(data_path)
+        sanitizer = DataSanitizer()
+        clean_df, clean_report = sanitizer.sanitize(raw_df)
+        
+        cleaned_path = state_manager.get_file_path("cleaned_uploaded.csv")
+        clean_df.to_csv(cleaned_path, index=False)
+        state_manager.write("sanitizer_report", clean_report)
+        state_manager.write("active_dataset", {"path": cleaned_path})
+        print(f"Data sanitized. Clean file: {cleaned_path}")
+        
+    except Exception as e:
+        print(f"Sanitization failed: {e}")
+        return None, None
+
+    # 3. Init State
+    state_path = os.path.join(run_path, "orchestrator_state.json")
+    state = initialize_state(run_id, state_path, cleaned_path)
+    state["artifacts"] = {
+        "cleaned_dataset": os.path.basename(cleaned_path),
+        "sanitizer_report": "sanitizer_report.json"
+    }
+    state["data_path"] = cleaned_path
+    save_state(state_path, state)
+    return run_id, run_path
+
+
+def launch_pipeline_async(data_path):
+    """Utility to start a run and process it in a background thread."""
+    run_id, run_path = orchestrate_new_run(data_path)
+    if not run_path:
+        return run_id, run_path
+
+    thread = threading.Thread(target=main_loop, args=(run_path,), daemon=True)
+    thread.start()
+    return run_id, run_path
+
+def main_loop(run_path):
+    if not run_path:
+        return
+
+    state_path = os.path.join(run_path, "orchestrator_state.json")
+
+    while True:
+        state = load_state(state_path)
+        if not state:
+            time.sleep(POLL_TIME)
+            continue
+
+        if state.get("status") in {"complete", "complete_with_errors", "failed"}:
+            print(f"Pipeline finished with status: {state['status']}")
+            break
+
+        current = state["current_step"]
+        
+        # Check if we already did this step (resume logic)
+        if current in state["steps_completed"]:
+             # Move to next
+             idx = PIPELINE_SEQUENCE.index(current)
+             if idx + 1 < len(PIPELINE_SEQUENCE):
+                state["current_step"] = PIPELINE_SEQUENCE[idx + 1]
+                save_state(state_path, state)
+                continue
+             else:
+                state["status"] = "complete"
+                save_state(state_path, state)
+                break
+
+        # Run the agent
+        mark_step_running(state, current)
+        save_state(state_path, state)
+
+        success, stdout, stderr = run_agent(current, run_path)
+        state = load_state(state_path) or state
+        finalize_step(state, current, success, stdout, stderr)
+        
+        if success:
+            idx = PIPELINE_SEQUENCE.index(current)
+
+            if idx + 1 < len(PIPELINE_SEQUENCE):
+                state["current_step"] = PIPELINE_SEQUENCE[idx + 1]
+                state["next_step"] = PIPELINE_SEQUENCE[idx + 1]
+            else:
+                state["next_step"] = "complete"
+                if state.get("failed_steps"):
+                    state["status"] = "complete_with_errors"
+                    update_history(state, "Pipeline finished with errors")
+                else:
+                    state["status"] = "complete"
+                    update_history(state, "Pipeline completed successfully")
+        else:
+            # Fallback policy: Continue?
+            # For now, we continue because agents have internal fallback.
+            # But if the process crashed hard (return code != 0), it might be bad.
+            # Let's assume internal fallback handled it and saved *something* to state.
+            # If not, downstream agents will fallback too.
+            print(f"[WARN] Step {current} failed at process level. Continuing pipeline...")
+            idx = PIPELINE_SEQUENCE.index(current)
+            if idx + 1 < len(PIPELINE_SEQUENCE):
+                state["current_step"] = PIPELINE_SEQUENCE[idx + 1]
+                state["next_step"] = PIPELINE_SEQUENCE[idx + 1]
+                state["status"] = "running_with_errors"
+            else:
+                state["status"] = "complete_with_errors"
+                state["next_step"] = "complete"
+                update_history(state, "Pipeline finished with errors")
+
+        save_state(state_path, state)
+        time.sleep(POLL_TIME)
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("data", nargs="?", default="data/test_full.csv", help="Path to input CSV")
+    args = parser.parse_args()
+    
+    new_run_id, new_run_path = orchestrate_new_run(args.data)
+    if new_run_path:
+        main_loop(new_run_path)
+
