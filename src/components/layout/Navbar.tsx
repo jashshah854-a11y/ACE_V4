@@ -8,11 +8,21 @@ const navLinks = [
   { href: "/", label: "Home" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/reports", label: "Reports" },
+  { href: "/runs", label: "Runs" },
 ];
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const isActiveLink = (href: string) => {
+    if (href === "/") {
+      return location.pathname === "/";
+    }
+    if (href === "/runs") {
+      return location.pathname.startsWith("/runs");
+    }
+    return location.pathname === href;
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass">
@@ -37,7 +47,7 @@ export function Navbar() {
                 to={link.href}
                 className={cn(
                   "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                  location.pathname === link.href
+                  isActiveLink(link.href)
                     ? "bg-secondary text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                 )}
@@ -77,7 +87,7 @@ export function Navbar() {
                   onClick={() => setIsOpen(false)}
                   className={cn(
                     "px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                    location.pathname === link.href
+                    isActiveLink(link.href)
                       ? "bg-secondary text-foreground"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                   )}
@@ -98,3 +108,5 @@ export function Navbar() {
     </nav>
   );
 }
+
+
