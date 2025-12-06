@@ -1,16 +1,24 @@
+
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
-import { 
-  FileText, 
-  Download, 
-  Calendar, 
-  BarChart3, 
+import { Input } from "@/components/ui/input";
+import { ReportViewer } from "@/components/runs/ReportViewer";
+import {
+  FileText,
+  Download,
+  Calendar,
+  BarChart3,
   PieChart,
   TrendingUp,
-  Plus
+  Plus,
+  Search
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getReport } from "@/lib/api-client";
 
 interface Report {
   id: string;
@@ -69,113 +77,145 @@ const typeConfig: Record<Report["type"], { icon: typeof FileText; color: string;
 };
 
 const Reports = () => {
+  const [runInput, setRunInput] = useState("");
+  const [activeRunId, setActiveRunId] = useState("");
+
+  const reportQuery = useQuery<string | undefined>({
+    queryKey: ["final-report", activeRunId],
+    queryFn: () => getReport(activeRunId),
+    enabled: Boolean(activeRunId),
+    retry: false
+  });
+
+  const handleLoadReport = () => {
+    const sanitized = runInput.trim();
+    if (!sanitized) return;
+    setActiveRunId(sanitized);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       <main className="pt-24 pb-16">
-        <div className="container px-4">
+        <div className="container px-4 max-w-7xl">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
             <div>
-              <h1 className="text-3xl font-bold">Reports</h1>
+              <h1 className="text-3xl font-bold">Reports Center</h1>
               <p className="text-muted-foreground mt-1">
-                Generated intelligence reports and analytics
+                Access generated intelligence reports and historical analytics.
               </p>
             </div>
-            <Button variant="hero" size="sm">
+            <Button variant="default" size="sm">
               <Plus className="h-4 w-4 mr-2" />
-              Generate Report
+              Generate New Report
             </Button>
           </div>
 
-          {/* Reports Grid */}
-          <div className="grid md:grid-cols-2 gap-6">
-            {reports.map((report) => {
-              const ReportIcon = typeConfig[report.type].icon;
-              
-              return (
-                <div
-                  key={report.id}
-                  className="group rounded-2xl border border-border bg-card p-6 hover:shadow-lg transition-all duration-300"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className={cn(
-                      "p-3 rounded-xl",
-                      typeConfig[report.type].bg
-                    )}>
-                      <ReportIcon className={cn(
-                        "h-5 w-5",
-                        typeConfig[report.type].color
-                      )} />
-                    </div>
-                    
-                    {report.status === "ready" ? (
-                      <Button variant="ghost" size="sm">
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </Button>
-                    ) : (
-                      <span className="text-xs px-2 py-1 rounded-full bg-secondary text-muted-foreground">
-                        {report.status === "generating" ? "Generating..." : "Scheduled"}
-                      </span>
-                    )}
+          <div className="grid gap-8 lg:grid-cols-[1fr,350px]">
+            {/* Main Content Area */}
+            <div className="space-y-8">
+              {/* Report Viewer Section */}
+              <div className="rounded-xl border bg-card p-6 shadow-sm">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                      <Search className="h-5 w-5 text-muted-foreground" />
+                      Report Viewer
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Enter a valid Run ID to fetch and view the full markdown report from the ACE Engine.
+                    </p>
                   </div>
-
-                  <h3 className="text-lg font-semibold mb-2">{report.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {report.description}
-                  </p>
-
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3.5 w-3.5" />
-                      <span>{report.period}</span>
-                    </div>
-                    <span>•</span>
-                    <span>{report.generatedAt}</span>
+                  <div className="flex gap-2 w-full md:w-auto">
+                    <Input
+                      placeholder="Paste Run ID here..."
+                      value={runInput}
+                      onChange={(e) => setRunInput(e.target.value)}
+                      className="font-mono text-sm"
+                    />
+                    <Button onClick={handleLoadReport} disabled={!runInput.trim()}>
+                      Load
+                    </Button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
 
-          {/* Report Types Info */}
-          <div className="mt-12 p-6 rounded-2xl glass-card">
-            <h3 className="text-lg font-semibold mb-4">Available Report Types</h3>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {Object.entries(typeConfig).map(([type, config]) => {
-                const Icon = config.icon;
-                const labels: Record<string, string> = {
-                  quality: "Quality Reports",
-                  anomaly: "Anomaly Reports", 
-                  trend: "Trend Analysis",
-                  summary: "Executive Summaries",
-                };
-                const descriptions: Record<string, string> = {
-                  quality: "Detailed data quality metrics",
-                  anomaly: "Anomaly detection insights",
-                  trend: "Historical trend analysis",
-                  summary: "High-level overviews",
-                };
-                
-                return (
-                  <div key={type} className="flex items-start gap-3">
-                    <div className={cn("p-2 rounded-lg shrink-0", config.bg)}>
-                      <Icon className={cn("h-4 w-4", config.color)} />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{labels[type]}</p>
-                      <p className="text-xs text-muted-foreground">{descriptions[type]}</p>
-                    </div>
+                {activeRunId && (
+                  <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-2 rounded-md">
+                    <span>Viewing report for Run:</span>
+                    <code className="bg-background px-1 py-0.5 rounded border font-mono text-xs">{activeRunId}</code>
                   </div>
-                );
-              })}
+                )}
+
+                {reportQuery.isError && (
+                  <div className="p-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 mb-4 text-sm">
+                    Error loading report: {reportQuery.error instanceof Error ? reportQuery.error.message : "Report not found or API error."}
+                  </div>
+                )}
+
+                <div className="min-h-[400px] border rounded-lg bg-background/50">
+                  <ReportViewer
+                    content={reportQuery.data}
+                    isLoading={reportQuery.isFetching}
+                  />
+                  {!activeRunId && !reportQuery.data && !reportQuery.isFetching && (
+                    <div className="h-full flex flex-col items-center justify-center p-12 text-muted-foreground">
+                      <FileText className="h-12 w-12 mb-4 opacity-20" />
+                      <p>Refine your selection or enter a Run ID above to view the report.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Sidebar / Recent Reports */}
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Recent Reports</h3>
+                <div className="space-y-4">
+                  {reports.map((report) => {
+                    const ReportIcon = typeConfig[report.type].icon;
+                    return (
+                      <div
+                        key={report.id}
+                        className="group rounded-lg border bg-card p-4 hover:shadow-md transition-all duration-200 cursor-pointer"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={cn("p-2 rounded-lg shrink-0", typeConfig[report.type].bg)}>
+                            <ReportIcon className={cn("h-4 w-4", typeConfig[report.type].color)} />
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-sm line-clamp-1">{report.title}</h4>
+                            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{report.description}</p>
+                            <div className="flex items-center gap-2 mt-3 text-[10px] text-muted-foreground">
+                              <span className="bg-secondary px-1.5 py-0.5 rounded">{report.period}</span>
+                              <span>•</span>
+                              <span>{report.generatedAt}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl purple-gradient text-white">
+                <h3 className="font-semibold mb-2">Need Custom Insights?</h3>
+                <p className="text-sm opacity-90 mb-3">
+                  Configure the ACE Engine to generate specialized reports for your specific domain.
+                </p>
+                <Button size="sm" variant="secondary" className="w-full text-primary font-medium">
+                  Configure Agent
+                </Button>
+              </div>
             </div>
           </div>
+
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );
