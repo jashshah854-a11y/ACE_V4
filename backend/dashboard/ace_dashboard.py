@@ -41,6 +41,18 @@ if uploaded_file:
                 st.error(f"ACE Crashed: {e}")
                 st.exception(e)
 
+# Auto-load latest run for verification
+if "last_run_id" not in st.session_state:
+    # Find latest run
+    runs_dir = Path("data/runs")
+    if runs_dir.exists():
+        runs = sorted([d for d in runs_dir.iterdir() if d.is_dir()], reverse=True)
+        if runs:
+            latest = runs[0]
+            st.session_state["last_run_id"] = latest.name
+            st.session_state["last_run_path"] = str(latest)
+            st.info(f"Auto-loaded latest run: {latest.name}")
+
 # Display Results
 if "last_run_id" in st.session_state:
     run_id = st.session_state["last_run_id"]

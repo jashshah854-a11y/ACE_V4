@@ -7,7 +7,10 @@ import pandas as pd
 from sklearn.ensemble import IsolationForest
 from pathlib import Path
 
-from core.env import ensure_windows_cpu_env\nensure_windows_cpu_env()\n\n# Add project root to path
+from core.env import ensure_windows_cpu_env
+ensure_windows_cpu_env()
+
+# Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from core.state_manager import StateManager

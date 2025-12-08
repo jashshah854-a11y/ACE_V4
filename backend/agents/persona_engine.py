@@ -3,7 +3,10 @@ import sys
 from pathlib import Path
 from utils.logging import log_launch, log_warn, log_info, log_ok, log_error
 
-from core.env import ensure_windows_cpu_env\nensure_windows_cpu_env()\n\n# Add project root to path
+from core.env import ensure_windows_cpu_env
+ensure_windows_cpu_env()
+
+# Add project root to path
 try:
     import requests
 except ImportError:
