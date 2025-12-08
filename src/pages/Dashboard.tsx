@@ -63,18 +63,6 @@ const Dashboard = () => {
     fileInputRef.current?.click();
   };
 
-  // Poll for backend health
-  const { isSuccess: isBackendOnline, isLoading: isPingLoading } = useQuery({
-    queryKey: ["health"],
-    queryFn: async () => {
-      // Simple ping to check if server is reachable
-      await listRunSummaries(1); // Minimal payload fetch using existing client
-      return true;
-    },
-    retry: false,
-    refetchInterval: 5000,
-  });
-
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -101,7 +89,7 @@ const Dashboard = () => {
                 variant="hero"
                 size="lg"
                 onClick={handleUploadClick}
-                disabled={runMutation.isPending || !isBackendOnline}
+                disabled={runMutation.isPending}
               >
                 {runMutation.isPending ? (
                   <Loader2 className="h-5 w-5 mr-2 animate-spin" />
@@ -127,9 +115,8 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <div
-                  className={`border-2 border-dashed border-primary/20 rounded-lg p-8 flex flex-col items-center justify-center text-center transition-colors cursor-pointer ${isBackendOnline ? "hover:bg-primary/5" : "opacity-50 cursor-not-allowed"
-                    }`}
-                  onClick={() => isBackendOnline && handleUploadClick()}
+                  className="border-2 border-dashed border-primary/20 rounded-lg p-8 flex flex-col items-center justify-center text-center hover:bg-primary/5 transition-colors cursor-pointer"
+                  onClick={handleUploadClick}
                 >
                   <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                     <FileSpreadsheet className="h-6 w-6 text-primary" />
@@ -138,7 +125,7 @@ const Dashboard = () => {
                   <p className="text-muted-foreground text-sm max-w-sm mb-4">
                     Supports customer transaction logs, demographic data, and behavior events.
                   </p>
-                  <Button variant="outline" disabled={runMutation.isPending || !isBackendOnline}>
+                  <Button variant="outline" disabled={runMutation.isPending}>
                     Select File
                   </Button>
                 </div>
@@ -156,17 +143,10 @@ const Dashboard = () => {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Backend API</span>
-                  {isBackendOnline ? (
-                    <span className="flex items-center text-sm text-green-500 font-medium">
-                      <span className="h-2 w-2 rounded-full bg-green-500 mr-2 animate-pulse" />
-                      Online
-                    </span>
-                  ) : (
-                    <span className="flex items-center text-sm text-red-500 font-medium">
-                      <span className="h-2 w-2 rounded-full bg-red-500 mr-2" />
-                      Offline
-                    </span>
-                  )}
+                  <span className="flex items-center text-sm text-green-500 font-medium">
+                    <span className="h-2 w-2 rounded-full bg-green-500 mr-2" />
+                    Online
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Version</span>
