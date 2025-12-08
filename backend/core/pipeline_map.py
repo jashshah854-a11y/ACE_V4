@@ -1,9 +1,10 @@
-# core/pipeline_map.py
+﻿# core/pipeline_map.py
 
 PIPELINE_SEQUENCE = [
     "scanner",
     "interpreter",
     "overseer",
+    "regression",
     "sentry",
     "personas",
     "fabricator",
@@ -15,6 +16,7 @@ PIPELINE_DESCRIPTIONS = {
     "scanner": "Profile dataset",
     "interpreter": "Create schema map",
     "overseer": "Clustering and segmentation",
+    "regression": "Model numeric outcomes",
     "sentry": "Anomaly detection",
     "personas": "Persona generation",
     "fabricator": "Strategy generation",

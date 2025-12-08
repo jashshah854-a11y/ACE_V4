@@ -4,6 +4,7 @@ import time
 import subprocess
 import sys
 import threading
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -19,6 +20,19 @@ from core.state_manager import StateManager
 from agents.data_sanitizer import DataSanitizer
 
 POLL_TIME = 0.5  # seconds
+MAX_STEP_ATTEMPTS = 3
+RETRY_BACKOFF = 2
+
+
+def _record_final_status(run_path: str, status: str, **extra):
+    try:
+        payload = {"status": status, "updated_at": iso_now()}
+        if extra:
+            payload.update(extra)
+        StateManager(run_path).write("final_status", payload)
+    except Exception as exc:
+        print(f"[WARN] Unable to record final status: {exc}")
+
 
 def load_state(state_path):
     if not os.path.exists(state_path):
@@ -147,7 +161,7 @@ def run_agent(agent_name, run_path):
         print(f"[CRITICAL] Failed to subprocess agent {agent_name}: {e}")
         return False, "", str(e)
 
-def orchestrate_new_run(data_path):
+def orchestrate_new_run(data_path, run_config=None):
     print("=== ACE V3 ORCHESTRATOR START ===")
     
     # 1. Create Run
@@ -160,6 +174,7 @@ def orchestrate_new_run(data_path):
     # We do this here to ensure the run folder has the clean data before the pipeline starts
     if not os.path.exists(data_path):
         print(f"[ERROR] Data file not found: {data_path}")
+        shutil.rmtree(run_path, ignore_errors=True)
         return None, None
 
     print(f"Sanitizing dataset: {data_path}")
@@ -177,6 +192,7 @@ def orchestrate_new_run(data_path):
         
     except Exception as e:
         print(f"Sanitization failed: {e}")
+        shutil.rmtree(run_path, ignore_errors=True)
         return None, None
 
     # 3. Init State
@@ -187,13 +203,16 @@ def orchestrate_new_run(data_path):
         "sanitizer_report": "sanitizer_report.json"
     }
     state["data_path"] = cleaned_path
+    if run_config:
+        state["run_config"] = run_config
+        state_manager.write("run_config", run_config)
     save_state(state_path, state)
     return run_id, run_path
 
 
-def launch_pipeline_async(data_path):
+def launch_pipeline_async(data_path, run_config=None):
     """Utility to start a run and process it in a background thread."""
-    run_id, run_path = orchestrate_new_run(data_path)
+    run_id, run_path = orchestrate_new_run(data_path, run_config=run_config)
     if not run_path:
         return run_id, run_path
 
@@ -214,6 +233,8 @@ def main_loop(run_path):
             continue
 
         if state.get("status") in {"complete", "complete_with_errors", "failed"}:
+            final_status = state.get("status", "unknown")
+            _record_final_status(run_path, final_status)
             print(f"Pipeline finished with status: {state['status']}")
             break
 
@@ -230,14 +251,36 @@ def main_loop(run_path):
              else:
                 state["status"] = "complete"
                 save_state(state_path, state)
+                _record_final_status(run_path, "complete")
                 break
 
         # Run the agent
         mark_step_running(state, current)
         save_state(state_path, state)
 
-        success, stdout, stderr = run_agent(current, run_path)
-        state = load_state(state_path) or state
+        attempts = 0
+        success = False
+        stdout = ""
+        stderr = ""
+        while attempts < MAX_STEP_ATTEMPTS:
+            attempts += 1
+            step_meta = state["steps"].setdefault(current, {"name": current})
+            step_meta["attempts"] = attempts
+            save_state(state_path, state)
+
+            attempt_success, stdout, stderr = run_agent(current, run_path)
+            success = attempt_success
+            state = load_state(state_path) or state
+            state["steps"].setdefault(current, {"name": current})["attempts"] = attempts
+
+            if success:
+                break
+
+            update_history(state, f"{current} attempt {attempts} failed", returncode=1)
+            save_state(state_path, state)
+            if attempts < MAX_STEP_ATTEMPTS:
+                time.sleep(RETRY_BACKOFF)
+
         finalize_step(state, current, success, stdout, stderr)
         
         if success:
@@ -255,21 +298,13 @@ def main_loop(run_path):
                     state["status"] = "complete"
                     update_history(state, "Pipeline completed successfully")
         else:
-            # Fallback policy: Continue?
-            # For now, we continue because agents have internal fallback.
-            # But if the process crashed hard (return code != 0), it might be bad.
-            # Let's assume internal fallback handled it and saved *something* to state.
-            # If not, downstream agents will fallback too.
-            print(f"[WARN] Step {current} failed at process level. Continuing pipeline...")
-            idx = PIPELINE_SEQUENCE.index(current)
-            if idx + 1 < len(PIPELINE_SEQUENCE):
-                state["current_step"] = PIPELINE_SEQUENCE[idx + 1]
-                state["next_step"] = PIPELINE_SEQUENCE[idx + 1]
-                state["status"] = "running_with_errors"
-            else:
-                state["status"] = "complete_with_errors"
-                state["next_step"] = "complete"
-                update_history(state, "Pipeline finished with errors")
+            print(f"[WARN] Step {current} failed repeatedly. Aborting pipeline.")
+            state["status"] = "complete_with_errors"
+            state["next_step"] = "failed"
+            update_history(state, f"{current} failed after {attempts} attempts")
+            save_state(state_path, state)
+            _record_final_status(run_path, "complete_with_errors", step=current)
+            break
 
         save_state(state_path, state)
         time.sleep(POLL_TIME)

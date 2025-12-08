@@ -23,6 +23,7 @@ class Expositor:
         scan = self.state.read("schema_scan_output") or {}
         overseer = self.state.read("overseer_output") or {}
         sentry = self.state.read("anomalies") or {}
+        regression = self.state.read("regression_insights") or {}
         personas_data = self.state.read("personas") or {}
         strategies_data = self.state.read("strategies") or {}
         
@@ -59,11 +60,14 @@ class Expositor:
         lines.append("")
 
         lines.append("## Executive Summary")
-        lines.append(self._summary(overseer, personas, sentry))
+        lines.append(self._summary(overseer, personas, sentry, regression))
         lines.append("")
 
         if overseer:
             lines.extend(self._clusters_section(overseer))
+        
+        if regression:
+            lines.extend(self._regression_section(regression))
         
         if personas:
             lines.extend(self._personas_section(personas, strategies))
@@ -92,7 +96,7 @@ class Expositor:
                 return True
         return False
 
-    def _summary(self, overseer, personas, sentry):
+    def _summary(self, overseer, personas, sentry, regression):
         cluster_info = ""
         if overseer and "stats" in overseer:
             k = overseer["stats"].get("k", 0)
@@ -101,12 +105,23 @@ class Expositor:
         persona_info = ""
         if personas:
             persona_info = f"{len(personas)} personas were generated from these clusters. "
-            
+        
         anomaly_info = ""
         if sentry and sentry.get("anomaly_count", 0) > 0:
             anomaly_info = f"Sentry flagged {sentry['anomaly_count']} anomalous records for further review."
-            
-        return (cluster_info + persona_info + anomaly_info) or "The engine completed with limited data but produced a basic structural view."
+
+        regression_info = ""
+        if regression and regression.get("status") == "ok":
+            metrics = regression.get("metrics", {})
+            r2 = metrics.get("r2")
+            target = regression.get("target_column", "the outcome")
+            if r2 is not None:
+                regression_info = f"Regression modeling captured `{target}` with R^2 {r2:.2f}. "
+            else:
+                regression_info = f"Regression modeling produced insights for `{target}`. "
+
+        summary = cluster_info + persona_info + anomaly_info + regression_info
+        return summary or "The engine completed with limited data but produced a basic structural view."
 
     def _clusters_section(self, overseer):
         lines = []
@@ -119,6 +134,52 @@ class Expositor:
         lines.append(f"| Optimal Clusters (k) | {stats.get('k', 'N/A')} |")
         lines.append(f"| Silhouette Score | {stats.get('silhouette', 'N/A')} |")
         lines.append(f"| Data Quality | {stats.get('data_quality', 'N/A')} |")
+        lines.append("")
+        return lines
+
+    def _regression_section(self, regression):
+        lines = []
+        lines.append("## Outcome Modeling")
+        status = regression.get("status")
+        if status != "ok":
+            reason = regression.get("reason", "Regression modeling was skipped.")
+            lines.append(f"Regression modeling skipped: {reason}.")
+            lines.append("")
+            return lines
+
+        target = regression.get("target_column", "value metric")
+        metrics = regression.get("metrics", {})
+        detail_bits = []
+        r2 = metrics.get("r2")
+        if r2 is not None:
+            detail_bits.append(f"R² {r2:.2f}")
+        rmse = metrics.get("rmse")
+        if rmse is not None:
+            detail_bits.append(f"RMSE {rmse:.2f}")
+        mae = metrics.get("mae")
+        if mae is not None:
+            detail_bits.append(f"MAE {mae:.2f}")
+
+        summary = f"- **Target:** `{target}`"
+        if detail_bits:
+            summary += " (" + ", ".join(detail_bits) + ")"
+        lines.append(summary)
+
+        if regression.get("narrative"):
+            lines.append(f"- **Insight:** {regression['narrative']}")
+
+        drivers = regression.get("drivers") or []
+        if drivers:
+            lines.append("")
+            lines.append("Top predictive drivers:")
+            for driver in drivers[:5]:
+                feat = driver.get("feature", "feature")
+                imp = driver.get("importance")
+                if imp is not None:
+                    lines.append(f"- {feat}: importance {imp:.2f}")
+                else:
+                    lines.append(f"- {feat}")
+
         lines.append("")
         return lines
 
@@ -210,3 +271,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
