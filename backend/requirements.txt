@@ -9,3 +9,8 @@ fastapi
 uvicorn
 python-multipart
 altair
+streamlit
+matplotlib
+seaborn
+joblib
+watchdog
