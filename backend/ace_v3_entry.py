@@ -64,19 +64,21 @@ def _build_master_dataset(intake_result):
         master_dataset_path=master_path
     )
 
-def run_ace_v3(data_path):
+def run_ace_v3(data_path, run_config=None):
     print("=== ACE V3 UNIVERSAL ENGINE START ===")
     
     # Initialize Run
     run_id, run_path = create_run_folder()
     state = StateManager(run_path)
+    if run_config:
+        state.write("run_config", run_config)
     print(f"[ACE] Run ID: {run_id}")
     print(f"[ACE] Run Path: {run_path}")
 
     # Ensure data path exists
     if not Path(data_path).exists():
         log_error(f"Data file not found: {data_path}")
-        return run_id, run_path
+        raise FileNotFoundError(f"Data file not found: {data_path}")
 
     # Step 0: Intake System (V4)
     log_info(f"Starting Intake System for: {data_path}")
@@ -86,16 +88,20 @@ def run_ace_v3(data_path):
         intake_result = intake.load_input(data_path)
         
         if "error" in intake_result:
-            log_error(f"Intake failed: {intake_result['error']}")
-            return run_id, run_path
+            error_msg = intake_result['error']
+            log_error(f"Intake failed: {error_msg}")
+            state.write('intake_error', {'error': str(error_msg)})
+            raise RuntimeError(f"Intake failed: {error_msg}")
             
         state.write("intake_result", intake_result)
         
         # Use the fused master dataset for the pipeline
         master_path = intake_result.get("master_dataset_path")
         if not master_path or not Path(master_path).exists():
-             log_error("Intake did not produce a master dataset.")
-             return run_id, run_path
+             message = "Intake did not produce a master dataset."
+             log_error(message)
+             state.write('intake_error', {'error': message})
+             raise RuntimeError(message)
              
         data_path = str(master_path)
         log_ok(f"Intake complete. Master dataset: {data_path}")
@@ -128,13 +134,15 @@ def run_ace_v3(data_path):
 
         except Exception as e:
             log_error(f"Anomaly Engine failed: {e}")
-            pass
+            state.write('anomaly_error', {'error': str(e)})
+            raise RuntimeError(f"Anomaly Engine failed: {e}") from e
 
     except Exception as e:
         log_error(f"Intake crashed: {e}")
         import traceback
         traceback.print_exc()
-        return run_id, run_path
+        state.write('intake_error', {'error': str(e)})
+        raise
 
     # Persist dataset for downstream agents before scanning
     data_path = _persist_active_dataset(state, data_path)
@@ -182,25 +190,31 @@ def run_ace_v3(data_path):
     overseer = Overseer(schema_map=schema_map, state=state)
     overseer_result = overseer.run() 
     
-    # Step 4: Run Sentry (Universal Anomaly Detection)
+    # Step 4: Run Regression Modeling
+    from agents.regression import RegressionAgent
+    log_launch("Launching Regression Agent...")
+    regression_agent = RegressionAgent(schema_map=schema_map, state=state)
+    regression_agent.run()
+    
+    # Step 5: Run Sentry (Universal Anomaly Detection)
     from agents.sentry import Sentry
     log_launch("Launching Sentry V3...")
     sentry = Sentry(schema_map=schema_map, state=state)
     sentry.run()
     
-    # Step 5: Run Persona Engine (Universal Personas)
+    # Step 6: Run Persona Engine (Universal Personas)
     from agents.persona_engine import PersonaEngine
     log_launch("Launching Persona Engine V3...")
     persona_engine = PersonaEngine(schema_map=schema_map, state=state)
     persona_engine.run()
     
-    # Step 6: Run Fabricator (Universal Strategies)
+    # Step 7: Run Fabricator (Universal Strategies)
     from agents.fabricator import Fabricator
     log_launch("Launching Fabricator V3...")
     fabricator = Fabricator(schema_map=schema_map, state=state)
     fabricator.run()
     
-    # Step 7: Run Expositor (Final Report)
+    # Step 8: Run Expositor (Final Report)
     from agents.expositor import Expositor
     log_launch("Launching Expositor V3...")
     expositor = Expositor(schema_map=schema_map, state=state)
@@ -242,4 +256,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     run_ace_v3(args.dataset)
+
+
+
+
 
