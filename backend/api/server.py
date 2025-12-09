@@ -133,7 +133,7 @@ class RunResponse(BaseModel):
     message: str
     status: str
 
-@app.post("/run", response_model=RunResponse, tags=["Execution"])
+@app.post("/runs/start", response_model=RunResponse, tags=["Execution"])
 async def trigger_run(
     file: UploadFile = File(...),
     target_column: Optional[str] = Form(None),

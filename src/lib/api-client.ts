@@ -1,11 +1,11 @@
 const DEFAULT_API_BASE_URL = "http://localhost:8000";
 
-const rawBaseUrl = (import.meta.env.VITE_ACE_API_BASE_URL ?? "").trim();
+const rawBaseUrl = (import.meta.env.VITE_API_URL || import.meta.env.VITE_ACE_API_BASE_URL || "").trim();
 const API_BASE_URL = (rawBaseUrl || DEFAULT_API_BASE_URL).replace(/\/$/, "");
 const USING_DEFAULT_BASE_URL = rawBaseUrl.length === 0;
 
 if (USING_DEFAULT_BASE_URL && import.meta.env.DEV) {
-  console.warn(`[ACE API] VITE_ACE_API_BASE_URL not set. Falling back to ${DEFAULT_API_BASE_URL}`);
+  console.warn(`[ACE API] VITE_API_URL not set. Falling back to ${DEFAULT_API_BASE_URL}`);
 }
 
 export type RunStatus =
@@ -170,7 +170,7 @@ export async function triggerRun(file: File): Promise<RunResponse> {
   const formData = new FormData();
   formData.append("file", file);
 
-  return request<RunResponse>("/run", {
+  return request<RunResponse>("/runs/start", {
     method: "POST",
     body: formData,
   });
