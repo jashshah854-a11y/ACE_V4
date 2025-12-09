@@ -25,7 +25,7 @@ const STATUS_FILTERS = [
 type StatusFilter = (typeof STATUS_FILTERS)[number]["value"];
 
 const formatDateTime = (value?: string) => {
-  if (!value) return "—";
+  if (!value) return "â€”";
   try {
     return new Date(value).toLocaleString();
   } catch {
@@ -34,7 +34,7 @@ const formatDateTime = (value?: string) => {
 };
 
 const formatDuration = (seconds?: number) => {
-  if (!seconds && seconds !== 0) return "—";
+  if (!seconds && seconds !== 0) return "â€”";
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
@@ -218,7 +218,7 @@ const Runs = () => {
                           <TableCell>
                             <div>
                               <p className="font-mono text-sm">{run.id}</p>
-                              <p className="text-xs text-muted-foreground">{run.latestEvent ?? "—"}</p>
+                              <p className="text-xs text-muted-foreground">{run.latestEvent ?? "â€”"}</p>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -266,5 +266,6 @@ const Runs = () => {
 };
 
 export default Runs;
+
 
 
