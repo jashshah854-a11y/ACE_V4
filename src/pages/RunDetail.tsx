@@ -16,7 +16,7 @@ import { getApiBaseUrl, isTerminalStatus, type RunState } from "@/lib/api-client
 import { PIPELINE_STEPS } from "@/lib/pipeline";
 
 const formatDateTime = (value?: string) => {
-  if (!value) return "—";
+  if (!value) return "â€”";
   try {
     return new Date(value).toLocaleString();
   } catch {
@@ -25,7 +25,7 @@ const formatDateTime = (value?: string) => {
 };
 
 const formatDuration = (seconds?: number) => {
-  if (seconds === undefined || Number.isNaN(seconds)) return "—";
+  if (seconds === undefined || Number.isNaN(seconds)) return "â€”";
   const totalSeconds = Math.max(0, Math.round(seconds));
   if (totalSeconds < 60) return `${totalSeconds}s`;
   const minutes = Math.floor(totalSeconds / 60);
@@ -139,7 +139,7 @@ const RunDetail = () => {
                 <RunStatusBadge status={runState?.status ?? "pending"} size="md" />
               </div>
               <p className="mt-2 text-sm text-muted-foreground">
-                Created {formatDateTime(runState?.created_at)} · Updated {formatDateTime(runState?.updated_at)}
+                Created {formatDateTime(runState?.created_at)} Â· Updated {formatDateTime(runState?.updated_at)}
                 {relativeUpdate ? ` (${relativeUpdate})` : ""}
               </p>
             </div>
@@ -332,7 +332,7 @@ const RunDetail = () => {
                             {Object.entries(entry)
                               .filter(([key]) => key !== "timestamp" && key !== "event")
                               .map(([key, value]) => `${key}: ${value}`)
-                              .join(" · ") || "—"}
+                              .join(" Â· ") || "â€”"}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -359,6 +359,7 @@ function buildPipelineTimeline(state?: RunState) {
 }
 
 export default RunDetail;
+
 
 
 
