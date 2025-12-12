@@ -1,12 +1,9 @@
-# Nixpacks Configuration for Full Stack (FastAPI + Vite)
-
 [phases.setup]
 nixPkgs = ["python311", "nodejs_20"]
 
 [phases.install]
 cmds = [
-    "python -m venv .venv",
-    ". .venv/bin/activate && pip install -r backend/requirements.txt",
+    "pip install -r backend/requirements.txt",
     "bun install"
 ]
 
@@ -16,4 +13,4 @@ cmds = [
 ]
 
 [start]
-cmd = ". .venv/bin/activate && python backend/api/server.py"
+cmd = "python backend/api/server.py"
