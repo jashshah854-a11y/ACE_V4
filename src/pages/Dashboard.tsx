@@ -149,12 +149,14 @@ const Dashboard = () => {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Version</span>
-                  <span className="text-sm font-mono">v3.0.0</span>
+                  <span className="text-sm text-muted-foreground">API Connection</span>
+                  <span className="text-xs font-mono bg-muted px-2 py-1 rounded">
+                    {import.meta.env.VITE_ACE_API_BASE_URL || "http://localhost:8001"}
+                  </span>
                 </div>
                 <div className="pt-4 border-t">
                   <p className="text-sm text-muted-foreground">
-                    Ensure your local Python server is running on port 8000 before starting an analysis.
+                    Ensure your Python server is running on port 8001 (or as configured above) before starting an analysis.
                   </p>
                 </div>
               </CardContent>
