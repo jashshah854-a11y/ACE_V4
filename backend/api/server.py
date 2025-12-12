@@ -78,6 +78,10 @@ def _safe_upload_path(original_name: str) -> Path:
 async def root():
     return RedirectResponse(url="/docs")
 
+@app.get("/health", tags=["System"])
+async def health_check():
+    return {"status": "ok", "service": "ACE V3 Backend"}
+
 class RunResponse(BaseModel):
     run_id: str
     run_path: str
