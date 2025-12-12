@@ -1,22 +1,41 @@
 {
-    "rewrites": [
-        {
-            "source": "/api/(.*)",
-            "destination": "/backend/api/server.py"
-        },
-        {
-            "source": "/(.*)",
-            "destination": "/index.html"
-        }
-    ],
     "builds": [
         {
-            "src": "backend/api/server.py",
+            "src": "api/index.py",
             "use": "@vercel/python"
         },
         {
             "src": "package.json",
-            "use": "@vercel/static-build"
+            "use": "@vercel/static-build",
+            "config": {
+                "distDir": "dist"
+            }
+        }
+    ],
+    "routes": [
+        {
+            "src": "/run",
+            "dest": "/api/index.py"
+        },
+        {
+            "src": "/runs/(.*)",
+            "dest": "/api/index.py"
+        },
+        {
+            "src": "/health",
+            "dest": "/api/index.py"
+        },
+        {
+            "src": "/docs",
+            "dest": "/api/index.py"
+        },
+        {
+            "src": "/openapi.json",
+            "dest": "/api/index.py"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/index.html"
         }
     ]
 }
