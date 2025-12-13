@@ -20,15 +20,23 @@ from orchestrator import launch_pipeline_async
 from core.state_manager import StateManager
 
 app = FastAPI(
-    title="ACE V3 Intelligence API",
+    title="ACE V4 Intelligence API",
     description="Universal Autonomous Cognitive Entity Engine API",
-    version="3.0.0"
+    version="4.0.0"
 )
 
 # Add CORS middleware to allow frontend connections
+# In production, restrict origins to your Vercel domain
+allowed_origins = os.getenv("CORS_ORIGINS", "*").split(",")
+if allowed_origins == ["*"] and os.getenv("VERCEL") == "1":
+    # On Vercel, try to get the deployment URL
+    vercel_url = os.getenv("VERCEL_URL")
+    if vercel_url:
+        allowed_origins = [f"https://{vercel_url}"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with your Lovable domain
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -80,7 +88,7 @@ async def root():
 
 @app.get("/health", tags=["System"])
 async def health_check():
-    return {"status": "ok", "service": "ACE V3 Backend"}
+    return {"status": "ok", "service": "ACE V4 Backend"}
 
 class RunResponse(BaseModel):
     run_id: str
@@ -91,7 +99,7 @@ class RunResponse(BaseModel):
 @app.post("/run", response_model=RunResponse, tags=["Execution"])
 async def trigger_run(file: UploadFile = File(...)):
     """
-    Upload a CSV file and trigger a full ACE V3 run.
+    Upload a CSV file and trigger a full ACE V4 run.
     Returns the Run ID.
     """
     file_path = _safe_upload_path(file.filename)
@@ -106,7 +114,7 @@ async def trigger_run(file: UploadFile = File(...)):
         return {
             "run_id": run_id,
             "run_path": run_path,
-            "message": "ACE V3 run accepted. Poll status endpoint for updates.",
+            "message": "ACE V4 run accepted. Poll status endpoint for updates.",
             "status": "accepted"
         }
     except Exception as e:
