@@ -20,35 +20,55 @@ from orchestrator import launch_pipeline_async
 from core.state_manager import StateManager
 
 app = FastAPI(
-    title="ACE V4 Intelligence API",
+    title="ACE V3 Intelligence API",
     description="Universal Autonomous Cognitive Entity Engine API",
-    version="4.0.0"
+    version="3.0.0"
 )
 
 # Add CORS middleware to allow frontend connections
-# In production, restrict origins to your Vercel domain
-allowed_origins = os.getenv("CORS_ORIGINS", "*").split(",")
-if allowed_origins == ["*"] and os.getenv("VERCEL") == "1":
-    # On Vercel, try to get the deployment URL
-    vercel_url = os.getenv("VERCEL_URL")
-    if vercel_url:
-        allowed_origins = [f"https://{vercel_url}"]
-
+# We must specify exact origins because allow_credentials=True is required
+# for secure sessions/cookies which Lovable might use.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=[
+        "http://localhost:8080", 
+        "http://localhost:8001",
+        "https://lovable.dev",
+        "https://gptengineer.app",
+        "https://id-preview--a6cb32c3-f835-4cf9-b39d-ea92894c92ab.lovable.app",
+        "https://web-production-4501f.up.railway.app"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Static Files Mount Removed (Backend Only Mode)
-# The frontend will be hosted separately (e.g., Lovable/Vercel) and connect via API.
+from fastapi.staticfiles import StaticFiles
 
-# 404 Handler for API
+# Mount static files (Frontend)
+# We expect the 'dist' folder to be at the project root level (parent of backend)
+# or copied into backend. Let's assume standard Vite build at project root 'dist'.
+# In the container, we'll ensure CWD allows finding 'dist' or 'backend/dist'.
+# For this repo structure: root/dist
+project_root = Path(__file__).parent.parent.parent
+dist_dir = project_root / "dist"
+
+# Ensure dist exists (might not locally without build)
+if dist_dir.exists():
+    app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
+
+# SPA Catch-all (must be last) - handled via exception handler or specific route?
+# Common pattern: Serve index.html for 404s on non-api routes
 @app.exception_handler(404)
-async def not_found(request, exc):
-    return JSONResponse({"detail": "Not Found"}, status_code=404)
+async def spa_fallback(request, exc):
+    # If API and not found -> return 404
+    if request.url.path.startswith("/run") or request.url.path.startswith("/docs") or request.url.path.startswith("/openapi"):
+         return JSONResponse({"detail": "Not Found"}, status_code=404)
+    
+    # Otherwise, return index.html
+    if dist_dir.exists():
+        return FileResponse(dist_dir / "index.html")
+    return JSONResponse({"detail": "Frontend not built"}, status_code=404)
 
 # Ensure data directory exists
 DATA_DIR = Path("data")
@@ -67,10 +87,6 @@ def _safe_upload_path(original_name: str) -> Path:
 async def root():
     return RedirectResponse(url="/docs")
 
-@app.get("/health", tags=["System"])
-async def health_check():
-    return {"status": "ok", "service": "ACE V4 Backend"}
-
 class RunResponse(BaseModel):
     run_id: str
     run_path: str
@@ -80,7 +96,7 @@ class RunResponse(BaseModel):
 @app.post("/run", response_model=RunResponse, tags=["Execution"])
 async def trigger_run(file: UploadFile = File(...)):
     """
-    Upload a CSV file and trigger a full ACE V4 run.
+    Upload a CSV file and trigger a full ACE V3 run.
     Returns the Run ID.
     """
     file_path = _safe_upload_path(file.filename)
@@ -95,7 +111,7 @@ async def trigger_run(file: UploadFile = File(...)):
         return {
             "run_id": run_id,
             "run_path": run_path,
-            "message": "ACE V4 run accepted. Poll status endpoint for updates.",
+            "message": "ACE V3 run accepted. Poll status endpoint for updates.",
             "status": "accepted"
         }
     except Exception as e:
