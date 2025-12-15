@@ -26,18 +26,9 @@ app = FastAPI(
 )
 
 # Add CORS middleware to allow frontend connections
-# We must specify exact origins because allow_credentials=True is required
-# for secure sessions/cookies which Lovable might use.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8080", 
-        "http://localhost:8001",
-        "https://lovable.dev",
-        "https://gptengineer.app",
-        "https://id-preview--a6cb32c3-f835-4cf9-b39d-ea92894c92ab.lovable.app",
-        "https://web-production-4501f.up.railway.app"
-    ],
+    allow_origins=["*"],  # In production, replace with your Lovable domain
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -167,8 +158,11 @@ async def list_runs():
             runs.append(run_folder.name)
     return sorted(runs, reverse=True)
 
+
 if __name__ == "__main__":
     import uvicorn
-    # Use PORT env var for Railway, allow reload only in dev
+    import os
+    # Railway provides PORT env var
     port = int(os.getenv("PORT", 8001))
-    uvicorn.run("api.server:app", host="0.0.0.0", port=port, reload=False)
+    # Use direct module reference since we're running from project root
+    uvicorn.run("backend.api.server:app", host="0.0.0.0", port=port, reload=False)

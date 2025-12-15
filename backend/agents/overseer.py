@@ -5,14 +5,8 @@ import sys
 import os
 from pathlib import Path
 
-import sys
-from pathlib import Path
-
-# Add project root (backend/) to path BEFORE importing core modules
+from core.env import ensure_windows_cpu_env\nensure_windows_cpu_env()\n\n# Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
-
-from core.env import ensure_windows_cpu_env
-ensure_windows_cpu_env()
 
 from utils.logging import log_launch, log_ok, log_warn
 from core.state_manager import StateManager

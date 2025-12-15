@@ -2,21 +2,67 @@
 
 ## Project info
 
-This project is tailored for deployment on **Lovable**.
+This project has been migrated from Lovable to Railway for production deployment.
 
-**Repository**: <https://github.com/jashshah854-a11y/ace-insights-engine>
+**Deployment Platform**: Railway
+**Repository**: <https://github.com/jashshah854-a11y/ACE-V4>
 
-## Deployment on Lovable
+## How can I edit this code?
 
-1. **Backend Integration**: This repository contains the Python backend logic for the ACE Engine.
-2. **Frontend Builder**: Use Lovable.dev to build your frontend interface.
-3. **Connection**:
-    * Deploy this backend code to a container host (if needed) OR use it as a reference logic library.
-    * Connect your Lovable frontend to the backend API endpoints.
+There are several ways of editing your application.
 
-## Technologies
+**Use your preferred IDE**
 
-* Python 3.11 (Backend Logic)
-* FastAPI (API Framework)
-* Docker (Containerization)
-* Lovable (Frontend Builder)
+You can clone this repo and push changes. The project is deployed on Railway with automatic deployments from the main branch.
+
+The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+
+Follow these steps:
+
+```sh
+# Step 1: Clone the repository using the project's Git URL.
+git clone <YOUR_GIT_URL>
+
+# Step 2: Navigate to the project directory.
+cd <YOUR_PROJECT_NAME>
+
+# Step 3: Install the necessary dependencies.
+npm i
+
+# Step 4: Start the development server with auto-reloading and an instant preview.
+npm run dev
+```
+
+**Edit a file directly in GitHub**
+
+- Navigate to the desired file(s).
+- Click the "Edit" button (pencil icon) at the top right of the file view.
+- Make your changes and commit the changes.
+
+**Use GitHub Codespaces**
+
+- Navigate to the main page of your repository.
+- Click on the "Code" button (green button) near the top right.
+- Select the "Codespaces" tab.
+- Click on "New codespace" to launch a new Codespace environment.
+- Edit files directly within the Codespace and commit and push your changes once you're done.
+
+## What technologies are used for this project?
+
+This project is built with:
+
+- Vite
+- TypeScript
+- React
+- shadcn-ui
+- Tailwind CSS
+- Python (Backend)
+- FastAPI
+
+## How can I deploy this project?
+
+This project is deployed on Railway. Any pushes to the main branch will automatically trigger a new deployment.
+
+## Railway Configuration
+
+The project uses Railway for both frontend and backend deployment. Environment variables and build configurations are managed through Railway's dashboard.
