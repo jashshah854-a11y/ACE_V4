@@ -4,6 +4,7 @@ PIPELINE_SEQUENCE = [
     "scanner",
     "interpreter",
     "overseer",
+    "regression",
     "sentry",
     "personas",
     "fabricator",
