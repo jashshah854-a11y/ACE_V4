@@ -1,21 +1,4 @@
-# Stage 1: Build frontend
-FROM node:20-alpine AS frontend-builder
-
-WORKDIR /app
-
-# Copy frontend dependencies
-COPY package*.json ./
-
-# Install dependencies (use ci if lock file exists, otherwise install)
-RUN npm ci || npm install
-
-# Copy frontend source
-COPY . .
-
-# Build frontend (creates dist/ folder)
-RUN npm run build
-
-# Stage 2: Python backend with built frontend
+# Python backend only
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -25,17 +8,17 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy Python dependencies
+# Copy requirements first for better caching
+COPY requirements.txt ./
 COPY backend/requirements.txt ./backend/requirements.txt
 
-# Install Python dependencies
+# Install Python dependencies from both requirements files
+RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
-# Copy backend code
+# Copy all backend code
 COPY backend ./backend
-
-# Copy built frontend from stage 1
-COPY --from=frontend-builder /app/dist ./dist
+COPY api ./api
 
 # Create data directory for runs
 RUN mkdir -p data/runs
@@ -44,5 +27,6 @@ RUN mkdir -p data/runs
 ENV PORT=8080
 EXPOSE 8080
 
-# Start FastAPI server (it will serve the frontend)
+# Start FastAPI server
 CMD uvicorn backend.api.server:app --host 0.0.0.0 --port $PORT
+
