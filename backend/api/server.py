@@ -34,32 +34,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from fastapi.staticfiles import StaticFiles
 
-# Mount static files (Frontend)
-# We expect the 'dist' folder to be at the project root level (parent of backend)
-# or copied into backend. Let's assume standard Vite build at project root 'dist'.
-# In the container, we'll ensure CWD allows finding 'dist' or 'backend/dist'.
-# For this repo structure: root/dist
-project_root = Path(__file__).parent.parent.parent
-dist_dir = project_root / "dist"
-
-# Ensure dist exists (might not locally without build)
-if dist_dir.exists():
-    app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
-
-# SPA Catch-all (must be last) - handled via exception handler or specific route?
-# Common pattern: Serve index.html for 404s on non-api routes
-@app.exception_handler(404)
-async def spa_fallback(request, exc):
-    # If API and not found -> return 404
-    if request.url.path.startswith("/run") or request.url.path.startswith("/docs") or request.url.path.startswith("/openapi"):
-         return JSONResponse({"detail": "Not Found"}, status_code=404)
-    
-    # Otherwise, return index.html
-    if dist_dir.exists():
-        return FileResponse(dist_dir / "index.html")
-    return JSONResponse({"detail": "Frontend not built"}, status_code=404)
 
 # Ensure data directory exists
 DATA_DIR = Path("data")
