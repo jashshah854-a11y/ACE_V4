@@ -1,9 +1,13 @@
-import json
+﻿import json
 import sys
 from pathlib import Path
 from utils.logging import log_launch, log_warn, log_info, log_ok, log_error
 
-from core.env import ensure_windows_cpu_env\nensure_windows_cpu_env()\n\n# Add project root to path
+from core.env import ensure_windows_cpu_env
+
+ensure_windows_cpu_env()
+
+# Add project root to path
 try:
     import requests
 except ImportError:
@@ -83,9 +87,6 @@ class PersonaEngine:
 
 
     def _fallback_personas_from_clusters(self, fingerprints: dict) -> list:
-        """
-        Generate structured personas using role summaries when the LLM fails.
-        """
         personas = []
         if not fingerprints:
             return personas
@@ -170,7 +171,6 @@ class PersonaEngine:
     def run(self):
         log_launch(f"Triggering ACE {self.name}...")
         
-        # 1. Read Rich State (Overseer Output)
         overseer_output = {}
         if self.state:
             overseer_output = self.state.read("overseer_output") or {}
@@ -199,8 +199,6 @@ class PersonaEngine:
                 Path("data/personas_output.json").write_text(json.dumps(empty_payload, indent=2))
             return empty_payload["personas"]
 
-        # 2. Construct Prompt
-        # We need to serialize the schema map and fingerprints for the LLM
         domain_guess = getattr(getattr(self.schema_map, "domain_guess", None), "domain", "generic") or "generic"
         roles = self.schema_map.semantic_roles.model_dump() if hasattr(self.schema_map.semantic_roles, "model_dump") else {}
         context = {
@@ -211,14 +209,11 @@ class PersonaEngine:
         
         prompt = f"{SYSTEM_PROMPT}\n\nINPUT CONTEXT:\n{json.dumps(context, indent=2)}"
         
-        # 3. Call LLM
         log_info("Generating Personas (LLM)...")
         response = ask_gemini(prompt)
         
-        # 4. Parse & Save
         try:
             personas = extract_json_block(response)
-            # Ensure it's a list
             if isinstance(personas, dict) and "personas" in personas:
                 personas = personas["personas"]
         except JsonExtractionError as e:
@@ -226,14 +221,12 @@ class PersonaEngine:
             personas = self._fallback_personas_from_clusters(fingerprints)
             
         try:
-            # Save to disk
             if self.state:
                 self.state.write("personas", {"personas": personas})
             else:
                 with open("data/personas_output.json", "w") as f:
                     json.dump(personas, f, indent=2)
                 
-            # Update State
             if requests:
                 try:
                     requests.post("http://localhost:8000/update", json={
@@ -254,7 +247,6 @@ class PersonaEngine:
 
     def fallback(self, error):
         log_error(f"Persona Engine fallback triggered: {error}")
-        # Try to generate from clusters if possible
         try:
             overseer_output = self.state.read("overseer_output") or {}
             fingerprints = overseer_output.get("fingerprints", {})
@@ -264,6 +256,7 @@ class PersonaEngine:
             
         return {"personas": personas, "error": str(error)}
 
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: python persona_engine.py <run_path>")
@@ -272,7 +265,6 @@ def main():
     run_path = sys.argv[1]
     state = StateManager(run_path)
     
-    # Load Schema
     schema_data = state.read("schema_map")
     schema_map = ensure_schema_map(schema_data)
 
@@ -283,8 +275,7 @@ def main():
         fallback_output = agent.fallback(e)
         state.write("personas", fallback_output)
 
+
 if __name__ == "__main__":
     main()
-
-
 
