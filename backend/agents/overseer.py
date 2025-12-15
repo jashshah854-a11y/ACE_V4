@@ -1,11 +1,15 @@
-import pandas as pd
+﻿import pandas as pd
 import json
 import numpy as np
 import sys
 import os
 from pathlib import Path
 
-from core.env import ensure_windows_cpu_env\nensure_windows_cpu_env()\n\n# Add project root to path
+from core.env import ensure_windows_cpu_env
+
+ensure_windows_cpu_env()
+
+# Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from utils.logging import log_launch, log_ok, log_warn
@@ -158,6 +162,7 @@ class Overseer:
             "error": str(error)
         }
 
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: python overseer.py <run_path>")
@@ -176,6 +181,7 @@ def main():
     except Exception as e:
         fallback_output = agent.fallback(e)
         state.write("overseer_output", fallback_output)
+
 
 if __name__ == "__main__":
     main()
