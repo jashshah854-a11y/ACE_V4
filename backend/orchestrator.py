@@ -152,7 +152,8 @@ def run_agent(agent_name, run_path):
             [sys.executable, agent_script, run_path], 
             capture_output=True, 
             text=True,
-            env=env
+            env=env,
+            timeout=300  # 5 minute timeout per agent
         )
         
         if result.returncode != 0:
@@ -164,6 +165,9 @@ def run_agent(agent_name, run_path):
             print(f"[OK] Agent {agent_name} completed.")
             return True, result.stdout, result.stderr
             
+    except subprocess.TimeoutExpired as e:
+        print(f"[ERROR] Agent {agent_name} timed out after {e.timeout} seconds")
+        return False, "", f"Agent timed out after {e.timeout}s"
     except Exception as e:
         print(f"[CRITICAL] Failed to subprocess agent {agent_name}: {e}")
         return False, "", str(e)
