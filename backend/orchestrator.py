@@ -129,11 +129,7 @@ def finalize_step(state, step, success, stdout, stderr):
 
 def run_agent(agent_name, run_path):
     print(f"[ORCHESTRATOR] Launching agent: {agent_name}")
-    # Use absolute path relative to this file to find agents
-    # current file is backend/orchestrator.py -> agents are in backend/agents/
-    base_dir = Path(__file__).parent
-    agent_script = base_dir / "agents" / f"{agent_name}.py"
-    agent_script = str(agent_script.resolve())
+    agent_script = f"agents/{agent_name}.py"
     
     # Ensure PYTHONPATH includes the current directory so 'core' module can be found
     env = os.environ.copy()
