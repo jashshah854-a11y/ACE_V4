@@ -129,7 +129,12 @@ def finalize_step(state, step, success, stdout, stderr):
 
 def run_agent(agent_name, run_path):
     print(f"[ORCHESTRATOR] Launching agent: {agent_name}")
-    agent_script = f"agents/{agent_name}.py"
+    
+    # Build path relative to orchestrator.py location
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    agent_script = os.path.join(script_dir, "agents", f"{agent_name}.py")
+    print(f"[DEBUG] Agent script path: {agent_script}")
+    print(f"[DEBUG] Script exists: {os.path.exists(agent_script)}")
     
     # Ensure PYTHONPATH includes the current directory so 'core' module can be found
     env = os.environ.copy()

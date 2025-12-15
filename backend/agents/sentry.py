@@ -107,8 +107,10 @@ def main():
     try:
         agent.run()
     except Exception as e:
+        print(f"[ERROR] Sentry agent failed: {e}")
         fallback_output = agent.fallback(e)
         state.write("anomalies", fallback_output)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
