@@ -179,8 +179,10 @@ def main():
     try:
         agent.run()
     except Exception as e:
+        print(f"[ERROR] Overseer agent failed: {e}")
         fallback_output = agent.fallback(e)
         state.write("overseer_output", fallback_output)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

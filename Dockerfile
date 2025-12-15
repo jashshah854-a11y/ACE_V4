@@ -21,7 +21,7 @@ COPY backend ./backend
 COPY api ./api
 
 # Create data directory for runs
-RUN mkdir -p data/runs
+RUN mkdir -p backend/data/runs
 
 # Railway provides PORT env var
 ENV PORT=8080

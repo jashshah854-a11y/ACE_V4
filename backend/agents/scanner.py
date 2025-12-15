@@ -48,8 +48,10 @@ def main():
     try:
         agent.run()
     except Exception as e:
+        print(f"[ERROR] Scanner agent failed: {e}")
         fallback_output = agent.fallback(e)
         state.write("schema_scan_output", fallback_output)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

@@ -80,7 +80,9 @@ def main():
     try:
         agent.run()
     except Exception as exc:
+        print(f"[ERROR] Regression agent failed: {exc}")
         agent.fallback(exc)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
