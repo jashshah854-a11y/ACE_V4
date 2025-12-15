@@ -1,32 +1,22 @@
+
 FROM python:3.11-slim
+
 WORKDIR /app
 
-# Install build dependencies for python packages (just in case)
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy backend requirements
-# Explicitly copy to requirements.txt in root
-COPY backend/requirements.txt requirements.txt
-
-# Install Python dependencies
-# Correctly reference the file in root
+# Install dependencies
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy Backend Code
-COPY backend/ backend/
-# Also copy core/ code if it exists (it seems Orchestrator uses it?)
-# I'll enable copying everything distinct just to be safe, but sticking to previous pattern:
-# Just backend? Wait, orchestrator.py is in backend?
-# Let's check where orchestrator.py is.
-# user_state says: c:/Users/jashs/Projects/ACE_V4_Orchestrator/ace-insights-engine/backend/orchestrator.py
-# So COPY backend/ backend/ covers it.
+# Copy source code
+COPY backend ./backend
+# Copy schema_scanner explicitly if needed, but it should be inside backend/
+# (Based on file listing, schema_scanner is in backend/schema_scanner)
 
-# Set environment variables
-ENV HOST=0.0.0.0
-ENV PORT=8080
-ENV PYTHONPATH=/app/backend
+# Set python path so 'backend' package is resolvable
+ENV PYTHONPATH=/app
 
-# Command to run the application
-CMD ["python", "backend/api/server.py"]
+# Default port (Railway overrides this)
+ENV PORT=8000
+
+# Run the application
+CMD sh -c "uvicorn backend.api.server:app --host 0.0.0.0 --port ${PORT:-8000}"
