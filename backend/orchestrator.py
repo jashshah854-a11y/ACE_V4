@@ -136,10 +136,12 @@ def run_agent(agent_name, run_path):
     print(f"[DEBUG] Agent script path: {agent_script}")
     print(f"[DEBUG] Script exists: {os.path.exists(agent_script)}")
     
-    # Ensure PYTHONPATH includes the current directory so 'core' module can be found
+    # Ensure PYTHONPATH includes the backend directory so agents can import 'core'
     env = os.environ.copy()
-    current_dir = os.getcwd()
-    env["PYTHONPATH"] = current_dir + os.pathsep + env.get("PYTHONPATH", "")
+    # script_dir is the backend directory (where orchestrator.py lives)
+    # Add it to PYTHONPATH so agents can do: from core.xxx import yyy
+    env["PYTHONPATH"] = script_dir + os.pathsep + env.get("PYTHONPATH", "")
+    print(f"[DEBUG] PYTHONPATH: {env['PYTHONPATH']}")
     
     # Fix for joblib warning on Windows
     if os.name == 'nt':
