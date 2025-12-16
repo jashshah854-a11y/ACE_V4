@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
@@ -8,6 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PremiumReportViewer } from "@/components/report/PremiumReportViewer";
+import { PipelineStatus } from "@/components/report/PipelineStatus";
 import {
   FileText,
   BarChart3,
@@ -174,9 +174,8 @@ const Reports = () => {
 
                   if (isNotReady) {
                     return (
-                      <div className="p-4 rounded-lg bg-muted/50 text-foreground mb-4 text-sm border border-border/50">
-                        Report is still processing. This page will refresh automatically.
-                        <span className="ml-2 text-muted-foreground">(Run: {activeRunId})</span>
+                      <div className="mb-6">
+                        <PipelineStatus runId={activeRunId} />
                       </div>
                     );
                   }
@@ -188,25 +187,27 @@ const Reports = () => {
                   );
                 })()}
 
-                 <div className="min-h-[500px] rounded-xl bg-gradient-to-br from-background to-muted/20">
-                   <PremiumReportViewer
-                     content={reportQuery.data}
-                     isLoading={reportQuery.isFetching}
-                     runId={activeRunId}
-                   />
-                   {!activeRunId && !reportQuery.data && !reportQuery.isFetching && (
-                     <div className="h-full flex flex-col items-center justify-center p-12 text-muted-foreground">
-                       <FileText className="h-12 w-12 mb-4 opacity-20" />
-                       <p>Enter a Run ID above to view the enhanced report with interactive features.</p>
-                     </div>
-                   )}
-                   {activeRunId && !reportQuery.data && reportQuery.isFetching && (
-                     <div className="h-full flex flex-col items-center justify-center p-12 text-muted-foreground">
-                       <FileText className="h-12 w-12 mb-4 opacity-20" />
-                       <p>Fetching report…</p>
-                     </div>
-                   )}
-                 </div>
+                {/* Show pipeline status when loading and no data yet */}
+                {activeRunId && !reportQuery.data && reportQuery.isFetching && (
+                  <div className="mb-6">
+                    <PipelineStatus runId={activeRunId} />
+                  </div>
+                )}
+
+                <div className="min-h-[400px] rounded-xl bg-gradient-to-br from-background to-muted/20">
+                  {reportQuery.data ? (
+                    <PremiumReportViewer
+                      content={reportQuery.data}
+                      isLoading={false}
+                      runId={activeRunId}
+                    />
+                  ) : !activeRunId ? (
+                    <div className="h-full flex flex-col items-center justify-center p-12 text-muted-foreground">
+                      <FileText className="h-12 w-12 mb-4 opacity-20" />
+                      <p>Enter a Run ID above to view the enhanced report with interactive features.</p>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </div>
 
