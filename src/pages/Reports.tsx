@@ -243,53 +243,46 @@ const Reports = () => {
               <div>
                 <h3 className="text-lg font-semibold mb-4">Recent Reports</h3>
                 <div className="space-y-4">
-                  {reports.map((report) => {
-                    const ReportIcon = typeConfig[report.type].icon;
-                    return (
-                      <div
-                        key={report.id}
-                        className="group rounded-lg border bg-card p-4 hover:shadow-md transition-all duration-200 cursor-pointer"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={cn("p-2 rounded-lg shrink-0", typeConfig[report.type].bg)}>
-                            <ReportIcon className={cn("h-4 w-4", typeConfig[report.type].color)} />
-                          </div>
-                          <div>
-                            <h4 className="font-medium text-sm line-clamp-1">{report.title}</h4>
-                            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{report.description}</p>
-                            <div className="flex items-center gap-2 mt-3 text-[10px] text-muted-foreground">
-                              <span className="bg-secondary px-1.5 py-0.5 rounded">{report.period}</span>
-                              <span>•</span>
-                              <span>{report.generatedAt}</span>
-                            </div>
-                          </div>
-                        </div>
+                  <div className="flex items-start gap-3">
+                    <div className={cn("p-2 rounded-lg shrink-0", typeConfig[report.type].bg)}>
+                      <ReportIcon className={cn("h-4 w-4", typeConfig[report.type].color)} />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-sm line-clamp-1">{report.title}</h4>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{report.description}</p>
+                      <div className="flex items-center gap-2 mt-3 text-[10px] text-muted-foreground">
+                        <span className="bg-secondary px-1.5 py-0.5 rounded">{report.period}</span>
+                        <span>•</span>
+                        <span>{report.generatedAt}</span>
                       </div>
-                    );
+                    </div>
+                  </div>
+                </div>
+                );
                   })}
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl gradient-meridian text-white">
-                <div className="flex items-center gap-2 mb-2">
-                  <Activity className="w-4 h-4" />
-                  <h3 className="font-semibold">Meridian Pro</h3>
-                </div>
-                <p className="text-sm opacity-90 mb-3">
-                  Configure advanced analysis parameters for your specific domain requirements.
-                </p>
-                <Button size="sm" variant="secondary" className="w-full text-primary font-medium">
-                  Configure Engine
-                </Button>
               </div>
             </div>
+
+            <div className="p-4 rounded-xl gradient-meridian text-white">
+              <div className="flex items-center gap-2 mb-2">
+                <Activity className="w-4 h-4" />
+                <h3 className="font-semibold">Meridian Pro</h3>
+              </div>
+              <p className="text-sm opacity-90 mb-3">
+                Configure advanced analysis parameters for your specific domain requirements.
+              </p>
+              <Button size="sm" variant="secondary" className="w-full text-primary font-medium">
+                Configure Engine
+              </Button>
+            </div>
           </div>
-
         </div>
-      </main>
 
-      <Footer />
     </div>
+      </main >
+
+  <Footer />
+    </div >
   );
 };
 
