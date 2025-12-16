@@ -7,12 +7,9 @@ import { cn } from "@/lib/utils";
 import { MetricsCards } from "./MetricsCards";
 import { ProgressIndicators } from "./ProgressIndicators";
 import { PDFExporter, downloadMarkdown, copyToClipboard } from "./PDFExporter";
-import { ReportCharts } from "./ReportCharts";
-import { ReportAccordion } from "./ReportAccordion";
-import { TableOfContents } from "./TableOfContents";
 import { Button } from "@/components/ui/button";
 import { Copy, Download, FileDown } from "lucide-react";
-import { extractMetrics, extractProgressMetrics, extractSections, extractChartData } from "@/lib/reportParser";
+import { extractMetrics, extractProgressMetrics, extractSections } from "@/lib/reportParser";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -55,7 +52,6 @@ export function EnhancedReportViewer({
     const metrics = extractMetrics(content);
     const progressMetrics = extractProgressMetrics(content);
     const sections = extractSections(content);
-    const { segmentData, compositionData } = extractChartData(content);
 
     const handleCopy = async () => {
         const success = await copyToClipboard(content);
@@ -75,119 +71,86 @@ export function EnhancedReportViewer({
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr,250px] gap-6">
-            {/* Main Content */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className={cn("space-y-6", className)}
-            >
-                {/* Action Toolbar */}
-                <div className="flex gap-2 justify-end flex-wrap">
-                    <Button
-                        onClick={handleCopy}
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                    >
-                        <Copy className="h-4 w-4" />
-                        {copied ? "Copied!" : "Copy Text"}
-                    </Button>
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className={cn("space-y-6", className)}
+        >
+            {/* Action Toolbar */}
+            <div className="flex gap-2 justify-end flex-wrap">
+                <Button
+                    onClick={handleCopy}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                >
+                    <Copy className="h-4 w-4" />
+                    {copied ? "Copied!" : "Copy Text"}
+                </Button>
 
-                    <Button
-                        onClick={handleDownloadMarkdown}
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                    >
-                        <FileDown className="h-4 w-4" />
-                        Download MD
-                    </Button>
+                <Button
+                    onClick={handleDownloadMarkdown}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                >
+                    <FileDown className="h-4 w-4" />
+                    Download MD
+                </Button>
 
-                    <PDFExporter
-                        contentId="report-content"
-                        filename={runId ? `ace-report-${runId}.pdf` : "ace-report.pdf"}
-                    />
-                </div>
+                <PDFExporter
+                    contentId="report-content"
+                    filename={runId ? `ace-report-${runId}.pdf` : "ace-report.pdf"}
+                />
+            </div>
 
-                {/* Executive Dashboard Cards */}
-                {Object.keys(metrics).length > 0 && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
-                    >
-                        <MetricsCards metrics={metrics} className="mb-6" />
-                    </motion.div>
-                )}
-
-                {/* Interactive Charts */}
+            {/* Executive Dashboard Cards */}
+            {Object.keys(metrics).length > 0 && (
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ delay: 0.3 }}
+                    transition={{ delay: 0.2 }}
                 >
-                    <ReportCharts
-                        segmentData={segmentData}
-                        compositionData={compositionData}
-                        qualityScore={metrics.dataQualityScore}
-                    />
+                    <MetricsCards metrics={metrics} className="mb-6" />
                 </motion.div>
-
-                {/* Progress Indicators */}
-                {(progressMetrics.completeness || progressMetrics.confidence || progressMetrics.validRecords) && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.4 }}
-                        className="bg-muted/30 p-6 rounded-lg"
-                    >
-                        <h3 className="text-lg font-semibold mb-4">Quality Metrics</h3>
-                        <ProgressIndicators {...progressMetrics} />
-                    </motion.div>
-                )}
-
-                {/* Main Report Content - Use Accordion if sections exist, otherwise regular markdown */}
-                <motion.div
-                    id="report-content"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 }}
-                >
-                    {sections.length > 0 ? (
-                        <ReportAccordion sections={sections} />
-                    ) : (
-                        <article className={cn("prose prose-slate dark:prose-invert max-w-none", className)}>
-                            <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
-                                rehypePlugins={[rehypeRaw, rehypeHighlight]}
-                                components={{
-                                    table: ({ node, ...props }) => (
-                                        <div className="overflow-x-auto my-6 rounded-lg border">
-                                            <table className="w-full" {...props} />
-                                        </div>
-                                    ),
-                                }}
-                            >
-                                {content}
-                            </ReactMarkdown>
-                        </article>
-                    )}
-                </motion.div>
-            </motion.div>
-
-            {/* Table of Contents Sidebar */}
-            {sections.length > 0 && (
-                <motion.aside
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.6 }}
-                    className="hidden lg:block"
-                >
-                    <TableOfContents sections={sections} />
-                </motion.aside>
             )}
-        </div>
+
+            {/* Progress Indicators */}
+            {(progressMetrics.completeness || progressMetrics.confidence || progressMetrics.validRecords) && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="bg-muted/30 p-6 rounded-lg"
+                >
+                    <h3 className="text-lg font-semibold mb-4">Quality Metrics</h3>
+                    <ProgressIndicators {...progressMetrics} />
+                </motion.div>
+            )}
+
+            {/* Main Report Content */}
+            <motion.article
+                id="report-content"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className={cn("prose prose-slate dark:prose-invert max-w-none", className)}
+            >
+                <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw, rehypeHighlight]}
+                    components={{
+                        table: ({ node, ...props }) => (
+                            <div className="overflow-x-auto my-6 rounded-lg border">
+                                <table className="w-full" {...props} />
+                            </div>
+                        ),
+                    }}
+                >
+                    {content}
+                </ReactMarkdown>
+            </motion.article>
+        </motion.div>
     );
 }
