@@ -56,7 +56,7 @@ export function AnimatedMetric({
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
             className={cn(
-                "relative overflow-hidden rounded-2xl border-2 bg-gradient-to-br p-6",
+                "relative overflow-hidden rounded-2xl border-2 bg-gradient-to-br p-4 sm:p-6 min-w-0",
                 "hover:shadow-2xl transition-all duration-300 hover:-translate-y-1",
                 colorClasses[color]
             )}
@@ -74,12 +74,12 @@ export function AnimatedMetric({
 
                 {/* Value with animation */}
                 <motion.div
-                    className="text-4xl font-bold text-white mb-2"
+                    className="text-3xl sm:text-4xl font-bold text-white mb-2 whitespace-nowrap"
                     initial={{ y: 20 }}
                     animate={{ y: 0 }}
                 >
                     {formatNumber(displayValue)}
-                    {suffix && <span className="text-2xl ml-1">{suffix}</span>}
+                    {suffix && <span className="text-xl sm:text-2xl ml-1">{suffix}</span>}
                 </motion.div>
 
                 {/* Label */}
@@ -133,8 +133,13 @@ interface HeroMetricsProps {
 }
 
 export function HeroMetrics({ metrics, className }: HeroMetricsProps) {
+    // Dynamic grid: 1 col on mobile, 2 on small, auto-fit on larger with min width
+    const gridCols = metrics.length <= 2 
+        ? "grid-cols-1 sm:grid-cols-2" 
+        : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4";
+    
     return (
-        <div className={cn("grid gap-6 sm:grid-cols-2 lg:grid-cols-4", className)}>
+        <div className={cn("grid gap-4 sm:gap-6", gridCols, className)}>
             {metrics.map((metric, index) => (
                 <AnimatedMetric key={index} {...metric} />
             ))}

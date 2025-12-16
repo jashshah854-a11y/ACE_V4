@@ -10,7 +10,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeHighlight from "rehype-highlight";
-import { ReportSection } from "@/lib/reportParser";
+import { ReportSection, sanitizeDisplayText } from "@/lib/reportParser";
 import { cn } from "@/lib/utils";
 import {
   FileText,
@@ -135,7 +135,7 @@ export function ReportAccordion({ sections, className }: ReportAccordionProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-base truncate pr-4">
-                      {section.title}
+                      {sanitizeDisplayText(section.title)}
                     </h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Section {index + 1} of {displaySections.length}
@@ -151,6 +151,17 @@ export function ReportAccordion({ sections, className }: ReportAccordionProps) {
                       remarkPlugins={[remarkGfm]}
                       rehypePlugins={[rehypeRaw, rehypeHighlight]}
                       components={{
+                        // Sanitize text content in paragraphs and headings
+                        h3: ({ node, children, ...props }) => (
+                          <h3 className="text-lg font-semibold mt-6 mb-3 text-foreground flex items-center gap-2" {...props}>
+                            {typeof children === 'string' ? sanitizeDisplayText(children) : children}
+                          </h3>
+                        ),
+                        h4: ({ node, children, ...props }) => (
+                          <h4 className="text-base font-medium mt-4 mb-2 text-foreground" {...props}>
+                            {typeof children === 'string' ? sanitizeDisplayText(children) : children}
+                          </h4>
+                        ),
                         table: ({ node, ...props }) => (
                           <div className="overflow-x-auto my-4 rounded-lg border border-border/50 bg-muted/20">
                             <table className="w-full text-sm" {...props} />
@@ -164,12 +175,6 @@ export function ReportAccordion({ sections, className }: ReportAccordionProps) {
                         ),
                         td: ({ node, ...props }) => (
                           <td className="px-4 py-2.5 border-b border-border/30" {...props} />
-                        ),
-                        h3: ({ node, ...props }) => (
-                          <h3 className="text-lg font-semibold mt-6 mb-3 text-foreground flex items-center gap-2" {...props} />
-                        ),
-                        h4: ({ node, ...props }) => (
-                          <h4 className="text-base font-medium mt-4 mb-2 text-foreground" {...props} />
                         ),
                         ul: ({ node, ...props }) => (
                           <ul className="space-y-1.5 my-3" {...props} />
