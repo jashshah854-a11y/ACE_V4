@@ -11,3 +11,6 @@ requests
 joblib
 openai
 python-dotenv
+# PDF Report Generation
+weasyprint
+markdown
