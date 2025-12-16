@@ -98,15 +98,27 @@ export function WideReportViewer({
         const success = await copyToClipboard(content);
         if (success) {
             setCopied(true);
-            toast({ title: "Copied to clipboard!" });
+            toast({
+                title: "✅ Copied to clipboard!",
+                description: "Report content ready to paste"
+            });
             setTimeout(() => setCopied(false), 2000);
+        } else {
+            toast({
+                title: "❌ Failed to copy",
+                description: "Please try again",
+                variant: "destructive"
+            });
         }
     };
 
     const handleDownloadMarkdown = () => {
         const filename = runId ? `ace-report-${runId}.md` : "ace-report.md";
         downloadMarkdown(content, filename);
-        toast({ title: "Markdown downloaded!" });
+        toast({
+            title: "⬇️ Markdown downloaded",
+            description: filename
+        });
     };
 
     const handleSectionClick = (sectionId: string) => {
