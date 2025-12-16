@@ -4,38 +4,31 @@
 
 /**
  * Clean up technical identifiers from text to make it user-friendly
- * Converts cluster_0 → Cluster A, segment_1 → Segment B, etc.
+ * Removes patterns like "cluster_0", "cluster_1", etc.
  */
 export function sanitizeDisplayText(text: string): string {
     if (!text) return text;
 
-    let cleaned = text;
-
-    // Convert cluster_X to Cluster A, B, C, etc.
-    cleaned = cleaned.replace(/\bcluster_(\d+)\b/gi, (match, num) => {
-        const letter = String.fromCharCode(65 + parseInt(num)); // A, B, C...
-        return `Cluster ${letter}`;
-    });
-
-    // Convert segment_X to Segment 1, 2, 3, etc.
-    cleaned = cleaned.replace(/\bsegment_(\d+)\b/gi, (match, num) => {
-        return `Segment ${parseInt(num) + 1}`;
-    });
-
-    // Convert group_X to Group 1, 2, 3, etc.
-    cleaned = cleaned.replace(/\bgroup_(\d+)\b/gi, (match, num) => {
-        return `Group ${parseInt(num) + 1}`;
-    });
-
-    // Remove "Cluster (Cluster X)" redundancy - keep just the label in parens
-    cleaned = cleaned.replace(/\bCluster\s+([A-Z])\s*\(([^)]+)\)/gi, '$2');
-
-    // Clean up double spaces and redundancies
-    cleaned = cleaned
+    // Remove cluster_X patterns (with or without parentheses)
+    let cleaned = text
+        // Remove "cluster_X (Label)" patterns - keep just the label
+        .replace(/\bcluster_\d+\s*\(([^)]+)\)/gi, '$1')
+        // Remove standalone "cluster_X" patterns
+        .replace(/\bcluster_\d+\b/gi, '')
+        // Remove "Cluster cluster_X" redundant patterns
+        .replace(/\bCluster\s+cluster_\d+/gi, 'Cluster')
+        // Clean up double spaces
         .replace(/\s{2,}/g, ' ')
+        // Clean up "Cluster Cluster" redundancy
         .replace(/\bCluster\s+Cluster\b/gi, 'Cluster')
-        .replace(/\bSegment\s+Segment\b/gi, 'Segment')
+        // Remove leading/trailing spaces
         .trim();
+
+    // Remove trailing "Cluster" if the text already describes the cluster type
+    // e.g., "Budget Conscious Cluster Cluster" -> "Budget Conscious"
+    if (cleaned.match(/\b\w+\s+Conscious\s+Cluster$/i)) {
+        cleaned = cleaned.replace(/\s+Cluster$/i, '');
+    }
 
     return cleaned;
 }
@@ -61,6 +54,42 @@ export interface ReportSection {
 export interface ChartData {
     name: string;
     value: number;
+}
+
+export interface ClusterMetric {
+    k: number;
+    silhouetteScore: number;
+    dataQuality: number;
+    clusterSizes?: number[];
+}
+
+export interface PersonaData {
+    name: string;
+    label: string;
+    size: number;
+    clusterId?: string;
+    summary?: string;
+    motivation?: string;
+    strategy?: {
+        headline: string;
+        tactics: string[];
+    };
+}
+
+export interface OutcomeModelData {
+    status: 'ok' | 'failed' | 'skipped';
+    target: string;
+    r2?: number;
+    rmse?: number;
+    mae?: number;
+    narrative?: string;
+    drivers?: Array<{ feature: string; importance: number }>;
+}
+
+export interface AnomalyData {
+    count: number;
+    drivers?: Array<{ field: string; score: number }>;
+    percentage?: number;
 }
 
 export interface StatusBadge {
@@ -227,18 +256,31 @@ export function extractChartData(markdown: string): {
 /**
  * Parse status indicators and return appropriate badge variant
  */
-export function parseStatusBadges(content: string): string[] {
-    const badges: string[] = [];
-    const keywords = ['critical', 'warning', 'success', 'error', 'info', 'pending'];
+export function parseStatusBadges(text: string): StatusBadge[] {
+    const badges: StatusBadge[] = [];
+    const statusPattern = /\b(high|excellent|good|moderate|low|poor|warning|error|failed|success)\b/gi;
 
-    keywords.forEach(keyword => {
-        const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
-        if (regex.test(content)) {
-            badges.push(keyword);
+    const matches = text.matchAll(statusPattern);
+
+    for (const match of matches) {
+        const status = match[0].toLowerCase();
+        let variant: StatusBadge['variant'] = 'info';
+
+        if (['high', 'excellent', 'good', 'success'].includes(status)) {
+            variant = 'success';
+        } else if (['moderate', 'warning'].includes(status)) {
+            variant = 'warning';
+        } else if (['low', 'poor', 'error', 'failed'].includes(status)) {
+            variant = 'error';
         }
-    });
 
-    return Array.from(new Set(badges));
+        badges.push({
+            text: match[0],
+            variant
+        });
+    }
+
+    return badges;
 }
 
 /**
@@ -255,5 +297,162 @@ export function extractProgressMetrics(markdown: string): {
         completeness: metrics.completeness,
         confidence: metrics.confidenceLevel,
         validRecords: metrics.validRecords
+    };
+}
+
+/**
+ * Extract cluster metrics from Behavioral Clusters section
+ */
+export function extractClusterMetrics(content: string): ClusterMetric | null {
+    const sections = extractSections(content);
+    const section = sections.find(s =>
+        s.title.toLowerCase().includes('behavioral') &&
+        s.title.toLowerCase().includes('cluster')
+    );
+
+    if (!section) return null;
+
+    // Parse table format:
+    // | Optimal Clusters (k) | 3 |
+    // | Silhouette Score | 0.5886543114473759 |
+    // | Data Quality | 1.0 |
+
+    const kMatch = section.content.match(/Optimal Clusters.*?\|.*?(\d+)/i);
+    const silhouetteMatch = section.content.match(/Silhouette Score.*?\|.*?([\d.]+)/i);
+    const qualityMatch = section.content.match(/Data Quality.*?\|.*?([\d.]+)/i);
+
+    return {
+        k: kMatch ? parseInt(kMatch[1]) : 0,
+        silhouetteScore: silhouetteMatch ? parseFloat(silhouetteMatch[1]) : 0,
+        dataQuality: qualityMatch ? parseFloat(qualityMatch[1]) : 1.0
+    };
+}
+
+/**
+ * Extract persona data from Personas section
+ */
+export function extractPersonas(content: string): PersonaData[] {
+    const sections = extractSections(content);
+    const personasSection = sections.find(s =>
+        s.title.toLowerCase().includes('persona') ||
+        s.title.toLowerCase().includes('generated personas')
+    );
+
+    if (!personasSection) return [];
+
+    const personas: PersonaData[] = [];
+
+    // Parse markdown like:
+    // ### The Budget-Conscious Shopper (cost_sensitive)
+    // - **Size:** 3,219
+    // - **Summary:** Price-driven with lowest monthly_spend
+
+    const personaBlocks = personasSection.content.split(/###\s+/);
+
+    personaBlocks.forEach(block => {
+        if (!block.trim()) return;
+
+        const nameMatch = block.match(/^(.+?)\s*\(([^)]+)\)/);
+        const sizeMatch = block.match(/Size:\*\*\s*([\d,]+)/);
+        const summaryMatch = block.match(/Summary:\*\*\s*(.+)/);
+        const motivationMatch = block.match(/Motivation:\*\*\s*(.+)/);
+
+        if (nameMatch && sizeMatch) {
+            personas.push({
+                name: nameMatch[1].trim(),
+                label: nameMatch[2],
+                size: parseInt(sizeMatch[1].replace(/,/g, '')),
+                summary: summaryMatch?.[1],
+                motivation: motivationMatch?.[1]
+            });
+        }
+    });
+
+    return personas;
+}
+
+/**
+ * Extract outcome modeling data
+ */
+export function extractOutcomeModel(content: string): OutcomeModelData | null {
+    const sections = extractSections(content);
+    const section = sections.find(s =>
+        s.title.toLowerCase().includes('outcome') ||
+        s.title.toLowerCase().includes('modeling')
+    );
+
+    if (!section) return null;
+
+    // Check if skipped
+    if (section.content.toLowerCase().includes('skipped') ||
+        section.content.toLowerCase().includes('not available')) {
+        return {
+            status: 'skipped',
+            target: 'unknown'
+        };
+    }
+
+    // Parse: - **Target:** `monthly_spend` (R² -0.43, RMSE 31095842.82, MAE 17614090.12)
+    const targetMatch = section.content.match(/Target:\*\*\s*`([^`]+)`/);
+    const r2Match = section.content.match(/R[²^]2?\s*([-\d.]+)/);
+    const rmseMatch = section.content.match(/RMSE\s*([\d.]+)/);
+    const maeMatch = section.content.match(/MAE\s*([\d.]+)/);
+    const narrativeMatch = section.content.match(/Insight:\*\*\s*(.+)/);
+
+    const r2 = r2Match ? parseFloat(r2Match[1]) : undefined;
+
+    // Parse feature importance
+    const drivers: Array<{ feature: string; importance: number }> = [];
+    const driverMatches = section.content.matchAll(/[-*]\s*([^:]+):\s*importance\s*([\d.]+)/g);
+    for (const match of driverMatches) {
+        drivers.push({
+            feature: match[1].trim(),
+            importance: parseFloat(match[2])
+        });
+    }
+
+    return {
+        status: r2 !== undefined && r2 > 0.3 ? 'ok' : 'failed',
+        target: targetMatch?.[1] || 'unknown',
+        r2,
+        rmse: rmseMatch ? parseFloat(rmseMatch[1]) : undefined,
+        mae: maeMatch ? parseFloat(maeMatch[1]) : undefined,
+        narrative: narrativeMatch?.[1],
+        drivers: drivers.length > 0 ? drivers.slice(0, 5) : undefined
+    };
+}
+
+/**
+ * Extract anomaly detection data
+ */
+export function extractAnomalies(content: string): AnomalyData | null {
+    const sections = extractSections(content);
+    const section = sections.find(s => s.title.toLowerCase().includes('anomaly'));
+
+    if (!section) return null;
+
+    const countMatch = section.content.match(/Total Anomal(?:y|ies).*?(\d+)/i);
+
+    if (!countMatch) return null;
+
+    const count = parseInt(countMatch[1]);
+
+    // Parse drivers: - monthly_spend: 0.53
+    const drivers: Array<{ field: string; score: number }> = [];
+    const driverMatches = section.content.matchAll(/[-*]\s*([^:]+):\s*([\d.]+)/g);
+
+    for (const match of driverMatches) {
+        const field = match[1].trim();
+        const score = parseFloat(match[2]);
+
+        // Only include if it looks like a field name and score
+        if (field.length > 0 && field.length < 50 && score >= 0 && score <= 1) {
+            drivers.push({ field, score });
+        }
+    }
+
+    return {
+        count,
+        drivers: drivers.length > 0 ? drivers.slice(0, 5) : undefined
     };
 }
