@@ -122,6 +122,10 @@
   .glow-accent {
     box-shadow: 0 0 40px hsl(262 83% 58% / 0.3);
   }
+  
+  .purple-gradient {
+    background: linear-gradient(135deg, hsl(262 83% 58%) 0%, hsl(280 70% 50%) 100%);
+  }
 }
 
 @layer components {
