@@ -38,28 +38,50 @@ export function extractMetrics(markdown: string): ReportMetrics {
 
     const metrics: ReportMetrics = {};
 
-    // Extract Data Quality Score (0-100%)
-    const qualityMatch = markdown.match(/(?:data quality|quality score)[:\s]+(\d+(?:\.\d+)?)/i);
+    // Extract Data Quality Score (handles both percentage and decimal)
+    const qualityMatch = markdown.match(/(?:data(?:set)?\s*quality(?:\s*score)?)[:\s]*(\d+(?:\.\d+)?)/i);
     if (qualityMatch) {
-        metrics.dataQualityScore = parseFloat(qualityMatch[1]);
+        const value = parseFloat(qualityMatch[1]);
+        // Convert decimal to percentage if needed
+        metrics.dataQualityScore = value <= 1 ? Math.round(value * 100) : value;
     }
 
-    // Extract Records Processed
-    const recordsMatch = markdown.match(/(?:records?|rows?)[:\s]+(?:processed|analyzed)?[:\s]*(\d+(?:,\d{3})*)/i);
-    if (recordsMatch) {
-        metrics.recordsProcessed = parseInt(recordsMatch[1].replace(/,/g, ''));
+    // Extract Records Processed - look for cluster sizes or record counts
+    const sizeMatches = markdown.matchAll(/\*\*Size:\*\*\s*(\d+(?:,\d{3})*)/gi);
+    let totalRecords = 0;
+    for (const match of sizeMatches) {
+        totalRecords += parseInt(match[1].replace(/,/g, ''));
+    }
+    if (totalRecords > 0) {
+        metrics.recordsProcessed = totalRecords;
+    }
+    
+    // Fallback to other record patterns
+    if (!metrics.recordsProcessed) {
+        const recordsMatch = markdown.match(/(?:records?|rows?)[:\s]+(?:processed|analyzed)?[:\s]*(\d+(?:,\d{3})*)/i);
+        if (recordsMatch) {
+            metrics.recordsProcessed = parseInt(recordsMatch[1].replace(/,/g, ''));
+        }
     }
 
-    // Extract Anomaly Count
-    const anomalyMatch = markdown.match(/(?:anomal(?:y|ies))[:\s]+(\d+)/i);
+    // Extract Anomaly Count - multiple patterns
+    const anomalyMatch = markdown.match(/(?:total\s*)?anomal(?:y|ies)(?:\s*detected)?[:\s]*\**(\d+)\**/i);
     if (anomalyMatch) {
         metrics.anomalyCount = parseInt(anomalyMatch[1]);
     }
 
-    // Extract Confidence Level (%)
-    const confidenceMatch = markdown.match(/(?:confidence|certainty)[:\s]+(\d+(?:\.\d+)?)\s*%/i);
-    if (confidenceMatch) {
-        metrics.confidenceLevel = parseFloat(confidenceMatch[1]);
+    // Extract Confidence Level / Silhouette Score
+    const silhouetteMatch = markdown.match(/silhouette\s*score[:\s|]*(\d+(?:\.\d+)?)/i);
+    if (silhouetteMatch) {
+        metrics.confidenceLevel = Math.round(parseFloat(silhouetteMatch[1]) * 100);
+    }
+    
+    // Fallback confidence pattern
+    if (!metrics.confidenceLevel) {
+        const confidenceMatch = markdown.match(/(?:confidence|certainty)[:\s]+(\d+(?:\.\d+)?)\s*%/i);
+        if (confidenceMatch) {
+            metrics.confidenceLevel = parseFloat(confidenceMatch[1]);
+        }
     }
 
     // Extract Completeness (%)
