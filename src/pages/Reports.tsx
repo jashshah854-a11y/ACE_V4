@@ -1,6 +1,7 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -9,13 +10,12 @@ import { Input } from "@/components/ui/input";
 import { PremiumReportViewer } from "@/components/report/PremiumReportViewer";
 import {
   FileText,
-  Download,
-  Calendar,
   BarChart3,
   PieChart,
   TrendingUp,
   Plus,
-  Search
+  Search,
+  Activity
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getReport } from "@/lib/api-client";
@@ -77,8 +77,18 @@ const typeConfig: Record<Report["type"], { icon: typeof FileText; color: string;
 };
 
 const Reports = () => {
+  const [searchParams] = useSearchParams();
   const [runInput, setRunInput] = useState("");
   const [activeRunId, setActiveRunId] = useState("");
+
+  // Load run ID from URL params on mount
+  useEffect(() => {
+    const runFromUrl = searchParams.get("run");
+    if (runFromUrl) {
+      setRunInput(runFromUrl);
+      setActiveRunId(runFromUrl);
+    }
+  }, [searchParams]);
 
   const reportQuery = useQuery<string | undefined>({
     queryKey: ["final-report", activeRunId],
@@ -125,7 +135,7 @@ const Reports = () => {
                       Report Viewer
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                      Enter a valid Run ID to fetch and view the full markdown report from the ACE Engine.
+                      Enter a Run ID to fetch and view the full intelligence report from Meridian.
                     </p>
                   </div>
                   <div className="flex gap-2 w-full md:w-auto">
@@ -202,13 +212,16 @@ const Reports = () => {
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl purple-gradient text-white">
-                <h3 className="font-semibold mb-2">Need Custom Insights?</h3>
+              <div className="p-4 rounded-xl gradient-meridian text-white">
+                <div className="flex items-center gap-2 mb-2">
+                  <Activity className="w-4 h-4" />
+                  <h3 className="font-semibold">Meridian Pro</h3>
+                </div>
                 <p className="text-sm opacity-90 mb-3">
-                  Configure the ACE Engine to generate specialized reports for your specific domain.
+                  Configure advanced analysis parameters for your specific domain requirements.
                 </p>
                 <Button size="sm" variant="secondary" className="w-full text-primary font-medium">
-                  Configure Agent
+                  Configure Engine
                 </Button>
               </div>
             </div>
