@@ -4,31 +4,38 @@
 
 /**
  * Clean up technical identifiers from text to make it user-friendly
- * Removes patterns like "cluster_0", "cluster_1", etc.
+ * Converts cluster_0 → Cluster A, segment_1 → Segment B, etc.
  */
 export function sanitizeDisplayText(text: string): string {
     if (!text) return text;
 
-    // Remove cluster_X patterns (with or without parentheses)
-    let cleaned = text
-        // Remove "cluster_X (Label)" patterns - keep just the label
-        .replace(/\bcluster_\d+\s*\(([^)]+)\)/gi, '$1')
-        // Remove standalone "cluster_X" patterns
-        .replace(/\bcluster_\d+\b/gi, '')
-        // Remove "Cluster cluster_X" redundant patterns
-        .replace(/\bCluster\s+cluster_\d+/gi, 'Cluster')
-        // Clean up double spaces
-        .replace(/\s{2,}/g, ' ')
-        // Clean up "Cluster Cluster" redundancy
-        .replace(/\bCluster\s+Cluster\b/gi, 'Cluster')
-        // Remove leading/trailing spaces
-        .trim();
+    let cleaned = text;
 
-    // Remove trailing "Cluster" if the text already describes the cluster type
-    // e.g., "Budget Conscious Cluster Cluster" -> "Budget Conscious"
-    if (cleaned.match(/\b\w+\s+Conscious\s+Cluster$/i)) {
-        cleaned = cleaned.replace(/\s+Cluster$/i, '');
-    }
+    // Convert cluster_X to Cluster A, B, C, etc.
+    cleaned = cleaned.replace(/\bcluster_(\d+)\b/gi, (match, num) => {
+        const letter = String.fromCharCode(65 + parseInt(num)); // A, B, C...
+        return `Cluster ${letter}`;
+    });
+
+    // Convert segment_X to Segment 1, 2, 3, etc.
+    cleaned = cleaned.replace(/\bsegment_(\d+)\b/gi, (match, num) => {
+        return `Segment ${parseInt(num) + 1}`;
+    });
+
+    // Convert group_X to Group 1, 2, 3, etc.
+    cleaned = cleaned.replace(/\bgroup_(\d+)\b/gi, (match, num) => {
+        return `Group ${parseInt(num) + 1}`;
+    });
+
+    // Remove "Cluster (Cluster X)" redundancy - keep just the label in parens
+    cleaned = cleaned.replace(/\bCluster\s+([A-Z])\s*\(([^)]+)\)/gi, '$2');
+
+    // Clean up double spaces and redundancies
+    cleaned = cleaned
+        .replace(/\s{2,}/g, ' ')
+        .replace(/\bCluster\s+Cluster\b/gi, 'Cluster')
+        .replace(/\bSegment\s+Segment\b/gi, 'Segment')
+        .trim();
 
     return cleaned;
 }
