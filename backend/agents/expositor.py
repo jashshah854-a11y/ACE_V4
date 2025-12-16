@@ -1,4 +1,4 @@
-﻿# agents/expositor.py
+# agents/expositor.py
 import sys
 import json
 from pathlib import Path
