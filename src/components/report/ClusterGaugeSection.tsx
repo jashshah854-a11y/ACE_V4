@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressRing } from "./ProgressRing";
 import { ClusterMetric } from "@/lib/reportParser";
 import { numberFormatter } from "@/lib/numberFormatter";
-import { Layers } from "lucide-react";
+import { Layers, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface ClusterGaugeSectionProps {
@@ -35,7 +35,10 @@ export function ClusterGaugeSection({ data }: ClusterGaugeSectionProps) {
             >
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                            {silhouettePercent >= 70 && <CheckCircle className="h-4 w-4 text-green-600" />}
+                            {silhouettePercent >= 50 && silhouettePercent < 70 && <AlertTriangle className="h-4 w-4 text-amber-600" />}
+                            {silhouettePercent < 50 && <XCircle className="h-4 w-4 text-red-600" />}
                             Silhouette Score
                         </CardTitle>
                     </CardHeader>
@@ -60,7 +63,9 @@ export function ClusterGaugeSection({ data }: ClusterGaugeSectionProps) {
             >
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                            {qualityPercent >= 80 && <CheckCircle className="h-4 w-4 text-green-600" />}
+                            {qualityPercent < 80 && <AlertTriangle className="h-4 w-4 text-amber-600" />}
                             Data Quality
                         </CardTitle>
                     </CardHeader>
