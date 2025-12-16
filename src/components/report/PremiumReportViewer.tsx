@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { extractMetrics, extractProgressMetrics, extractSections, extractChartData } from "@/lib/reportParser";
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface PremiumReportViewerProps {
     content?: string;
@@ -43,7 +43,6 @@ export function PremiumReportViewer({
     runId
 }: PremiumReportViewerProps) {
     const [copied, setCopied] = useState(false);
-    const { toast } = useToast();
 
     if (isLoading) {
         return (
@@ -85,17 +84,17 @@ export function PremiumReportViewer({
         const success = await copyToClipboard(content);
         if (success) {
             setCopied(true);
-            toast({ title: "✓ Copied to clipboard!" });
+            toast.success("Copied to clipboard!");
             setTimeout(() => setCopied(false), 2000);
         } else {
-            toast({ title: "Failed to copy", variant: "destructive" });
+            toast.error("Failed to copy");
         }
     };
 
     const handleDownloadMarkdown = () => {
         const filename = runId ? `ace-report-${runId}.md` : "ace-report.md";
         downloadMarkdown(content, filename);
-        toast({ title: "✓ Markdown downloaded!" });
+        toast.success("Markdown downloaded!");
     };
 
     // Build hero metrics
