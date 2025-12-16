@@ -1,24 +1,21 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
 
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PremiumReportViewer } from "@/components/report/PremiumReportViewer";
-import { PipelineStatus } from "@/components/report/PipelineStatus";
-import { FloatingContextBar } from "@/components/FloatingContextBar";
-import { saveRecentReport } from "@/lib/localStorage";
-import { extractMetrics } from "@/lib/reportParser";
+import { WideReportViewer } from "@/components/report/WideReportViewer";
 import {
   FileText,
+  Download,
+  Calendar,
   BarChart3,
   PieChart,
   TrendingUp,
   Plus,
-  Search,
-  Activity
+  Search
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getReport } from "@/lib/api-client";
@@ -80,49 +77,15 @@ const typeConfig: Record<Report["type"], { icon: typeof FileText; color: string;
 };
 
 const Reports = () => {
-  const [searchParams] = useSearchParams();
   const [runInput, setRunInput] = useState("");
   const [activeRunId, setActiveRunId] = useState("");
-
-  // Load run ID from URL params on mount
-  useEffect(() => {
-    const runFromUrl = searchParams.get("run");
-    if (runFromUrl) {
-      setRunInput(runFromUrl);
-      setActiveRunId(runFromUrl);
-    }
-  }, [searchParams]);
 
   const reportQuery = useQuery<string | undefined>({
     queryKey: ["final-report", activeRunId],
     queryFn: () => getReport(activeRunId),
     enabled: Boolean(activeRunId),
-    retry: (failureCount, error) => {
-      const msg = error instanceof Error ? error.message : "";
-      const isNotReady = msg.includes("(404)") || msg.includes("Report not found");
-      return isNotReady && failureCount < 30;
-    },
-    refetchInterval: (query) => {
-      const err = query.state.error;
-      const msg = err instanceof Error ? err.message : "";
-      const isNotReady = msg.includes("(404)") || msg.includes("Report not found");
-      return isNotReady ? 3000 : false;
-    },
+    retry: false
   });
-
-  // Extract metrics for FloatingContextBar
-  const metrics = reportQuery.data ? extractMetrics(reportQuery.data) : {};
-
-  // Save to localStorage when report loads successfully
-  useEffect(() => {
-    if (reportQuery.data && activeRunId) {
-      saveRecentReport({
-        runId: activeRunId,
-        timestamp: new Date().toISOString(),
-        status: "complete",
-      });
-    }
-  }, [reportQuery.data, activeRunId]);
 
   const handleLoadReport = () => {
     const sanitized = runInput.trim();
@@ -132,16 +95,6 @@ const Reports = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Floating Context Bar */}
-      {reportQuery.data && activeRunId && (
-        <FloatingContextBar
-          reportName={`Run ${activeRunId}`}
-          runDate={new Date().toLocaleDateString()}
-          qualityScore={metrics.dataQualityScore}
-          criticalIssuesCount={0}
-        />
-      )}
-
       <Navbar />
 
       <main className="pt-24 pb-16">
@@ -172,7 +125,7 @@ const Reports = () => {
                       Report Viewer
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                      Enter a Run ID to fetch and view the full intelligence report from Meridian.
+                      Enter a valid Run ID to fetch and view the full markdown report from the ACE Engine.
                     </p>
                   </div>
                   <div className="flex gap-2 w-full md:w-auto">
@@ -195,45 +148,24 @@ const Reports = () => {
                   </div>
                 )}
 
-                {reportQuery.isError && (() => {
-                  const msg = reportQuery.error instanceof Error ? reportQuery.error.message : "";
-                  const isNotReady = msg.includes("(404)") || msg.includes("Report not found");
-
-                  if (isNotReady) {
-                    return (
-                      <div className="mb-6">
-                        <PipelineStatus runId={activeRunId} />
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div className="p-4 rounded-lg bg-destructive/10 text-destructive mb-4 text-sm border border-destructive/20">
-                      Error loading report: {msg || "Unknown error"}
-                    </div>
-                  );
-                })()}
-
-                {/* Show pipeline status when loading and no data yet */}
-                {activeRunId && !reportQuery.data && reportQuery.isFetching && (
-                  <div className="mb-6">
-                    <PipelineStatus runId={activeRunId} />
+                {reportQuery.isError && (
+                  <div className="p-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 mb-4 text-sm">
+                    Error loading report: {reportQuery.error instanceof Error ? reportQuery.error.message : "Report not found or API error."}
                   </div>
                 )}
 
-                <div className="min-h-[400px] rounded-xl bg-gradient-to-br from-background to-muted/20">
-                  {reportQuery.data ? (
-                    <PremiumReportViewer
-                      content={reportQuery.data}
-                      isLoading={false}
-                      runId={activeRunId}
-                    />
-                  ) : !activeRunId ? (
+                <div className="min-h-[400px]">
+                  <WideReportViewer
+                    content={reportQuery.data}
+                    isLoading={reportQuery.isFetching}
+                    runId={activeRunId}
+                  />
+                  {!activeRunId && !reportQuery.data && !reportQuery.isFetching && (
                     <div className="h-full flex flex-col items-center justify-center p-12 text-muted-foreground">
                       <FileText className="h-12 w-12 mb-4 opacity-20" />
-                      <p>Enter a Run ID above to view the enhanced report with interactive features.</p>
+                      <p>Enter a Run ID above to view the wide premium report layout.</p>
                     </div>
-                  ) : null}
+                  )}
                 </div>
               </div>
             </div>
@@ -243,46 +175,50 @@ const Reports = () => {
               <div>
                 <h3 className="text-lg font-semibold mb-4">Recent Reports</h3>
                 <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <div className={cn("p-2 rounded-lg shrink-0", typeConfig[report.type].bg)}>
-                      <ReportIcon className={cn("h-4 w-4", typeConfig[report.type].color)} />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-sm line-clamp-1">{report.title}</h4>
-                      <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{report.description}</p>
-                      <div className="flex items-center gap-2 mt-3 text-[10px] text-muted-foreground">
-                        <span className="bg-secondary px-1.5 py-0.5 rounded">{report.period}</span>
-                        <span>•</span>
-                        <span>{report.generatedAt}</span>
+                  {reports.map((report) => {
+                    const ReportIcon = typeConfig[report.type].icon;
+                    return (
+                      <div
+                        key={report.id}
+                        className="group rounded-lg border bg-card p-4 hover:shadow-md transition-all duration-200 cursor-pointer"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={cn("p-2 rounded-lg shrink-0", typeConfig[report.type].bg)}>
+                            <ReportIcon className={cn("h-4 w-4", typeConfig[report.type].color)} />
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-sm line-clamp-1">{report.title}</h4>
+                            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{report.description}</p>
+                            <div className="flex items-center gap-2 mt-3 text-[10px] text-muted-foreground">
+                              <span className="bg-secondary px-1.5 py-0.5 rounded">{report.period}</span>
+                              <span>•</span>
+                              <span>{report.generatedAt}</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </div>
-                );
+                    );
                   })}
+                </div>
               </div>
-            </div>
 
-            <div className="p-4 rounded-xl gradient-meridian text-white">
-              <div className="flex items-center gap-2 mb-2">
-                <Activity className="w-4 h-4" />
-                <h3 className="font-semibold">Meridian Pro</h3>
+              <div className="p-4 rounded-xl purple-gradient text-white">
+                <h3 className="font-semibold mb-2">Need Custom Insights?</h3>
+                <p className="text-sm opacity-90 mb-3">
+                  Configure the ACE Engine to generate specialized reports for your specific domain.
+                </p>
+                <Button size="sm" variant="secondary" className="w-full text-primary font-medium">
+                  Configure Agent
+                </Button>
               </div>
-              <p className="text-sm opacity-90 mb-3">
-                Configure advanced analysis parameters for your specific domain requirements.
-              </p>
-              <Button size="sm" variant="secondary" className="w-full text-primary font-medium">
-                Configure Engine
-              </Button>
             </div>
           </div>
+
         </div>
+      </main>
 
+      <Footer />
     </div>
-      </main >
-
-  <Footer />
-    </div >
   );
 };
 
