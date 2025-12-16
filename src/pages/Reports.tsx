@@ -94,7 +94,17 @@ const Reports = () => {
     queryKey: ["final-report", activeRunId],
     queryFn: () => getReport(activeRunId),
     enabled: Boolean(activeRunId),
-    retry: false
+    retry: (failureCount, error) => {
+      const msg = error instanceof Error ? error.message : "";
+      const isNotReady = msg.includes("(404)") || msg.includes("Report not found");
+      return isNotReady && failureCount < 30;
+    },
+    refetchInterval: (query) => {
+      const err = query.state.error;
+      const msg = err instanceof Error ? err.message : "";
+      const isNotReady = msg.includes("(404)") || msg.includes("Report not found");
+      return isNotReady ? 3000 : false;
+    },
   });
 
   const handleLoadReport = () => {
@@ -158,25 +168,45 @@ const Reports = () => {
                   </div>
                 )}
 
-                {reportQuery.isError && (
-                  <div className="p-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 mb-4 text-sm">
-                    Error loading report: {reportQuery.error instanceof Error ? reportQuery.error.message : "Report not found or API error."}
-                  </div>
-                )}
+                {reportQuery.isError && (() => {
+                  const msg = reportQuery.error instanceof Error ? reportQuery.error.message : "";
+                  const isNotReady = msg.includes("(404)") || msg.includes("Report not found");
 
-                <div className="min-h-[500px] rounded-xl bg-gradient-to-br from-background to-muted/20">
-                  <PremiumReportViewer
-                    content={reportQuery.data}
-                    isLoading={reportQuery.isFetching}
-                    runId={activeRunId}
-                  />
-                  {!activeRunId && !reportQuery.data && !reportQuery.isFetching && (
-                    <div className="h-full flex flex-col items-center justify-center p-12 text-muted-foreground">
-                      <FileText className="h-12 w-12 mb-4 opacity-20" />
-                      <p>Enter a Run ID above to view the enhanced report with interactive features.</p>
+                  if (isNotReady) {
+                    return (
+                      <div className="p-4 rounded-lg bg-muted/50 text-foreground mb-4 text-sm border border-border/50">
+                        Report is still processing. This page will refresh automatically.
+                        <span className="ml-2 text-muted-foreground">(Run: {activeRunId})</span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="p-4 rounded-lg bg-destructive/10 text-destructive mb-4 text-sm border border-destructive/20">
+                      Error loading report: {msg || "Unknown error"}
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
+
+                 <div className="min-h-[500px] rounded-xl bg-gradient-to-br from-background to-muted/20">
+                   <PremiumReportViewer
+                     content={reportQuery.data}
+                     isLoading={reportQuery.isFetching}
+                     runId={activeRunId}
+                   />
+                   {!activeRunId && !reportQuery.data && !reportQuery.isFetching && (
+                     <div className="h-full flex flex-col items-center justify-center p-12 text-muted-foreground">
+                       <FileText className="h-12 w-12 mb-4 opacity-20" />
+                       <p>Enter a Run ID above to view the enhanced report with interactive features.</p>
+                     </div>
+                   )}
+                   {activeRunId && !reportQuery.data && reportQuery.isFetching && (
+                     <div className="h-full flex flex-col items-center justify-center p-12 text-muted-foreground">
+                       <FileText className="h-12 w-12 mb-4 opacity-20" />
+                       <p>Fetching report…</p>
+                     </div>
+                   )}
+                 </div>
               </div>
             </div>
 

@@ -40,7 +40,15 @@ export async function getReport(runId: string): Promise<string> {
   const response = await fetch(`${API_BASE}/runs/${runId}/report`);
 
   if (!response.ok) {
-    throw new Error(`Failed to get report: ${response.statusText}`);
+    let details = "";
+    try {
+      const text = await response.text();
+      details = text ? ` ${text}` : "";
+    } catch {
+      // ignore
+    }
+
+    throw new Error(`Failed to get report (${response.status}):${details}`);
   }
 
   return response.text();
