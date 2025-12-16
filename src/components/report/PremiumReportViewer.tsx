@@ -12,6 +12,9 @@ import { PDFExporter, downloadMarkdown, copyToClipboard } from "./PDFExporter";
 import { ReportCharts } from "./ReportCharts";
 import { ReportAccordion } from "./ReportAccordion";
 import { TableOfContents } from "./TableOfContents";
+import { KeyTakeaways, extractKeyInsights } from "./KeyTakeaways";
+import { CriticalIssuesBanner, extractCriticalIssues } from "./CriticalIssuesBanner";
+import { ReadingProgress } from "@/components/ReadingProgress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -26,7 +29,7 @@ import {
     AlertTriangle
 } from "lucide-react";
 import { extractMetrics, extractProgressMetrics, extractSections, extractChartData } from "@/lib/reportParser";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 
 interface PremiumReportViewerProps {
