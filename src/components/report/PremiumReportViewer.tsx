@@ -15,6 +15,7 @@ import { TableOfContents } from "./TableOfContents";
 import { KeyTakeaways, extractKeyInsights } from "./KeyTakeaways";
 import { CriticalIssuesBanner, extractCriticalIssues } from "./CriticalIssuesBanner";
 import { ReadingProgress } from "@/components/ReadingProgress";
+import { ExecutiveSummary, extractExecutiveSummary } from "./ExecutiveSummary";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -86,6 +87,7 @@ export function PremiumReportViewer({
     // Extract AI insights
     const insights = useMemo(() => extractKeyInsights(content), [content]);
     const criticalIssues = useMemo(() => extractCriticalIssues(content), [content]);
+    const executiveSummary = useMemo(() => extractExecutiveSummary(content), [content]);
 
     const handleCopy = async () => {
         const success = await copyToClipboard(content);
@@ -183,6 +185,9 @@ export function PremiumReportViewer({
                         filename={runId ? `ace-report-${runId}.pdf` : "ace-report.pdf"}
                     />
                 </motion.div>
+
+                {/* Executive Summary */}
+                <ExecutiveSummary content={executiveSummary} />
 
                 {/* Critical Issues Banner */}
                 <CriticalIssuesBanner issues={criticalIssues} />
