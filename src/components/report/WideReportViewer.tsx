@@ -23,7 +23,7 @@ import {
     extractOutcomeModel,
     extractAnomalies
 } from "@/lib/reportParser";
-import { useState, use​Effect } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ClusterGaugeSection } from "./ClusterGaugeSection";
 import { PersonaSection } from "./PersonaSection";
@@ -97,7 +97,7 @@ export function WideReportViewer({
         .split('\n')
         .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
         .map(line => line.replace(/^[-*]\s*/, '').trim())
-        .filter(line => line.length > 20 && line.length < 1​50)
+        .filter(line => line.length > 20 && line.length < 150)
         .slice(0, 5);
 
     const handleCopy = async () => {
