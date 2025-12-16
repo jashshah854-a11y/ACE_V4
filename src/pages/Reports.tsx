@@ -1,6 +1,7 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -77,8 +78,18 @@ const typeConfig: Record<Report["type"], { icon: typeof FileText; color: string;
 };
 
 const Reports = () => {
-  const [runInput, setRunInput] = useState("");
-  const [activeRunId, setActiveRunId] = useState("");
+  const [searchParams] = useSearchParams();
+  const runFromUrl = searchParams.get("run");
+  
+  const [runInput, setRunInput] = useState(runFromUrl || "");
+  const [activeRunId, setActiveRunId] = useState(runFromUrl || "");
+
+  useEffect(() => {
+    if (runFromUrl) {
+      setRunInput(runFromUrl);
+      setActiveRunId(runFromUrl);
+    }
+  }, [runFromUrl]);
 
   const reportQuery = useQuery<string | undefined>({
     queryKey: ["final-report", activeRunId],
