@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PremiumReportViewer } from "@/components/report/PremiumReportViewer";
 import { PipelineStatus } from "@/components/report/PipelineStatus";
+import { FloatingContextBar } from "@/components/FloatingContextBar";
+import { saveRecentReport } from "@/lib/localStorage";
+import { extractMetrics } from "@/lib/reportParser";
 import {
   FileText,
   BarChart3,
@@ -107,6 +110,20 @@ const Reports = () => {
     },
   });
 
+  // Extract metrics for FloatingContextBar
+  const metrics = reportQuery.data ? extractMetrics(reportQuery.data) : {};
+
+  // Save to localStorage when report loads successfully
+  useEffect(() => {
+    if (reportQuery.data && activeRunId) {
+      saveRecentReport({
+        runId: activeRunId,
+        timestamp: new Date().toISOString(),
+        status: "complete",
+      });
+    }
+  }, [reportQuery.data, activeRunId]);
+
   const handleLoadReport = () => {
     const sanitized = runInput.trim();
     if (!sanitized) return;
@@ -115,6 +132,16 @@ const Reports = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Floating Context Bar */}
+      {reportQuery.data && activeRunId && (
+        <FloatingContextBar
+          reportName={`Run ${activeRunId}`}
+          runDate={new Date().toLocaleDateString()}
+          qualityScore={metrics.dataQualityScore}
+          criticalIssuesCount={0}
+        />
+      )}
+
       <Navbar />
 
       <main className="pt-24 pb-16">
