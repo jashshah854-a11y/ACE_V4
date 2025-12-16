@@ -1,0 +1,22 @@
+﻿# Exclude large files from Vercel deployment
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+env/
+tests/
+test_*.py
+*.csv
+*.json
+*.pkl
+data/
+*.log
+*.md
+!README.md
+backend/anti_gravity/
+backend/dashboard/
+backend/ui/
+backend/scripts/
+backend/check_*.py
+backend/test_*.py

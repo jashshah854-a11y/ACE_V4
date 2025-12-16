@@ -30,7 +30,8 @@ if __name__ == "__main__":
         print("Personas complete.")
 
     except Exception as e:
-        print(f"Personas failed: {e}")
+        print(f"[ERROR] Personas agent failed: {e}")
         # Fallback logic is already inside PersonaEngine.run() but if that crashes:
         fallback = [{"name": "Fallback Persona", "reason": str(e)}]
         state.write("personas", {"personas": fallback})
+        sys.exit(1)

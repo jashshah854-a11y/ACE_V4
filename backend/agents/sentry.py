@@ -1,4 +1,4 @@
-# agents/sentry.py
+﻿# agents/sentry.py
 import sys
 import os
 import numpy as np
@@ -7,7 +7,11 @@ import pandas as pd
 from sklearn.ensemble import IsolationForest
 from pathlib import Path
 
-from core.env import ensure_windows_cpu_env\nensure_windows_cpu_env()\n\n# Add project root to path
+from core.env import ensure_windows_cpu_env
+
+ensure_windows_cpu_env()
+
+# Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from core.state_manager import StateManager
@@ -62,17 +66,8 @@ class Sentry:
     def _load_base_frame(self) -> pd.DataFrame:
         overseer_out = self.state.read("overseer_output")
         if overseer_out and "rows" in overseer_out:
-            # Note: Overseer output usually contains fingerprints, not rows.
-            # But if we want to run anomaly detection on the dataset, we should probably
-            # load the dataset again or rely on what Overseer passed.
-            # The user's snippet assumes "rows" in overseer_out.
-            # Let's check if overseer saves rows. It seems it saves 'fingerprints' and 'stats'.
-            # It returns 'df' in _save_and_return but that's for the caller.
-            # The state write only includes stats and fingerprints.
-            # So we should load from 'cleaned_uploaded.csv' or 'sanitized' as fallback.
             return pd.DataFrame(overseer_out["rows"])
         
-        # Fallback to loading from file
         dataset_info = self.state.read("active_dataset") if self.state else None
         candidate = dataset_info.get("path") if isinstance(dataset_info, dict) else None
         if candidate and Path(candidate).exists():
@@ -82,10 +77,6 @@ class Sentry:
         if Path(data_path).exists():
              return pd.read_csv(data_path)
              
-        sanitized = self.state.read("sanitizer_report")
-        # sanitizer_report is just a report.
-        
-        # If we can't find data, return empty
         return pd.DataFrame()
 
 
@@ -97,6 +88,7 @@ class Sentry:
             "anomaly_count": 0,
             "anomalies": []
         }
+
 
 def main():
     if len(sys.argv) < 2:
@@ -115,8 +107,11 @@ def main():
     try:
         agent.run()
     except Exception as e:
+        print(f"[ERROR] Sentry agent failed: {e}")
         fallback_output = agent.fallback(e)
         state.write("anomalies", fallback_output)
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

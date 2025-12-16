@@ -1,4 +1,4 @@
-# agents/expositor.py
+﻿# agents/expositor.py
 import sys
 import json
 from pathlib import Path
@@ -152,7 +152,7 @@ class Expositor:
         detail_bits = []
         r2 = metrics.get("r2")
         if r2 is not None:
-            detail_bits.append(f"R� {r2:.2f}")
+            detail_bits.append(f"R² {r2:.2f}")
         rmse = metrics.get("rmse")
         if rmse is not None:
             detail_bits.append(f"RMSE {rmse:.2f}")
@@ -262,12 +262,14 @@ def main():
     try:
         agent.run()
     except Exception as e:
+        print(f"[ERROR] Expositor agent failed: {e}")
         fallback_output = agent.fallback(e)
         # Write a minimal fallback report
         report_path = state.get_file_path("final_report.md")
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(f"# ACE V3 Final Report (Fallback)\n\nGeneration failed: {e}")
         state.write("final_report", fallback_output)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
