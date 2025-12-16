@@ -8,6 +8,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WideReportViewer } from "@/components/report/WideReportViewer";
+import { PipelineStatus } from "@/components/report/PipelineStatus";
 import {
   FileText,
   Download,
@@ -95,13 +96,30 @@ const Reports = () => {
     queryKey: ["final-report", activeRunId],
     queryFn: () => getReport(activeRunId),
     enabled: Boolean(activeRunId),
-    retry: false
+    retry: 3,
+    retryDelay: 2000,
+    refetchInterval: (query) => {
+      // Keep polling every 3s if we got a 404 (report not ready yet)
+      const error = query.state.error;
+      if (error && error instanceof Error && error.message.includes("404")) {
+        return 3000;
+      }
+      return false;
+    },
   });
+
+  const isReportNotReady = reportQuery.isError && 
+    reportQuery.error instanceof Error && 
+    reportQuery.error.message.includes("404");
 
   const handleLoadReport = () => {
     const sanitized = runInput.trim();
     if (!sanitized) return;
     setActiveRunId(sanitized);
+  };
+
+  const handlePipelineComplete = () => {
+    reportQuery.refetch();
   };
 
   return (
@@ -159,9 +177,15 @@ const Reports = () => {
                   </div>
                 )}
 
-                {reportQuery.isError && (
+                {reportQuery.isError && !isReportNotReady && (
                   <div className="p-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 mb-4 text-sm">
                     Error loading report: {reportQuery.error instanceof Error ? reportQuery.error.message : "Report not found or API error."}
+                  </div>
+                )}
+
+                {isReportNotReady && (
+                  <div className="mb-4">
+                    <PipelineStatus runId={activeRunId} onComplete={handlePipelineComplete} />
                   </div>
                 )}
 
