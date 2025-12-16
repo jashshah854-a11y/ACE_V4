@@ -17,17 +17,10 @@ import {
     extractMetrics,
     extractProgressMetrics,
     extractSections,
-    extractChartData,
-    extractClusterMetrics,
-    extractPersonas,
-    extractOutcomeModel,
-    extractAnomalies
+    extractChartData
 } from "@/lib/reportParser";
-import { useState, use​Effect } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { ClusterGaugeSection } from "./ClusterGaugeSection";
-import { PersonaSection } from "./PersonaSection";
-import { OutcomeModelSection } from "./OutcomeModelSection";
 
 interface WideReportViewerProps {
     content?: string;
@@ -86,18 +79,12 @@ export function WideReportViewer({
     const sections = extractSections(content);
     const { segmentData, compositionData } = extractChartData(content);
 
-    // NEW: Extract structured data for visual components
-    const clusterMetrics = extractClusterMetrics(content);
-    const personas = extractPersonas(content);
-    const outcomeModel = extractOutcomeModel(content);
-    const anomalies = extractAnomalies(content);
-
     // Extract key insights for intelligence rail
     const keyTakeaways = content
         .split('\n')
         .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
         .map(line => line.replace(/^[-*]\s*/, '').trim())
-        .filter(line => line.length > 20 && line.length < 1​50)
+        .filter(line => line.length > 20 && line.length < 150)
         .slice(0, 5);
 
     const handleCopy = async () => {
@@ -119,7 +106,7 @@ export function WideReportViewer({
         setCurrentSection(sectionId);
     };
 
-    // Build accordion sections from content with intelligent routing
+    // Build accordion sections from content
     const accordionSections = [
         {
             id: "summary",
@@ -142,62 +129,17 @@ export function WideReportViewer({
                 </div>
             ),
         },
-
-        // Add anomaly banner if anomalies detected
-        ...(anomalies && anomalies.count > 0 ? [{
-            id: "anomalies-alert",
-            title: `⚠️ ${anomalies.count} Anomalies Detected`,
-            icon: SECTION_ICONS.warning,
-            defaultOpen: true,
-            content: (
-                <AnomalyBanner
-                    count={anomalies.count}
-                    totalRecords={metrics.recordsProcessed}
-                    topDrivers={anomalies.drivers?.map(d => `${d.field}: ${Math.round(d.score * 100)}%`) || []}
-                />
-            ),
-        }] : []),
-
         {
             id: "visualizations",
             title: "Data Visualizations",
             icon: SECTION_ICONS.quality,
             defaultOpen: true,
             content: (
-                <div className="space-y-8">
-                    {/* Cluster Gauges */}
-                    {clusterMetrics && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4">Behavioral Clusters</h3>
-                            <ClusterGaugeSection data={clusterMetrics} />
-                        </div>
-                    )}
-
-                    {/* Personas */}
-                    {personas.length > 0 && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4">Customer Personas</h3>
-                            <PersonaSection personas={personas} />
-                        </div>
-                    )}
-
-                    {/* Outcome Model */}
-                    {outcomeModel && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4">Outcome Modeling</h3>
-                            <OutcomeModelSection data={outcomeModel} />
-                        </div>
-                    )}
-
-                    {/* Fallback Charts */}
-                    {(!clusterMetrics && !personas.length && !outcomeModel) && (
-                        <ReportCharts
-                            qualityScore={metrics.dataQualityScore}
-                            segmentData={segmentData}
-                            compositionData={compositionData}
-                        />
-                    )}
-                </div>
+                <ReportCharts
+                    qualityScore={metrics.dataQualityScore}
+                    segmentData={segmentData}
+                    compositionData={compositionData}
+                />
             ),
         },
         {
