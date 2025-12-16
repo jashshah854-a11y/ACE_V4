@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ClusterGaugeSection } from "./ClusterGaugeSection";
 import { PersonaSection } from "./PersonaSection";
 import { OutcomeModelSection } from "./OutcomeModelSection";
+import { ReportSkeleton } from "./ReportSkeleton";
 
 interface WideReportViewerProps {
     content?: string;
@@ -62,14 +63,7 @@ export function WideReportViewer({
     }, []);
 
     if (isLoading) {
-        return (
-            <div className="space-y-4 animate-pulse">
-                <div className="h-8 bg-slate-100 rounded w-1/3"></div>
-                <div className="h-4 bg-slate-100 rounded w-full"></div>
-                <div className="h-4 bg-slate-100 rounded w-5/6"></div>
-                <div className="h-4 bg-slate-100 rounded w-4/6"></div>
-            </div>
-        );
+        return <ReportSkeleton />;
     }
 
     if (!content) {
