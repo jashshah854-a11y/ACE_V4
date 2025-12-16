@@ -1,4 +1,4 @@
-const API_BASE = "https://ace-v4-production.up.railway.app";
+const API_BASE = "http://localhost:8001"; // Temporary: Railway is down, using local backend
 
 export interface RunState {
   run_id: string;
