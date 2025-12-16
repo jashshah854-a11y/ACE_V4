@@ -5,6 +5,30 @@ from pathlib import Path
 import json
 import warnings
 
+def _is_probable_datetime(series: pd.Series, min_success_ratio: float = 0.8) -> bool:
+    """Return True when most non-null values parse as datetimes without raising warnings."""
+    non_null = series.dropna()
+    if non_null.empty:
+        return False
+
+    parse_attempts = (
+        {"format": "mixed", "errors": "coerce"},  # pandas >= 2.1
+        {"errors": "coerce"},  # fallback for older pandas
+    )
+
+    for kwargs in parse_attempts:
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=UserWarning)
+                parsed = pd.to_datetime(non_null, **kwargs)
+        except (TypeError, ValueError):
+            continue
+
+        if parsed.notna().mean() >= min_success_ratio:
+            return True
+
+    return False
+
 def scan_dataset(file_path: str, sample_size: int = 5, corr_threshold: float = 0.4):
     """
     Scans a dataset and returns a compact summary for the Schema Interpreter.
@@ -54,18 +78,12 @@ def scan_dataset(file_path: str, sample_size: int = 5, corr_threshold: float = 0
             # For now, following the prompt's logic: if parses as numbers -> numeric
             result["basic_types"]["numeric"].append(col)
             continue
-        except:
+        except Exception:
             pass
 
-        # Try datetime
-        try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore") 
-                pd.to_datetime(df[col].dropna())
+        if _is_probable_datetime(df[col]):
             result["basic_types"]["datetime"].append(col)
             continue
-        except:
-            pass
 
         # Categorical or text?
         if df[col].dtype == "object":

@@ -1,7 +1,7 @@
 ﻿import numpy as np
 import pandas as pd
 
-from anti_gravity.core.regression import (
+from core.regression import (
     RegressionConfig,
     compute_regression_insights,
     select_regression_target,

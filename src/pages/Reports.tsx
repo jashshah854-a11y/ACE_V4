@@ -6,7 +6,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ReportViewer } from "@/components/runs/ReportViewer";
+import { PremiumReportViewer } from "@/components/report/PremiumReportViewer";
 import {
   FileText,
   Download,
@@ -154,15 +154,16 @@ const Reports = () => {
                   </div>
                 )}
 
-                <div className="min-h-[400px] border rounded-lg bg-background/50">
-                  <ReportViewer
+                <div className="min-h-[500px] rounded-xl bg-gradient-to-br from-background to-muted/20">
+                  <PremiumReportViewer
                     content={reportQuery.data}
                     isLoading={reportQuery.isFetching}
+                    runId={activeRunId}
                   />
                   {!activeRunId && !reportQuery.data && !reportQuery.isFetching && (
                     <div className="h-full flex flex-col items-center justify-center p-12 text-muted-foreground">
                       <FileText className="h-12 w-12 mb-4 opacity-20" />
-                      <p>Refine your selection or enter a Run ID above to view the report.</p>
+                      <p>Enter a Run ID above to view the enhanced report with interactive features.</p>
                     </div>
                   )}
                 </div>
