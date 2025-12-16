@@ -129,19 +129,12 @@ def finalize_step(state, step, success, stdout, stderr):
 
 def run_agent(agent_name, run_path):
     print(f"[ORCHESTRATOR] Launching agent: {agent_name}")
+    agent_script = f"agents/{agent_name}.py"
     
-    # Build path relative to orchestrator.py location
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    agent_script = os.path.join(script_dir, "agents", f"{agent_name}.py")
-    print(f"[DEBUG] Agent script path: {agent_script}")
-    print(f"[DEBUG] Script exists: {os.path.exists(agent_script)}")
-    
-    # Ensure PYTHONPATH includes the backend directory so agents can import 'core'
+    # Ensure PYTHONPATH includes the current directory so 'core' module can be found
     env = os.environ.copy()
-    # script_dir is the backend directory (where orchestrator.py lives)
-    # Add it to PYTHONPATH so agents can do: from core.xxx import yyy
-    env["PYTHONPATH"] = script_dir + os.pathsep + env.get("PYTHONPATH", "")
-    print(f"[DEBUG] PYTHONPATH: {env['PYTHONPATH']}")
+    current_dir = os.getcwd()
+    env["PYTHONPATH"] = current_dir + os.pathsep + env.get("PYTHONPATH", "")
     
     # Fix for joblib warning on Windows
     if os.name == 'nt':
@@ -152,8 +145,7 @@ def run_agent(agent_name, run_path):
             [sys.executable, agent_script, run_path], 
             capture_output=True, 
             text=True,
-            env=env,
-            timeout=300  # 5 minute timeout per agent
+            env=env
         )
         
         if result.returncode != 0:
@@ -165,9 +157,6 @@ def run_agent(agent_name, run_path):
             print(f"[OK] Agent {agent_name} completed.")
             return True, result.stdout, result.stderr
             
-    except subprocess.TimeoutExpired as e:
-        print(f"[ERROR] Agent {agent_name} timed out after {e.timeout} seconds")
-        return False, "", f"Agent timed out after {e.timeout}s"
     except Exception as e:
         print(f"[CRITICAL] Failed to subprocess agent {agent_name}: {e}")
         return False, "", str(e)

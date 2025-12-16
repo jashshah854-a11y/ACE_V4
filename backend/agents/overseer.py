@@ -1,4 +1,4 @@
-﻿import pandas as pd
+import pandas as pd
 import json
 import numpy as np
 import sys
@@ -96,14 +96,11 @@ class Overseer:
             data_path = "data/customer_data.csv"
 
         try:
-            print(f"[Overseer] Loading CSV from {data_path}")
             df = pd.read_csv(data_path)
-            print(f"[Overseer] Loaded {len(df)} rows, {len(df.columns)} columns")
         except Exception as e:
             raise ValueError(f"Could not load data from {data_path}: {e}")
 
         # 1. Run Universal Clustering
-        print(f"[Overseer] Starting clustering...")
         try:
             clustering_results = run_universal_clustering(df, self.schema_map)
 
