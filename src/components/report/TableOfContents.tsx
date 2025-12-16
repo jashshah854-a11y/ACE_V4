@@ -49,8 +49,8 @@ export function TableOfContents({ sections, className }: TableOfContentsProps) {
     const tocSections = sections.filter((s) => s.level <= 3);
 
     return (
-        <div className={cn("sticky top-4", className)}>
-            <div className="rounded-lg border bg-card p-4">
+        <aside className="sticky top-4 space-y-4 h-fit max-h-[calc(100vh-2rem)] overflow-y-auto">
+            <div className="rounded-lg border bg-card p-4 shadow-sm">
                 <h3 className="font-semibold mb-3 text-sm">Table of Contents</h3>
                 <ScrollArea className="h-[calc(100vh-200px)]">
                     <nav className="space-y-1">
@@ -73,6 +73,6 @@ export function TableOfContents({ sections, className }: TableOfContentsProps) {
                     </nav>
                 </ScrollArea>
             </div>
-        </div>
+        </aside>
     );
 }

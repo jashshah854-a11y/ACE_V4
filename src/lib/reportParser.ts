@@ -8,7 +8,7 @@
  */
 export function sanitizeDisplayText(text: string): string {
     if (!text) return text;
-    
+
     // Remove cluster_X patterns (with or without parentheses)
     let cleaned = text
         // Remove "cluster_X (Label)" patterns - keep just the label
@@ -23,13 +23,13 @@ export function sanitizeDisplayText(text: string): string {
         .replace(/\bCluster\s+Cluster\b/gi, 'Cluster')
         // Remove leading/trailing spaces
         .trim();
-    
+
     // Remove trailing "Cluster" if the text already describes the cluster type
     // e.g., "Budget Conscious Cluster Cluster" -> "Budget Conscious"
     if (cleaned.match(/\b\w+\s+Conscious\s+Cluster$/i)) {
         cleaned = cleaned.replace(/\s+Cluster$/i, '');
     }
-    
+
     return cleaned;
 }
 
@@ -86,7 +86,7 @@ export function extractMetrics(markdown: string): ReportMetrics {
     if (totalRecords > 0) {
         metrics.recordsProcessed = totalRecords;
     }
-    
+
     // Fallback to other record patterns
     if (!metrics.recordsProcessed) {
         const recordsMatch = markdown.match(/(?:records?|rows?)[:\s]+(?:processed|analyzed)?[:\s]*(\d+(?:,\d{3})*)/i);
@@ -106,7 +106,7 @@ export function extractMetrics(markdown: string): ReportMetrics {
     if (silhouetteMatch) {
         metrics.confidenceLevel = Math.round(parseFloat(silhouetteMatch[1]) * 100);
     }
-    
+
     // Fallback confidence pattern
     if (!metrics.confidenceLevel) {
         const confidenceMatch = markdown.match(/(?:confidence|certainty)[:\s]+(\d+(?:\.\d+)?)\s*%/i);
@@ -220,31 +220,18 @@ export function extractChartData(markdown: string): {
 /**
  * Parse status indicators and return appropriate badge variant
  */
-export function parseStatusBadges(text: string): StatusBadge[] {
-    const badges: StatusBadge[] = [];
-    const statusPattern = /\b(high|excellent|good|moderate|low|poor|warning|error|failed|success)\b/gi;
+export function parseStatusBadges(content: string): string[] {
+    const badges: string[] = [];
+    const keywords = ['critical', 'warning', 'success', 'error', 'info', 'pending'];
 
-    const matches = text.matchAll(statusPattern);
-
-    for (const match of matches) {
-        const status = match[0].toLowerCase();
-        let variant: StatusBadge['variant'] = 'info';
-
-        if (['high', 'excellent', 'good', 'success'].includes(status)) {
-            variant = 'success';
-        } else if (['moderate', 'warning'].includes(status)) {
-            variant = 'warning';
-        } else if (['low', 'poor', 'error', 'failed'].includes(status)) {
-            variant = 'error';
+    keywords.forEach(keyword => {
+        const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+        if (regex.test(content)) {
+            badges.push(keyword);
         }
+    });
 
-        badges.push({
-            text: match[0],
-            variant
-        });
-    }
-
-    return badges;
+    return Array.from(new Set(badges));
 }
 
 /**
