@@ -13,7 +13,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from utils.logging import log_launch, log_ok, log_warn
 from core.state_manager import StateManager
 from core.schema import SchemaMap, ensure_schema_map
-from backend.anti_gravity.core.regression import compute_regression_insights
+from core.regression import compute_regression_insights
 
 
 class RegressionAgent:

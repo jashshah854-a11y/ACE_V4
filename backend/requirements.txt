@@ -1,0 +1,11 @@
+pandas
+numpy
+scikit-learn
+scipy
+pydantic
+google-genai
+requests
+fastapi
+uvicorn
+python-multipart
+altair
