@@ -2,6 +2,37 @@
  * Utility functions to parse ACE report markdown content
  */
 
+/**
+ * Clean up technical identifiers from text to make it user-friendly
+ * Removes patterns like "cluster_0", "cluster_1", etc.
+ */
+export function sanitizeDisplayText(text: string): string {
+    if (!text) return text;
+    
+    // Remove cluster_X patterns (with or without parentheses)
+    let cleaned = text
+        // Remove "cluster_X (Label)" patterns - keep just the label
+        .replace(/\bcluster_\d+\s*\(([^)]+)\)/gi, '$1')
+        // Remove standalone "cluster_X" patterns
+        .replace(/\bcluster_\d+\b/gi, '')
+        // Remove "Cluster cluster_X" redundant patterns
+        .replace(/\bCluster\s+cluster_\d+/gi, 'Cluster')
+        // Clean up double spaces
+        .replace(/\s{2,}/g, ' ')
+        // Clean up "Cluster Cluster" redundancy
+        .replace(/\bCluster\s+Cluster\b/gi, 'Cluster')
+        // Remove leading/trailing spaces
+        .trim();
+    
+    // Remove trailing "Cluster" if the text already describes the cluster type
+    // e.g., "Budget Conscious Cluster Cluster" -> "Budget Conscious"
+    if (cleaned.match(/\b\w+\s+Conscious\s+Cluster$/i)) {
+        cleaned = cleaned.replace(/\s+Cluster$/i, '');
+    }
+    
+    return cleaned;
+}
+
 export interface ReportMetrics {
     dataQualityScore?: number;
     recordsProcessed?: number;
