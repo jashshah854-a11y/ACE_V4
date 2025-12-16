@@ -1,162 +1,208 @@
 import {
-    BarChart,
-    Bar,
-    PieChart,
+    ResponsiveContainer,
+    PieChart as RechartsPie,
     Pie,
     Cell,
-    ResponsiveContainer,
+    BarChart as RechartsBar,
+    Bar,
     XAxis,
     YAxis,
     CartesianGrid,
     Tooltip,
     Legend,
+    RadialBarChart,
+    RadialBar,
+    PolarAngleAxis
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartData } from "@/lib/reportParser";
 
-interface ReportChartsProps {
-    segmentData: ChartData[];
-    compositionData: ChartData[];
-    qualityScore?: number;
-    className?: string;
+const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
+
+interface GaugeChartProps {
+    value: number;
+    max?: number;
+    title: string;
+    color?: string;
 }
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8", "#82CA9D"];
-
-export function ReportCharts({
-    segmentData,
-    compositionData,
-    qualityScore,
-    className,
-}: ReportChartsProps) {
-    const hasData = segmentData.length > 0 || compositionData.length > 0 || qualityScore !== undefined;
-
-    if (!hasData) {
-        return null;
-    }
+export function GaugeChart({ value, max = 100, title, color = "#6366f1" }: GaugeChartProps) {
+    const data = [{ name: title, value, fill: color }];
 
     return (
-        <div className={className}>
-            <h3 className="text-xl font-semibold mb-4">Visual Analytics</h3>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {/* Data Quality Gauge */}
-                {qualityScore !== undefined && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm">Data Quality Score</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <QualityGauge score={qualityScore} />
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Segment Analysis Bar Chart */}
-                {segmentData.length > 0 && (
-                    <Card className={compositionData.length === 0 ? "md:col-span-2" : ""}>
-                        <CardHeader>
-                            <CardTitle className="text-sm">Segment Distribution</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ResponsiveContainer width="100%" height={200}>
-                                <BarChart data={segmentData}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" fontSize={12} />
-                                    <YAxis fontSize={12} />
-                                    <Tooltip />
-                                    <Bar dataKey="value" fill="#8884d8" />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Composition Pie Chart */}
-                {compositionData.length > 0 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm">Data Composition</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ResponsiveContainer width="100%" height={200}>
-                                <PieChart>
-                                    <Pie
-                                        data={compositionData}
-                                        cx="50%"
-                                        cy="50%"
-                                        labelLine={false}
-                                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                        outerRadius={60}
-                                        fill="#8884d8"
-                                        dataKey="value"
-                                    >
-                                        {compositionData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </CardContent>
-                    </Card>
-                )}
-            </div>
-        </div>
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-base">{title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <ResponsiveContainer width="100%" height={200}>
+                    <RadialBarChart
+                        cx="50%"
+                        cy="50%"
+                        innerRadius="60%"
+                        outerRadius="90%"
+                        barSize={20}
+                        data={data}
+                        startAngle={180}
+                        endAngle={0}
+                    >
+                        <PolarAngleAxis
+                            type="number"
+                            domain={[0, max]}
+                            angleAxisId={0}
+                            tick={false}
+                        />
+                        <RadialBar
+                            background
+                            dataKey="value"
+                            cornerRadius={10}
+                        />
+                        <text
+                            x="50%"
+                            y="50%"
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                            className="text-3xl font-bold"
+                        >
+                            {value}%
+                        </text>
+                    </RadialBarChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
     );
 }
 
-// Simple gauge visualization using SVG
-function QualityGauge({ score }: { score: number }) {
-    const normalizedScore = Math.min(100, Math.max(0, score));
-    const rotation = (normalizedScore / 100) * 180 - 90; // -90 to 90 degrees
+interface BarChartProps {
+    data: ChartData[];
+    title: string;
+    xKey?: string;
+    yKey?: string;
+}
 
-    const getColor = (score: number) => {
-        if (score >= 90) return "#22c55e"; // green
-        if (score >= 70) return "#eab308"; // yellow
-        return "#ef4444"; // red
-    };
-
-    const color = getColor(normalizedScore);
+export function BarChartComponent({ data, title, xKey = "name", yKey = "value" }: BarChartProps) {
+    if (!data || data.length === 0) return null;
 
     return (
-        <div className="flex flex-col items-center">
-            <svg width="200" height="120" viewBox="0 0 200 120">
-                {/* Background arc */}
-                <path
-                    d="M 20 100 A 80 80 0 0 1 180 100"
-                    fill="none"
-                    stroke="#e5e7eb"
-                    strokeWidth="20"
-                    strokeLinecap="round"
-                />
-                {/* Score arc */}
-                <path
-                    d="M 20 100 A 80 80 0 0 1 180 100"
-                    fill="none"
-                    stroke={color}
-                    strokeWidth="20"
-                    strokeLinecap="round"
-                    strokeDasharray={`${(normalizedScore / 100) * 251} 251`}
-                />
-                {/* Needle */}
-                <line
-                    x1="100"
-                    y1="100"
-                    x2="100"
-                    y2="30"
-                    stroke={color}
-                    strokeWidth="3"
-                    transform={`rotate(${rotation} 100 100)`}
-                />
-                {/* Center dot */}
-                <circle cx="100" cy="100" r="5" fill={color} />
-            </svg>
-            <div className="text-center mt-2">
-                <div className="text-3xl font-bold" style={{ color }}>
-                    {normalizedScore.toFixed(1)}
-                </div>
-                <div className="text-sm text-muted-foreground">out of 100</div>
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-base">{title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                    <RechartsBar data={data}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis
+                            dataKey={xKey}
+                            className="text-xs"
+                            angle={-45}
+                            textAnchor="end"
+                            height={80}
+                        />
+                        <YAxis className="text-xs" />
+                        <Tooltip
+                            contentStyle={{
+                                backgroundColor: 'hsl(var(--card))',
+                                border: '1px solid hsl(var(--border))',
+                                borderRadius: '8px'
+                            }}
+                        />
+                        <Bar dataKey={yKey} fill="#6366f1" radius={[8, 8, 0, 0]} />
+                    </RechartsBar>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
+    );
+}
+
+interface PieChartProps {
+    data: ChartData[];
+    title: string;
+}
+
+export function PieChartComponent({ data, title }: PieChartProps) {
+    if (!data || data.length === 0) return null;
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-base">{title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                    <RechartsPie>
+                        <Pie
+                            data={data}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            outerRadius={100}
+                            fill="#8884d8"
+                            dataKey="value"
+                        >
+                            {data.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                        </Pie>
+                        <Tooltip
+                            contentStyle={{
+                                backgroundColor: 'hsl(var(--card))',
+                                border: '1px solid hsl(var(--border))',
+                                borderRadius: '8px'
+                            }}
+                        />
+                        <Legend />
+                    </RechartsPie>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
+    );
+}
+
+interface ReportChartsProps {
+    qualityScore?: number;
+    segmentData?: ChartData[];
+    compositionData?: ChartData[];
+}
+
+/**
+ * Collection of interactive Recharts visualizations for report
+ */
+export function ReportCharts({
+    qualityScore,
+    segmentData = [],
+    compositionData = []
+}: ReportChartsProps) {
+    return (
+        <div className="space-y-6">
+            {/* Two-column layout for charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Gauge Chart */}
+                {qualityScore !== undefined && (
+                    <GaugeChart
+                        value={qualityScore}
+                        title="Data Quality Score"
+                        color={qualityScore >= 90 ? "#10b981" : qualityScore >= 70 ? "#f59e0b" : "#ef4444"}
+                    />
+                )}
+
+                {/* Pie Chart */}
+                {compositionData.length > 0 && (
+                    <PieChartComponent
+                        data={compositionData}
+                        title="Data Composition"
+                    />
+                )}
             </div>
+
+            {/* Full-width Bar Chart */}
+            {segmentData.length > 0 && (
+                <BarChartComponent
+                    data={segmentData}
+                    title="Segment Analysis"
+                />
+            )}
         </div>
     );
 }
