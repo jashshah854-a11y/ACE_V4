@@ -50,15 +50,15 @@ export function PremiumReportViewer({
                 {/* Skeleton for hero metrics */}
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                     {[...Array(4)].map((_, i) => (
-                        <div key={i} className="h-32 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl animate-pulse" />
+                        <div key={i} className="h-32 bg-muted rounded-2xl animate-pulse" />
                     ))}
                 </div>
 
                 {/* Skeleton for content */}
                 <div className="space-y-4">
-                    <div className="h-8 bg-slate-100 rounded w-1/3 animate-pulse" />
-                    <div className="h-4 bg-slate-100 rounded w-full animate-pulse" />
-                    <div className="h-4 bg-slate-100 rounded w-5/6 animate-pulse" />
+                    <div className="h-8 bg-muted rounded w-1/3 animate-pulse" />
+                    <div className="h-4 bg-muted rounded w-full animate-pulse" />
+                    <div className="h-4 bg-muted rounded w-5/6 animate-pulse" />
                 </div>
             </div>
         );
