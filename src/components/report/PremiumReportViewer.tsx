@@ -83,6 +83,10 @@ export function PremiumReportViewer({
     const sections = extractSections(content);
     const { segmentData, compositionData } = extractChartData(content);
 
+    // Extract AI insights
+    const insights = useMemo(() => extractKeyInsights(content), [content]);
+    const criticalIssues = useMemo(() => extractCriticalIssues(content), [content]);
+
     const handleCopy = async () => {
         const success = await copyToClipboard(content);
         if (success) {
@@ -143,6 +147,9 @@ export function PremiumReportViewer({
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr,280px] gap-8">
+            {/* Reading Progress Bar */}
+            <ReadingProgress />
+
             {/* Main Content */}
             <div className={cn("space-y-8", className)}>
                 {/* Export Toolbar */}
@@ -176,6 +183,12 @@ export function PremiumReportViewer({
                         filename={runId ? `ace-report-${runId}.pdf` : "ace-report.pdf"}
                     />
                 </motion.div>
+
+                {/* Critical Issues Banner */}
+                <CriticalIssuesBanner issues={criticalIssues} />
+
+                {/* AI Key Takeaways */}
+                <KeyTakeaways insights={insights} />
 
                 {/* Hero Metrics Section */}
                 {heroMetrics.length > 0 && (
