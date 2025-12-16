@@ -1,3 +1,9 @@
+<<<<<<< HEAD
+=======
+fastapi
+uvicorn
+python-multipart
+>>>>>>> e6bf72fdcf0f4a667db23cab9a060630935cf112
 pandas
 numpy
 scikit-learn
@@ -5,7 +11,16 @@ scipy
 pydantic
 google-genai
 requests
+<<<<<<< HEAD
 fastapi
 uvicorn
 python-multipart
 altair
+=======
+joblib
+openai
+python-dotenv
+# PDF Report Generation
+weasyprint
+markdown
+>>>>>>> e6bf72fdcf0f4a667db23cab9a060630935cf112

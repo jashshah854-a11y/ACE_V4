@@ -591,7 +591,7 @@ def resolve_api_base() -> str:
         secret_base = st.secrets["ACE_API_BASE_URL"]
     except Exception:
         secret_base = None
-    fallback = "https://web-production-4501f.up.railway.app"
+    fallback = "https://ace-v4-production.up.railway.app"
     return (secret_base or fallback).rstrip("/")
 
 

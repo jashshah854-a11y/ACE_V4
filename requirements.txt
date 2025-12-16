@@ -1,16 +1,15 @@
-pandas>=2.2.0
+# Vercel Python dependencies
+# This file is used by Vercel to install Python packages for serverless functions
+fastapi
+uvicorn
+python-multipart
+pandas
 numpy
 scikit-learn
 scipy
 pydantic
 google-genai
 requests
-fastapi
-uvicorn
-python-multipart
-altair
-streamlit
-matplotlib
-seaborn
 joblib
-watchdog
+openai
+python-dotenv
