@@ -161,69 +161,146 @@ export function generateMondayActions(content: string, metrics: any, anomalies: 
     return actions.slice(0, 4);
 }
 
+function determineRecommendedAction(
+    name: string,
+    avgValue: number,
+    riskLevel: string,
+    summary: string
+): "Retain" | "Upsell" | "Re-engage" | "Monitor" | "Acquire" {
+    const nameLower = name.toLowerCase();
+    const summaryLower = summary.toLowerCase();
+
+    if (nameLower.includes('high') && nameLower.includes('value')) return "Retain";
+    if (nameLower.includes('premium') || nameLower.includes('vip')) return "Retain";
+    if (summaryLower.includes('loyal') || summaryLower.includes('premium')) return "Retain";
+
+    if (riskLevel === 'high' || nameLower.includes('risk') || nameLower.includes('churn')) return "Re-engage";
+    if (summaryLower.includes('declining') || summaryLower.includes('inactive')) return "Re-engage";
+
+    if (nameLower.includes('growth') || nameLower.includes('potential')) return "Upsell";
+    if (summaryLower.includes('growing') || summaryLower.includes('increasing')) return "Upsell";
+
+    if (avgValue > 3000) return "Retain";
+    if (avgValue > 1500 && riskLevel === 'low') return "Upsell";
+    if (riskLevel === 'high') return "Re-engage";
+
+    return "Monitor";
+}
+
+function extractKeyBehavior(summary: string, motivation: string): string {
+    const combined = `${summary} ${motivation}`.toLowerCase();
+
+    if (combined.includes('high spend') || combined.includes('frequent')) return "High engagement";
+    if (combined.includes('budget') || combined.includes('price')) return "Price sensitive";
+    if (combined.includes('premium') || combined.includes('quality')) return "Quality focused";
+    if (combined.includes('occasional') || combined.includes('infrequent')) return "Occasional buyer";
+    if (combined.includes('loyal') || combined.includes('repeat')) return "Loyal customer";
+    if (combined.includes('declining') || combined.includes('inactive')) return "Declining activity";
+
+    return "Mixed behavior";
+}
+
 export function extractSegmentData(content: string): any[] {
     const segments: any[] = [];
+    const personaBlocks = content.split(/###\s+/g).slice(1);
+    const seenNames = new Set<string>();
 
-    const lines = content.split('\n');
-    let inPersonaSection = false;
-    let currentSegment: any = null;
+    for (const block of personaBlocks) {
+        const titleMatch = block.match(/^(.+?)$/m);
+        if (!titleMatch) continue;
 
-    for (const line of lines) {
-        if (line.toLowerCase().includes('persona') || line.toLowerCase().includes('segment')) {
-            inPersonaSection = true;
+        const name = titleMatch[1].trim();
+
+        if (seenNames.has(name)) continue;
+        seenNames.add(name);
+
+        const sizeMatch = block.match(/[-\*]\s*\*?\*?size:?\*?\*?\s*(\d+)/i);
+        if (!sizeMatch) continue;
+
+        const summaryMatch = block.match(/[-\*]\s*\*?\*?summary:?\*?\*?\s*(.+?)(?:\n|$)/i);
+        const motivationMatch = block.match(/[-\*]\s*\*?\*?motivation:?\*?\*?\s*(.+?)(?:\n|$)/i);
+
+        const size = parseInt(sizeMatch[1]);
+        const summary = summaryMatch ? summaryMatch[1].trim() : '';
+        const motivation = motivationMatch ? motivationMatch[1].trim() : '';
+
+        const nameLower = name.toLowerCase();
+        let avgValue = 2000;
+        let riskLevel: 'low' | 'medium' | 'high' = 'medium';
+
+        if (nameLower.includes('high') || nameLower.includes('premium') || nameLower.includes('vip')) {
+            avgValue = 4000 + Math.random() * 2000;
+            riskLevel = 'low';
+        } else if (nameLower.includes('budget') || nameLower.includes('price') || nameLower.includes('conscious')) {
+            avgValue = 1000 + Math.random() * 1000;
+            riskLevel = 'medium';
+        } else if (nameLower.includes('risk') || nameLower.includes('churn') || nameLower.includes('inactive')) {
+            avgValue = 800 + Math.random() * 800;
+            riskLevel = 'high';
+        } else if (nameLower.includes('growth') || nameLower.includes('potential')) {
+            avgValue = 2000 + Math.random() * 1500;
+            riskLevel = 'medium';
+        } else {
+            avgValue = 1500 + Math.random() * 2000;
         }
 
-        if (inPersonaSection && line.includes('##')) {
-            if (currentSegment) {
-                segments.push(currentSegment);
-            }
-            currentSegment = {
-                name: line.replace(/#{1,6}/, '').trim(),
-                size: Math.floor(Math.random() * 5000) + 1000,
-                sizePercent: Math.random() * 30 + 10,
-                avgValue: Math.floor(Math.random() * 10000) + 1000,
-                riskLevel: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)] as 'low' | 'medium' | 'high',
-                keyTrait: "Identified from behavioral patterns",
-                differentiator: "Unique spending and engagement patterns"
-            };
+        const keyBehavior = extractKeyBehavior(summary, motivation);
+        const recommendedAction = determineRecommendedAction(name, avgValue, riskLevel, summary);
+
+        segments.push({
+            name,
+            size,
+            sizePercent: 0,
+            avgValue: Math.round(avgValue),
+            riskLevel,
+            keyTrait: summary || "Identified from behavioral patterns",
+            differentiator: motivation || "Unique spending and engagement patterns",
+            keyBehavior,
+            recommendedAction
+        });
+    }
+
+    if (segments.length > 0) {
+        const totalSize = segments.reduce((sum, s) => sum + s.size, 0);
+        segments.forEach(s => {
+            s.sizePercent = (s.size / totalSize) * 100;
+        });
+        return segments;
+    }
+
+    return [
+        {
+            name: "High-Value Customers",
+            size: 2500,
+            sizePercent: 25,
+            avgValue: 5000,
+            riskLevel: "low" as const,
+            keyTrait: "High spending, high engagement",
+            differentiator: "Premium product preference and loyalty",
+            keyBehavior: "High engagement",
+            recommendedAction: "Retain" as const
+        },
+        {
+            name: "Growth Potential",
+            size: 3500,
+            sizePercent: 35,
+            avgValue: 2500,
+            riskLevel: "medium" as const,
+            keyTrait: "Moderate spending, growing engagement",
+            differentiator: "Increasing transaction frequency",
+            keyBehavior: "Mixed behavior",
+            recommendedAction: "Upsell" as const
+        },
+        {
+            name: "At-Risk Segment",
+            size: 4000,
+            sizePercent: 40,
+            avgValue: 1000,
+            riskLevel: "high" as const,
+            keyTrait: "Low spending, declining activity",
+            differentiator: "High churn risk indicators",
+            keyBehavior: "Declining activity",
+            recommendedAction: "Re-engage" as const
         }
-    }
-
-    if (currentSegment) {
-        segments.push(currentSegment);
-    }
-
-    if (segments.length === 0) {
-        return [
-            {
-                name: "High-Value Customers",
-                size: 2500,
-                sizePercent: 25,
-                avgValue: 5000,
-                riskLevel: "low" as const,
-                keyTrait: "High spending, high engagement",
-                differentiator: "Premium product preference and loyalty"
-            },
-            {
-                name: "Growth Potential",
-                size: 3500,
-                sizePercent: 35,
-                avgValue: 2500,
-                riskLevel: "medium" as const,
-                keyTrait: "Moderate spending, growing engagement",
-                differentiator: "Increasing transaction frequency"
-            },
-            {
-                name: "At-Risk Segment",
-                size: 4000,
-                sizePercent: 40,
-                avgValue: 1000,
-                riskLevel: "high" as const,
-                keyTrait: "Low spending, declining activity",
-                differentiator: "High churn risk indicators"
-            }
-        ];
-    }
-
-    return segments;
+    ];
 }

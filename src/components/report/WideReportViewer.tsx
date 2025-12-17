@@ -40,6 +40,7 @@ import { BusinessIntelligenceDashboard } from "./BusinessIntelligenceDashboard";
 import { HeroInsightPanel } from "./HeroInsightPanel";
 import { MondayMorningActions } from "./MondayMorningActions";
 import { SegmentComparison } from "./SegmentComparison";
+import { SegmentOverviewTable } from "./SegmentOverviewTable";
 import { MetricGrid, interpretSilhouetteScore, interpretR2Score, interpretDataQuality } from "./MetricInterpretation";
 import { extractHeroInsight, generateMondayActions, extractSegmentData } from "@/lib/insightExtractors";
 
@@ -154,29 +155,6 @@ export function WideReportViewer({
 
     // Build accordion sections from content with intelligent routing
     const accordionSections = [
-        {
-            id: "summary",
-            title: "Executive Summary",
-            icon: SECTION_ICONS.summary,
-            defaultOpen: true,
-            content: (
-                <div className="space-y-4">
-                    {/* Executive Summary Band */}
-                    <div className="bg-gradient-to-r from-primary/10 to-accent/10 p-6 rounded-lg">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {keyTakeaways.slice(0, 3).map((takeaway, idx) => (
-                                <div key={idx} className="flex items-start gap-2">
-                                    <div className="h-2 w-2 rounded-full bg-primary mt-2 shrink-0" />
-                                    <p className="text-sm">{takeaway}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            ),
-        },
-
-        // Add anomaly banner if anomalies detected
         ...(anomalies && anomalies.count > 0 ? [{
             id: "anomalies-alert",
             title: `⚠️ ${anomalies.count} Anomalies Detected`,
@@ -192,20 +170,35 @@ export function WideReportViewer({
         }] : []),
 
         {
+            id: "segments",
+            title: "Customer Segments & Actions",
+            icon: SECTION_ICONS.summary,
+            defaultOpen: true,
+            content: (
+                <div className="space-y-8">
+                    {segmentComparisonData && segmentComparisonData.length > 0 && (
+                        <>
+                            <SegmentOverviewTable
+                                segments={segmentComparisonData}
+                                totalCustomers={metrics.recordsProcessed || 10000}
+                            />
+                            <SegmentComparison
+                                segments={segmentComparisonData}
+                                totalCustomers={metrics.recordsProcessed || 10000}
+                            />
+                        </>
+                    )}
+                </div>
+            ),
+        },
+
+        {
             id: "visualizations",
             title: "Data Visualizations",
             icon: SECTION_ICONS.quality,
             defaultOpen: true,
             content: (
                 <div className="space-y-8">
-                    {/* Segment Comparison - Visual Hierarchy for Differentiation */}
-                    {segmentComparisonData && segmentComparisonData.length > 0 && (
-                        <SegmentComparison
-                            segments={segmentComparisonData}
-                            totalCustomers={metrics.recordsProcessed || 10000}
-                        />
-                    )}
-
                     {/* Key Metrics with Interpretations - Educational Layer */}
                     <MetricGrid
                         metrics={[
@@ -273,22 +266,6 @@ export function WideReportViewer({
                         </div>
                     )}
 
-                    {/* Personas */}
-                    {personas.length > 0 && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4">Customer Personas</h3>
-                            <PersonaSection personas={personas} />
-                        </div>
-                    )}
-
-                    {/* Outcome Model */}
-                    {outcomeModel && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4">Outcome Modeling</h3>
-                            <OutcomeModelSection data={outcomeModel} />
-                        </div>
-                    )}
-
                     {/* Fallback Charts */}
                     {(!clusterMetrics && !personas.length && !outcomeModel && !enhancedAnalytics) && (
                         <ReportCharts
@@ -300,6 +277,31 @@ export function WideReportViewer({
                 </div>
             ),
         },
+
+        ...(personas.length > 0 ? [{
+            id: "personas",
+            title: "Customer Personas",
+            icon: SECTION_ICONS.insights,
+            defaultOpen: false,
+            content: (
+                <div>
+                    <PersonaSection personas={personas} />
+                </div>
+            ),
+        }] : []),
+
+        ...(outcomeModel ? [{
+            id: "outcome-model",
+            title: "Outcome Modeling",
+            icon: SECTION_ICONS.anomalies,
+            defaultOpen: false,
+            content: (
+                <div>
+                    <OutcomeModelSection data={outcomeModel} />
+                </div>
+            ),
+        }] : []),
+
         {
             id: "full-report",
             title: "Detailed Analysis",
