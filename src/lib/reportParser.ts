@@ -327,6 +327,7 @@ export function extractPersonas(markdown: string): Persona[] {
 
     const personas: Persona[] = [];
     const personaBlocks = markdown.split(/###\s+/g).slice(1);
+    const seenNames = new Set<string>();
 
     for (const block of personaBlocks) {
         const titleMatch = block.match(/^(.+?)$/m);
@@ -334,8 +335,10 @@ export function extractPersonas(markdown: string): Persona[] {
 
         const title = sanitizeDisplayText(titleMatch[1].trim());
 
-        // Check if it looks like a persona block
-        // Must have **Size:** or - **Size:** pattern with a number
+        if (seenNames.has(title)) {
+            continue;
+        }
+
         const sizeMatch = block.match(/[-\*]\s*\*?\*?size:?\*?\*?\s*(\d+)/i);
         if (!sizeMatch) continue;
 
@@ -358,6 +361,19 @@ export function extractPersonas(markdown: string): Persona[] {
             strategy: strategyMatch ? strategyMatch[1].trim() : '',
             tactics,
         });
+
+        seenNames.add(title);
+    }
+
+    if (personas.length === 0) return [];
+
+    const uniqueDescriptions = new Set(
+        personas.map(p => `${p.summary}|${p.motivation}|${p.strategy}`.toLowerCase())
+    );
+
+    if (personas.length >= 3 && uniqueDescriptions.size === 1) {
+        console.warn('All personas have identical descriptions - hiding persona section');
+        return [];
     }
 
     return personas;

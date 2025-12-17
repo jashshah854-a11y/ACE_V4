@@ -6,14 +6,12 @@ import { numberFormatter } from "@/lib/numberFormatter";
 import { CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { ModelUseGuidelines } from "./ModelUseGuidelines";
 
 interface OutcomeModelSectionProps {
     data: OutcomeModelData | null;
 }
 
-/**
- * Visual outcome modeling section with R² gauge and performance indicators
- */
 export function OutcomeModelSection({ data }: OutcomeModelSectionProps) {
     if (!data || data.status === 'skipped') {
         return (
@@ -27,6 +25,10 @@ export function OutcomeModelSection({ data }: OutcomeModelSectionProps) {
     const isGood = r2 > 0.7;
     const isFair = r2 > 0.3 && r2 <= 0.7;
     const isPoor = r2 <= 0.3;
+
+    if (isPoor) {
+        return <ModelUseGuidelines target={data.target} r2={r2} />;
+    }
 
     // Convert R² to percentage for gauge (max 100, min 0)
     const r2Percent = Math.max(0, Math.min(100, r2 * 100));
@@ -124,18 +126,6 @@ export function OutcomeModelSection({ data }: OutcomeModelSectionProps) {
                             )}
                         </div>
                     </div>
-
-                    {/* Explanation Alert */}
-                    {isPoor && (
-                        <Alert variant="destructive">
-                            <AlertTriangle className="h-4 w-4" />
-                            <AlertDescription>
-                                The model could not learn a reliable predictive signal from this data.
-                                The negative R² indicates predictions are worse than using the mean value.
-                                Consider feature engineering or collecting more relevant predictors.
-                            </AlertDescription>
-                        </Alert>
-                    )}
 
                     {isFair && (
                         <Alert className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20">
