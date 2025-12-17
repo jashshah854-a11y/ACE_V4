@@ -17,10 +17,18 @@ import {
     extractMetrics,
     extractProgressMetrics,
     extractSections,
-    extractChartData
+    extractChartData,
+    extractClusterMetrics,
+    extractPersonas,
+    extractOutcomeModel,
+    extractAnomalies
 } from "@/lib/reportParser";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { ClusterGaugeSection } from "./ClusterGaugeSection";
+import { PersonaSection } from "./PersonaSection";
+import { OutcomeModelSection } from "./OutcomeModelSection";
+import { ReportSkeleton } from "./ReportSkeleton";
 
 interface WideReportViewerProps {
     content?: string;
@@ -55,14 +63,7 @@ export function WideReportViewer({
     }, []);
 
     if (isLoading) {
-        return (
-            <div className="space-y-4 animate-pulse">
-                <div className="h-8 bg-slate-100 rounded w-1/3"></div>
-                <div className="h-4 bg-slate-100 rounded w-full"></div>
-                <div className="h-4 bg-slate-100 rounded w-5/6"></div>
-                <div className="h-4 bg-slate-100 rounded w-4/6"></div>
-            </div>
-        );
+        return <ReportSkeleton />;
     }
 
     if (!content) {
@@ -79,6 +80,12 @@ export function WideReportViewer({
     const sections = extractSections(content);
     const { segmentData, compositionData } = extractChartData(content);
 
+    // NEW: Extract structured data for visual components
+    const clusterMetrics = extractClusterMetrics(content);
+    const personas = extractPersonas(content);
+    const outcomeModel = extractOutcomeModel(content);
+    const anomalies = extractAnomalies(content);
+
     // Extract key insights for intelligence rail
     const keyTakeaways = content
         .split('\n')
@@ -91,22 +98,34 @@ export function WideReportViewer({
         const success = await copyToClipboard(content);
         if (success) {
             setCopied(true);
-            toast({ title: "Copied to clipboard!" });
+            toast({
+                title: "✅ Copied to clipboard!",
+                description: "Report content ready to paste"
+            });
             setTimeout(() => setCopied(false), 2000);
+        } else {
+            toast({
+                title: "❌ Failed to copy",
+                description: "Please try again",
+                variant: "destructive"
+            });
         }
     };
 
     const handleDownloadMarkdown = () => {
         const filename = runId ? `ace-report-${runId}.md` : "ace-report.md";
         downloadMarkdown(content, filename);
-        toast({ title: "Markdown downloaded!" });
+        toast({
+            title: "⬇️ Markdown downloaded",
+            description: filename
+        });
     };
 
     const handleSectionClick = (sectionId: string) => {
         setCurrentSection(sectionId);
     };
 
-    // Build accordion sections from content
+    // Build accordion sections from content with intelligent routing
     const accordionSections = [
         {
             id: "summary",
@@ -129,17 +148,62 @@ export function WideReportViewer({
                 </div>
             ),
         },
+
+        // Add anomaly banner if anomalies detected
+        ...(anomalies && anomalies.count > 0 ? [{
+            id: "anomalies-alert",
+            title: `⚠️ ${anomalies.count} Anomalies Detected`,
+            icon: SECTION_ICONS.warning,
+            defaultOpen: true,
+            content: (
+                <AnomalyBanner
+                    count={anomalies.count}
+                    totalRecords={metrics.recordsProcessed}
+                    topDrivers={anomalies.drivers?.map(d => `${d.field}: ${Math.round(d.score * 100)}%`) || []}
+                />
+            ),
+        }] : []),
+
         {
             id: "visualizations",
             title: "Data Visualizations",
             icon: SECTION_ICONS.quality,
             defaultOpen: true,
             content: (
-                <ReportCharts
-                    qualityScore={metrics.dataQualityScore}
-                    segmentData={segmentData}
-                    compositionData={compositionData}
-                />
+                <div className="space-y-8">
+                    {/* Cluster Gauges */}
+                    {clusterMetrics && (
+                        <div>
+                            <h3 className="text-lg font-semibold mb-4">Behavioral Clusters</h3>
+                            <ClusterGaugeSection data={clusterMetrics} />
+                        </div>
+                    )}
+
+                    {/* Personas */}
+                    {personas.length > 0 && (
+                        <div>
+                            <h3 className="text-lg font-semibold mb-4">Customer Personas</h3>
+                            <PersonaSection personas={personas} />
+                        </div>
+                    )}
+
+                    {/* Outcome Model */}
+                    {outcomeModel && (
+                        <div>
+                            <h3 className="text-lg font-semibold mb-4">Outcome Modeling</h3>
+                            <OutcomeModelSection data={outcomeModel} />
+                        </div>
+                    )}
+
+                    {/* Fallback Charts */}
+                    {(!clusterMetrics && !personas.length && !outcomeModel) && (
+                        <ReportCharts
+                            qualityScore={metrics.dataQualityScore}
+                            segmentData={segmentData}
+                            compositionData={compositionData}
+                        />
+                    )}
+                </div>
             ),
         },
         {
