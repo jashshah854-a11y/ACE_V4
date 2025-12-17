@@ -149,28 +149,48 @@ def run_agent(agent_name, run_path):
     
     try:
         result = subprocess.run(
-            [sys.executable, agent_script, run_path], 
-            capture_output=True, 
+            [sys.executable, agent_script, run_path],
+            capture_output=True,
             text=True,
             env=env,
-            timeout=300  # 5 minute timeout per agent
+            timeout=600
         )
-        
+
         if result.returncode != 0:
-            print(f"[ERROR] Agent {agent_name} failed with code {result.returncode}")
-            print(f"Stdout: {result.stdout}")
-            print(f"Stderr: {result.stderr}")
-            return False, result.stdout, result.stderr
+            from utils.logging import log_error
+            log_error(
+                f"Agent {agent_name} failed with code {result.returncode}",
+                agent=agent_name,
+                return_code=result.returncode,
+                run_path=run_path
+            )
+
+            sanitized_stderr = result.stderr[:500] if result.stderr else ""
+
+            return False, result.stdout, sanitized_stderr
         else:
-            print(f"[OK] Agent {agent_name} completed.")
+            from utils.logging import log_ok
+            log_ok(f"Agent {agent_name} completed", agent=agent_name, run_path=run_path)
             return True, result.stdout, result.stderr
-            
+
     except subprocess.TimeoutExpired as e:
-        print(f"[ERROR] Agent {agent_name} timed out after {e.timeout} seconds")
-        return False, "", f"Agent timed out after {e.timeout}s"
+        from utils.logging import log_error
+        log_error(
+            f"Agent {agent_name} timed out after {e.timeout} seconds",
+            agent=agent_name,
+            timeout=e.timeout,
+            run_path=run_path
+        )
+        return False, "", f"Agent execution timed out. This may indicate a large dataset or processing issue."
     except Exception as e:
-        print(f"[CRITICAL] Failed to subprocess agent {agent_name}: {e}")
-        return False, "", str(e)
+        from utils.logging import log_error
+        log_error(
+            f"Failed to execute agent {agent_name}",
+            exc_info=True,
+            agent=agent_name,
+            run_path=run_path
+        )
+        return False, "", f"Agent execution failed. Please check server logs."
 
 def orchestrate_new_run(data_path, run_config=None):
     print("=== ACE V3 ORCHESTRATOR START ===")

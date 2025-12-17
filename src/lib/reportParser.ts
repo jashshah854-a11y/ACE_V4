@@ -2,6 +2,8 @@
  * Utility functions to parse ACE report markdown content
  */
 
+import { MetricsSchema, ProgressMetricsSchema, ClusterMetricsSchema, type Metrics } from './reportSchema';
+
 /**
  * Clean up technical identifiers from text to make it user-friendly
  * Converts cluster_0 → Cluster A, segment_1 → Segment B, etc.
@@ -69,19 +71,28 @@ export interface StatusBadge {
 }
 
 /**
- * Extract key metrics from report markdown
+ * Extract key metrics from report markdown with validation
  */
 export function extractMetrics(markdown: string): ReportMetrics {
     if (!markdown) return {};
 
     const metrics: ReportMetrics = {};
 
-    // Extract Data Quality Score (handles both percentage and decimal)
-    const qualityMatch = markdown.match(/(?:data(?:set)?\s*quality(?:\s*score)?)[:\s]*(\d+(?:\.\d+)?)/i);
-    if (qualityMatch) {
-        const value = parseFloat(qualityMatch[1]);
-        // Convert decimal to percentage if needed
-        metrics.dataQualityScore = value <= 1 ? Math.round(value * 100) : value;
+    try {
+        // Extract Data Quality Score (handles both percentage and decimal)
+        const qualityMatch = markdown.match(/(?:data(?:set)?\s*quality(?:\s*score)?)[:\s]*(\d+(?:\.\d+)?)/i);
+        if (qualityMatch) {
+            const value = parseFloat(qualityMatch[1]);
+            const score = value <= 1 ? Math.round(value * 100) : value;
+
+            if (!isNaN(score) && score >= 0 && score <= 100) {
+                metrics.dataQualityScore = score;
+            } else {
+                console.warn('Invalid data quality score extracted:', score);
+            }
+        }
+    } catch (error) {
+        console.warn('Failed to extract data quality score:', error);
     }
 
     // Extract Records Processed - look for cluster sizes or record counts
@@ -134,7 +145,14 @@ export function extractMetrics(markdown: string): ReportMetrics {
         metrics.validRecords = parseFloat(validMatch[1]);
     }
 
-    return metrics;
+    try {
+        const validated = MetricsSchema.partial().parse(metrics);
+        return validated;
+    } catch (error) {
+        console.error('Metrics validation failed:', error);
+        console.warn('Returning unvalidated metrics with potential data issues');
+        return metrics;
+    }
 }
 
 /**

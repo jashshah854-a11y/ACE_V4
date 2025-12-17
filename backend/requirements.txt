@@ -1,11 +1,13 @@
 fastapi
 uvicorn
 python-multipart
+slowapi
 pandas
 numpy
 scikit-learn
 scipy
 pydantic
+pydantic-settings
 google-genai
 requests
 joblib
