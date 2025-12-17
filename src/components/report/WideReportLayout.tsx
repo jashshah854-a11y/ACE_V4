@@ -37,7 +37,7 @@ export function WideReportLayout({
 
                 {/* Right Intelligence Rail - Sticky */}
                 <div className="hidden lg:block">
-                    <div className="sticky top-24 space-y-4">
+                    <div className="sticky top-24 space-y-4 max-h-[calc(100vh-7rem)] overflow-y-auto">
                         {intelligenceRail}
                     </div>
                 </div>

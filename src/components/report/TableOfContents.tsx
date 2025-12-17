@@ -98,7 +98,7 @@ export function TableOfContents({ sections, className }: TableOfContentsProps) {
     if (sections.length === 0) return null;
 
     return (
-        <Card className={cn("sticky top-24", className)}>
+        <Card className={className}>
             <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                     <List className="h-4 w-4" />
