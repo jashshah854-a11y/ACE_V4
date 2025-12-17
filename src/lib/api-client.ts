@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_ACE_API_BASE_URL || "https://ace-v4-production.up.railway.app";
+const API_BASE = import.meta.env.VITE_ACE_API_BASE_URL || "http://localhost:8001";
 
 export interface RunState {
   run_id: string;
