@@ -69,8 +69,8 @@ class Expositor:
         run_id = Path(self.state.run_path).name
         date_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         quality_score = overseer.get("stats", {}).get("data_quality", "N/A")
-        
-        lines.append("### Run Metadata")
+
+        lines.append("## Run Metadata")
         lines.append(f"- **Run ID:** `{run_id}`")
         lines.append(f"- **Generated:** {date_str}")
         lines.append(f"- **Dataset Quality Score:** {quality_score}")
