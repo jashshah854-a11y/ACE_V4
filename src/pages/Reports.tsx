@@ -32,6 +32,9 @@ const Reports = () => {
     }
   }, [runFromUrl]);
 
+  const [lastKnownContent, setLastKnownContent] = useState<string | undefined>();
+  const [isPipelineRunning, setIsPipelineRunning] = useState(false);
+
   const reportQuery = useQuery<string | undefined>({
     queryKey: ["final-report", activeRunId],
     queryFn: () => getReport(activeRunId),
@@ -52,6 +55,27 @@ const Reports = () => {
     reportQuery.isError &&
     reportQuery.error instanceof Error &&
     reportQuery.error.message.includes("404");
+
+  // Preserve content during background refetches
+  useEffect(() => {
+    if (reportQuery.data) {
+      setLastKnownContent(reportQuery.data);
+      setIsPipelineRunning(false);
+    }
+  }, [reportQuery.data]);
+
+  // Track pipeline state
+  useEffect(() => {
+    if (isReportNotReady) {
+      setIsPipelineRunning(true);
+    }
+  }, [isReportNotReady]);
+
+  // Clear content when changing run IDs
+  useEffect(() => {
+    setLastKnownContent(undefined);
+    setIsPipelineRunning(false);
+  }, [activeRunId]);
 
   useEffect(() => {
     if (activeRunId) saveRecentReport(activeRunId, `Report ${activeRunId.substring(0, 8)}`);
@@ -126,19 +150,25 @@ const Reports = () => {
                 </div>
               )}
 
-              {isReportNotReady && (
-                <div className="mb-4">
-                  <PipelineStatus runId={activeRunId} onComplete={handlePipelineComplete} />
-                </div>
-              )}
-
               <div className="min-h-[400px]">
-                <WideReportViewer
-                  content={reportQuery.data}
-                  isLoading={reportQuery.isFetching && !reportQuery.data}
-                  runId={activeRunId}
-                />
-                {!activeRunId && !reportQuery.data && !reportQuery.isFetching && (
+                {/* Show pipeline status ONLY when report is not ready AND we don't have content yet */}
+                {isPipelineRunning && !lastKnownContent && (
+                  <div className="mb-4">
+                    <PipelineStatus runId={activeRunId} onComplete={handlePipelineComplete} />
+                  </div>
+                )}
+
+                {/* Show report viewer when we have content OR when initial loading */}
+                {(lastKnownContent || (!isPipelineRunning && reportQuery.isFetching)) && (
+                  <WideReportViewer
+                    content={lastKnownContent}
+                    isLoading={!lastKnownContent && reportQuery.isFetching}
+                    runId={activeRunId}
+                  />
+                )}
+
+                {/* Empty state - only show when no run ID selected */}
+                {!activeRunId && !lastKnownContent && !reportQuery.isFetching && (
                   <div className="h-full flex flex-col items-center justify-center p-12 text-muted-foreground">
                     <FileText className="h-12 w-12 mb-4 opacity-20" />
                     <p>Enter a Run ID above to view the wide premium report layout.</p>
