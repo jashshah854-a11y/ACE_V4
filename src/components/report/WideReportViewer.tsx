@@ -37,6 +37,11 @@ import { useEnhancedAnalytics } from "@/hooks/useEnhancedAnalytics";
 import { CorrelationHeatmap } from "./CorrelationHeatmap";
 import { DistributionCharts } from "./DistributionCharts";
 import { BusinessIntelligenceDashboard } from "./BusinessIntelligenceDashboard";
+import { HeroInsightPanel } from "./HeroInsightPanel";
+import { MondayMorningActions } from "./MondayMorningActions";
+import { SegmentComparison } from "./SegmentComparison";
+import { MetricGrid, interpretSilhouetteScore, interpretR2Score, interpretDataQuality } from "./MetricInterpretation";
+import { extractHeroInsight, generateMondayActions, extractSegmentData } from "@/lib/insightExtractors";
 
 interface WideReportViewerProps {
     content?: string;
@@ -99,6 +104,11 @@ export function WideReportViewer({
     // Extract narrative components for consultant-style presentation
     const executiveBrief = extractExecutiveBrief(content);
     const conclusion = extractConclusion(content);
+
+    // NEW: Extract hero insight and Monday morning actions
+    const heroInsight = extractHeroInsight(content, metrics);
+    const mondayActions = generateMondayActions(content, metrics, anomalies);
+    const segmentComparisonData = extractSegmentData(content);
 
     // Extract key insights for intelligence rail
     const keyTakeaways = content
@@ -185,6 +195,44 @@ export function WideReportViewer({
             defaultOpen: true,
             content: (
                 <div className="space-y-8">
+                    {/* Segment Comparison - Visual Hierarchy for Differentiation */}
+                    {segmentComparisonData && segmentComparisonData.length > 0 && (
+                        <SegmentComparison
+                            segments={segmentComparisonData}
+                            totalCustomers={metrics.recordsProcessed || 10000}
+                        />
+                    )}
+
+                    {/* Key Metrics with Interpretations - Educational Layer */}
+                    <MetricGrid
+                        metrics={[
+                            {
+                                name: "Data Quality Score",
+                                value: `${metrics.dataQualityScore || 0}%`,
+                                interpretation: interpretDataQuality(metrics.dataQualityScore || 0),
+                                benchmark: "Target: 85%+ for reliable insights",
+                                confidenceLevel: (metrics.dataQualityScore || 0) >= 85 ? "high" : (metrics.dataQualityScore || 0) >= 70 ? "medium" : "low",
+                                helpText: "Measures completeness, consistency, and accuracy of your dataset"
+                            },
+                            ...(clusterMetrics?.silhouetteScore ? [{
+                                name: "Clustering Quality (Silhouette Score)",
+                                value: clusterMetrics.silhouetteScore.toFixed(2),
+                                interpretation: interpretSilhouetteScore(clusterMetrics.silhouetteScore),
+                                benchmark: "Good: 0.51-0.70, Excellent: 0.71+",
+                                confidenceLevel: clusterMetrics.silhouetteScore >= 0.51 ? "high" : "medium" as "high" | "medium",
+                                helpText: "Indicates how well-separated and distinct your customer segments are"
+                            }] : []),
+                            ...(outcomeModel?.r2Score !== undefined ? [{
+                                name: "Model Fit (R² Score)",
+                                value: outcomeModel.r2Score.toFixed(3),
+                                interpretation: interpretR2Score(outcomeModel.r2Score),
+                                benchmark: "Good: 0.50-0.89, Excellent: 0.90+",
+                                confidenceLevel: outcomeModel.r2Score >= 0.50 ? "high" : outcomeModel.r2Score >= 0 ? "medium" : "low" as "high" | "medium" | "low",
+                                helpText: "Shows how well the model explains variance in your target outcome"
+                            }] : [])
+                        ]}
+                    />
+
                     {/* Business Intelligence Dashboard */}
                     {enhancedAnalytics?.business_intelligence?.available && (
                         <BusinessIntelligenceDashboard
@@ -285,8 +333,14 @@ export function WideReportViewer({
             <WideReportLayout
                 hero={
                     <>
+                        {/* Hero Insight Panel - The Dominant Visual Anchor */}
+                        <HeroInsightPanel {...heroInsight} />
+
+                        {/* Monday Morning Actions */}
+                        <MondayMorningActions actions={mondayActions} className="mt-8" />
+
                         {/* Export Toolbar */}
-                        <div className="flex gap-2 justify-end flex-wrap mb-6">
+                        <div className="flex gap-2 justify-end flex-wrap mt-8 mb-6">
                             <Button
                                 onClick={handleCopy}
                                 variant="outline"
