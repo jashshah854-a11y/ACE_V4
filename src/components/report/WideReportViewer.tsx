@@ -71,7 +71,7 @@ export function WideReportViewer({
         return <ReportSkeleton />;
     }
 
-    if (!content) {
+    if (!content || content.trim().length === 0) {
         return (
             <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
                 No report content available.
