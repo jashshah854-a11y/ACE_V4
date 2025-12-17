@@ -77,7 +77,7 @@ export async function getRunState(runId: string): Promise<RunState> {
     let errorMessage = `Failed to get run state: ${response.statusText}`;
     try {
       const errorData: ApiError = await response.json();
-      errorMessage = errorData.detail || errorMessage;
+      errorMessage = `${errorData.detail || errorMessage} (${response.status})`;
     } catch {
       // Use default error message if JSON parsing fails
     }
@@ -94,7 +94,7 @@ export async function getReport(runId: string): Promise<string> {
     let errorMessage = `Failed to get report (${response.status})`;
     try {
       const errorData: ApiError = await response.json();
-      errorMessage = errorData.detail || errorMessage;
+      errorMessage = `${errorData.detail || errorMessage} (${response.status})`;
     } catch {
       // Use default error message if JSON parsing fails
     }
@@ -111,7 +111,7 @@ export async function getInsights(runId: string): Promise<InsightsResponse> {
     let errorMessage = `Failed to get insights: ${response.statusText}`;
     try {
       const errorData: ApiError = await response.json();
-      errorMessage = errorData.detail || errorMessage;
+      errorMessage = `${errorData.detail || errorMessage} (${response.status})`;
     } catch {
       // Use default error message if JSON parsing fails
     }
