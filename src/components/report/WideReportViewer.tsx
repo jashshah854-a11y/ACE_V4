@@ -33,6 +33,10 @@ import { ExecutiveBrief } from "./ExecutiveBrief";
 import { TechnicalDetailsSection } from "./TechnicalDetailsSection";
 import { ReportConclusion } from "./ReportConclusion";
 import { extractExecutiveBrief, extractConclusion } from "@/lib/narrativeExtractors";
+import { useEnhancedAnalytics } from "@/hooks/useEnhancedAnalytics";
+import { CorrelationHeatmap } from "./CorrelationHeatmap";
+import { DistributionCharts } from "./DistributionCharts";
+import { BusinessIntelligenceDashboard } from "./BusinessIntelligenceDashboard";
 
 interface WideReportViewerProps {
     content?: string;
@@ -51,6 +55,8 @@ export function WideReportViewer({
     const [readingProgress, setReadingProgress] = useState(0);
     const [currentSection, setCurrentSection] = useState("");
     const { toast } = useToast();
+
+    const { data: enhancedAnalytics, loading: analyticsLoading } = useEnhancedAnalytics(runId);
 
     // Track reading progress
     useEffect(() => {
@@ -179,6 +185,35 @@ export function WideReportViewer({
             defaultOpen: true,
             content: (
                 <div className="space-y-8">
+                    {/* Business Intelligence Dashboard */}
+                    {enhancedAnalytics?.business_intelligence?.available && (
+                        <BusinessIntelligenceDashboard
+                            valueMetrics={enhancedAnalytics.business_intelligence.value_metrics}
+                            clvProxy={enhancedAnalytics.business_intelligence.clv_proxy}
+                            segmentValue={enhancedAnalytics.business_intelligence.segment_value}
+                            churnRisk={enhancedAnalytics.business_intelligence.churn_risk}
+                            insights={enhancedAnalytics.business_intelligence.insights}
+                        />
+                    )}
+
+                    {/* Correlation Analysis */}
+                    {enhancedAnalytics?.correlation_analysis?.available &&
+                     enhancedAnalytics.correlation_analysis.strong_correlations && (
+                        <CorrelationHeatmap
+                            correlations={enhancedAnalytics.correlation_analysis.strong_correlations}
+                            insights={enhancedAnalytics.correlation_analysis.insights}
+                        />
+                    )}
+
+                    {/* Distribution Analysis */}
+                    {enhancedAnalytics?.distribution_analysis?.available &&
+                     enhancedAnalytics.distribution_analysis.distributions && (
+                        <DistributionCharts
+                            distributions={enhancedAnalytics.distribution_analysis.distributions}
+                            insights={enhancedAnalytics.distribution_analysis.insights}
+                        />
+                    )}
+
                     {/* Cluster Gauges */}
                     {clusterMetrics && (
                         <div>
@@ -204,7 +239,7 @@ export function WideReportViewer({
                     )}
 
                     {/* Fallback Charts */}
-                    {(!clusterMetrics && !personas.length && !outcomeModel) && (
+                    {(!clusterMetrics && !personas.length && !outcomeModel && !enhancedAnalytics) && (
                         <ReportCharts
                             qualityScore={metrics.dataQualityScore}
                             segmentData={segmentData}

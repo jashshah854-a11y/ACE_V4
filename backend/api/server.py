@@ -315,6 +315,24 @@ async def get_artifact(run_id: str, artifact_name: str):
     return data
 
 
+@app.get("/runs/{run_id}/enhanced-analytics", tags=["Artifacts"])
+async def get_enhanced_analytics(run_id: str):
+    """Get enhanced analytics data including correlations, distributions, and business intelligence.
+
+    Returns:
+        Enhanced analytics data with statistical analysis and business metrics
+    """
+    _validate_run_id(run_id)
+
+    run_path = DATA_DIR / "runs" / run_id
+    state = StateManager(str(run_path))
+
+    enhanced_analytics = state.read("enhanced_analytics")
+    if not enhanced_analytics:
+        raise HTTPException(status_code=404, detail="Enhanced analytics not found")
+
+    return enhanced_analytics
+
 @app.get("/runs/{run_id}/insights", tags=["Artifacts"])
 async def get_key_insights(run_id: str):
     """Extract and return key insights from analysis.
@@ -328,11 +346,11 @@ async def get_key_insights(run_id: str):
 
     run_path = DATA_DIR / "runs" / run_id
     state = StateManager(str(run_path))
-    
+
     overseer = state.read("overseer_output") or {}
     anomalies = state.read("anomalies") or {}
     regression = state.read("regression_insights") or {}
-    
+
     warnings = []
     strengths = []
     recommendations = []
