@@ -1,12 +1,15 @@
 import { Link, useLocation } from "react-router-dom";
 import { Activity, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getRecentReports } from "@/lib/localStorage";
 
 export const Navbar = () => {
   const location = useLocation();
-  
+
   const isActive = (path: string) => location.pathname === path;
 
+  const lastRunId = getRecentReports()[0]?.runId;
+  const reportsHref = lastRunId ? `/reports?run=${lastRunId}` : "/reports";
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
       <div className="container flex h-16 items-center justify-between px-4">
@@ -35,7 +38,7 @@ export const Navbar = () => {
             Upload
           </Link>
           <Link 
-            to="/reports" 
+            to={reportsHref}
             className={cn(
               "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2",
               isActive("/reports") 
