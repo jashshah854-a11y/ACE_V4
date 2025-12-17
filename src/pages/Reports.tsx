@@ -17,10 +17,11 @@ import {
   PieChart,
   TrendingUp,
   Plus,
-  Search
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getReport } from "@/lib/api-client";
+import { getRecentReports, saveRecentReport } from "@/lib/localStorage";
 
 interface Report {
   id: string;
@@ -81,9 +82,13 @@ const typeConfig: Record<Report["type"], { icon: typeof FileText; color: string;
 const Reports = () => {
   const [searchParams] = useSearchParams();
   const runFromUrl = searchParams.get("run");
-  
-  const [runInput, setRunInput] = useState(runFromUrl || "");
-  const [activeRunId, setActiveRunId] = useState(runFromUrl || "");
+
+  // If user navigates to /reports without ?run=, fall back to most recent run.
+  const mostRecentRun = getRecentReports()[0]?.runId || "";
+  const initialRunId = runFromUrl || mostRecentRun;
+
+  const [runInput, setRunInput] = useState(initialRunId);
+  const [activeRunId, setActiveRunId] = useState(initialRunId);
 
   useEffect(() => {
     if (runFromUrl) {
@@ -108,9 +113,14 @@ const Reports = () => {
     },
   });
 
-  const isReportNotReady = reportQuery.isError && 
-    reportQuery.error instanceof Error && 
+  const isReportNotReady =
+    reportQuery.isError &&
+    reportQuery.error instanceof Error &&
     reportQuery.error.message.includes("404");
+
+  useEffect(() => {
+    if (activeRunId) saveRecentReport(activeRunId, `Report ${activeRunId.substring(0, 8)}`);
+  }, [activeRunId]);
 
   const handleLoadReport = () => {
     const sanitized = runInput.trim();
