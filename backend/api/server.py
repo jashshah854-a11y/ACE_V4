@@ -67,7 +67,7 @@ def _validate_run_id(run_id: str) -> None:
     if not run_id:
         raise HTTPException(status_code=400, detail="Run ID is required")
 
-    if not re.match(r'^[a-f0-9]{8}$', run_id):
+    if not re.match(r'^[a-f0-9-]{8,36}$', run_id, re.IGNORECASE):
         raise HTTPException(
             status_code=400,
             detail="Invalid run ID format"
