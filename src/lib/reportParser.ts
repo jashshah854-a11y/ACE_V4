@@ -334,13 +334,14 @@ export function extractPersonas(markdown: string): Persona[] {
 
         const title = sanitizeDisplayText(titleMatch[1].trim());
 
-        // Check if it looks like a persona block (must mention cluster or size)
-        if (!/cluster|size/i.test(block)) continue;
+        // Check if it looks like a persona block
+        // Must have **Size:** or - **Size:** pattern with a number
+        const sizeMatch = block.match(/[-\*]\s*\*?\*?size:?\*?\*?\s*(\d+)/i);
+        if (!sizeMatch) continue;
 
-        const sizeMatch = block.match(/\*?\*?size:?\*?\*?\s*(\d+)/i);
-        const summaryMatch = block.match(/\*?\*?summary:?\*?\*?\s*(.+?)(?:\n|$)/i);
-        const motivationMatch = block.match(/\*?\*?motivation:?\*?\*?\s*(.+?)(?:\n|$)/i);
-        const strategyMatch = block.match(/\*?\*?strategic\s*approach:?\*?\*?\s*(.+?)(?:\n|$)/i);
+        const summaryMatch = block.match(/[-\*]\s*\*?\*?summary:?\*?\*?\s*(.+?)(?:\n|$)/i);
+        const motivationMatch = block.match(/[-\*]\s*\*?\*?motivation:?\*?\*?\s*(.+?)(?:\n|$)/i);
+        const strategyMatch = block.match(/[-\*]\s*\*?\*?strategic\s*approach:?\*?\*?\s*(.+?)(?:\n|$)/i);
 
         const tactics: string[] = [];
         const tacticMatches = block.matchAll(/^-\s+(.+)$/gm);
@@ -351,7 +352,7 @@ export function extractPersonas(markdown: string): Persona[] {
         personas.push({
             name: title,
             label: title,
-            size: sizeMatch ? parseInt(sizeMatch[1]) : 0,
+            size: parseInt(sizeMatch[1]),
             summary: summaryMatch ? summaryMatch[1].trim() : '',
             motivation: motivationMatch ? motivationMatch[1].trim() : '',
             strategy: strategyMatch ? strategyMatch[1].trim() : '',
