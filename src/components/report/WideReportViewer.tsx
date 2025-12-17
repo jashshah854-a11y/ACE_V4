@@ -23,7 +23,7 @@ import {
     extractOutcomeModel,
     extractAnomalies
 } from "@/lib/reportParser";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ClusterGaugeSection } from "./ClusterGaugeSection";
 import { PersonaSection } from "./PersonaSection";
@@ -102,21 +102,24 @@ export function WideReportViewer({
     const anomalies = extractAnomalies(content);
 
     // Extract narrative components for consultant-style presentation
-    const executiveBrief = extractExecutiveBrief(content);
-    const conclusion = extractConclusion(content);
+    const executiveBrief = useMemo(() => extractExecutiveBrief(content), [content]);
+    const conclusion = useMemo(() => extractConclusion(content), [content]);
 
     // NEW: Extract hero insight and Monday morning actions
-    const heroInsight = extractHeroInsight(content, metrics);
-    const mondayActions = generateMondayActions(content, metrics, anomalies);
-    const segmentComparisonData = extractSegmentData(content);
+    const heroInsight = useMemo(() => extractHeroInsight(content, metrics), [content, metrics]);
+    const mondayActions = useMemo(() => generateMondayActions(content, metrics, anomalies), [content, metrics, anomalies]);
+    const segmentComparisonData = useMemo(() => extractSegmentData(content), [content]);
 
     // Extract key insights for intelligence rail
-    const keyTakeaways = content
-        .split('\n')
-        .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
-        .map(line => line.replace(/^[-*]\s*/, '').trim())
-        .filter(line => line.length > 20 && line.length < 150)
-        .slice(0, 5);
+    const keyTakeaways = useMemo(() =>
+        content
+            .split('\n')
+            .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
+            .map(line => line.replace(/^[-*]\s*/, '').trim())
+            .filter(line => line.length > 20 && line.length < 150)
+            .slice(0, 5),
+        [content]
+    );
 
     const handleCopy = async () => {
         const success = await copyToClipboard(content);
