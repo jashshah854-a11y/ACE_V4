@@ -257,3 +257,156 @@ export function extractProgressMetrics(markdown: string): {
         validRecords: metrics.validRecords
     };
 }
+
+// ─────────────────────────────────────────────────────────────────
+// Additional extractors for WideReportViewer
+// ─────────────────────────────────────────────────────────────────
+
+export interface ClusterMetrics {
+    optimalK: number;
+    silhouetteScore: number;
+    dataQuality: number;
+    clusters: { label: string; size: number }[];
+}
+
+export function extractClusterMetrics(markdown: string): ClusterMetrics | null {
+    if (!markdown) return null;
+
+    const kMatch = markdown.match(/optimal\s*clusters?\s*\(k\)[:\s|]*(\d+)/i);
+    const silMatch = markdown.match(/silhouette\s*score[:\s|]*(\d+(?:\.\d+)?)/i);
+    const qualityMatch = markdown.match(/data\s*quality[:\s|]*(\d+(?:\.\d+)?)/i);
+
+    if (!kMatch && !silMatch) return null;
+
+    const clusters: { label: string; size: number }[] = [];
+    const clusterPattern = /cluster[_\s]?(\d+).*?size[:\s]*\*?\*?(\d+)/gi;
+    let m: RegExpExecArray | null;
+    while ((m = clusterPattern.exec(markdown)) !== null) {
+        const letter = String.fromCharCode(65 + parseInt(m[1]));
+        clusters.push({ label: `Cluster ${letter}`, size: parseInt(m[2]) });
+    }
+
+    return {
+        optimalK: kMatch ? parseInt(kMatch[1]) : clusters.length || 0,
+        silhouetteScore: silMatch ? parseFloat(silMatch[1]) : 0,
+        dataQuality: qualityMatch ? parseFloat(qualityMatch[1]) : 1,
+        clusters,
+    };
+}
+
+export interface Persona {
+    name: string;
+    label: string;
+    size: number;
+    summary: string;
+    motivation: string;
+    strategy: string;
+    tactics: string[];
+}
+
+export function extractPersonas(markdown: string): Persona[] {
+    if (!markdown) return [];
+
+    const personas: Persona[] = [];
+    const personaBlocks = markdown.split(/###\s+/g).slice(1);
+
+    for (const block of personaBlocks) {
+        const titleMatch = block.match(/^(.+?)$/m);
+        if (!titleMatch) continue;
+
+        const title = sanitizeDisplayText(titleMatch[1].trim());
+
+        // Check if it looks like a persona block (must mention cluster or size)
+        if (!/cluster|size/i.test(block)) continue;
+
+        const sizeMatch = block.match(/\*?\*?size:?\*?\*?\s*(\d+)/i);
+        const summaryMatch = block.match(/\*?\*?summary:?\*?\*?\s*(.+?)(?:\n|$)/i);
+        const motivationMatch = block.match(/\*?\*?motivation:?\*?\*?\s*(.+?)(?:\n|$)/i);
+        const strategyMatch = block.match(/\*?\*?strategic\s*approach:?\*?\*?\s*(.+?)(?:\n|$)/i);
+
+        const tactics: string[] = [];
+        const tacticMatches = block.matchAll(/^-\s+(.+)$/gm);
+        for (const t of tacticMatches) {
+            tactics.push(t[1].trim());
+        }
+
+        personas.push({
+            name: title,
+            label: title,
+            size: sizeMatch ? parseInt(sizeMatch[1]) : 0,
+            summary: summaryMatch ? summaryMatch[1].trim() : '',
+            motivation: motivationMatch ? motivationMatch[1].trim() : '',
+            strategy: strategyMatch ? strategyMatch[1].trim() : '',
+            tactics,
+        });
+    }
+
+    return personas;
+}
+
+export interface OutcomeModel {
+    target: string;
+    r2: number;
+    rmse: number;
+    mae: number;
+    insight: string;
+    drivers: { field: string; importance: number }[];
+}
+
+export function extractOutcomeModel(markdown: string): OutcomeModel | null {
+    if (!markdown) return null;
+
+    const targetMatch = markdown.match(/\*?\*?target:?\*?\*?\s*`?([^`\n(]+)`?\s*\(R/i)
+        || markdown.match(/\*?\*?target:?\*?\*?\s*`?([^`\n]+)`?/i);
+    const r2Match = markdown.match(/R[²2][:\s]*(-?\d+(?:\.\d+)?)/i);
+    const rmseMatch = markdown.match(/RMSE[:\s]*(\d+(?:\.\d+)?)/i);
+    const maeMatch = markdown.match(/MAE[:\s]*(\d+(?:\.\d+)?)/i);
+    const insightMatch = markdown.match(/\*?\*?insight:?\*?\*?\s*(.+?)(?:\n|$)/i);
+
+    if (!r2Match) return null;
+
+    const drivers: { field: string; importance: number }[] = [];
+    const driverPattern = /[-•]\s*(\w+)[:\s]+importance\s*(\d+(?:\.\d+)?)/gi;
+    let d: RegExpExecArray | null;
+    while ((d = driverPattern.exec(markdown)) !== null) {
+        drivers.push({ field: d[1], importance: parseFloat(d[2]) });
+    }
+
+    return {
+        target: targetMatch ? targetMatch[1].trim() : 'Unknown',
+        r2: parseFloat(r2Match[1]),
+        rmse: rmseMatch ? parseFloat(rmseMatch[1]) : 0,
+        mae: maeMatch ? parseFloat(maeMatch[1]) : 0,
+        insight: insightMatch ? insightMatch[1].trim() : '',
+        drivers,
+    };
+}
+
+export interface AnomalyData {
+    count: number;
+    drivers: { field: string; score: number }[];
+}
+
+export function extractAnomalies(markdown: string): AnomalyData | null {
+    if (!markdown) return null;
+
+    const countMatch = markdown.match(/total\s*anomal(?:y|ies)\s*detected[:\s]*\*?\*?(\d+)\*?\*?/i)
+        || markdown.match(/\*?\*?(\d+)\*?\*?\s*anomal(?:y|ies)/i);
+
+    if (!countMatch) return null;
+
+    const drivers: { field: string; score: number }[] = [];
+    const driverPattern = /[-•]\s*(\w+)[:\s]+(-?\d+(?:\.\d+)?)/g;
+    const anomalySection = markdown.match(/anomaly detection[\s\S]*?(?=##|$)/i);
+    if (anomalySection) {
+        let m: RegExpExecArray | null;
+        while ((m = driverPattern.exec(anomalySection[0])) !== null) {
+            drivers.push({ field: m[1], score: parseFloat(m[2]) });
+        }
+    }
+
+    return {
+        count: parseInt(countMatch[1]),
+        drivers,
+    };
+}

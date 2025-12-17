@@ -11,6 +11,7 @@ import { IntelligenceRail } from "./IntelligenceRail";
 import { ReportCharts } from "./ReportCharts";
 import { ReportAccordion, SECTION_ICONS } from "./ReportAccordion";
 import { TableOfContents } from "./TableOfContents";
+import { AnomalyBanner } from "./AnomalyBanner";
 import { Button } from "@/components/ui/button";
 import { Copy, FileDown } from "lucide-react";
 import {
