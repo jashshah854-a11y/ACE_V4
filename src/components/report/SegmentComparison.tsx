@@ -55,10 +55,11 @@ export function SegmentComparison({ segments, totalCustomers, className }: Segme
 
                             return (
                                 <motion.div
-                                    key={index}
+                                    key={segment.name}
+                                    layout
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: 0.1 * index }}
+                                    transition={{ duration: 0.3 }}
                                     className="p-4 rounded-lg border-2 border-border hover:border-primary/50 transition-colors"
                                 >
                                     <div className="space-y-4">
