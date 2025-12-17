@@ -133,7 +133,11 @@ const Reports = () => {
               )}
 
               <div className="min-h-[400px]">
-                <WideReportViewer content={reportQuery.data} isLoading={reportQuery.isFetching} runId={activeRunId} />
+                <WideReportViewer
+                  content={reportQuery.data}
+                  isLoading={reportQuery.isFetching && !reportQuery.data}
+                  runId={activeRunId}
+                />
                 {!activeRunId && !reportQuery.data && !reportQuery.isFetching && (
                   <div className="h-full flex flex-col items-center justify-center p-12 text-muted-foreground">
                     <FileText className="h-12 w-12 mb-4 opacity-20" />
