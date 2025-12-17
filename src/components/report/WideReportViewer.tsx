@@ -29,6 +29,10 @@ import { ClusterGaugeSection } from "./ClusterGaugeSection";
 import { PersonaSection } from "./PersonaSection";
 import { OutcomeModelSection } from "./OutcomeModelSection";
 import { ReportSkeleton } from "./ReportSkeleton";
+import { ExecutiveBrief } from "./ExecutiveBrief";
+import { TechnicalDetailsSection } from "./TechnicalDetailsSection";
+import { ReportConclusion } from "./ReportConclusion";
+import { extractExecutiveBrief, extractConclusion } from "@/lib/narrativeExtractors";
 
 interface WideReportViewerProps {
     content?: string;
@@ -85,6 +89,10 @@ export function WideReportViewer({
     const personas = extractPersonas(content);
     const outcomeModel = extractOutcomeModel(content);
     const anomalies = extractAnomalies(content);
+
+    // Extract narrative components for consultant-style presentation
+    const executiveBrief = extractExecutiveBrief(content);
+    const conclusion = extractConclusion(content);
 
     // Extract key insights for intelligence rail
     const keyTakeaways = content
@@ -270,21 +278,49 @@ export function WideReportViewer({
                             />
                         </div>
 
-                        {/* Full-Width Hero Metrics */}
-                        {Object.keys(metrics).length > 0 && (
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: 0.2 }}
-                            >
-                                <MetricsCards metrics={metrics} />
-                            </motion.div>
-                        )}
+                        {/* Executive Brief - Consultant Summary */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                        >
+                            <ExecutiveBrief
+                                purpose={executiveBrief.purpose}
+                                keyFindings={executiveBrief.keyFindings}
+                                confidenceVerdict={executiveBrief.confidenceVerdict}
+                                recommendedAction={executiveBrief.recommendedAction}
+                            />
+                        </motion.div>
+
+                        {/* Technical Details - Collapsible */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.3 }}
+                        >
+                            <TechnicalDetailsSection
+                                metrics={metrics}
+                                runId={runId}
+                            />
+                        </motion.div>
                     </>
                 }
                 mainContent={
-                    <div id="report-content">
+                    <div id="report-content" className="space-y-8">
                         <ReportAccordion sections={accordionSections} />
+
+                        {/* Report Conclusion - Decision Boundaries */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.4 }}
+                        >
+                            <ReportConclusion
+                                shouldUseFor={conclusion.shouldUseFor}
+                                shouldNotUseFor={conclusion.shouldNotUseFor}
+                                nextStep={conclusion.nextStep}
+                            />
+                        </motion.div>
                     </div>
                 }
                 intelligenceRail={
