@@ -1,12 +1,16 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import shutil
 import os
 import sys
 import json
 import uuid
+import re
 from pathlib import Path
 
 # Add project root to path
@@ -18,6 +22,9 @@ if os.name == 'nt':
 
 from orchestrator import launch_pipeline_async
 from core.state_manager import StateManager
+from core.config import settings
+
+limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
     title="ACE V3 Intelligence API",
@@ -25,13 +32,16 @@ app = FastAPI(
     version="3.0.0"
 )
 
-# Add CORS middleware to allow frontend connections
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Secure CORS middleware configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with your Lovable domain
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.allowed_origins_list,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
 )
 
 
@@ -41,10 +51,62 @@ DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 
 
+ALLOWED_EXTENSIONS = {'.csv', '.json', '.xlsx', '.xls', '.parquet'}
+ALLOWED_MIME_TYPES = {
+    'text/csv',
+    'application/json',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel',
+    'application/octet-stream'
+}
+MAX_FILENAME_LENGTH = 255
+
+
+def _validate_run_id(run_id: str) -> None:
+    """Validate run_id format to prevent path traversal attacks."""
+    if not run_id:
+        raise HTTPException(status_code=400, detail="Run ID is required")
+
+    if not re.match(r'^[a-f0-9]{32}$', run_id):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid run ID format"
+        )
+
+
+def _validate_upload(file: UploadFile) -> None:
+    """Validate uploaded file for security and size constraints."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Filename is required")
+
+    if len(file.filename) > MAX_FILENAME_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Filename too long (max {MAX_FILENAME_LENGTH} characters)"
+        )
+
+    filename_lower = file.filename.lower()
+    if not any(filename_lower.endswith(ext) for ext in ALLOWED_EXTENSIONS):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
+        )
+
+    if file.content_type and file.content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid MIME type: {file.content_type}"
+        )
+
+
 def _safe_upload_path(original_name: str) -> Path:
     """Return a unique, sanitized destination for an uploaded file."""
     name = Path(original_name or "uploaded")
     suffix = "".join(name.suffixes) or ".csv"
+
+    if suffix.lower() not in ALLOWED_EXTENSIONS:
+        suffix = ".csv"
+
     safe_name = f"{uuid.uuid4().hex}{suffix}"
     return DATA_DIR / safe_name
 
@@ -105,8 +167,38 @@ async def root():
 
 @app.get("/health", tags=["System"])
 async def health_check():
-    """Health check endpoint for Railway"""
-    return {"status": "healthy", "service": "ACE V3 API"}
+    """Health check endpoint with dependency validation.
+
+    Returns:
+        status: healthy, degraded, or unhealthy
+        service: Service name
+        checks: Individual dependency status
+    """
+    checks = {}
+    overall_status = "healthy"
+
+    try:
+        test_file = DATA_DIR / ".health_check"
+        test_file.touch()
+        test_file.unlink()
+        checks["storage"] = "ok"
+    except Exception as e:
+        checks["storage"] = f"failed: {str(e)}"
+        overall_status = "degraded"
+
+    try:
+        runs_dir = DATA_DIR / "runs"
+        runs_dir.mkdir(exist_ok=True)
+        checks["runs_directory"] = "ok"
+    except Exception as e:
+        checks["runs_directory"] = f"failed: {str(e)}"
+        overall_status = "degraded"
+
+    return {
+        "status": overall_status,
+        "service": "ACE V3 API",
+        "checks": checks
+    }
 
 
 class RunResponse(BaseModel):
@@ -116,40 +208,69 @@ class RunResponse(BaseModel):
     status: str
 
 @app.post("/run", response_model=RunResponse, tags=["Execution"])
-async def trigger_run(file: UploadFile = File(...)):
+@limiter.limit("10/minute")
+async def trigger_run(request: Request, file: UploadFile = File(...)):
     """
-    Upload a CSV file and trigger a full ACE V3 run.
+    Upload a data file and trigger a full ACE V3 run.
     Returns the Run ID.
+
+    Accepts: CSV, JSON, XLSX, XLS, Parquet files (max 50MB)
+    Rate limit: 10 requests per minute
     """
+    _validate_upload(file)
+
     file_path = _safe_upload_path(file.filename)
+
     try:
+        bytes_written = 0
         with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-            
+            chunk_size = 1024 * 1024
+            while chunk := await file.read(chunk_size):
+                bytes_written += len(chunk)
+
+                if bytes_written > settings.max_upload_size_bytes:
+                    buffer.close()
+                    file_path.unlink(missing_ok=True)
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"File too large (max {settings.max_upload_size_mb}MB)"
+                    )
+
+                buffer.write(chunk)
+
         run_id, run_path = launch_pipeline_async(str(file_path))
         if not run_path:
+            file_path.unlink(missing_ok=True)
             raise HTTPException(status_code=500, detail="ACE could not start the run.")
-        
+
         return {
             "run_id": run_id,
             "run_path": run_path,
             "message": "ACE V3 run accepted. Poll status endpoint for updates.",
             "status": "accepted"
         }
+    except HTTPException:
+        raise
     except Exception as e:
+        file_path.unlink(missing_ok=True)
         raise HTTPException(status_code=500, detail=f"ACE Execution Failed: {str(e)}")
 
 @app.get("/runs/{run_id}/report", tags=["Artifacts"])
-async def get_report(run_id: str, format: str = "markdown"):
+@limiter.limit("30/minute")
+async def get_report(request: Request, run_id: str, format: str = "markdown"):
     """Get the final report in markdown or PDF format.
-    
+
     Args:
         run_id: The run identifier
         format: Output format - either 'markdown' or 'pdf' (default: markdown)
-    
+
     Returns:
         FileResponse with the report file
+
+    Rate limit: 30 requests per minute
     """
+    _validate_run_id(run_id)
+
     run_path = DATA_DIR / "runs" / run_id
     report_path = run_path / "final_report.md"
     
@@ -179,6 +300,11 @@ async def get_report(run_id: str, format: str = "markdown"):
 @app.get("/runs/{run_id}/artifacts/{artifact_name}", tags=["Artifacts"])
 async def get_artifact(run_id: str, artifact_name: str):
     """Get a specific JSON artifact (e.g., overseer_output, personas, strategies)."""
+    _validate_run_id(run_id)
+
+    if not re.match(r'^[a-zA-Z0-9_-]+$', artifact_name):
+        raise HTTPException(status_code=400, detail="Invalid artifact name")
+
     run_path = DATA_DIR / "runs" / run_id
     state = StateManager(str(run_path))
     
@@ -192,12 +318,14 @@ async def get_artifact(run_id: str, artifact_name: str):
 @app.get("/runs/{run_id}/insights", tags=["Artifacts"])
 async def get_key_insights(run_id: str):
     """Extract and return key insights from analysis.
-    
+
     Returns:
         warnings: List of issues requiring attention
         strengths: List of positive findings
         recommendations: List of suggested actions
     """
+    _validate_run_id(run_id)
+
     run_path = DATA_DIR / "runs" / run_id
     state = StateManager(str(run_path))
     
@@ -285,8 +413,14 @@ async def get_key_insights(run_id: str):
 
 
 @app.get("/runs/{run_id}/state", tags=["History"])
-async def get_run_state(run_id: str):
-    """Return orchestrator state for a run."""
+@limiter.limit("60/minute")
+async def get_run_state(request: Request, run_id: str):
+    """Return orchestrator state for a run.
+
+    Rate limit: 60 requests per minute (allows polling)
+    """
+    _validate_run_id(run_id)
+
     run_path = DATA_DIR / "runs" / run_id
     state_path = run_path / "orchestrator_state.json"
 
@@ -298,17 +432,53 @@ async def get_run_state(run_id: str):
     return state
 
 @app.get("/runs", tags=["History"])
-async def list_runs():
-    """List all available runs."""
+@limiter.limit("100/minute")
+async def list_runs(
+    request: Request,
+    limit: int = 50,
+    offset: int = 0
+):
+    """List available runs with pagination.
+
+    Args:
+        limit: Maximum number of runs to return (1-1000, default 50)
+        offset: Number of runs to skip (default 0)
+
+    Returns:
+        Dictionary with runs list, total count, limit, and offset
+
+    Rate limit: 100 requests per minute
+    """
+    if limit > 1000:
+        limit = 1000
+    if limit < 1:
+        limit = 1
+    if offset < 0:
+        offset = 0
+
     runs_dir = DATA_DIR / "runs"
     if not runs_dir.exists():
-        return []
-        
-    runs = []
-    for run_folder in runs_dir.iterdir():
-        if run_folder.is_dir():
-            runs.append(run_folder.name)
-    return sorted(runs, reverse=True)
+        return {
+            "runs": [],
+            "total": 0,
+            "limit": limit,
+            "offset": offset
+        }
+
+    all_runs = sorted(
+        [r.name for r in runs_dir.iterdir() if r.is_dir()],
+        reverse=True
+    )
+
+    paginated_runs = all_runs[offset:offset + limit]
+
+    return {
+        "runs": paginated_runs,
+        "total": len(all_runs),
+        "limit": limit,
+        "offset": offset,
+        "has_more": offset + limit < len(all_runs)
+    }
 
 
 if __name__ == "__main__":
