@@ -16,8 +16,10 @@ sys.path.append(str(Path(__file__).parent.parent))
 if os.name == 'nt':
     os.environ["LOKY_MAX_CPU_COUNT"] = str(os.cpu_count())
 
-from orchestrator import launch_pipeline_async
 from core.state_manager import StateManager
+from jobs.queue import enqueue, get_job
+from jobs.models import JobStatus
+from jobs.progress import ProgressTracker
 
 app = FastAPI(
     title="ACE V3 Intelligence API",
@@ -111,7 +113,6 @@ async def health_check():
 
 class RunResponse(BaseModel):
     run_id: str
-    run_path: str
     message: str
     status: str
 
@@ -126,18 +127,41 @@ async def trigger_run(file: UploadFile = File(...)):
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        run_id, run_path = launch_pipeline_async(str(file_path))
-        if not run_path:
-            raise HTTPException(status_code=500, detail="ACE could not start the run.")
-        
+        run_id = enqueue(str(file_path))
         return {
             "run_id": run_id,
-            "run_path": run_path,
-            "message": "ACE V3 run accepted. Poll status endpoint for updates.",
+            "message": "ACE V3 run accepted. A worker will process it shortly.",
             "status": "accepted"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"ACE Execution Failed: {str(e)}")
+
+@app.get("/runs/{run_id}/progress", tags=["Execution"])
+async def get_progress(run_id: str):
+    job = get_job(run_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    progress = {}
+    state = None
+    if job.run_path:
+        progress_tracker = ProgressTracker(job.run_path)
+        progress = progress_tracker.read() or {}
+        state_path = Path(job.run_path) / "orchestrator_state.json"
+        if state_path.exists():
+            with open(state_path, "r", encoding="utf-8") as f:
+                state = json.load(f)
+
+    return {
+        "job": {
+            "run_id": job.run_id,
+            "status": job.status,
+            "message": job.message,
+            "run_path": job.run_path,
+        },
+        "progress": progress,
+        "state": state,
+    }
 
 @app.get("/runs/{run_id}/report", tags=["Artifacts"])
 async def get_report(run_id: str, format: str = "markdown"):
