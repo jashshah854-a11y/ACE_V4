@@ -11,20 +11,38 @@ export function useDeepLinking(sections: { id: string; title: string }[]) {
 
     // Auto-scroll to section on page load if hash present
     useEffect(() => {
-        const hash = location.hash.slice(1); // Remove #
-        if (hash) {
-            setTimeout(() => {
+        const hash = location.hash.slice(1);
+        if (!hash) return;
+
+        const scrollToHash = () => {
+            try {
                 const element = document.getElementById(hash);
                 if (element) {
                     element.scrollIntoView({ behavior: "smooth", block: "start" });
 
-                    // Expand accordion if section is inside one
-                    const accordionTrigger = element.querySelector('[data-state="closed"]');
-                    if (accordionTrigger) {
-                        (accordionTrigger as HTMLElement).click();
+                    try {
+                        const accordionTrigger = element.querySelector('[data-state="closed"]');
+                        if (accordionTrigger && accordionTrigger instanceof HTMLElement) {
+                            accordionTrigger.click();
+                        }
+                    } catch (error) {
+                        console.warn('Failed to expand accordion:', error);
                     }
+
+                    return true;
                 }
-            }, 100);
+                return false;
+            } catch (error) {
+                console.error('Failed to scroll to section:', error);
+                return false;
+            }
+        };
+
+        if (document.readyState === 'complete') {
+            scrollToHash();
+        } else {
+            window.addEventListener('load', scrollToHash);
+            return () => window.removeEventListener('load', scrollToHash);
         }
     }, [location.hash]);
 

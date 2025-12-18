@@ -1,6 +1,5 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
 import rehypeHighlight from "rehype-highlight";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -139,7 +138,7 @@ export function EnhancedReportViewer({
             >
                 <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeRaw, rehypeHighlight]}
+                    rehypePlugins={[rehypeHighlight]}
                     components={{
                         table: ({ node, ...props }) => (
                             <div className="overflow-x-auto my-6 rounded-lg border">

@@ -1,6 +1,5 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
 import rehypeHighlight from "rehype-highlight";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -11,6 +10,7 @@ import { IntelligenceRail } from "./IntelligenceRail";
 import { ReportCharts } from "./ReportCharts";
 import { ReportAccordion, SECTION_ICONS } from "./ReportAccordion";
 import { TableOfContents } from "./TableOfContents";
+import { AnomalyBanner } from "./AnomalyBanner";
 import { Button } from "@/components/ui/button";
 import { Copy, FileDown } from "lucide-react";
 import {
@@ -23,7 +23,7 @@ import {
     extractOutcomeModel,
     extractAnomalies
 } from "@/lib/reportParser";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ClusterGaugeSection } from "./ClusterGaugeSection";
 import { PersonaSection } from "./PersonaSection";
@@ -33,6 +33,16 @@ import { ExecutiveBrief } from "./ExecutiveBrief";
 import { TechnicalDetailsSection } from "./TechnicalDetailsSection";
 import { ReportConclusion } from "./ReportConclusion";
 import { extractExecutiveBrief, extractConclusion } from "@/lib/narrativeExtractors";
+import { useEnhancedAnalytics } from "@/hooks/useEnhancedAnalytics";
+import { CorrelationHeatmap } from "./CorrelationHeatmap";
+import { DistributionCharts } from "./DistributionCharts";
+import { BusinessIntelligenceDashboard } from "./BusinessIntelligenceDashboard";
+import { HeroInsightPanel } from "./HeroInsightPanel";
+import { MondayMorningActions } from "./MondayMorningActions";
+import { SegmentComparison } from "./SegmentComparison";
+import { SegmentOverviewTable } from "./SegmentOverviewTable";
+import { MetricGrid, interpretSilhouetteScore, interpretR2Score, interpretDataQuality } from "./MetricInterpretation";
+import { extractHeroInsight, generateMondayActions, extractSegmentData } from "@/lib/insightExtractors";
 
 interface WideReportViewerProps {
     content?: string;
@@ -52,6 +62,8 @@ export function WideReportViewer({
     const [currentSection, setCurrentSection] = useState("");
     const { toast } = useToast();
 
+    const { data: enhancedAnalytics, loading: analyticsLoading } = useEnhancedAnalytics(runId);
+
     // Track reading progress
     useEffect(() => {
         const handleScroll = () => {
@@ -70,7 +82,7 @@ export function WideReportViewer({
         return <ReportSkeleton />;
     }
 
-    if (!content) {
+    if (!content || content.trim().length === 0) {
         return (
             <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
                 No report content available.
@@ -91,16 +103,24 @@ export function WideReportViewer({
     const anomalies = extractAnomalies(content);
 
     // Extract narrative components for consultant-style presentation
-    const executiveBrief = extractExecutiveBrief(content);
-    const conclusion = extractConclusion(content);
+    const executiveBrief = useMemo(() => extractExecutiveBrief(content), [content]);
+    const conclusion = useMemo(() => extractConclusion(content), [content]);
+
+    // NEW: Extract hero insight and Monday morning actions
+    const heroInsight = useMemo(() => extractHeroInsight(content, metrics), [content, metrics]);
+    const mondayActions = useMemo(() => generateMondayActions(content, metrics, anomalies), [content, metrics, anomalies]);
+    const segmentComparisonData = useMemo(() => extractSegmentData(content), [content]);
 
     // Extract key insights for intelligence rail
-    const keyTakeaways = content
-        .split('\n')
-        .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
-        .map(line => line.replace(/^[-*]\s*/, '').trim())
-        .filter(line => line.length > 20 && line.length < 150)
-        .slice(0, 5);
+    const keyTakeaways = useMemo(() =>
+        content
+            .split('\n')
+            .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
+            .map(line => line.replace(/^[-*]\s*/, '').trim())
+            .filter(line => line.length > 20 && line.length < 150)
+            .slice(0, 5),
+        [content]
+    );
 
     const handleCopy = async () => {
         const success = await copyToClipboard(content);
@@ -135,29 +155,6 @@ export function WideReportViewer({
 
     // Build accordion sections from content with intelligent routing
     const accordionSections = [
-        {
-            id: "summary",
-            title: "Executive Summary",
-            icon: SECTION_ICONS.summary,
-            defaultOpen: true,
-            content: (
-                <div className="space-y-4">
-                    {/* Executive Summary Band */}
-                    <div className="bg-gradient-to-r from-primary/10 to-accent/10 p-6 rounded-lg">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {keyTakeaways.slice(0, 3).map((takeaway, idx) => (
-                                <div key={idx} className="flex items-start gap-2">
-                                    <div className="h-2 w-2 rounded-full bg-primary mt-2 shrink-0" />
-                                    <p className="text-sm">{takeaway}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            ),
-        },
-
-        // Add anomaly banner if anomalies detected
         ...(anomalies && anomalies.count > 0 ? [{
             id: "anomalies-alert",
             title: `⚠️ ${anomalies.count} Anomalies Detected`,
@@ -173,12 +170,94 @@ export function WideReportViewer({
         }] : []),
 
         {
+            id: "segments",
+            title: "Customer Segments & Actions",
+            icon: SECTION_ICONS.summary,
+            defaultOpen: true,
+            content: (
+                <div className="space-y-8">
+                    {segmentComparisonData && segmentComparisonData.length > 0 && (
+                        <>
+                            <SegmentOverviewTable
+                                segments={segmentComparisonData}
+                                totalCustomers={metrics.recordsProcessed || 10000}
+                            />
+                            <SegmentComparison
+                                segments={segmentComparisonData}
+                                totalCustomers={metrics.recordsProcessed || 10000}
+                            />
+                        </>
+                    )}
+                </div>
+            ),
+        },
+
+        {
             id: "visualizations",
             title: "Data Visualizations",
             icon: SECTION_ICONS.quality,
             defaultOpen: true,
             content: (
                 <div className="space-y-8">
+                    {/* Key Metrics with Interpretations - Educational Layer */}
+                    <MetricGrid
+                        metrics={[
+                            {
+                                name: "Data Quality Score",
+                                value: `${metrics.dataQualityScore || 0}%`,
+                                interpretation: interpretDataQuality(metrics.dataQualityScore || 0),
+                                benchmark: "Target: 85%+ for reliable insights",
+                                confidenceLevel: (metrics.dataQualityScore || 0) >= 85 ? "high" : (metrics.dataQualityScore || 0) >= 70 ? "medium" : "low",
+                                helpText: "Measures completeness, consistency, and accuracy of your dataset"
+                            },
+                            ...(clusterMetrics?.silhouetteScore ? [{
+                                name: "Clustering Quality (Silhouette Score)",
+                                value: clusterMetrics.silhouetteScore.toFixed(2),
+                                interpretation: interpretSilhouetteScore(clusterMetrics.silhouetteScore),
+                                benchmark: "Good: 0.51-0.70, Excellent: 0.71+",
+                                confidenceLevel: clusterMetrics.silhouetteScore >= 0.51 ? "high" : "medium" as "high" | "medium",
+                                helpText: "Indicates how well-separated and distinct your customer segments are"
+                            }] : []),
+                            ...(outcomeModel?.r2Score !== undefined ? [{
+                                name: "Model Fit (R² Score)",
+                                value: outcomeModel.r2Score.toFixed(3),
+                                interpretation: interpretR2Score(outcomeModel.r2Score),
+                                benchmark: "Good: 0.50-0.89, Excellent: 0.90+",
+                                confidenceLevel: outcomeModel.r2Score >= 0.50 ? "high" : outcomeModel.r2Score >= 0 ? "medium" : "low" as "high" | "medium" | "low",
+                                helpText: "Shows how well the model explains variance in your target outcome"
+                            }] : [])
+                        ]}
+                    />
+
+                    {/* Business Intelligence Dashboard */}
+                    {enhancedAnalytics?.business_intelligence?.available && (
+                        <BusinessIntelligenceDashboard
+                            valueMetrics={enhancedAnalytics.business_intelligence.value_metrics}
+                            clvProxy={enhancedAnalytics.business_intelligence.clv_proxy}
+                            segmentValue={enhancedAnalytics.business_intelligence.segment_value}
+                            churnRisk={enhancedAnalytics.business_intelligence.churn_risk}
+                            insights={enhancedAnalytics.business_intelligence.insights}
+                        />
+                    )}
+
+                    {/* Correlation Analysis */}
+                    {enhancedAnalytics?.correlation_analysis?.available &&
+                     enhancedAnalytics.correlation_analysis.strong_correlations && (
+                        <CorrelationHeatmap
+                            correlations={enhancedAnalytics.correlation_analysis.strong_correlations}
+                            insights={enhancedAnalytics.correlation_analysis.insights}
+                        />
+                    )}
+
+                    {/* Distribution Analysis */}
+                    {enhancedAnalytics?.distribution_analysis?.available &&
+                     enhancedAnalytics.distribution_analysis.distributions && (
+                        <DistributionCharts
+                            distributions={enhancedAnalytics.distribution_analysis.distributions}
+                            insights={enhancedAnalytics.distribution_analysis.insights}
+                        />
+                    )}
+
                     {/* Cluster Gauges */}
                     {clusterMetrics && (
                         <div>
@@ -187,24 +266,8 @@ export function WideReportViewer({
                         </div>
                     )}
 
-                    {/* Personas */}
-                    {personas.length > 0 && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4">Customer Personas</h3>
-                            <PersonaSection personas={personas} />
-                        </div>
-                    )}
-
-                    {/* Outcome Model */}
-                    {outcomeModel && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4">Outcome Modeling</h3>
-                            <OutcomeModelSection data={outcomeModel} />
-                        </div>
-                    )}
-
                     {/* Fallback Charts */}
-                    {(!clusterMetrics && !personas.length && !outcomeModel) && (
+                    {(!clusterMetrics && !personas.length && !outcomeModel && !enhancedAnalytics) && (
                         <ReportCharts
                             qualityScore={metrics.dataQualityScore}
                             segmentData={segmentData}
@@ -214,6 +277,31 @@ export function WideReportViewer({
                 </div>
             ),
         },
+
+        ...(personas.length > 0 ? [{
+            id: "personas",
+            title: "Customer Personas",
+            icon: SECTION_ICONS.insights,
+            defaultOpen: false,
+            content: (
+                <div>
+                    <PersonaSection personas={personas} />
+                </div>
+            ),
+        }] : []),
+
+        ...(outcomeModel ? [{
+            id: "outcome-model",
+            title: "Outcome Modeling",
+            icon: SECTION_ICONS.anomalies,
+            defaultOpen: false,
+            content: (
+                <div>
+                    <OutcomeModelSection data={outcomeModel} />
+                </div>
+            ),
+        }] : []),
+
         {
             id: "full-report",
             title: "Detailed Analysis",
@@ -223,7 +311,7 @@ export function WideReportViewer({
                 <article className="prose prose-slate dark:prose-invert max-w-none">
                     <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
-                        rehypePlugins={[rehypeRaw, rehypeHighlight]}
+                        rehypePlugins={[rehypeHighlight]}
                         components={{
                             table: ({ node, ...props }) => (
                                 <div className="overflow-x-auto my-6 rounded-lg border">
@@ -250,8 +338,14 @@ export function WideReportViewer({
             <WideReportLayout
                 hero={
                     <>
+                        {/* Hero Insight Panel - The Dominant Visual Anchor */}
+                        <HeroInsightPanel {...heroInsight} />
+
+                        {/* Monday Morning Actions */}
+                        <MondayMorningActions actions={mondayActions} className="mt-8" />
+
                         {/* Export Toolbar */}
-                        <div className="flex gap-2 justify-end flex-wrap mb-6">
+                        <div className="flex gap-2 justify-end flex-wrap mt-8 mb-6">
                             <Button
                                 onClick={handleCopy}
                                 variant="outline"

@@ -9,81 +9,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WideReportViewer } from "@/components/report/WideReportViewer";
 import { PipelineStatus } from "@/components/report/PipelineStatus";
-import {
-  FileText,
-  Download,
-  Calendar,
-  BarChart3,
-  PieChart,
-  TrendingUp,
-  Plus,
-  Search
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { FileText, Plus, Search } from "lucide-react";
 import { getReport } from "@/lib/api-client";
+import { getRecentReports, saveRecentReport } from "@/lib/localStorage";
 
-interface Report {
-  id: string;
-  title: string;
-  description: string;
-  type: "quality" | "anomaly" | "trend" | "summary";
-  generatedAt: string;
-  period: string;
-  status: "ready" | "generating" | "scheduled";
-}
-
-const reports: Report[] = [
-  {
-    id: "1",
-    title: "Weekly Data Quality Report",
-    description: "Comprehensive analysis of data quality metrics across all sources",
-    type: "quality",
-    generatedAt: "Dec 4, 2025",
-    period: "Nov 27 - Dec 4",
-    status: "ready",
-  },
-  {
-    id: "2",
-    title: "Anomaly Detection Summary",
-    description: "Detailed breakdown of detected anomalies and resolution status",
-    type: "anomaly",
-    generatedAt: "Dec 3, 2025",
-    period: "November 2025",
-    status: "ready",
-  },
-  {
-    id: "3",
-    title: "Data Quality Trend Analysis",
-    description: "Historical trends and predictive insights for data quality",
-    type: "trend",
-    generatedAt: "Dec 1, 2025",
-    period: "Q4 2025",
-    status: "ready",
-  },
-  {
-    id: "4",
-    title: "Executive Summary Report",
-    description: "High-level overview for stakeholders and decision makers",
-    type: "summary",
-    generatedAt: "Scheduled",
-    period: "December 2025",
-    status: "scheduled",
-  },
-];
-
-const typeConfig: Record<Report["type"], { icon: typeof FileText; color: string; bg: string }> = {
-  quality: { icon: BarChart3, color: "text-primary", bg: "bg-primary/10" },
-  anomaly: { icon: PieChart, color: "text-warning", bg: "bg-warning/10" },
-  trend: { icon: TrendingUp, color: "text-accent", bg: "bg-accent/10" },
-  summary: { icon: FileText, color: "text-info", bg: "bg-info/10" },
-};
 
 const Reports = () => {
   const [searchParams] = useSearchParams();
   const runFromUrl = searchParams.get("run");
-  
-  const [runInput, setRunInput] = useState(runFromUrl || "");
-  const [activeRunId, setActiveRunId] = useState(runFromUrl || "");
+
+  // If user navigates to /reports without ?run=, fall back to most recent run.
+  const mostRecentRun = getRecentReports()[0]?.runId || "";
+  const initialRunId = runFromUrl || mostRecentRun;
+
+  const [runInput, setRunInput] = useState(initialRunId);
+  const [activeRunId, setActiveRunId] = useState(initialRunId);
 
   useEffect(() => {
     if (runFromUrl) {
@@ -91,6 +31,9 @@ const Reports = () => {
       setActiveRunId(runFromUrl);
     }
   }, [runFromUrl]);
+
+  const [lastKnownContent, setLastKnownContent] = useState<string | undefined>();
+  const [isPipelineRunning, setIsPipelineRunning] = useState(false);
 
   const reportQuery = useQuery<string | undefined>({
     queryKey: ["final-report", activeRunId],
@@ -108,9 +51,35 @@ const Reports = () => {
     },
   });
 
-  const isReportNotReady = reportQuery.isError && 
-    reportQuery.error instanceof Error && 
+  const isReportNotReady =
+    reportQuery.isError &&
+    reportQuery.error instanceof Error &&
     reportQuery.error.message.includes("404");
+
+  // Preserve content during background refetches
+  useEffect(() => {
+    if (reportQuery.data) {
+      setLastKnownContent(reportQuery.data);
+      setIsPipelineRunning(false);
+    }
+  }, [reportQuery.data]);
+
+  // Track pipeline state
+  useEffect(() => {
+    if (isReportNotReady) {
+      setIsPipelineRunning(true);
+    }
+  }, [isReportNotReady]);
+
+  // Clear content when changing run IDs
+  useEffect(() => {
+    setLastKnownContent(undefined);
+    setIsPipelineRunning(false);
+  }, [activeRunId]);
+
+  useEffect(() => {
+    if (activeRunId) saveRecentReport(activeRunId, `Report ${activeRunId.substring(0, 8)}`);
+  }, [activeRunId]);
 
   const handleLoadReport = () => {
     const sanitized = runInput.trim();
@@ -142,109 +111,69 @@ const Reports = () => {
             </Button>
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-[1fr,350px]">
-            {/* Main Content Area */}
-            <div className="space-y-8">
-              {/* Report Viewer Section */}
-              <div className="rounded-xl border bg-card p-6 shadow-sm">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
-                  <div>
-                    <h2 className="text-xl font-semibold flex items-center gap-2">
-                      <Search className="h-5 w-5 text-muted-foreground" />
-                      Report Viewer
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      Enter a valid Run ID to fetch and view the full markdown report from the ACE Engine.
-                    </p>
-                  </div>
-                  <div className="flex gap-2 w-full md:w-auto">
-                    <Input
-                      placeholder="Paste Run ID here..."
-                      value={runInput}
-                      onChange={(e) => setRunInput(e.target.value)}
-                      className="font-mono text-sm"
-                    />
-                    <Button onClick={handleLoadReport} disabled={!runInput.trim()}>
-                      Load
-                    </Button>
-                  </div>
+          <div className="space-y-8">
+            {/* Report Viewer Section */}
+            <div className="rounded-xl border bg-card p-6 shadow-sm">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold flex items-center gap-2">
+                    <Search className="h-5 w-5 text-muted-foreground" />
+                    Report Viewer
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Enter a valid Run ID to fetch and view the full markdown report from the ACE Engine.
+                  </p>
                 </div>
+                <div className="flex gap-2 w-full md:w-auto">
+                  <Input
+                    placeholder="Paste Run ID here..."
+                    value={runInput}
+                    onChange={(e) => setRunInput(e.target.value)}
+                    className="font-mono text-sm"
+                  />
+                  <Button onClick={handleLoadReport} disabled={!runInput.trim()}>
+                    Load
+                  </Button>
+                </div>
+              </div>
 
-                {activeRunId && (
-                  <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-2 rounded-md">
-                    <span>Viewing report for Run:</span>
-                    <code className="bg-background px-1 py-0.5 rounded border font-mono text-xs">{activeRunId}</code>
-                  </div>
-                )}
+              {activeRunId && (
+                <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-2 rounded-md">
+                  <span>Viewing report for Run:</span>
+                  <code className="bg-background px-1 py-0.5 rounded border font-mono text-xs">{activeRunId}</code>
+                </div>
+              )}
 
-                {reportQuery.isError && !isReportNotReady && (
-                  <div className="p-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 mb-4 text-sm">
-                    Error loading report: {reportQuery.error instanceof Error ? reportQuery.error.message : "Report not found or API error."}
-                  </div>
-                )}
+              {reportQuery.isError && !isReportNotReady && (
+                <div className="p-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 mb-4 text-sm">
+                  Error loading report: {reportQuery.error instanceof Error ? reportQuery.error.message : "Report not found or API error."}
+                </div>
+              )}
 
-                {isReportNotReady && (
+              <div className="min-h-[400px]">
+                {/* Show pipeline status ONLY when report is not ready AND we don't have content yet */}
+                {isPipelineRunning && !lastKnownContent && (
                   <div className="mb-4">
                     <PipelineStatus runId={activeRunId} onComplete={handlePipelineComplete} />
                   </div>
                 )}
 
-                <div className="min-h-[400px]">
+                {/* Show report viewer when we have content OR when initial loading */}
+                {(lastKnownContent || (!isPipelineRunning && reportQuery.isFetching)) && (
                   <WideReportViewer
-                    content={reportQuery.data}
-                    isLoading={reportQuery.isFetching}
+                    content={lastKnownContent}
+                    isLoading={!lastKnownContent && reportQuery.isFetching}
                     runId={activeRunId}
                   />
-                  {!activeRunId && !reportQuery.data && !reportQuery.isFetching && (
-                    <div className="h-full flex flex-col items-center justify-center p-12 text-muted-foreground">
-                      <FileText className="h-12 w-12 mb-4 opacity-20" />
-                      <p>Enter a Run ID above to view the wide premium report layout.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+                )}
 
-            {/* Sidebar / Recent Reports */}
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Recent Reports</h3>
-                <div className="space-y-4">
-                  {reports.map((report) => {
-                    const ReportIcon = typeConfig[report.type].icon;
-                    return (
-                      <div
-                        key={report.id}
-                        className="group rounded-lg border bg-card p-4 hover:shadow-md transition-all duration-200 cursor-pointer"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={cn("p-2 rounded-lg shrink-0", typeConfig[report.type].bg)}>
-                            <ReportIcon className={cn("h-4 w-4", typeConfig[report.type].color)} />
-                          </div>
-                          <div>
-                            <h4 className="font-medium text-sm line-clamp-1">{report.title}</h4>
-                            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{report.description}</p>
-                            <div className="flex items-center gap-2 mt-3 text-[10px] text-muted-foreground">
-                              <span className="bg-secondary px-1.5 py-0.5 rounded">{report.period}</span>
-                              <span>•</span>
-                              <span>{report.generatedAt}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl purple-gradient text-white">
-                <h3 className="font-semibold mb-2">Need Custom Insights?</h3>
-                <p className="text-sm opacity-90 mb-3">
-                  Configure the ACE Engine to generate specialized reports for your specific domain.
-                </p>
-                <Button size="sm" variant="secondary" className="w-full text-primary font-medium">
-                  Configure Agent
-                </Button>
+                {/* Empty state - only show when no run ID selected */}
+                {!activeRunId && !lastKnownContent && !reportQuery.isFetching && (
+                  <div className="h-full flex flex-col items-center justify-center p-12 text-muted-foreground">
+                    <FileText className="h-12 w-12 mb-4 opacity-20" />
+                    <p>Enter a Run ID above to view the wide premium report layout.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
