@@ -18,6 +18,9 @@ from core.pipeline_map import PIPELINE_SEQUENCE, PIPELINE_DESCRIPTIONS
 from core.run_utils import create_run_folder
 from core.state_manager import StateManager
 from agents.data_sanitizer import DataSanitizer
+from ace_v4.performance.config import PerformanceConfig
+from intake.stream_loader import prepare_run_data
+from jobs.progress import ProgressTracker
 
 POLL_TIME = 0.5  # seconds
 MAX_STEP_ATTEMPTS = 3
@@ -192,12 +195,14 @@ def run_agent(agent_name, run_path):
         )
         return False, "", f"Agent execution failed. Please check server logs."
 
-def orchestrate_new_run(data_path, run_config=None):
+def orchestrate_new_run(data_path, run_config=None, run_id=None):
     print("=== ACE V3 ORCHESTRATOR START ===")
     
     # 1. Create Run
-    run_id, run_path = create_run_folder()
+    run_id, run_path = create_run_folder(run_id=run_id)
     state_manager = StateManager(run_path)
+    progress = ProgressTracker(run_path)
+    config = PerformanceConfig()
     print(f"[RUN] Run ID: {run_id}")
     print(f"[RUN] Run Path: {run_path}")
     
@@ -208,19 +213,44 @@ def orchestrate_new_run(data_path, run_config=None):
         shutil.rmtree(run_path, ignore_errors=True)
         return None, None
 
-    print(f"Sanitizing dataset: {data_path}")
+    file_size_mb = os.path.getsize(data_path) / (1024 * 1024)
+    print(f"Preparing dataset ({file_size_mb:.2f} MB): {data_path}")
+
     try:
-        import pandas as pd
-        raw_df = pd.read_csv(data_path)
-        sanitizer = DataSanitizer()
-        clean_df, clean_report = sanitizer.sanitize(raw_df)
-        
-        cleaned_path = state_manager.get_file_path("cleaned_uploaded.csv")
-        clean_df.to_csv(cleaned_path, index=False)
-        state_manager.write("sanitizer_report", clean_report)
-        state_manager.write("active_dataset", {"path": cleaned_path})
-        print(f"Data sanitized. Clean file: {cleaned_path}")
-        
+        if file_size_mb >= config.large_file_size_mb:
+            cleaned_path, ingestion_meta = prepare_run_data(
+                data_path, run_path, progress=progress, config=config
+            )
+            state_manager.write("ingestion_meta", ingestion_meta)
+            state_manager.write(
+                "active_dataset",
+                {"path": cleaned_path, "source": data_path, "strategy": "stream"},
+            )
+            print(f"Streamed dataset to {cleaned_path}")
+        else:
+            import pandas as pd
+
+            raw_df = pd.read_csv(data_path)
+            sanitizer = DataSanitizer()
+            clean_df, clean_report = sanitizer.sanitize(raw_df)
+            
+            cleaned_path = state_manager.get_file_path("cleaned_uploaded.csv")
+            clean_df.to_csv(cleaned_path, index=False)
+            state_manager.write("sanitizer_report", clean_report)
+            state_manager.write(
+                "active_dataset",
+                {"path": cleaned_path, "source": data_path, "strategy": "sanitize"},
+            )
+            print(f"Data sanitized. Clean file: {cleaned_path}")
+            progress.update(
+                "ingestion",
+                {
+                    "status": "completed",
+                    "rows_processed": len(clean_df),
+                    "strategy": "sanitize",
+                },
+            )
+
     except Exception as e:
         print(f"Sanitization failed: {e}")
         shutil.rmtree(run_path, ignore_errors=True)
