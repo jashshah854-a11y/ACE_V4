@@ -12,6 +12,8 @@ sys.path.append(str(Path(__file__).parent.parent))
 from core.state_manager import StateManager
 from core.schema import SchemaMap
 from core.enhanced_analytics import run_enhanced_analytics
+from core.data_loader import smart_load_dataset
+from ace_v4.performance.config import PerformanceConfig
 
 class Expositor:
     def __init__(self, schema_map: SchemaMap, state: StateManager):
@@ -41,7 +43,8 @@ class Expositor:
             dataset_path = active_dataset.get("path")
 
             if dataset_path and Path(dataset_path).exists():
-                df = pd.read_csv(dataset_path)
+                config = PerformanceConfig()
+                df = smart_load_dataset(dataset_path, config=config)
 
                 # Get cluster labels if available
                 cluster_labels = None

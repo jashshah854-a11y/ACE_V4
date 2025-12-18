@@ -13,6 +13,8 @@ sys.path.append(str(Path(__file__).parent.parent))
 from utils.logging import log_launch, log_ok, log_warn
 from core.state_manager import StateManager
 from core.schema import SchemaMap, ensure_schema_map
+from core.data_loader import smart_load_dataset
+from ace_v4.performance.config import PerformanceConfig
 from anti_gravity.core.regression import compute_regression_insights
 
 
@@ -24,14 +26,15 @@ class RegressionAgent:
         self.state = state
 
     def _load_dataset(self) -> pd.DataFrame:
+        config = PerformanceConfig()
         dataset_info = self.state.read("active_dataset") or {}
         candidate = dataset_info.get("path")
         if candidate and Path(candidate).exists():
-            return pd.read_csv(candidate)
+            return smart_load_dataset(candidate, config=config)
 
         default_path = self.state.get_file_path("cleaned_uploaded.csv")
         if Path(default_path).exists():
-            return pd.read_csv(default_path)
+            return smart_load_dataset(default_path, config=config)
         raise FileNotFoundError("Active dataset not found for regression agent")
 
     def run(self):
