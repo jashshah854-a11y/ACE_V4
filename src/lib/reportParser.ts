@@ -205,8 +205,9 @@ export function extractSections(markdown: string): ReportSection[] {
 
     // Don't forget the last section
     if (currentSection) {
-        currentSection.endIndex = lines.length - 1;
-        sections.push(currentSection);
+        const sectionToPush: ReportSection = currentSection;
+        sectionToPush.endIndex = lines.length - 1;
+        sections.push(sectionToPush);
     }
 
     return sections;
@@ -247,8 +248,9 @@ export function extractChartData(markdown: string): {
 
 /**
  * Extract cluster metrics
+ * Note: named uniquely to avoid clashes with any global helpers.
  */
-export function extractClusterMetrics(content: string): ClusterMetric | null {
+export function parseClusterMetrics(content: string): ClusterMetric | null {
     const sections = extractSections(content);
     const section = sections.find(s =>
         s.title.toLowerCase().includes('behavioral') &&
