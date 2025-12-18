@@ -18,7 +18,7 @@ import {
     extractProgressMetrics,
     extractSections,
     extractChartData,
-    extractClusterMetrics,
+    parseClusterMetrics,
     extractPersonas,
     extractOutcomeModel,
     extractAnomalies
@@ -97,7 +97,7 @@ export function WideReportViewer({
     const { segmentData, compositionData } = extractChartData(content);
 
     // NEW: Extract structured data for visual components
-    const clusterMetrics = extractClusterMetrics(content);
+    const clusterMetrics = parseClusterMetrics(content);
     const personas = extractPersonas(content);
     const outcomeModel = extractOutcomeModel(content);
     const anomalies = extractAnomalies(content);
