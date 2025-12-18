@@ -1,16 +1,53 @@
 const API_BASE = import.meta.env.VITE_ACE_API_BASE_URL || "http://localhost:8001";
 
+export type StepStatus = "pending" | "running" | "completed" | "failed";
+export type RunStatus = "pending" | "running" | "completed" | "complete" | "failed" | "complete_with_errors";
+
+export interface PipelineStep {
+  name: string;
+  status: StepStatus;
+  started_at?: string;
+  completed_at?: string;
+  error?: string;
+  progress?: number;
+}
+
 export interface RunState {
   run_id: string;
-  status: "pending" | "running" | "completed" | "complete" | "failed" | "complete_with_errors";
+  status: RunStatus;
   current_step?: string;
   next_step?: string;
   progress?: number;
-  steps?: Record<string, any>;
+  steps?: Record<string, PipelineStep>;
   error?: string;
+  started_at?: string;
+  completed_at?: string;
 }
 
-export async function submitRun(file: File): Promise<{ run_id: string }> {
+export interface RunResponse {
+  run_id: string;
+  run_path: string;
+  message: string;
+  status: string;
+}
+
+export interface ApiError {
+  detail: string;
+}
+
+export interface InsightsResponse {
+  warnings: string[];
+  strengths: string[];
+  recommendations: string[];
+  metadata: {
+    quality_score: number;
+    anomaly_count: number;
+    model_r2: number | null;
+    cluster_count: number;
+  };
+}
+
+export async function submitRun(file: File): Promise<RunResponse> {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -20,7 +57,14 @@ export async function submitRun(file: File): Promise<{ run_id: string }> {
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to submit run: ${response.statusText}`);
+    let errorMessage = `Failed to submit run: ${response.statusText}`;
+    try {
+      const errorData: ApiError = await response.json();
+      errorMessage = errorData.detail || errorMessage;
+    } catch {
+      // Use default error message if JSON parsing fails
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json();
@@ -30,7 +74,14 @@ export async function getRunState(runId: string): Promise<RunState> {
   const response = await fetch(`${API_BASE}/runs/${runId}/state`);
 
   if (!response.ok) {
-    throw new Error(`Failed to get run state: ${response.statusText}`);
+    let errorMessage = `Failed to get run state: ${response.statusText}`;
+    try {
+      const errorData: ApiError = await response.json();
+      errorMessage = `${errorData.detail || errorMessage} (${response.status})`;
+    } catch {
+      // Use default error message if JSON parsing fails
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json();
@@ -40,16 +91,32 @@ export async function getReport(runId: string): Promise<string> {
   const response = await fetch(`${API_BASE}/runs/${runId}/report`);
 
   if (!response.ok) {
-    let details = "";
+    let errorMessage = `Failed to get report (${response.status})`;
     try {
-      const text = await response.text();
-      details = text ? ` ${text}` : "";
+      const errorData: ApiError = await response.json();
+      errorMessage = `${errorData.detail || errorMessage} (${response.status})`;
     } catch {
-      // ignore
+      // Use default error message if JSON parsing fails
     }
-
-    throw new Error(`Failed to get report (${response.status}):${details}`);
+    throw new Error(errorMessage);
   }
 
   return response.text();
+}
+
+export async function getInsights(runId: string): Promise<InsightsResponse> {
+  const response = await fetch(`${API_BASE}/runs/${runId}/insights`);
+
+  if (!response.ok) {
+    let errorMessage = `Failed to get insights: ${response.statusText}`;
+    try {
+      const errorData: ApiError = await response.json();
+      errorMessage = `${errorData.detail || errorMessage} (${response.status})`;
+    } catch {
+      // Use default error message if JSON parsing fails
+    }
+    throw new Error(errorMessage);
+  }
+
+  return response.json();
 }

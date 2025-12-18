@@ -26,34 +26,68 @@ export interface ConclusionData {
 export function extractExecutiveBrief(content: string): ExecutiveBriefData {
     const sections = extractSections(content);
 
+    // Skip metadata-only content (Run ID, Generated, etc.)
+    const cleanContent = content
+        .replace(/\*\*Run ID:\*\*[^\n]*/gi, '')
+        .replace(/\*\*Generated:\*\*[^\n]*/gi, '')
+        .replace(/\*\*Dataset Quality Score:\*\*[^\n]*/gi, '')
+        .replace(/\*\*Data Quality Score:\*\*[^\n]*/gi, '')
+        .replace(/\*\*Records Processed:\*\*[^\n]*/gi, '')
+        .replace(/\*\*Confidence Level:\*\*[^\n]*/gi, '')
+        .replace(/`[a-f0-9-]{8,}`/gi, '') // Remove run IDs in backticks
+        .trim();
+
     // Extract or generate purpose
     const summarySection = sections.find(s =>
         s.title.toLowerCase().includes("executive") ||
-        s.title.toLowerCase().includes("summary")
+        s.title.toLowerCase().includes("summary") ||
+        s.title.toLowerCase().includes("overview")
     );
 
     let purpose = "Analysis of customer behavior patterns and segments";
     if (summarySection) {
-        // Extract first sentence as purpose
-        const firstSentence = summarySection.content.split(/[.!?]/)[0]?.trim();
-        if (firstSentence && firstSentence.length > 20) {
-            purpose = sanitizeDisplayText(firstSentence);
+        // Clean the section content of metadata
+        const cleanSectionContent = summarySection.content
+            .replace(/\*\*Run ID:\*\*[^\n]*/gi, '')
+            .replace(/\*\*Generated:\*\*[^\n]*/gi, '')
+            .replace(/\*\*Dataset Quality Score:\*\*[^\n]*/gi, '')
+            .replace(/\*\*Data Quality Score:\*\*[^\n]*/gi, '')
+            .replace(/\*\*Records Processed:\*\*[^\n]*/gi, '')
+            .replace(/\*\*Confidence Level:\*\*[^\n]*/gi, '')
+            .replace(/`[a-f0-9-]{8,}`/gi, '')
+            .trim();
+        
+        // Extract first meaningful sentence as purpose (skip short fragments)
+        const sentences = cleanSectionContent.split(/[.!?]/);
+        const meaningfulSentence = sentences.find(s => {
+            const trimmed = s.trim();
+            return trimmed.length > 30 && 
+                   !trimmed.toLowerCase().includes('run id') &&
+                   !trimmed.toLowerCase().includes('generated') &&
+                   !trimmed.toLowerCase().includes('quality score');
+        });
+        
+        if (meaningfulSentence) {
+            purpose = sanitizeDisplayText(meaningfulSentence.trim());
         }
     }
 
     // Extract key findings
     const keyFindings: string[] = [];
 
-    // Look for bullet points or numbered lists in summary
+    // Look for bullet points or numbered lists in summary (skip metadata)
     if (summarySection) {
         const bulletMatches = summarySection.content.match(/^[-*]\s*(.+)$/gm);
         if (bulletMatches) {
-            bulletMatches.slice(0, 3).forEach(bullet => {
+            for (const bullet of bulletMatches) {
+                if (keyFindings.length >= 3) break;
                 const finding = bullet.replace(/^[-*]\s*/, '').trim();
-                if (finding.length > 20) {
+                // Skip metadata-like content
+                const isMetadata = /^(run id|generated|quality score|dataset|records|confidence)/i.test(finding);
+                if (finding.length > 20 && !isMetadata) {
                     keyFindings.push(sanitizeDisplayText(finding));
                 }
-            });
+            }
         }
     }
 
