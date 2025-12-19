@@ -35,3 +35,5 @@ def predict(req: PredictRequest):
     # Placeholder echo server; replace with real model inference
     return {"outputs": req.inputs}
 
+
+

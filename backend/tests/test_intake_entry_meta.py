@@ -22,3 +22,5 @@ def test_intake_entry_returns_fusion_meta(tmp_path):
     assert result["fusion_status"] in {"ok", None}
     assert Path(result["master_dataset_path"]).exists()
 
+
+

@@ -21,3 +21,5 @@ def test_registry_register_promote(tmp_path, monkeypatch):
     latest = latest_by_stage("production")
     assert latest and latest["model_id"] == mid
 
+
+
