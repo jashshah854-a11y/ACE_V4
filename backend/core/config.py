@@ -17,8 +17,10 @@ class Settings(BaseSettings):
 
     allowed_origins: str = "http://localhost:5173,http://localhost:3000"
 
-    max_upload_size_mb: int = 500
+<<<<<<< Updated upstream
+    max_upload_size_mb: int = 600
 
+    # Agent execution tuning
     base_agent_timeout: int = 600
     timeout_per_mb: int = 5
 

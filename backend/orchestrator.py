@@ -18,6 +18,7 @@ from core.pipeline_map import PIPELINE_SEQUENCE, PIPELINE_DESCRIPTIONS
 from core.run_utils import create_run_folder
 from core.state_manager import StateManager
 from core.data_guardrails import is_agent_allowed, append_limitation
+from core.insights import validate_insights
 from core.data_loader import calculate_file_timeout
 from agents.data_sanitizer import DataSanitizer
 from ace_v4.performance.config import PerformanceConfig
@@ -225,8 +226,7 @@ def run_agent(agent_name, run_path):
             capture_output=True,
             text=True,
             env=env,
-            timeout=agent_timeout  # Dynamic timeout based on file size
-            timeout=timeout
+            timeout=min(agent_timeout, timeout)  # use the tighter of the two
         )
 
         if result.returncode != 0:
@@ -372,6 +372,8 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
     if intake_meta.get("fusion_status"):
         state["artifacts"]["fusion_status"] = intake_meta.get("fusion_status")
         state["artifacts"]["fusion_growth_ratio"] = intake_meta.get("growth_ratio")
+        if intake_meta.get("fusion_report_path"):
+            state["artifacts"]["fusion_report"] = intake_meta.get("fusion_report_path")
 
     state["data_path"] = cleaned_path
     if run_config:
@@ -563,6 +565,26 @@ def main_loop(run_path):
                     save_state(state_path, state)
             except Exception as e:
                 print(f"[ORCHESTRATOR] Conflict detection failed: {e}")
+
+            # Provenance lint: ensure insight objects have evidence
+            insights_path = Path(run_path) / "artifacts" / "insights.json"
+            insights = []
+            if insights_path.exists():
+                try:
+                    import json
+                    with open(insights_path, "r", encoding="utf-8") as f:
+                        insights = json.load(f)
+                except Exception:
+                    insights = []
+
+            if insights:
+                prov = validate_insights(insights)
+                if not prov["ok"]:
+                    update_history(state, "Provenance lint failed: missing evidence keys", missing=prov["missing"])
+                    append_limitation(StateManager(run_path), "Insights missing evidence; narrative must not assert unsupported claims.", agent="expositor", severity="error")
+                    state["status"] = "complete_with_errors"
+                    save_state(state_path, state)
+            save_state(state_path, state)
         
         time.sleep(POLL_TIME)
 

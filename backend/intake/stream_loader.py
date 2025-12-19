@@ -7,7 +7,7 @@ import pandas as pd
 
 from ace_v4.performance.config import PerformanceConfig
 from ace_v4.performance.io import ChunkedCSVReader
-from intake.profiling import profile_dataframe, compute_drift_report, compute_sample_drift, save_json
+from intake.profiling import profile_dataframe, compute_drift_report, compute_sample_drift, compute_recency_drift, save_json
 from jobs.progress import ProgressTracker
 
 
@@ -94,6 +94,22 @@ def prepare_run_data(
     else:
         # Write baseline sample on first run
         sample_df.to_parquet(baseline_sample_path, index=False)
+
+    # Recency drift if time column present (compare last N rows to first N rows)
+    time_cols = [c for c in sample_df.columns if "date" in c.lower() or "time" in c.lower()]
+    if time_cols and len(sample_df) >= 40:
+        head_df = sample_df.head(20)
+        tail_df = sample_df.tail(20)
+        recency = compute_recency_drift(
+            tail_df,
+            head_df,
+            psi_warn=0.1,
+            psi_block=0.25,
+            cat_warn=0.1,
+        )
+        drift_report["recency_drift"] = recency
+        if recency.get("status") in {"warn", "block"}:
+            drift_report["status"] = recency["status"]
 
     drift_report_path = artifacts_dir / "drift_report.json"
     save_json(drift_report_path, drift_report)

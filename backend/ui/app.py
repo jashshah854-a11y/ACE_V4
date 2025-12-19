@@ -36,7 +36,13 @@ st.set_page_config(page_title="ACE V3 Analytics Engine", layout="wide", page_ico
 st.title("ACE V3 Universal Analytics Workbench")
 st.caption("Upload data, launch the multi-agent pipeline, and watch each step assemble a consultant-grade report.")
 
-REQUEST_TIMEOUT = 30
+# Increased to 300s (5 minutes) to support large file uploads and processing
+# Large files (100MB+) can take several minutes to upload and initialize
+REQUEST_TIMEOUT = 300
+
+# For very large file uploads (>100MB), use extended timeout
+EXTENDED_UPLOAD_TIMEOUT = 600  # 10 minutes
+
 RUN_COMPLETE_STATUSES = {"complete", "complete_with_errors", "failed"}
 ARTIFACT_ENDPOINTS = {
     "schema": "schema_map",
@@ -658,7 +664,8 @@ def trigger_remote_run(file_name: str, file_bytes: bytes, config: Optional[Dict]
             data["include_categoricals"] = str(bool(config.get("include_categoricals"))).lower()
         if "fast_mode" in config:
             data["fast_mode"] = str(bool(config.get("fast_mode"))).lower()
-    resp = requests.post(api_url("/run"), files=files, data=data or None, timeout=REQUEST_TIMEOUT)
+    # Use extended timeout for file uploads as they include both upload and initialization
+    resp = requests.post(api_url("/run"), files=files, data=data or None, timeout=EXTENDED_UPLOAD_TIMEOUT)
     resp.raise_for_status()
     return resp.json()
 
