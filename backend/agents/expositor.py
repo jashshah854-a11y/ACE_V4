@@ -31,6 +31,10 @@ class Expositor:
         regression = self.state.read("regression_insights") or {}
         personas_data = self.state.read("personas") or {}
         strategies_data = self.state.read("strategies") or {}
+        data_type = self.state.read("data_type") or {}
+        validation = self.state.read("validation_report") or {}
+        blocked_agents = set(validation.get("blocked_agents") or [])
+        validation_notes = validation.get("notes") or []
 
         personas = personas_data.get("personas", [])
         strategies = strategies_data.get("strategies", [])
@@ -79,6 +83,19 @@ class Expositor:
         lines.append(f"- **Dataset Quality Score:** {quality_score}")
         lines.append("")
 
+        # Data Type Identification
+        lines.append("## Data Type Identification")
+        lines.append(
+            f"- **Primary Type:** {data_type.get('primary_type', 'unknown')} "
+            f"(confidence: {data_type.get('confidence_label', 'unknown')})"
+        )
+        if data_type.get("secondary_types"):
+            lines.append(f"- **Secondary Signals:** {', '.join(data_type['secondary_types'])}")
+        if data_type.get("notes"):
+            for note in data_type["notes"]:
+                lines.append(f"- {note}")
+        lines.append("")
+
         # Fallback Warning
         if self._check_fallback(overseer, personas, strategies):
             lines.append("> [!WARNING]")
@@ -93,11 +110,25 @@ class Expositor:
         lines.append("")
 
         lines.append("## Executive Summary")
-        lines.append(self._summary(overseer, personas, sentry, regression))
+        lines.append(self._summary(overseer, personas, sentry, regression, validation, data_type))
+        lines.append("")
+
+        # Validation / guardrails
+        lines.append("## Validation & Guardrails")
+        lines.append(f"- **Mode:** {validation.get('mode', 'unknown')}")
+        lines.append(f"- **Confidence:** {validation.get('confidence_label', 'unknown')}")
+        lines.append(f"- **Rows:** {validation.get('row_count', 'n/a')} | **Columns:** {validation.get('column_count', 'n/a')}")
+        if blocked_agents:
+            lines.append(f"- **Blocked Agents:** {', '.join(sorted(blocked_agents))}")
+        for check_name, payload in (validation.get("checks") or {}).items():
+            status = "ok" if payload.get("ok") else "issue"
+            lines.append(f"- {check_name}: {status} ({payload.get('detail')})")
+        for note in validation_notes:
+            lines.append(f"- {note}")
         lines.append("")
 
         # Enhanced Analytics Sections
-        if enhanced_analytics:
+        if enhanced_analytics and "overseer" not in blocked_agents:
             # Data Quality & Overview
             if enhanced_analytics.get("quality_metrics", {}).get("available"):
                 lines.extend(self._quality_metrics_section(enhanced_analytics["quality_metrics"]))
@@ -109,24 +140,40 @@ class Expositor:
             if enhanced_analytics.get("distribution_analysis", {}).get("available"):
                 lines.extend(self._distribution_section(enhanced_analytics["distribution_analysis"]))
 
-        if overseer:
+        if "overseer" in blocked_agents:
+            lines.append("## Behavioral Clusters")
+            lines.append("Clustering skipped due to validation guard.")
+            lines.append("")
+        elif overseer:
             lines.extend(self._clusters_section(overseer))
 
-        if regression:
+        if "regression" in blocked_agents:
+            lines.append("## Outcome Modeling")
+            lines.append("Regression skipped due to validation guard.")
+            lines.append("")
+        elif regression:
             lines.extend(self._regression_section(regression))
 
         # Business Intelligence
-        if enhanced_analytics and enhanced_analytics.get("business_intelligence", {}).get("available"):
+        if enhanced_analytics and enhanced_analytics.get("business_intelligence", {}).get("available") and "fabricator" not in blocked_agents:
             lines.extend(self._business_intelligence_section(enhanced_analytics["business_intelligence"]))
 
         # Feature Importance
-        if enhanced_analytics and enhanced_analytics.get("feature_importance", {}).get("available"):
+        if enhanced_analytics and enhanced_analytics.get("feature_importance", {}).get("available") and "regression" not in blocked_agents:
             lines.extend(self._feature_importance_section(enhanced_analytics["feature_importance"]))
 
-        if personas:
+        if "personas" in blocked_agents or "fabricator" in blocked_agents:
+            lines.append("## Generated Personas & Strategies")
+            lines.append("Persona and strategy generation skipped due to validation guard.")
+            lines.append("")
+        elif personas:
             lines.extend(self._personas_section(personas, strategies))
 
-        if sentry:
+        if "sentry" in blocked_agents:
+            lines.append("## Anomalies")
+            lines.append("Anomaly detection skipped due to validation guard.")
+            lines.append("")
+        elif sentry:
             lines.extend(self._anomalies_section(sentry))
 
         report = "\n".join(lines)
@@ -150,32 +197,45 @@ class Expositor:
                 return True
         return False
 
-    def _summary(self, overseer, personas, sentry, regression):
-        cluster_info = ""
+    def _summary(self, overseer, personas, sentry, regression, validation=None, data_type=None):
+        parts = []
+
+        if validation:
+            mode = validation.get("mode", "limitations")
+            conf = validation.get("confidence_label", "exploratory")
+            parts.append(f"Validation mode: {mode} (confidence: {conf}).")
+
+            if validation.get("blocked_agents"):
+                parts.append(
+                    "Certain agents were skipped due to insufficient evidence: "
+                    + ", ".join(validation.get("blocked_agents"))
+                )
+
+        if data_type and data_type.get("primary_type"):
+            parts.append(f"Dataset type: {data_type.get('primary_type')} ({data_type.get('confidence_label', 'unknown')} confidence).")
+
         if overseer and "stats" in overseer:
             k = overseer["stats"].get("k", 0)
-            cluster_info = f"The engine identified {k} behavioral segments. "
-        
-        persona_info = ""
-        if personas:
-            persona_info = f"{len(personas)} personas were generated from these clusters. "
-        
-        anomaly_info = ""
-        if sentry and sentry.get("anomaly_count", 0) > 0:
-            anomaly_info = f"Sentry flagged {sentry['anomaly_count']} anomalous records for further review."
+            parts.append(f"The engine identified {k} behavioral segments.")
 
-        regression_info = ""
+        if personas:
+            parts.append(f"{len(personas)} personas were generated from these clusters.")
+
+        if sentry and sentry.get("anomaly_count", 0) > 0:
+            parts.append(f"Sentry flagged {sentry['anomaly_count']} anomalous records for review.")
+
         if regression and regression.get("status") == "ok":
             metrics = regression.get("metrics", {})
             r2 = metrics.get("r2")
             target = regression.get("target_column", "the outcome")
             if r2 is not None:
-                regression_info = f"Regression modeling captured `{target}` with R^2 {r2:.2f}. "
+                parts.append(f"Regression modeled `{target}` with R² {r2:.2f}.")
             else:
-                regression_info = f"Regression modeling produced insights for `{target}`. "
+                parts.append(f"Regression produced signal for `{target}`.")
 
-        summary = cluster_info + persona_info + anomaly_info + regression_info
-        return summary or "The engine completed with limited data but produced a basic structural view."
+        if not parts:
+            return "The engine completed with limited data and is reporting limitations only."
+        return " ".join(parts)
 
     def _clusters_section(self, overseer):
         lines = []
