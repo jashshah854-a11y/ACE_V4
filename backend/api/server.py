@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Form
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -12,6 +12,7 @@ import json
 import uuid
 import re
 from pathlib import Path
+from typing import Any, Dict, Optional
 
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
@@ -113,6 +114,53 @@ def _safe_upload_path(original_name: str) -> Path:
     return DATA_DIR / safe_name
 
 
+def _parse_bool(value: Any) -> Optional[bool]:
+    if value is None:
+        return None
+    val = str(value).strip().lower()
+    if val in {"1", "true", "yes", "on"}:
+        return True
+    if val in {"0", "false", "no", "off"}:
+        return False
+    return None
+
+
+def _build_run_config(
+    target_column: Optional[str] = None,
+    feature_whitelist: Optional[str] = None,
+    model_type: Optional[str] = None,
+    include_categoricals: Optional[str] = None,
+    fast_mode: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Collect optional modeling parameters without re-reading the upload body."""
+    config: Dict[str, Any] = {}
+
+    if target_column:
+        config["target_column"] = target_column
+
+    if feature_whitelist:
+        parsed_features = None
+        try:
+            parsed_features = json.loads(feature_whitelist)
+        except Exception:
+            parsed_features = [f.strip() for f in str(feature_whitelist).split(",") if f.strip()]
+        if isinstance(parsed_features, (list, tuple, set)):
+            config["feature_whitelist"] = list(parsed_features)
+
+    if model_type:
+        config["model_type"] = model_type
+
+    include_cats = _parse_bool(include_categoricals)
+    if include_cats is not None:
+        config["include_categoricals"] = include_cats
+
+    fast = _parse_bool(fast_mode)
+    if fast is not None:
+        config["fast_mode"] = fast
+
+    return config or None
+
+
 def convert_markdown_to_pdf(markdown_path: Path, pdf_path: Path):
     """Convert markdown file to PDF with styling."""
     try:
@@ -210,17 +258,31 @@ class RunResponse(BaseModel):
 
 @app.post("/run", response_model=RunResponse, tags=["Execution"])
 @limiter.limit("10/minute")
-async def trigger_run(request: Request, file: UploadFile = File(...)):
+async def trigger_run(
+    file: UploadFile = File(...),
+    target_column: Optional[str] = Form(None),
+    feature_whitelist: Optional[str] = Form(None),
+    model_type: Optional[str] = Form(None),
+    include_categoricals: Optional[str] = Form(None),
+    fast_mode: Optional[str] = Form(None),
+):
     """
-    Upload a data file and trigger a full ACE V3 run.
-    Returns the Run ID.
+    Upload a data file and enqueue a full ACE V3 run for background processing.
+    Returns the Run ID (job identifier).
 
-    Accepts: CSV, JSON, XLSX, XLS, Parquet files (max 50MB)
+    Accepts: CSV, JSON, XLSX, XLS, Parquet files (max configured size)
     Rate limit: 10 requests per minute
     """
     _validate_upload(file)
 
     file_path = _safe_upload_path(file.filename)
+    run_config = _build_run_config(
+        target_column=target_column,
+        feature_whitelist=feature_whitelist,
+        model_type=model_type,
+        include_categoricals=include_categoricals,
+        fast_mode=fast_mode,
+    )
 
     try:
         bytes_written = 0
@@ -239,15 +301,12 @@ async def trigger_run(request: Request, file: UploadFile = File(...)):
 
                 buffer.write(chunk)
 
-        run_id, run_path = launch_pipeline_async(str(file_path))
-        if not run_path:
-            file_path.unlink(missing_ok=True)
-            raise HTTPException(status_code=500, detail="ACE could not start the run.")
+        run_id = enqueue(str(file_path), run_config=run_config)
 
         return {
             "run_id": run_id,
-            "message": "ACE V3 run accepted. A worker will process it shortly.",
-            "status": "accepted"
+            "message": "ACE V3 run queued. A worker will process it shortly.",
+            "status": "queued"
         }
     except HTTPException:
         raise
@@ -257,6 +316,7 @@ async def trigger_run(request: Request, file: UploadFile = File(...)):
 
 @app.get("/runs/{run_id}/progress", tags=["Execution"])
 async def get_progress(run_id: str):
+    _validate_run_id(run_id)
     job = get_job(run_id)
     if not job:
         raise HTTPException(status_code=404, detail="Run not found")
@@ -274,9 +334,11 @@ async def get_progress(run_id: str):
     return {
         "job": {
             "run_id": job.run_id,
-            "status": job.status,
+            "status": job.status.value if isinstance(job.status, JobStatus) else job.status,
             "message": job.message,
             "run_path": job.run_path,
+            "created_at": getattr(job, "created_at", None),
+            "updated_at": getattr(job, "updated_at", None),
         },
         "progress": progress,
         "state": state,
