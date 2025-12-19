@@ -57,6 +57,8 @@ class IntakeSystem:
             "primary_table": fusion_result.get("primary_table"),
             "master_dataset_path": fusion_result.get("master_dataset_path"),
             "validation": fusion_result.get("validation"),
+            "fusion_status": fusion_result.get("fusion_status"),
+            "growth_ratio": fusion_result.get("growth_ratio"),
             "logs": [] # Todo: collect logs
         }
         

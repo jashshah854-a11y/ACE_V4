@@ -115,12 +115,37 @@ class IntakeFusion:
         # Find the primary key column (heuristic or from metadata if available)
         # For customer dimension, it's likely the first column or one with "id"
         pk = next((c for c in master_df.columns if "id" in c.lower()), master_df.columns[0])
+
+        # Row explosion guard
+        growth_ratio = (len(master_df) / max(1, original_rows)) if original_rows else 0
+        if growth_ratio > 15:
+            return {
+                "error": f"Fusion aborted due to row explosion (growth x{growth_ratio:.2f})",
+                "fusion_status": "blocked",
+                "growth_ratio": growth_ratio,
+            }
         
         val_report = self.validator.validate_fusion(
             pd.read_csv(primary_table["path"]) if primary_table["type"] != "transaction_fact" else master_df, 
             master_df,
             pk 
         )
+
+        # Key health checks
+        dup_rate = 0.0
+        null_rate = 0.0
+        if pk in master_df.columns:
+            null_rate = master_df[pk].isna().mean()
+            dup_rate = 1 - (master_df[pk].nunique(dropna=True) / max(1, len(master_df)))
+        val_report["key_health"] = {
+            "primary_key": pk,
+            "null_rate": round(null_rate, 4),
+            "dup_rate": round(dup_rate, 4),
+        }
+        if dup_rate > 0.2:
+            val_report.setdefault("warnings", []).append("High duplicate rate on primary key post-fusion.")
+        if null_rate > 0.05:
+            val_report.setdefault("warnings", []).append("Primary key has significant nulls post-fusion.")
         
         # Save Master
         master_path = self.run_path / "master_dataset.csv"
@@ -131,7 +156,9 @@ class IntakeFusion:
             "master_dataset_path": str(master_path),
             "rows": len(master_df),
             "columns": len(master_df.columns),
-            "validation": val_report
+            "validation": val_report,
+            "fusion_status": "ok",
+            "growth_ratio": growth_ratio,
         }
 
     def _select_primary(self, tables: List[Dict[str, Any]]) -> Dict[str, Any]:
