@@ -69,3 +69,5 @@ def latest_by_stage(stage: str = "production") -> Optional[Dict]:
         return None
     return models[-1]
 
+
+
