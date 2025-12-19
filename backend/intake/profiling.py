@@ -164,6 +164,26 @@ def compute_drift_report(
     return drift
 
 
+def compute_recency_drift(
+    recent_df: pd.DataFrame,
+    older_df: pd.DataFrame,
+    *,
+    psi_warn: float = 0.1,
+    psi_block: float = 0.25,
+    cat_warn: float = 0.1,
+) -> Dict:
+    """
+    Compare recent window to older window to detect recency drift.
+    """
+    return compute_sample_drift(
+        older_df,
+        recent_df,
+        psi_warn=psi_warn,
+        psi_block=psi_block,
+        cat_warn=cat_warn,
+    )
+
+
 def compute_sample_drift(
     baseline_df: pd.DataFrame,
     current_df: pd.DataFrame,
