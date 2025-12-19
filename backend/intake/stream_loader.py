@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 from typing import Dict, Optional, Tuple
@@ -6,6 +7,7 @@ import pandas as pd
 
 from ace_v4.performance.config import PerformanceConfig
 from ace_v4.performance.io import ChunkedCSVReader
+from intake.profiling import profile_dataframe, compute_drift_report, compute_sample_drift, save_json
 from jobs.progress import ProgressTracker
 
 
@@ -44,8 +46,76 @@ def prepare_run_data(
     sample_df = reader.sample_for_types(upload_path)
     dtypes = reader.infer_dtypes(sample_df)
 
-    sample_path = Path(run_path) / "artifacts" / "sample.parquet"
+    artifacts_dir = Path(run_path) / "artifacts"
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+
+    sample_path = artifacts_dir / "sample.parquet"
     sample_df.to_parquet(sample_path, index=False)
+
+    # Profile current sample
+    current_profile = profile_dataframe(sample_df)
+    schema_profile_path = artifacts_dir / "schema_profile.json"
+    save_json(schema_profile_path, current_profile)
+
+    # Baseline profile (first good run)
+    baseline_path = artifacts_dir / "baseline_profile.json"
+    if baseline_path.exists():
+        with open(baseline_path, "r", encoding="utf-8") as f:
+            baseline_profile = json.load(f)
+    else:
+        baseline_profile = current_profile
+        save_json(baseline_path, baseline_profile)
+
+    # Drift report (lightweight profile drift)
+    drift_report = compute_drift_report(
+        baseline_profile,
+        current_profile,
+        psi_warn=0.1,
+        psi_block=0.25,
+        cat_warn=0.1,
+    )
+    # Stronger sample drift if baseline sample exists
+    baseline_sample_path = artifacts_dir / "baseline_sample.parquet"
+    if baseline_sample_path.exists():
+        try:
+            baseline_sample_df = pd.read_parquet(baseline_sample_path)
+            sample_drift = compute_sample_drift(
+                baseline_sample_df,
+                sample_df,
+                psi_warn=0.1,
+                psi_block=0.25,
+                cat_warn=0.1,
+            )
+            drift_report["sample_drift"] = sample_drift
+            if sample_drift.get("status") in {"warn", "block"}:
+                drift_report["status"] = sample_drift["status"]
+        except Exception as e:
+            drift_report.setdefault("summary", []).append(f"Sample drift check failed: {e}")
+    else:
+        # Write baseline sample on first run
+        sample_df.to_parquet(baseline_sample_path, index=False)
+
+    drift_report_path = artifacts_dir / "drift_report.json"
+    save_json(drift_report_path, drift_report)
+
+    # Coercion/parse health on sample (object columns)
+    coercion = {}
+    object_cols = sample_df.select_dtypes(include=["object"]).columns
+    for col in object_cols:
+        series = sample_df[col].astype(str)
+        numeric_coerced = pd.to_numeric(series, errors="coerce")
+        num_rate = 1 - numeric_coerced.isna().mean()
+
+        dt_coerced = pd.to_datetime(series, errors="coerce", utc=False, format=None)
+        dt_rate = 1 - dt_coerced.isna().mean()
+
+        coercion[col] = {
+            "numeric_parse_rate": round(float(num_rate), 3),
+            "datetime_parse_rate": round(float(dt_rate), 3),
+        }
+
+    coercion_path = artifacts_dir / "coercion_report.json"
+    save_json(coercion_path, {"columns": coercion})
 
     cleaned_path = Path(run_path) / "cleaned_uploaded.csv"
     total_rows = 0
@@ -91,6 +161,15 @@ def prepare_run_data(
         "sample_path": str(sample_path),
         "dtypes": {k: str(v) for k, v in dtypes.items()},
         "rows": total_rows,
+        "schema_profile": str(schema_profile_path),
+        "drift_report": str(drift_report_path),
+        "drift_status": drift_report.get("status", "none"),
+        "coercion_report": str(coercion_path),
     }
     return str(cleaned_path), meta
+
+
+
+
+
 
