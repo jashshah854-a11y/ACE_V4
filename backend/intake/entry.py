@@ -59,6 +59,7 @@ class IntakeSystem:
             "validation": fusion_result.get("validation"),
             "fusion_status": fusion_result.get("fusion_status"),
             "growth_ratio": fusion_result.get("growth_ratio"),
+            "fusion_report_path": fusion_result.get("fusion_report_path"),
             "logs": [] # Todo: collect logs
         }
         

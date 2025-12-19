@@ -372,6 +372,8 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
     if intake_meta.get("fusion_status"):
         state["artifacts"]["fusion_status"] = intake_meta.get("fusion_status")
         state["artifacts"]["fusion_growth_ratio"] = intake_meta.get("growth_ratio")
+        if intake_meta.get("fusion_report_path"):
+            state["artifacts"]["fusion_report"] = intake_meta.get("fusion_report_path")
 
     state["data_path"] = cleaned_path
     if run_config:

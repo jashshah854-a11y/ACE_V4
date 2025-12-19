@@ -118,12 +118,17 @@ class IntakeFusion:
 
         # Row explosion guard
         growth_ratio = (len(master_df) / max(1, original_rows)) if original_rows else 0
+        fusion_report = {
+            "fusion_status": "ok",
+            "growth_ratio": growth_ratio,
+            "warnings": [],
+            "orphan_counts": {},
+            "many_to_many": False,
+        }
+
         if growth_ratio > 15:
-            return {
-                "error": f"Fusion aborted due to row explosion (growth x{growth_ratio:.2f})",
-                "fusion_status": "blocked",
-                "growth_ratio": growth_ratio,
-            }
+            fusion_report["fusion_status"] = "blocked"
+            fusion_report["warnings"].append(f"Row explosion detected x{growth_ratio:.2f}")
         
         val_report = self.validator.validate_fusion(
             pd.read_csv(primary_table["path"]) if primary_table["type"] != "transaction_fact" else master_df, 
@@ -146,10 +151,41 @@ class IntakeFusion:
             val_report.setdefault("warnings", []).append("High duplicate rate on primary key post-fusion.")
         if null_rate > 0.05:
             val_report.setdefault("warnings", []).append("Primary key has significant nulls post-fusion.")
+
+        # Orphan detection (simple): count rows where join keys from children are null
+        orphan_counts = {}
+        for rel in relationships:
+            child_name = rel["child"]
+            child_key = rel.get("child_key")
+            if child_key and child_key in master_df.columns:
+                orphan_counts[child_name] = int(master_df[child_key].isna().sum())
+        fusion_report["orphan_counts"] = orphan_counts
+
+        # Many-to-many heuristic: if grouped child key has high dup
+        if any(rel.get("child_key") and rel.get("parent_key") for rel in relationships):
+            dup_flags = []
+            for rel in relationships:
+                ck = rel.get("child_key")
+                pk_child = rel.get("parent_key")
+                if ck and pk_child and ck in master_df.columns:
+                    ratio = master_df[ck].nunique(dropna=True) / max(1, len(master_df))
+                    if ratio < 0.2:
+                        dup_flags.append(rel["child"])
+            if dup_flags:
+                fusion_report["many_to_many"] = True
+                fusion_report["warnings"].append(f"Potential many-to-many joins detected: {dup_flags}")
         
         # Save Master
         master_path = self.run_path / "master_dataset.csv"
         master_df.to_csv(master_path, index=False)
+
+        # Persist fusion report
+        fusion_report_path = self.run_path / "artifacts" / "fusion_report.json"
+        fusion_report_path.parent.mkdir(parents=True, exist_ok=True)
+        fusion_report["validation"] = val_report
+        with open(fusion_report_path, "w", encoding="utf-8") as f:
+            import json
+            json.dump(fusion_report, f, indent=2)
         
         return {
             "primary_table": primary_table["name"],
@@ -157,8 +193,9 @@ class IntakeFusion:
             "rows": len(master_df),
             "columns": len(master_df.columns),
             "validation": val_report,
-            "fusion_status": "ok",
+            "fusion_status": fusion_report["fusion_status"],
             "growth_ratio": growth_ratio,
+            "fusion_report_path": str(fusion_report_path),
         }
 
     def _select_primary(self, tables: List[Dict[str, Any]]) -> Dict[str, Any]:
