@@ -4,6 +4,11 @@ from scipy.stats import skew
 from pathlib import Path
 import json
 import warnings
+import sys
+
+sys.path.append(str(Path(__file__).parent.parent))
+from core.data_loader import smart_load_dataset
+from ace_v4.performance.config import PerformanceConfig
 
 def _is_probable_datetime(series: pd.Series, min_success_ratio: float = 0.8) -> bool:
     """Return True when most non-null values parse as datetimes without raising warnings."""
@@ -35,7 +40,8 @@ def scan_dataset(file_path: str, sample_size: int = 5, corr_threshold: float = 0
     """
     # Load dataset
     try:
-        df = pd.read_csv(file_path)
+        config = PerformanceConfig()
+        df = smart_load_dataset(file_path, config=config)
     except Exception as e:
         return {"error": f"Failed to load dataset: {str(e)}"}
 

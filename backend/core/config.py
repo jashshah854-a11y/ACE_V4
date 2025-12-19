@@ -17,7 +17,10 @@ class Settings(BaseSettings):
 
     allowed_origins: str = "http://localhost:5173,http://localhost:3000"
 
-    max_upload_size_mb: int = 50
+    max_upload_size_mb: int = 500
+
+    base_agent_timeout: int = 600
+    timeout_per_mb: int = 5
 
     @property
     def allowed_origins_list(self) -> List[str]:

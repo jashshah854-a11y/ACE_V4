@@ -1,4 +1,4 @@
-﻿# agents/sentry.py
+# agents/sentry.py
 import sys
 import os
 import numpy as np
@@ -17,8 +17,10 @@ sys.path.append(str(Path(__file__).parent.parent))
 from core.state_manager import StateManager
 from core.schema_utils import get_feature_columns
 from core.analytics import detect_universal_anomalies
+from core.data_loader import smart_load_dataset
 from agents.overseer import build_feature_matrix  # reuse your safe builder
 from core.schema import SchemaMap, ensure_schema_map
+from ace_v4.performance.config import PerformanceConfig
 
 class Sentry:
     def __init__(self, schema_map, state: StateManager):
@@ -67,16 +69,17 @@ class Sentry:
         overseer_out = self.state.read("overseer_output")
         if overseer_out and "rows" in overseer_out:
             return pd.DataFrame(overseer_out["rows"])
-        
+
+        config = PerformanceConfig()
         dataset_info = self.state.read("active_dataset") if self.state else None
         candidate = dataset_info.get("path") if isinstance(dataset_info, dict) else None
         if candidate and Path(candidate).exists():
-             return pd.read_csv(candidate)
+             return smart_load_dataset(candidate, config=config)
 
         data_path = self.state.get_file_path("cleaned_uploaded.csv")
         if Path(data_path).exists():
-             return pd.read_csv(data_path)
-             
+             return smart_load_dataset(data_path, config=config)
+
         return pd.DataFrame()
 
 
