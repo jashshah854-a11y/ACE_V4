@@ -18,6 +18,7 @@ from core.pipeline_map import PIPELINE_SEQUENCE, PIPELINE_DESCRIPTIONS
 from core.run_utils import create_run_folder
 from core.state_manager import StateManager
 from core.data_guardrails import is_agent_allowed, append_limitation
+from core.data_loader import calculate_file_timeout
 from agents.data_sanitizer import DataSanitizer
 from ace_v4.performance.config import PerformanceConfig
 from intake.stream_loader import prepare_run_data
@@ -193,14 +194,23 @@ def run_agent(agent_name, run_path):
     agent_script = os.path.join(script_dir, "agents", f"{script_name}.py")
     print(f"[DEBUG] Agent script path: {agent_script}")
     print(f"[DEBUG] Script exists: {os.path.exists(agent_script)}")
-    
+
+    # Calculate dynamic timeout based on data file size
+    state_manager = StateManager(run_path)
+    dataset_info = state_manager.read("active_dataset") or {}
+    data_path = dataset_info.get("path") or state_manager.get_file_path("cleaned_uploaded.csv")
+
+    config = PerformanceConfig()
+    timeout = calculate_file_timeout(data_path, config)
+    print(f"[DEBUG] Calculated timeout for {agent_name}: {timeout}s ({timeout/60:.1f} min)")
+
     # Ensure PYTHONPATH includes the backend directory so agents can import 'core'
     env = os.environ.copy()
     # script_dir is the backend directory (where orchestrator.py lives)
     # Add it to PYTHONPATH so agents can do: from core.xxx import yyy
     env["PYTHONPATH"] = script_dir + os.pathsep + env.get("PYTHONPATH", "")
     print(f"[DEBUG] PYTHONPATH: {env['PYTHONPATH']}")
-    
+
     # Fix for joblib warning on Windows
     if os.name == 'nt':
         env["LOKY_MAX_CPU_COUNT"] = str(os.cpu_count())
@@ -208,6 +218,7 @@ def run_agent(agent_name, run_path):
     # Calculate dynamic timeout based on data size
     agent_timeout = calculate_agent_timeout(run_path, agent_name)
     
+
     try:
         result = subprocess.run(
             [sys.executable, agent_script, run_path],
@@ -215,6 +226,7 @@ def run_agent(agent_name, run_path):
             text=True,
             env=env,
             timeout=agent_timeout  # Dynamic timeout based on file size
+            timeout=timeout
         )
 
         if result.returncode != 0:

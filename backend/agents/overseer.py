@@ -1,4 +1,4 @@
-﻿import pandas as pd
+import pandas as pd
 import json
 import numpy as np
 import sys
@@ -18,6 +18,8 @@ from core.analytics import run_universal_clustering, fallback_segmentation
 from core.schema import SchemaMap, ensure_schema_map
 from core.auto_features import auto_feature_groups
 from core.data_quality import compute_data_quality
+from core.data_loader import smart_load_dataset
+from ace_v4.performance.config import PerformanceConfig
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
 
@@ -97,7 +99,8 @@ class Overseer:
 
         try:
             print(f"[Overseer] Loading CSV from {data_path}")
-            df = pd.read_csv(data_path)
+            config = PerformanceConfig()
+            df = smart_load_dataset(data_path, config=config)
             print(f"[Overseer] Loaded {len(df)} rows, {len(df.columns)} columns")
         except Exception as e:
             raise ValueError(f"Could not load data from {data_path}: {e}")
@@ -152,7 +155,9 @@ class Overseer:
         log_warn(f"Overseer fallback triggered: {error}")
         # Create minimal fallback output
         try:
-            df = pd.read_csv(self.state.get_file_path("cleaned_uploaded.csv"))
+            data_path = self.state.get_file_path("cleaned_uploaded.csv")
+            config = PerformanceConfig()
+            df = smart_load_dataset(data_path, config=config, max_rows=10000)
             df["cluster"] = 0
             rows = df.to_dict(orient="records")
         except:
