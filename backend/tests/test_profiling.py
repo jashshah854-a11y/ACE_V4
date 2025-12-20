@@ -11,6 +11,7 @@ if str(ROOT) not in sys.path:
 
 from intake.profiling import (
     compute_drift_report,
+    compute_recency_drift,
     compute_sample_drift,
     profile_dataframe,
 )
@@ -54,4 +55,11 @@ def test_compute_sample_drift_block_numeric():
     drift = compute_sample_drift(base, curr, psi_warn=0.1, psi_block=0.25, cat_warn=0.1)
     assert drift["status"] in {"warn", "block"}
     assert "x" in drift["columns"]
+
+
+def test_compute_recency_drift_warn():
+    older = pd.DataFrame({"x": np.random.normal(0, 1, size=200)})
+    recent = pd.DataFrame({"x": np.random.normal(2, 1, size=200)})
+    drift = compute_recency_drift(recent, older, psi_warn=0.05, psi_block=0.5, cat_warn=0.1)
+    assert drift["status"] in {"warn", "block"}
 
