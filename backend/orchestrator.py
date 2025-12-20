@@ -19,6 +19,9 @@ from core.run_utils import create_run_folder
 from core.state_manager import StateManager
 from core.data_guardrails import is_agent_allowed, append_limitation
 from core.insights import validate_insights
+from core.identity_card import build_identity_card, save_identity_card
+from core.task_contract import build_task_contract, save_task_contract
+from core.confidence import compute_data_confidence
 from core.data_loader import calculate_file_timeout
 from agents.data_sanitizer import DataSanitizer
 from ace_v4.performance.config import PerformanceConfig
@@ -379,6 +382,51 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
     if run_config:
         state["run_config"] = run_config
         state_manager.write("run_config", run_config)
+
+    # Build identity card, task contract, and confidence
+    ingestion_meta = state_manager.read("ingestion_meta") or {}
+    schema_profile_path = ingestion_meta.get("schema_profile")
+    drift_report_path = ingestion_meta.get("drift_report")
+    data_type = state_manager.read("data_type_identification") or state_manager.read("data_type") or {}
+
+    schema_profile = {}
+    drift_report = {}
+    if schema_profile_path and Path(schema_profile_path).exists():
+        with open(schema_profile_path, "r", encoding="utf-8") as f:
+            schema_profile = json.load(f)
+    if drift_report_path and Path(drift_report_path).exists():
+        with open(drift_report_path, "r", encoding="utf-8") as f:
+            drift_report = json.load(f)
+
+    identity_card = build_identity_card(schema_profile, data_type, drift_report, source_path=data_path)
+    card_path = Path(run_path) / "artifacts" / "dataset_identity_card.json"
+    save_identity_card(card_path, identity_card)
+    state_manager.write("dataset_identity_card", identity_card)
+
+    validation_report = state_manager.read("data_validation_report") or {}
+    # If not yet validated, proceed later; otherwise build contract now
+    target_col = validation_report.get("target_column")
+    has_target = bool(target_col)
+    target_is_binary = False
+    if has_target and target_col and target_col in schema_profile.get("columns", {}):
+        # heuristic for binary
+        target_is_binary = validation_report.get("checks", {}).get("variance", {}).get("detail", "").startswith("usable")
+
+    task_contract = build_task_contract(
+        identity_card,
+        validation_report,
+        ingestion_meta.get("drift_status", "none"),
+        has_target=has_target,
+        target_is_binary=target_is_binary,
+    )
+    contract_path = Path(run_path) / "artifacts" / "task_contract.json"
+    save_task_contract(contract_path, task_contract)
+    state_manager.write("task_contract", task_contract)
+
+    confidence = compute_data_confidence(identity_card, validation_report, ingestion_meta.get("drift_status", "none"))
+    conf_path = Path(run_path) / "artifacts" / "confidence_report.json"
+    save_json(conf_path, confidence)
+    state_manager.write("confidence_report", confidence)
     save_state(state_path, state)
     return run_id, run_path
 
