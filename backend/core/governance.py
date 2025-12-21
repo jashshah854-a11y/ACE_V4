@@ -10,6 +10,22 @@ from core.state_manager import StateManager
 
 INSIGHT_AGENTS = {"overseer", "regression", "personas", "fabricator", "expositor"}
 
+CONFIDENCE_HARD_CUTOFF = 0.05
+
+
+def is_confidence_blocked(confidence: Dict) -> Tuple[bool, str]:
+    """
+    Determine whether confidence should hard-block insight/ranking generation.
+    Blocks when the numeric score is essentially zero or label is explicitly low.
+    """
+    score = confidence.get("data_confidence")
+    label = confidence.get("confidence_label")
+    if score is not None and score <= CONFIDENCE_HARD_CUTOFF:
+        return True, f"Data confidence {score:.2f} at/below cutoff"
+    if label == "low":
+        return True, "Low data confidence"
+    return False, ""
+
 # Mapping of agents to sections they need enabled in the task contract
 AGENT_SECTION_MAP: Dict[str, List[str]] = {
     "overseer": ["insights", "eda"],
@@ -97,8 +113,9 @@ def should_block_agent(agent: str, state_manager: StateManager) -> Tuple[bool, s
         reasons.append("Validation in limitation mode")
 
     conf_label = confidence.get("confidence_label")
-    if conf_label == "low":
-        reasons.append("Low data confidence")
+    confidence_blocked, conf_reason = is_confidence_blocked(confidence)
+    if confidence_blocked:
+        reasons.append(conf_reason)
 
     required_sections = set(AGENT_SECTION_MAP.get(agent, []))
     allowed_sections = set(contract.get("allowed_sections", []))
@@ -142,8 +159,13 @@ def render_governed_report(state_manager: StateManager, insights_path: Path) -> 
             insights = []
         limitations.append({"agent": "expositor", "message": "Insights section not allowed by task contract.", "severity": "warning"})
 
+    confidence_blocked, conf_reason = is_confidence_blocked(confidence)
+    if confidence_blocked:
+        insights = []
+        limitations.append({"agent": "governance", "message": f"Insights suppressed: {conf_reason}", "severity": "error"})
+
     report = {
-        "mode": "limitations" if validation.get("mode") == "limitations" or confidence.get("confidence_label") == "low" else "insight",
+        "mode": "limitations" if validation.get("mode") == "limitations" or confidence_blocked else "insight",
         "allowed_sections": list(allowed_sections),
         "data_type": data_type,
         "confidence": confidence,
