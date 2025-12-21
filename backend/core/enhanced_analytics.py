@@ -239,7 +239,7 @@ class EnhancedAnalytics:
         Returns:
             Business metrics and insights
         """
-        metrics = {}
+        metrics = {"evidence": {}}
 
         # Try to find value-related columns
         value_col = self._find_column_by_role(['revenue', 'value', 'amount', 'sales', 'total'])
@@ -247,6 +247,7 @@ class EnhancedAnalytics:
 
         if value_col:
             values = self.df[value_col].fillna(0)
+            metrics["evidence"]["value_column"] = value_col
 
             metrics['value_metrics'] = {
                 "total_value": float(values.sum()),
@@ -288,6 +289,7 @@ class EnhancedAnalytics:
 
             segment_values.sort(key=lambda x: x['total_value'], reverse=True)
             metrics['segment_value'] = segment_values
+            metrics["evidence"]["segment_value_column"] = value_col
 
         # Churn risk proxy (if we have activity/engagement metrics)
         activity_col = self._find_column_by_role(['activity', 'engagement', 'visits', 'sessions', 'transactions'])
@@ -302,10 +304,12 @@ class EnhancedAnalytics:
                 "at_risk_count": at_risk_count,
                 "at_risk_percentage": float(at_risk_count / len(self.df) * 100),
                 "avg_activity": float(activity.mean()),
-                "low_activity_threshold": float(low_activity_threshold)
+                "low_activity_threshold": float(low_activity_threshold),
+                "activity_column": activity_col
             }
+            metrics["evidence"]["churn_activity_column"] = activity_col
 
-        if not metrics:
+        if len([k for k in metrics.keys() if k != "evidence"]) == 0:
             return {"available": False, "reason": "Insufficient business-related columns"}
 
         metrics['available'] = True
