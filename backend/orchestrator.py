@@ -19,9 +19,7 @@ from core.run_utils import create_run_folder
 from core.state_manager import StateManager
 from core.data_guardrails import is_agent_allowed, append_limitation
 from core.insights import validate_insights
-from core.identity_card import build_identity_card, save_identity_card
-from core.task_contract import build_task_contract, save_task_contract
-from core.confidence import compute_data_confidence
+from core.governance import rebuild_governance_artifacts, should_block_agent, render_governed_report, INSIGHT_AGENTS
 from core.data_loader import calculate_file_timeout
 from agents.data_sanitizer import DataSanitizer
 from ace_v4.performance.config import PerformanceConfig
@@ -383,50 +381,8 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
         state["run_config"] = run_config
         state_manager.write("run_config", run_config)
 
-    # Build identity card, task contract, and confidence
-    ingestion_meta = state_manager.read("ingestion_meta") or {}
-    schema_profile_path = ingestion_meta.get("schema_profile")
-    drift_report_path = ingestion_meta.get("drift_report")
-    data_type = state_manager.read("data_type_identification") or state_manager.read("data_type") or {}
-
-    schema_profile = {}
-    drift_report = {}
-    if schema_profile_path and Path(schema_profile_path).exists():
-        with open(schema_profile_path, "r", encoding="utf-8") as f:
-            schema_profile = json.load(f)
-    if drift_report_path and Path(drift_report_path).exists():
-        with open(drift_report_path, "r", encoding="utf-8") as f:
-            drift_report = json.load(f)
-
-    identity_card = build_identity_card(schema_profile, data_type, drift_report, source_path=data_path)
-    card_path = Path(run_path) / "artifacts" / "dataset_identity_card.json"
-    save_identity_card(card_path, identity_card)
-    state_manager.write("dataset_identity_card", identity_card)
-
-    validation_report = state_manager.read("data_validation_report") or {}
-    # If not yet validated, proceed later; otherwise build contract now
-    target_col = validation_report.get("target_column")
-    has_target = bool(target_col)
-    target_is_binary = False
-    if has_target and target_col and target_col in schema_profile.get("columns", {}):
-        # heuristic for binary
-        target_is_binary = validation_report.get("checks", {}).get("variance", {}).get("detail", "").startswith("usable")
-
-    task_contract = build_task_contract(
-        identity_card,
-        validation_report,
-        ingestion_meta.get("drift_status", "none"),
-        has_target=has_target,
-        target_is_binary=target_is_binary,
-    )
-    contract_path = Path(run_path) / "artifacts" / "task_contract.json"
-    save_task_contract(contract_path, task_contract)
-    state_manager.write("task_contract", task_contract)
-
-    confidence = compute_data_confidence(identity_card, validation_report, ingestion_meta.get("drift_status", "none"))
-    conf_path = Path(run_path) / "artifacts" / "confidence_report.json"
-    save_json(conf_path, confidence)
-    state_manager.write("confidence_report", confidence)
+    # Build governance artifacts (identity card, task contract, confidence)
+    rebuild_governance_artifacts(state_manager)
     save_state(state_path, state)
     return run_id, run_path
 
@@ -503,6 +459,39 @@ def main_loop(run_path):
         mark_step_running(state, current)
         save_state(state_path, state)
 
+        # Ensure governance spine present before insight agents run
+        if current in INSIGHT_AGENTS:
+            if not state_manager.read("dataset_identity_card") or not state_manager.read("task_contract"):
+                rebuild_governance_artifacts(state_manager)
+            if not state_manager.read("dataset_identity_card"):
+                update_history(state, f"{current} blocked: missing identity card")
+                append_limitation(state_manager, "Identity card missing; cannot proceed.", agent=current, severity="error")
+                finalize_step(state, current, False, "", "Missing identity card")
+                state["status"] = "complete_with_errors"
+                state["next_step"] = "blocked"
+                save_state(state_path, state)
+                continue
+
+            blocked, reason = should_block_agent(current, state_manager)
+            if blocked:
+                step_state = state["steps"].setdefault(current, {"name": current})
+                step_state["status"] = "skipped"
+                step_state["message"] = reason
+                state["steps_completed"].append(current)
+                state["steps"][current] = step_state
+                append_limitation(state_manager, f"{current} blocked: {reason}", agent=current, severity="error")
+                update_history(state, f"{current} skipped due to governance: {reason}")
+                # mark pipeline as limited
+                state["status"] = "complete_with_errors"
+                idx = PIPELINE_SEQUENCE.index(current)
+                if idx + 1 < len(PIPELINE_SEQUENCE):
+                    state["current_step"] = PIPELINE_SEQUENCE[idx + 1]
+                    state["next_step"] = PIPELINE_SEQUENCE[idx + 1]
+                else:
+                    state["next_step"] = "complete"
+                save_state(state_path, state)
+                continue
+
         attempts = 0
         success = False
         stdout = ""
@@ -527,6 +516,13 @@ def main_loop(run_path):
                 time.sleep(RETRY_BACKOFF)
 
         finalize_step(state, current, success, stdout, stderr)
+
+        # Refresh governance artifacts after type identification or validation updates
+        if success and current in {"type_identifier", "validator"}:
+            try:
+                rebuild_governance_artifacts(StateManager(run_path))
+            except Exception as e:
+                update_history(state, f"Governance rebuild failed after {current}: {e}")
 
         # Guard: Check validation before allowing insight-generating agents
         if current in ["overseer", "regression", "personas", "fabricator"]:
@@ -632,6 +628,11 @@ def main_loop(run_path):
                     append_limitation(StateManager(run_path), "Insights missing evidence; narrative must not assert unsupported claims.", agent="expositor", severity="error")
                     state["status"] = "complete_with_errors"
                     save_state(state_path, state)
+            # Render governed report with enforced contract/evidence
+            try:
+                render_governed_report(StateManager(run_path), insights_path)
+            except Exception as e:
+                update_history(state, f"Governed report rendering failed: {e}")
             save_state(state_path, state)
         
         time.sleep(POLL_TIME)

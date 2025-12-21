@@ -32,9 +32,42 @@ class Expositor:
         personas_data = self.state.read("personas") or {}
         strategies_data = self.state.read("strategies") or {}
         data_type = self.state.read("data_type") or {}
-        validation = self.state.read("validation_report") or {}
+        validation = self.state.read("validation_report") or self.state.read("data_validation_report") or {}
+        task_contract = self.state.read("task_contract") or {}
+        confidence_report = self.state.read("confidence_report") or {}
+        governed_meta = self.state.read("governed_report_meta") or {}
+        limitations = self.state.read("limitations") or []
         blocked_agents = set(validation.get("blocked_agents") or [])
         validation_notes = validation.get("notes") or []
+
+        allowed_sections = set(task_contract.get("allowed_sections", []))
+        insights_allowed = "insights" in allowed_sections and validation.get("allow_insights", True)
+        confidence_score = confidence_report.get("data_confidence")
+        confidence_label = confidence_report.get("confidence_label", "unknown")
+        confidence_reasons = confidence_report.get("reasons", [])
+        # Treat missing confidence as a hard block; we cannot trust downstream insightfulness.
+        hard_confidence_block = (
+            not confidence_report
+            or (confidence_score is not None and confidence_score <= 0.20)
+            or confidence_label == "low"
+        )
+        validation_mode = validation.get("mode", "unknown")
+        should_emit_insights = insights_allowed and not hard_confidence_block and validation_mode != "limitations"
+        suppression_reasons = []
+        if hard_confidence_block:
+            suppression_reasons.append("Confidence at/below cutoff or missing.")
+        if validation_mode == "limitations":
+            suppression_reasons.append("Validation in limitation mode.")
+        if not insights_allowed:
+            suppression_reasons.append("Insights forbidden by validation or task contract.")
+        evidence_insights = []
+        insights_artifact_path = Path(self.state.run_path) / "artifacts" / "insights.json"
+        if insights_artifact_path.exists():
+            try:
+                with open(insights_artifact_path, "r", encoding="utf-8") as f:
+                    evidence_insights = json.load(f)
+            except Exception:
+                evidence_insights = []
 
         personas = personas_data.get("personas", [])
         strategies = strategies_data.get("strategies", [])
@@ -81,6 +114,32 @@ class Expositor:
         lines.append(f"- **Run ID:** `{run_id}`")
         lines.append(f"- **Generated:** {date_str}")
         lines.append(f"- **Dataset Quality Score:** {quality_score}")
+        lines.append(f"- **Data Confidence:** {confidence_score if confidence_score is not None else 'n/a'} ({confidence_label})")
+        lines.append("")
+
+        # Confidence & Governance
+        lines.append("## Confidence & Governance")
+        if hard_confidence_block:
+            lines.append("> [!WARNING]")
+            lines.append("> Confidence is essentially zero; all rankings, risk labels, personas, and strategies are suppressed.")
+        elif not insights_allowed:
+            lines.append("> [!WARNING]")
+            lines.append("> Insights are disabled by validation or task contract.")
+        else:
+            lines.append("- Insights allowed by contract and validation gate.")
+        if confidence_reasons:
+            lines.append("- Confidence reasons:")
+            for r in confidence_reasons:
+                lines.append(f"  - {r}")
+        if limitations:
+            lines.append("- Limitations already logged:")
+            for lim in limitations:
+                msg = lim.get('message') or lim
+                lines.append(f"  - {msg}")
+        if allowed_sections:
+            lines.append(f"- Allowed sections: {', '.join(sorted(allowed_sections))}")
+        if governed_meta:
+            lines.append(f"- Governed report mode: {governed_meta.get('mode', 'unknown')}")
         lines.append("")
 
         # Data Type Identification
@@ -116,7 +175,7 @@ class Expositor:
         # Validation / guardrails
         lines.append("## Validation & Guardrails")
         lines.append(f"- **Mode:** {validation.get('mode', 'unknown')}")
-        lines.append(f"- **Confidence:** {validation.get('confidence_label', 'unknown')}")
+        lines.append(f"- **Validation Confidence:** {validation.get('confidence_label', 'unknown')}")
         lines.append(f"- **Rows:** {validation.get('row_count', 'n/a')} | **Columns:** {validation.get('column_count', 'n/a')}")
         if blocked_agents:
             lines.append(f"- **Blocked Agents:** {', '.join(sorted(blocked_agents))}")
@@ -127,8 +186,43 @@ class Expositor:
             lines.append(f"- {note}")
         lines.append("")
 
+        if not should_emit_insights:
+            lines.append("## Limitations & Diagnostics")
+            if suppression_reasons:
+                for reason in suppression_reasons:
+                    lines.append(f"- {reason}")
+            if hard_confidence_block and confidence_reasons:
+                lines.append("- Confidence drivers:")
+                for r in confidence_reasons:
+                    lines.append(f"  - {r}")
+            if limitations:
+                lines.append("- Additional limitations:")
+                for lim in limitations:
+                    msg = lim.get("message") if isinstance(lim, dict) else str(lim)
+                    lines.append(f"  - {msg}")
+            lines.append("")
+
+        if evidence_insights and should_emit_insights:
+            lines.append("## Evidence-Backed Insights")
+            lines.append("")
+            lines.append("| Claim | Columns | Metric | Method | Evidence |")
+            lines.append("| :--- | :--- | :--- | :--- | :--- |")
+            for ins in evidence_insights:
+                claim = ins.get("claim", "n/a")
+                cols = ", ".join(ins.get("columns_used", []))
+                metric_name = ins.get("metric_name", "n/a")
+                metric_value = ins.get("metric_value", "n/a")
+                method = ins.get("method", "n/a")
+                evidence_ref = ins.get("evidence_ref", "n/a")
+                lines.append(f"| {claim} | {cols} | {metric_name}: {metric_value} | {method} | {evidence_ref} |")
+            lines.append("")
+        elif evidence_insights and not should_emit_insights:
+            lines.append("## Evidence-Backed Insights")
+            lines.append("Evidence is present but suppressed by confidence/contract/validation gates.")
+            lines.append("")
+
         # Enhanced Analytics Sections
-        if enhanced_analytics and "overseer" not in blocked_agents:
+        if should_emit_insights and enhanced_analytics and "overseer" not in blocked_agents:
             # Data Quality & Overview
             if enhanced_analytics.get("quality_metrics", {}).get("available"):
                 lines.extend(self._quality_metrics_section(enhanced_analytics["quality_metrics"]))
@@ -140,34 +234,62 @@ class Expositor:
             if enhanced_analytics.get("distribution_analysis", {}).get("available"):
                 lines.extend(self._distribution_section(enhanced_analytics["distribution_analysis"]))
 
-        if "overseer" in blocked_agents:
+        if not should_emit_insights:
+            lines.append("## Behavioral Clusters")
+            lines.append(f"Suppressed due to gating: {', '.join(suppression_reasons) or 'insight gating active.'}")
+            lines.append("")
+        elif "overseer" in blocked_agents:
             lines.append("## Behavioral Clusters")
             lines.append("Clustering skipped due to validation guard.")
             lines.append("")
         elif overseer:
             lines.extend(self._clusters_section(overseer))
 
-        if "regression" in blocked_agents:
+        if not should_emit_insights:
+            lines.append("## Outcome Modeling")
+            lines.append(f"Outcome modeling suppressed due to gating: {', '.join(suppression_reasons) or 'insight gating active.'}")
+            lines.append("")
+        elif "regression" in blocked_agents:
             lines.append("## Outcome Modeling")
             lines.append("Regression skipped due to validation guard.")
             lines.append("")
         elif regression:
             lines.extend(self._regression_section(regression))
+        else:
+            lines.append("## Outcome Modeling")
+            lines.append("No regression results were produced.")
+            lines.append("")
 
         # Business Intelligence
-        if enhanced_analytics and enhanced_analytics.get("business_intelligence", {}).get("available") and "fabricator" not in blocked_agents:
+        if should_emit_insights and enhanced_analytics and enhanced_analytics.get("business_intelligence", {}).get("available") and "fabricator" not in blocked_agents:
             lines.extend(self._business_intelligence_section(enhanced_analytics["business_intelligence"]))
 
         # Feature Importance
-        if enhanced_analytics and enhanced_analytics.get("feature_importance", {}).get("available") and "regression" not in blocked_agents:
+        if should_emit_insights and enhanced_analytics and enhanced_analytics.get("feature_importance", {}).get("available") and "regression" not in blocked_agents:
             lines.extend(self._feature_importance_section(enhanced_analytics["feature_importance"]))
 
-        if "personas" in blocked_agents or "fabricator" in blocked_agents:
+        if not should_emit_insights:
+            lines.append("## Generated Personas & Strategies")
+            lines.append(f"Personas and strategies suppressed due to gating: {', '.join(suppression_reasons) or 'insight gating active.'}")
+            lines.append("")
+        elif "personas" in blocked_agents or "fabricator" in blocked_agents:
             lines.append("## Generated Personas & Strategies")
             lines.append("Persona and strategy generation skipped due to validation guard.")
             lines.append("")
         elif personas:
             lines.extend(self._personas_section(personas, strategies))
+        else:
+            lines.append("## Generated Personas & Strategies")
+            lines.append("No personas/strategies produced. (Nothing generated by upstream agents.)")
+            lines.append("")
+
+        # Detailed Analysis (placeholder) clarity
+        lines.append("## Detailed Analysis")
+        if not should_emit_insights:
+            lines.append(f"Suppressed due to gating: {', '.join(suppression_reasons) or 'insight gating active.'}")
+        else:
+            lines.append("No additional detailed analysis produced.")
+        lines.append("")
 
         if "sentry" in blocked_agents:
             lines.append("## Anomalies")
@@ -241,6 +363,7 @@ class Expositor:
         lines = []
         lines.append("## Behavioral Clusters")
         stats = overseer.get("stats", {})
+        fingerprints = overseer.get("fingerprints") or {}
         
         # Compact Table
         lines.append("| Metric | Value |")
@@ -249,6 +372,14 @@ class Expositor:
         lines.append(f"| Silhouette Score | {stats.get('silhouette', 'N/A')} |")
         lines.append(f"| Data Quality | {stats.get('data_quality', 'N/A')} |")
         lines.append("")
+        if fingerprints:
+            lines.append("Evidence: cluster feature drivers (top features per cluster):")
+            for cid, drivers in list(fingerprints.items())[:5]:
+                lines.append(f"- Cluster {cid}: {', '.join(drivers) if isinstance(drivers, list) else drivers}")
+            lines.append("")
+        else:
+            lines.append("Evidence: cluster driver features not captured; rankings suppressed if confidence is low.")
+            lines.append("")
         return lines
 
     def _regression_section(self, regression):
@@ -441,6 +572,10 @@ class Expositor:
         lines.append("## Business Intelligence")
         lines.append("")
 
+        evidence = bi.get("evidence", {})
+        value_col = evidence.get("value_column")
+        activity_col = evidence.get("churn_activity_column")
+
         # Value Metrics
         value_metrics = bi.get("value_metrics")
         if value_metrics:
@@ -454,6 +589,8 @@ class Expositor:
             lines.append(f"| Top 10% Threshold | ${value_metrics.get('top_10_percent_value', 0):,.2f} |")
             lines.append(f"| Value Concentration (Gini) | {value_metrics.get('value_concentration', 0):.3f} |")
             lines.append("")
+            if value_col:
+                lines.append(f"- Evidence: computed from `{value_col}` (sum/mean/quantiles).")
 
         # CLV Proxy
         clv = bi.get("clv_proxy")
@@ -479,6 +616,9 @@ class Expositor:
                            f"{seg['value_contribution_pct']:.1f}% |")
 
             lines.append("")
+            if value_col:
+                lines.append(f"- Evidence: segment value derived from `{value_col}` grouped by clusters.")
+                lines.append("")
 
         # Churn Risk
         churn = bi.get("churn_risk")
@@ -486,6 +626,8 @@ class Expositor:
             lines.append("### Churn Risk Analysis")
             lines.append("")
             risk_pct = churn.get("at_risk_percentage", 0)
+            if activity_col:
+                lines.append(f"- Risk definition: low activity in `{activity_col}` (<= {churn.get('low_activity_threshold', 0):.2f}) treated as churn proxy.")
             if risk_pct > 25:
                 lines.append(f"> [!WARNING]")
                 lines.append(f"> **{churn.get('at_risk_count', 0):,} records ({risk_pct:.1f}%) show low activity**")
