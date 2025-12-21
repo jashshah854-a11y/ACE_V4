@@ -60,7 +60,15 @@ def iso_now():
 
 
 def initialize_state(run_id, state_path, data_path):
+    from core.pipeline_map import calculate_progress
+
     steps = {}
+    steps["ingestion"] = {
+        "name": "ingestion",
+        "description": "Data ingestion and sanitization",
+        "status": "pending"
+    }
+
     for step in PIPELINE_SEQUENCE:
         steps[step] = {
             "name": step,
@@ -73,8 +81,8 @@ def initialize_state(run_id, state_path, data_path):
         "status": "pending",
         "created_at": iso_now(),
         "updated_at": iso_now(),
-        "current_step": PIPELINE_SEQUENCE[0],
-        "next_step": PIPELINE_SEQUENCE[0],
+        "current_step": "ingestion",
+        "next_step": "ingestion",
         "steps_completed": [],
         "failed_steps": [],
         "steps": steps,
@@ -86,6 +94,9 @@ def initialize_state(run_id, state_path, data_path):
             }
         ]
     }
+
+    progress_info = calculate_progress("ingestion", [])
+    state.update(progress_info)
 
     save_state(state_path, state)
     return state
@@ -99,6 +110,8 @@ def update_history(state, message, **payload):
 
 
 def mark_step_running(state, step):
+    from core.pipeline_map import calculate_progress
+
     step_state = state["steps"].setdefault(step, {"name": step})
     if step_state.get("status") == "running":
         return
@@ -108,10 +121,16 @@ def mark_step_running(state, step):
     state["steps"][step] = step_state
     state["status"] = "running"
     state["current_step"] = step
+
+    progress_info = calculate_progress(step, state.get("steps_completed", []))
+    state.update(progress_info)
+
     update_history(state, f"{step} started")
 
 
 def finalize_step(state, step, success, stdout, stderr):
+    from core.pipeline_map import calculate_progress
+
     step_state = state["steps"].setdefault(step, {"name": step})
     step_state["status"] = "completed" if success else "failed"
     step_state["completed_at"] = iso_now()
@@ -130,6 +149,9 @@ def finalize_step(state, step, success, stdout, stderr):
     target_list = state["steps_completed"] if success else state["failed_steps"]
     if step not in target_list:
         target_list.append(step)
+
+    progress_info = calculate_progress(state.get("current_step", step), state.get("steps_completed", []))
+    state.update(progress_info)
 
     event = "completed" if success else "failed"
     update_history(state, f"{step} {event}", returncode=0 if success else 1)

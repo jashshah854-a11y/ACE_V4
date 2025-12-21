@@ -536,6 +536,20 @@ async def get_run_state(request: Request, run_id: str):
 
     with open(state_path, "r", encoding="utf-8") as f:
         state = json.load(f)
+
+    # Ensure progress fields exist for backward compatibility
+    if "progress" not in state:
+        sys.path.append(str(Path(__file__).parent.parent))
+        from core.pipeline_map import calculate_progress
+        progress_info = calculate_progress(
+            state.get("current_step", ""),
+            state.get("steps_completed", [])
+        )
+        state.update(progress_info)
+
+    # Ensure progress is clamped to 0-100
+    state["progress"] = max(0, min(100, state.get("progress", 0)))
+
     return state
 
 @app.get("/runs", tags=["History"])

@@ -23,19 +23,41 @@ interface PipelineStatusProps {
 const PIPELINE_STEPS = [
   { key: "ingestion", label: "Data Ingestion", icon: Database },
   { key: "scanner", label: "Schema Analysis", icon: Cpu },
+  { key: "validator", label: "Data Validation", icon: CheckCircle2 },
   { key: "clustering", label: "Behavioral Clustering", icon: Users },
+  { key: "regression", label: "Predictive Modeling", icon: Cpu },
   { key: "anomaly", label: "Anomaly Detection", icon: AlertTriangle },
   { key: "personas", label: "Persona Generation", icon: Sparkles },
   { key: "report", label: "Report Generation", icon: FileText },
 ];
 
-const getStepIndex = (currentStep?: string): number => {
-  if (!currentStep) return -1;
-  const stepLower = currentStep.toLowerCase();
-  const index = PIPELINE_STEPS.findIndex(
-    (s) => stepLower.includes(s.key) || s.key.includes(stepLower)
-  );
-  return index >= 0 ? index : 0;
+const getStepStatus = (stepKey: string, state: RunState): 'completed' | 'active' | 'pending' => {
+  const currentStage = state.current_stage?.toLowerCase() || '';
+  const completedSteps = state.steps_completed || [];
+
+  // Map frontend keys to backend step names
+  const stepMapping: Record<string, string[]> = {
+    'ingestion': ['ingestion', 'type_identifier'],
+    'scanner': ['scanner', 'interpreter'],
+    'validator': ['validator'],
+    'clustering': ['overseer'],
+    'regression': ['regression'],
+    'anomaly': ['sentry'],
+    'personas': ['personas'],
+    'report': ['fabricator', 'expositor'],
+  };
+
+  const backendSteps = stepMapping[stepKey] || [];
+
+  // Check if all backend steps for this stage are completed
+  const allCompleted = backendSteps.every(s => completedSteps.includes(s));
+  if (allCompleted) return 'completed';
+
+  // Check if any backend step for this stage is current
+  const isActive = backendSteps.some(s => currentStage.includes(s.toLowerCase()));
+  if (isActive) return 'active';
+
+  return 'pending';
 };
 
 const getStatusColor = (status?: string) => {
@@ -84,8 +106,8 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
 
   if (!state) return null;
 
-  const currentStepIndex = getStepIndex(state.current_step);
-  const progress = state.progress ?? (currentStepIndex >= 0 ? ((currentStepIndex + 1) / PIPELINE_STEPS.length) * 100 : 0);
+  // Use backend-provided progress, fallback to 0 if not available
+  const progress = typeof state.progress === 'number' ? Math.max(0, Math.min(100, state.progress)) : 0;
 
   return (
     <motion.div
@@ -138,10 +160,11 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
 
       {/* Pipeline Steps */}
       <div className="space-y-2">
-        {PIPELINE_STEPS.map((step, index) => {
-          const isActive = index === currentStepIndex;
-          const isCompleted = index < currentStepIndex || isComplete;
-          const isPending = index > currentStepIndex && !isComplete;
+        {PIPELINE_STEPS.map((step) => {
+          const status = getStepStatus(step.key, state);
+          const isActive = status === 'active';
+          const isCompleted = status === 'completed' || isComplete;
+          const isPending = status === 'pending' && !isComplete && !isFailed;
           const Icon = step.icon;
 
           return (
