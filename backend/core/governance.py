@@ -10,14 +10,17 @@ from core.state_manager import StateManager
 
 INSIGHT_AGENTS = {"overseer", "regression", "personas", "fabricator", "expositor"}
 
-CONFIDENCE_HARD_CUTOFF = 0.05
+# Confidence score below this should suppress insight-bearing sections.
+CONFIDENCE_HARD_CUTOFF = 0.2
 
 
 def is_confidence_blocked(confidence: Dict) -> Tuple[bool, str]:
     """
     Determine whether confidence should hard-block insight/ranking generation.
-    Blocks when the numeric score is essentially zero or label is explicitly low.
+    Blocks when the numeric score is low/zero, label is low, or confidence is absent.
     """
+    if not confidence:
+        return True, "Confidence report missing"
     score = confidence.get("data_confidence")
     label = confidence.get("confidence_label")
     if score is not None and score <= CONFIDENCE_HARD_CUTOFF:
