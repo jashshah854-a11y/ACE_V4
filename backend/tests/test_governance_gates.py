@@ -86,3 +86,4 @@ def test_render_governed_report_drops_insights_when_not_allowed(tmp_path):
     assert report["insights"] == []
     assert any("insights section not allowed" in (lim.get("message", "").lower()) for lim in report["limitations"])
 
+
