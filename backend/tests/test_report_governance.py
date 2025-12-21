@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from core.governance import render_governed_report
 from core.state_manager import StateManager
 from agents.expositor import Expositor
+from core.governance import is_confidence_blocked
 
 
 def test_governed_report_blocks_zero_confidence(tmp_path):
@@ -70,4 +71,30 @@ def test_business_intel_section_surfaces_evidence_and_risk(tmp_path):
     rendered = "\n".join(lines)
     assert "amount" in rendered
     assert "Risk definition" in rendered
+
+
+def test_expositor_suppresses_on_zero_confidence(tmp_path, monkeypatch):
+    run_dir = tmp_path
+    sm = StateManager(run_dir)
+    sm.write("task_contract", {"allowed_sections": ["insights"]})
+    sm.write("confidence_report", {"data_confidence": 0.0, "confidence_label": "low", "reasons": ["mock reason"]})
+    sm.write("validation_report", {"mode": "limitations", "allow_insights": False, "blocked_agents": []})
+    sm.write("overseer_output", {"stats": {"k": 3, "silhouette": 0.5, "data_quality": 0.7}, "fingerprints": {"0": ["f1", "f2"]}})
+    sm.write("active_dataset", {"path": str(run_dir / "missing.csv")})
+
+    schema_stub = SimpleNamespace(domain_guess=None)
+    ex = Expositor(schema_map=schema_stub, state=sm)
+    ex.run()
+
+    final_report_path = run_dir / "final_report.md"
+    report_text = final_report_path.read_text()
+    assert "Suppressed due to gating" in report_text
+    assert "Value Analysis" not in report_text
+    assert "Retention" not in report_text
+
+
+def test_confidence_blocking_missing_report():
+    blocked, reason = is_confidence_blocked({})
+    assert blocked
+    assert "missing" in reason.lower()
 
