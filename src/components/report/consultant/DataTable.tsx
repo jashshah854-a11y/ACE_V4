@@ -68,15 +68,18 @@ export function DataTable<T extends Record<string, unknown>>({
   }, [data, sortConfig]);
 
   const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
+    const statusLower = status?.toLowerCase();
+    switch (statusLower) {
+      case "exceeding":
+        return "bg-teal-50 text-teal-600 border border-teal-200";
       case "on track":
-        return "bg-success/10 text-success";
+        return "bg-navy-50 text-navy-800 border border-navy-100";
       case "at risk":
-        return "bg-warning/10 text-warning";
+        return "bg-copper-50 text-copper-600 border border-copper-100";
       case "off track":
-        return "bg-destructive/10 text-destructive";
+        return "bg-destructive/10 text-destructive border border-destructive/20";
       default:
-        return "bg-muted text-muted-foreground";
+        return "bg-muted text-muted-foreground border border-border";
     }
   };
 
