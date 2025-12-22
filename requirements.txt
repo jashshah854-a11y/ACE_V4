@@ -13,3 +13,6 @@ requests
 joblib
 openai
 python-dotenv
+duckdb
+polars
+pyarrow

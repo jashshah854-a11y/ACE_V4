@@ -277,92 +277,51 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
     print(f"[RUN] Run ID: {run_id}")
     print(f"[RUN] Run Path: {run_path}")
     
-    # 2. Sanitize Data (Step 0 - Pre-pipeline)
-    # We do this here to ensure the run folder has the clean data before the pipeline starts
+    # 2. Ingest Data (fast vs full). Respect fast_mode in run_config; default to fast for large files.
     if not os.path.exists(data_path):
         print(f"[ERROR] Data file not found: {data_path}")
         shutil.rmtree(run_path, ignore_errors=True)
         return None, None
 
     file_size_mb = os.path.getsize(data_path) / (1024 * 1024)
-    print(f"Preparing dataset ({file_size_mb:.2f} MB): {data_path}")
+    fast_override = None
+    if run_config and "fast_mode" in run_config:
+        fast_override = bool(run_config.get("fast_mode"))
+    fast_mode = fast_override if fast_override is not None else file_size_mb >= 25
+    print(f"Preparing dataset ({file_size_mb:.2f} MB): {data_path} | fast_mode={fast_mode}")
 
     try:
-        if file_size_mb >= config.large_file_size_mb:
-            cleaned_path, ingestion_meta = prepare_run_data(
-                data_path, run_path, progress=progress, config=config
-            )
-            state_manager.write("ingestion_meta", ingestion_meta)
-            state_manager.write(
-                "active_dataset",
-                {"path": cleaned_path, "source": data_path, "strategy": "stream"},
-            )
-            print(f"Streamed dataset to {cleaned_path}")
-        else:
-            import pandas as pd
+        manifest_path, ingestion_meta = prepare_run_data(
+            data_path, run_path, progress=progress, config=config, fast_mode=fast_mode
+        )
+        state_manager.write("ingestion_meta", ingestion_meta)
 
-            raw_df = pd.read_csv(data_path)
-            sanitizer = DataSanitizer()
-            clean_df, clean_report = sanitizer.sanitize(raw_df)
-            
-            cleaned_path = state_manager.get_file_path("cleaned_uploaded.csv")
-            clean_df.to_csv(cleaned_path, index=False)
-            state_manager.write("sanitizer_report", clean_report)
-            state_manager.write(
-                "active_dataset",
-                {"path": cleaned_path, "source": data_path, "strategy": "sanitize"},
-            )
-            print(f"Data sanitized. Clean file: {cleaned_path}")
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
 
-            # Profile and drift artifacts for small/normal files
-            artifacts_dir = Path(run_path) / "artifacts"
-            artifacts_dir.mkdir(parents=True, exist_ok=True)
-
-            current_profile = profile_dataframe(clean_df.head(5000))
-            schema_profile_path = artifacts_dir / "schema_profile.json"
-            save_json(schema_profile_path, current_profile)
-
-            baseline_path = artifacts_dir / "baseline_profile.json"
-            if baseline_path.exists():
-                with open(baseline_path, "r", encoding="utf-8") as f:
-                    baseline_profile = json.load(f)
-            else:
-                baseline_profile = current_profile
-                save_json(baseline_path, baseline_profile)
-
-            drift_report = compute_drift_report(baseline_profile, current_profile)
-            drift_report_path = artifacts_dir / "drift_report.json"
-            save_json(drift_report_path, drift_report)
-
-            state_manager.write(
-                "ingestion_meta",
-                {
-                    "rows": len(clean_df),
-                    "schema_profile": str(schema_profile_path),
-                    "drift_report": str(drift_report_path),
-                    "drift_status": drift_report.get("status", "none"),
-                    "strategy": "sanitize",
-                },
-            )
-            progress.update(
-                "ingestion",
-                {
-                    "status": "completed",
-                    "rows_processed": len(clean_df),
-                    "strategy": "sanitize",
-                },
-            )
+        active_path = manifest.get("parquet_path") or manifest.get("source_path")
+        state_manager.write(
+            "active_dataset",
+            {
+                "path": active_path,
+                "source": manifest.get("source_path"),
+                "strategy": "fast" if manifest.get("fast_mode_used") else "full",
+                "manifest": str(manifest_path),
+            },
+        )
+        print(f"Dataset manifest ready: {manifest_path}")
 
     except Exception as e:
-        print(f"Sanitization failed: {e}")
+        print(f"Ingestion failed: {e}")
         shutil.rmtree(run_path, ignore_errors=True)
         return None, None
 
     # 3. Init State
     state_path = os.path.join(run_path, "orchestrator_state.json")
-    state = initialize_state(run_id, state_path, cleaned_path)
+    state = initialize_state(run_id, state_path, manifest.get("source_path", data_path))
+    state["start_epoch"] = time.time()
     state["artifacts"] = {
-        "cleaned_dataset": os.path.basename(cleaned_path),
+        "dataset_manifest": os.path.basename(manifest_path),
         "sanitizer_report": "sanitizer_report.json"
     }
     # Persist ingestion meta if present
@@ -376,7 +335,7 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
         if intake_meta.get("fusion_report_path"):
             state["artifacts"]["fusion_report"] = intake_meta.get("fusion_report_path")
 
-    state["data_path"] = cleaned_path
+    state["data_path"] = active_path
     if run_config:
         state["run_config"] = run_config
         state_manager.write("run_config", run_config)
@@ -417,6 +376,34 @@ def main_loop(run_path):
             break
 
         current = state["current_step"]
+
+        # Fast-mode runtime budget: if elapsed > 60s, skip remaining heavy steps and jump to expositor
+        run_config = state_manager.read("run_config") or {}
+        ingestion_meta = state_manager.read("ingestion_meta") or {}
+        fast_mode_flag = run_config.get("fast_mode")
+        fast_mode = bool(fast_mode_flag) if fast_mode_flag is not None else bool(ingestion_meta.get("fast_mode"))
+        start_epoch = state.get("start_epoch")
+        if fast_mode and start_epoch:
+            elapsed = time.time() - start_epoch
+            if elapsed > 60 and current != "expositor":
+                heavy_steps = {"overseer", "regression", "sentry", "personas", "fabricator"}
+                for step in PIPELINE_SEQUENCE:
+                    if step == "expositor":
+                        continue
+                    if step in state.get("steps_completed", []):
+                        continue
+                    if step in heavy_steps or PIPELINE_SEQUENCE.index(step) >= PIPELINE_SEQUENCE.index(current):
+                        step_state = state["steps"].setdefault(step, {"name": step})
+                        if step_state.get("status") not in {"completed", "skipped", "failed"}:
+                            step_state["status"] = "skipped"
+                            step_state["message"] = "Skipped due to fast-mode time budget"
+                            state["steps"][step] = step_state
+                            state.setdefault("failed_steps", []).append(step)
+                update_history(state, f"Fast-mode budget exceeded ({elapsed:.1f}s); jumping to expositor")
+                state["current_step"] = "expositor"
+                state["next_step"] = "expositor"
+                save_state(state_path, state)
+                continue
 
         # Honor validation guardrails (skip blocked agents rather than hallucinate)
         validation_report = state_manager.read("validation_report") or {}
@@ -559,10 +546,12 @@ def main_loop(run_path):
             constraints = get_domain_constraints(data_type)
             state_mgr.write(f"{current}_domain_constraints", constraints)
         
-        # Guard: if validation failed, stop pipeline and record limitation
+        # Guard: if validation failed, stop pipeline unless force_run is set
         if current == "validator":
             validation = StateManager(run_path).read("data_validation_report") or {}
-            if not validation.get("can_proceed", False):
+            run_cfg = StateManager(run_path).read("run_config") or {}
+            force_run = bool(run_cfg.get("force_run"))
+            if not validation.get("can_proceed", False) and not force_run:
                 state["status"] = "complete_with_errors"
                 state["next_step"] = "blocked"
                 update_history(state, "Data validation failed; pipeline blocked", returncode=1)
@@ -570,6 +559,8 @@ def main_loop(run_path):
                 _record_final_status(run_path, "complete_with_errors", reason="data_validation_block")
                 # Don't break - allow pipeline to continue but mark as limited
                 continue
+            elif not validation.get("can_proceed", False) and force_run:
+                update_history(state, "Validation failed but continuing due to force_run", returncode=0)
 
         if success:
             idx = PIPELINE_SEQUENCE.index(current)

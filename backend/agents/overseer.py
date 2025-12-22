@@ -85,6 +85,9 @@ class Overseer:
         
         # Load Data
         data_path = None
+        run_config = self.state.read("run_config") or {}
+        ingestion_meta = self.state.read("ingestion_meta") or {}
+        fast_mode = bool(run_config.get("fast_mode", ingestion_meta.get("fast_mode", False)))
         dataset_info = self.state.read("active_dataset") if self.state else None
         candidate = dataset_info.get("path") if isinstance(dataset_info, dict) else None
         if candidate and Path(candidate).exists():
@@ -100,7 +103,12 @@ class Overseer:
         try:
             print(f"[Overseer] Loading CSV from {data_path}")
             config = PerformanceConfig()
-            df = smart_load_dataset(data_path, config=config)
+            df = smart_load_dataset(
+                data_path,
+                config=config,
+                fast_mode=fast_mode,
+                prefer_parquet=True,
+            )
             print(f"[Overseer] Loaded {len(df)} rows, {len(df.columns)} columns")
         except Exception as e:
             raise ValueError(f"Could not load data from {data_path}: {e}")
@@ -108,7 +116,7 @@ class Overseer:
         # 1. Run Universal Clustering
         print(f"[Overseer] Starting clustering...")
         try:
-            clustering_results = run_universal_clustering(df, self.schema_map)
+            clustering_results = run_universal_clustering(df, self.schema_map, fast_mode=fast_mode)
 
             stats = {
                 "k": clustering_results.get("k"),
@@ -157,7 +165,13 @@ class Overseer:
         try:
             data_path = self.state.get_file_path("cleaned_uploaded.csv")
             config = PerformanceConfig()
-            df = smart_load_dataset(data_path, config=config, max_rows=10000)
+            df = smart_load_dataset(
+                data_path,
+                config=config,
+                max_rows=10000,
+                fast_mode=True,
+                prefer_parquet=True,
+            )
             df["cluster"] = 0
             rows = df.to_dict(orient="records")
         except:
