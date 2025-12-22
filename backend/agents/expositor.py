@@ -69,10 +69,18 @@ class Expositor:
             log_info("Running enhanced analytics...")
             active_dataset = self.state.read("active_dataset") or {}
             dataset_path = active_dataset.get("path")
+            run_config = self.state.read("run_config") or {}
+            ingestion_meta = self.state.read("ingestion_meta") or {}
+            fast_mode = bool(run_config.get("fast_mode", ingestion_meta.get("fast_mode", False)))
 
             if dataset_path and Path(dataset_path).exists():
                 config = PerformanceConfig()
-                df = smart_load_dataset(dataset_path, config=config)
+                df = smart_load_dataset(
+                    dataset_path,
+                    config=config,
+                    fast_mode=fast_mode,
+                    prefer_parquet=True,
+                )
 
                 # Get cluster labels if available
                 cluster_labels = None

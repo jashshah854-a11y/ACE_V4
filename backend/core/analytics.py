@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, MiniBatchKMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score
 from sklearn.ensemble import IsolationForest
@@ -127,7 +127,7 @@ def add_risk_features(df: pd.DataFrame, schema_map: Dict) -> pd.DataFrame:
 
     return df_out
 
-def run_universal_clustering(df: pd.DataFrame, schema_map):
+def run_universal_clustering(df: pd.DataFrame, schema_map, fast_mode: bool = False):
     """
     Universal clustering using SchemaMap.
     1. Select clustering features.
@@ -154,7 +154,15 @@ def run_universal_clustering(df: pd.DataFrame, schema_map):
     valid_features = [f for f in features if f in df.columns]
     if not valid_features:
         raise ValueError("No valid clustering features found in dataset.")
-        
+
+    # Cap numeric features by variance for fast mode
+    if fast_mode and valid_features:
+        numeric_subset = df[valid_features].select_dtypes(include="number")
+        if not numeric_subset.empty:
+            variances = numeric_subset.var().sort_values(ascending=False)
+            top_features = list(variances.head(25).index)
+            valid_features = [f for f in valid_features if f in top_features]
+
     df_cluster = df[valid_features].copy()
     
     # Fill NaNs (simple mean imputation for clustering)
@@ -166,42 +174,58 @@ def run_universal_clustering(df: pd.DataFrame, schema_map):
     norm_plan = {k: v for k, v in schema_map.normalization_plan.items() if k in valid_features}
     df_scaled = apply_normalization(df_cluster, norm_plan)
     
+    # Fast-mode sampling for clustering runtime
+    if fast_mode:
+        cluster_sample = min(len(df_scaled), 100_000)
+        df_scaled_sample = df_scaled.sample(n=cluster_sample, random_state=42) if len(df_scaled) > cluster_sample else df_scaled
+    else:
+        df_scaled_sample = df_scaled
+    
     # 3. Auto-K Selection
     best_k = 3
     best_score = -1
-    best_labels = None
+    best_labels_full = None
     best_model = None
     
     # If dataset is small, limit K
-    max_k = min(8, len(df))
+    max_k = min(8, len(df_scaled_sample))
     if max_k < 3:
         max_k = 3
     
     print(f"   Universal Clustering on {valid_features} (K=3-{max_k})...")
     
     for k in range(3, max_k + 1):
-        if len(df_scaled) < k:
+        if len(df_scaled_sample) < k:
             continue  # Not enough samples for this k
-        model = KMeans(n_clusters=k, random_state=42, n_init=10)
-        labels = model.fit_predict(df_scaled)
-        if len(set(labels)) < 2: continue # Skip if only 1 cluster found
-        score = silhouette_score(df_scaled, labels)
+        if fast_mode:
+            model = MiniBatchKMeans(n_clusters=k, random_state=42, batch_size=2048, n_init="auto")
+            model.fit(df_scaled_sample)
+            labels_full = model.predict(df_scaled)
+            sil_subset = df_scaled_sample.sample(n=min(len(df_scaled_sample), 20_000), random_state=42) if len(df_scaled_sample) > 20_000 else df_scaled_sample
+            sil_labels = model.predict(sil_subset)
+            score = silhouette_score(sil_subset, sil_labels) if len(set(sil_labels)) > 1 else -1
+        else:
+            model = KMeans(n_clusters=k, random_state=42, n_init=10)
+            labels_full = model.fit_predict(df_scaled)
+            if len(set(labels_full)) < 2:
+                continue
+            score = silhouette_score(df_scaled, labels_full)
         
         if score > best_score:
             best_score = score
             best_k = k
-            best_labels = labels
+            best_labels_full = labels_full
             best_model = model
             
-    if best_labels is None:
+    if best_labels_full is None:
         # Fallback to single cluster
         best_k = 1
-        best_labels = np.zeros(len(df))
+        best_labels_full = np.zeros(len(df))
         best_score = 0.0
 
     # 4. Schema-Aware Fingerprinting
     df_out = df.copy()
-    df_out["cluster"] = best_labels
+    df_out["cluster"] = best_labels_full
     
     fingerprints = {}
     sizes = []

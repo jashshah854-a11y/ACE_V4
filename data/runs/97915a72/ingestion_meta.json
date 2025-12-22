@@ -1,0 +1,17 @@
+{
+  "sample_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\ACE_V3_Source\\data\\runs\\97915a72\\artifacts\\sample.parquet",
+  "dtypes": {
+    "Annual Income": "float64",
+    "Annual Spend": "float64",
+    "Age": "float64",
+    "Savings": "float64",
+    "Churn_Prob": "float64"
+  },
+  "rows": 10000,
+  "schema_profile": "C:\\Users\\jashs\\Projects\\ACE_V4\\ACE_V3_Source\\data\\runs\\97915a72\\artifacts\\schema_profile.json",
+  "drift_report": "C:\\Users\\jashs\\Projects\\ACE_V4\\ACE_V3_Source\\data\\runs\\97915a72\\artifacts\\drift_report.json",
+  "drift_status": "none",
+  "coercion_report": "C:\\Users\\jashs\\Projects\\ACE_V4\\ACE_V3_Source\\data\\runs\\97915a72\\artifacts\\coercion_report.json",
+  "dataset_manifest": "C:\\Users\\jashs\\Projects\\ACE_V4\\ACE_V3_Source\\data\\runs\\97915a72\\artifacts\\dataset_manifest.json",
+  "fast_mode": true
+}

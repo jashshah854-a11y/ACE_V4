@@ -66,6 +66,9 @@ class Sentry:
             })
 
     def _load_base_frame(self) -> pd.DataFrame:
+        run_config = self.state.read("run_config") or {}
+        ingestion_meta = self.state.read("ingestion_meta") or {}
+        fast_mode = bool(run_config.get("fast_mode", ingestion_meta.get("fast_mode", False)))
         overseer_out = self.state.read("overseer_output")
         if overseer_out and "rows" in overseer_out:
             return pd.DataFrame(overseer_out["rows"])
@@ -74,11 +77,11 @@ class Sentry:
         dataset_info = self.state.read("active_dataset") if self.state else None
         candidate = dataset_info.get("path") if isinstance(dataset_info, dict) else None
         if candidate and Path(candidate).exists():
-             return smart_load_dataset(candidate, config=config)
+             return smart_load_dataset(candidate, config=config, fast_mode=fast_mode, prefer_parquet=True)
 
         data_path = self.state.get_file_path("cleaned_uploaded.csv")
         if Path(data_path).exists():
-             return smart_load_dataset(data_path, config=config)
+             return smart_load_dataset(data_path, config=config, fast_mode=fast_mode, prefer_parquet=True)
 
         return pd.DataFrame()
 
