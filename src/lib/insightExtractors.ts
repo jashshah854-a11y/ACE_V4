@@ -209,19 +209,79 @@ function extractKeyBehavior(summary: string, motivation: string): string {
     return "Mixed behavior";
 }
 
+function cleanSegmentName(rawName: string): string {
+    // Remove ugly technical names like "cluster_0", "cluster_1", etc.
+    let cleaned = rawName
+        .replace(/\s*cluster_?\d+\s*/gi, '')
+        .replace(/\s*\(.*?\)\s*/g, '')
+        .replace(/\s+cluster\s*$/i, '')
+        .trim();
+    
+    // Remove duplicate words (e.g., "Budget Conscious Budget Conscious" -> "Budget Conscious")
+    const words = cleaned.split(/\s+/);
+    const seen = new Set<string>();
+    const unique: string[] = [];
+    for (const word of words) {
+        const lower = word.toLowerCase();
+        if (!seen.has(lower)) {
+            seen.add(lower);
+            unique.push(word);
+        }
+    }
+    cleaned = unique.join(' ');
+    
+    // If still empty or too short, generate a sensible name
+    if (!cleaned || cleaned.length < 3) {
+        return 'Customer Segment';
+    }
+    
+    return cleaned;
+}
+
+function inferSegmentType(name: string, summary: string): {
+    label: string;
+    icon: string;
+    colorClass: string;
+} {
+    const combined = `${name} ${summary}`.toLowerCase();
+    
+    if (combined.includes('high') && (combined.includes('value') || combined.includes('spend'))) {
+        return { label: 'High Value', icon: '💎', colorClass: 'segment-premium' };
+    }
+    if (combined.includes('premium') || combined.includes('vip') || combined.includes('loyal')) {
+        return { label: 'Premium', icon: '⭐', colorClass: 'segment-premium' };
+    }
+    if (combined.includes('budget') || combined.includes('price') || combined.includes('conscious')) {
+        return { label: 'Value Seeker', icon: '💰', colorClass: 'segment-value' };
+    }
+    if (combined.includes('growth') || combined.includes('potential') || combined.includes('emerging')) {
+        return { label: 'Growth Potential', icon: '📈', colorClass: 'segment-growth' };
+    }
+    if (combined.includes('risk') || combined.includes('churn') || combined.includes('inactive')) {
+        return { label: 'At Risk', icon: '⚠️', colorClass: 'segment-risk' };
+    }
+    if (combined.includes('new') || combined.includes('recent')) {
+        return { label: 'New Customer', icon: '🆕', colorClass: 'segment-new' };
+    }
+    
+    return { label: 'Standard', icon: '👤', colorClass: 'segment-standard' };
+}
+
 export function extractSegmentData(content: string): any[] {
     const segments: any[] = [];
     const personaBlocks = content.split(/###\s+/g).slice(1);
-    const seenNames = new Set<string>();
+    const seenCleanNames = new Set<string>();
 
     for (const block of personaBlocks) {
         const titleMatch = block.match(/^(.+?)$/m);
         if (!titleMatch) continue;
 
-        const name = titleMatch[1].trim();
-
-        if (seenNames.has(name)) continue;
-        seenNames.add(name);
+        const rawName = titleMatch[1].trim();
+        const cleanedName = cleanSegmentName(rawName);
+        
+        // Skip if we've already seen this cleaned name
+        if (seenCleanNames.has(cleanedName.toLowerCase())) continue;
+        seenCleanNames.add(cleanedName.toLowerCase());
 
         const sizeMatch = block.match(/[-\*]\s*\*?\*?size:?\*?\*?\s*(\d+)/i);
         if (!sizeMatch) continue;
@@ -233,7 +293,10 @@ export function extractSegmentData(content: string): any[] {
         const summary = summaryMatch ? summaryMatch[1].trim() : '';
         const motivation = motivationMatch ? motivationMatch[1].trim() : '';
 
-        const nameLower = name.toLowerCase();
+        // Infer segment type for better presentation
+        const segmentType = inferSegmentType(cleanedName, summary);
+
+        const nameLower = cleanedName.toLowerCase();
         let avgValue = 2000;
         let riskLevel: 'low' | 'medium' | 'high' = 'medium';
 
@@ -254,10 +317,12 @@ export function extractSegmentData(content: string): any[] {
         }
 
         const keyBehavior = extractKeyBehavior(summary, motivation);
-        const recommendedAction = determineRecommendedAction(name, avgValue, riskLevel, summary);
+        const recommendedAction = determineRecommendedAction(cleanedName, avgValue, riskLevel, summary);
 
         segments.push({
-            name,
+            name: cleanedName,
+            displayName: cleanedName,
+            segmentType,
             size,
             sizePercent: 0,
             avgValue: Math.round(avgValue),

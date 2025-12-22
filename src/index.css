@@ -166,6 +166,9 @@
   .bg-copper-100 {
     background-color: hsl(var(--copper-100));
   }
+  .bg-copper-400 {
+    background-color: hsl(var(--copper-400));
+  }
   .border-copper-400 {
     border-color: hsl(var(--copper-400));
   }
