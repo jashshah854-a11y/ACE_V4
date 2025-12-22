@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 import pandas as pd
+import polars as pl
 
 from ace_v4.performance.config import PerformanceConfig
 from ace_v4.performance.io import ChunkedCSVReader
@@ -12,20 +13,14 @@ def smart_load_dataset(
     data_path: str,
     config: Optional[PerformanceConfig] = None,
     max_rows: Optional[int] = None,
+    fast_mode: bool = False,
+    prefer_parquet: bool = True,
 ) -> pd.DataFrame:
     """
-    Intelligently load a dataset with automatic sampling for large files.
+    Intelligently load a dataset with automatic sampling and parquet preference.
 
-    Args:
-        data_path: Path to the CSV file
-        config: Performance configuration (uses defaults if None)
-        max_rows: Maximum rows to load (uses config.max_analysis_rows if None)
-
-    Returns:
-        DataFrame with the loaded data
-
-    Raises:
-        FileNotFoundError: If data_path doesn't exist
+    - Parquet paths are loaded via polars and downsampled when fast_mode/max_rows is set.
+    - CSV paths use polars read_csv for sampling; full reads fall back to ChunkedCSVReader.
     """
     if not Path(data_path).exists():
         raise FileNotFoundError(f"Dataset not found: {data_path}")
@@ -33,14 +28,24 @@ def smart_load_dataset(
     config = config or PerformanceConfig()
     reader = ChunkedCSVReader(config)
 
+    max_rows = max_rows or config.max_analysis_rows
+
+    suffix = Path(data_path).suffix.lower()
+    is_parquet = suffix == ".parquet"
+
+    if is_parquet or prefer_parquet:
+        if is_parquet:
+            if fast_mode and max_rows:
+                return pl.scan_parquet(data_path).fetch(max_rows).to_pandas()
+            return pl.read_parquet(data_path).to_pandas()
+
     file_size_mb = os.path.getsize(data_path) / (1024 * 1024)
     size_class = reader.classify_size(data_path)
 
-    max_rows = max_rows or config.max_analysis_rows
-
-    if size_class == "large":
-        print(f"[DataLoader] Large file detected ({file_size_mb:.1f} MB). Sampling {max_rows} rows for analysis.")
-        df = pd.read_csv(data_path, nrows=max_rows)
+    if fast_mode or size_class == "large":
+        rows_to_load = max_rows
+        print(f"[DataLoader] Fast/large load ({file_size_mb:.1f} MB). Sampling {rows_to_load} rows.")
+        df = pl.read_csv(data_path, n_rows=rows_to_load).to_pandas()
         print(f"[DataLoader] Loaded {len(df)} rows for analysis")
     else:
         print(f"[DataLoader] Loading full file ({file_size_mb:.1f} MB)")

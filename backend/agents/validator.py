@@ -8,6 +8,8 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from core.state_manager import StateManager
 from core.data_validation import validate_dataset
+from core.data_loader import smart_load_dataset
+from ace_v4.performance.config import PerformanceConfig
 from jobs.progress import ProgressTracker
 from utils.logging import log_launch, log_ok, log_warn
 
@@ -24,7 +26,15 @@ class Validator:
         if not dataset_path:
             raise FileNotFoundError("No dataset found for validation")
 
-        df = pd.read_csv(dataset_path)
+        run_config = self.state.read("run_config") or {}
+        ingestion_meta = self.state.read("ingestion_meta") or {}
+        fast_mode = bool(run_config.get("fast_mode", ingestion_meta.get("fast_mode", False)))
+        df = smart_load_dataset(
+            dataset_path,
+            config=PerformanceConfig(),
+            fast_mode=fast_mode,
+            prefer_parquet=True,
+        )
         run_config = self.state.read("run_config") or {}
         schema_map = self.state.read("schema_map") or {}
         data_type = self.state.read("data_type_identification") or self.state.read("data_type") or {}

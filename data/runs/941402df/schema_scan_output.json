@@ -1,0 +1,144 @@
+{
+  "dataset_info": {
+    "name": "stress_100mb",
+    "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\ACE_V3_Source\\backend\\data\\stress_100mb.csv",
+    "row_count": 100000,
+    "column_count": 5,
+    "sample_rows": [
+      {
+        "Annual Income": 89569.57295630108,
+        "Annual Spend": 47413.544857225796,
+        "Age": 27.0,
+        "Savings": 181910.85905448507,
+        "Churn_Prob": 0.8128095527997015
+      },
+      {
+        "Annual Income": 74539.11368690041,
+        "Annual Spend": 37078.26945849772,
+        "Age": 32.0,
+        "Savings": 115034.63614343965,
+        "Churn_Prob": 0.4232775824036994
+      },
+      {
+        "Annual Income": 21936.24698213428,
+        "Annual Spend": 35852.589792403924,
+        "Age": 62.0,
+        "Savings": 133065.18227649044,
+        "Churn_Prob": 0.6889909339343059
+      },
+      {
+        "Annual Income": 38607.405579263184,
+        "Annual Spend": 34072.29313246126,
+        "Age": 65.0,
+        "Savings": 144205.57524610634,
+        "Churn_Prob": 0.290880486721099
+      },
+      {
+        "Annual Income": 28699.95075569525,
+        "Annual Spend": 19196.442094697748,
+        "Age": 50.0,
+        "Savings": 126806.28284403024,
+        "Churn_Prob": 0.7218766652598471
+      }
+    ]
+  },
+  "basic_types": {
+    "numeric": [
+      "Annual Income",
+      "Annual Spend",
+      "Age",
+      "Savings",
+      "Churn_Prob"
+    ],
+    "categorical": [],
+    "datetime": [],
+    "text": []
+  },
+  "stats": {
+    "Annual Income": {
+      "mean": 50010.181109848585,
+      "median": 49993.765651650094,
+      "std": 28900.8188841881,
+      "min": 1.1333105083277673,
+      "max": 99999.75139081977,
+      "skew": -0.0004357188460406666,
+      "missing_rate": 0.0
+    },
+    "Annual Spend": {
+      "mean": 25053.61688095043,
+      "median": 25093.653410476123,
+      "std": 14421.680529020545,
+      "min": 0.25069633718399764,
+      "max": 49999.48230016076,
+      "skew": -0.008088839669981968,
+      "missing_rate": 0.0
+    },
+    "Age": {
+      "mean": 45.05401,
+      "median": 45.0,
+      "std": 14.443850565832216,
+      "min": 20.0,
+      "max": 70.0,
+      "skew": -0.0032414918215383334,
+      "missing_rate": 0.0
+    },
+    "Savings": {
+      "mean": 99842.52489755943,
+      "median": 99986.50220449934,
+      "std": 57743.29561361379,
+      "min": 2.308092678449114,
+      "max": 199999.92050729654,
+      "skew": 0.0023520553092721544,
+      "missing_rate": 0.0
+    },
+    "Churn_Prob": {
+      "mean": 0.5009822197971826,
+      "median": 0.5021329995073567,
+      "std": 0.28942470122059083,
+      "min": 6.421131816258807e-06,
+      "max": 0.9999835330639467,
+      "skew": -0.007241546176011198,
+      "missing_rate": 0.0
+    }
+  },
+  "relationships": {
+    "correlations": {
+      "Annual Income": {
+        "Annual Spend": -0.0025889394731591873,
+        "Age": 0.0014103596070028101,
+        "Savings": 0.001545995255365855,
+        "Churn_Prob": -0.0004396859337028498
+      },
+      "Annual Spend": {
+        "Annual Income": -0.0025889394731591873,
+        "Age": -0.0006950130038831084,
+        "Savings": -0.0006216369335400172,
+        "Churn_Prob": -0.004682637649737047
+      },
+      "Age": {
+        "Annual Income": 0.0014103596070028101,
+        "Annual Spend": -0.0006950130038831084,
+        "Savings": -0.003751335584852684,
+        "Churn_Prob": 0.0008868497718269505
+      },
+      "Savings": {
+        "Annual Income": 0.001545995255365855,
+        "Annual Spend": -0.0006216369335400172,
+        "Age": -0.003751335584852684,
+        "Churn_Prob": -0.009126798933649736
+      },
+      "Churn_Prob": {
+        "Annual Income": -0.0004396859337028498,
+        "Annual Spend": -0.004682637649737047,
+        "Age": 0.0008868497718269505,
+        "Savings": -0.009126798933649736
+      }
+    },
+    "strong_pairs": []
+  },
+  "warnings": {
+    "missing_numeric": false,
+    "low_row_count": false,
+    "suspected_data_issues": []
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "ingestion": {
+    "status": "completed",
+    "source": "backend/data/stress_100mb.csv",
+    "file_mb": 113.41,
+    "fast_mode": true,
+    "sample_rows": 10000,
+    "dtype_columns": 5,
+    "manifest": "C:\\Users\\jashs\\Projects\\ACE_V4\\ACE_V3_Source\\data\\runs\\1e9a4275\\artifacts\\dataset_manifest.json"
+  },
+  "type_identifier": {
+    "status": "completed"
+  },
+  "validator": {
+    "status": "completed"
+  }
+}

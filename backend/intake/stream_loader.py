@@ -1,12 +1,13 @@
 import json
 import os
+import shutil
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
 import pandas as pd
 
 from ace_v4.performance.config import PerformanceConfig
-from ace_v4.performance.io import ChunkedCSVReader
+from intake.fast_ingest import build_sample_csv, csv_to_parquet_duckdb, sha256_file
 from intake.profiling import profile_dataframe, compute_drift_report, compute_sample_drift, compute_recency_drift, save_json
 from jobs.progress import ProgressTracker
 
@@ -22,16 +23,25 @@ def prepare_run_data(
     run_path: str,
     progress: Optional[ProgressTracker] = None,
     config: Optional[PerformanceConfig] = None,
+    fast_mode: Optional[bool] = None,
 ) -> Tuple[str, Dict]:
     """
-    Prepare dataset for a run:
-    - sample for type inference and quick inspection
-    - stream the full file into cleaned_uploaded.csv with chunking
-    Returns path to cleaned CSV and metadata (sample path, dtypes, rows).
+    Prepare dataset for a run without rewriting the CSV:
+    - sample for type inference and profiling
+    - optionally convert to parquet (full mode)
+    - emit dataset_manifest.json for downstream agents
+    Returns manifest path and ingestion metadata.
     """
     cfg = config or PerformanceConfig()
-    reader = ChunkedCSVReader(cfg)
     _ensure_dirs(run_path)
+
+    file_mb = round(os.path.getsize(upload_path) / (1024 * 1024), 2)
+    fast = fast_mode if fast_mode is not None else file_mb >= 25
+    code_version = "ingest-fast-v1"
+    file_hash = sha256_file(upload_path)
+    cache_dir = Path("data") / "cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_base = f"{file_hash}_{'fast' if fast else 'full'}_{code_version}"
 
     if progress:
         progress.update(
@@ -39,18 +49,34 @@ def prepare_run_data(
             {
                 "status": "sampling",
                 "source": upload_path,
-                "file_mb": round(os.path.getsize(upload_path) / (1024 * 1024), 2),
+                "file_mb": file_mb,
+                "fast_mode": fast,
             },
         )
 
-    sample_df = reader.sample_for_types(upload_path)
-    dtypes = reader.infer_dtypes(sample_df)
+    # Build sample with polars (no rewrite)
+    sample_rows = cfg.sample_rows_for_type_inference
+    sample_cache = cache_dir / f"{cache_base}_sample.parquet"
+    if sample_cache.exists():
+        sample_df = pd.read_parquet(sample_cache)
+        sample_pl = None
+    else:
+        sample_pl = build_sample_csv(upload_path, n_rows=sample_rows)
+        sample_df = sample_pl.to_pandas()
+    dtypes = {col: str(dtype) for col, dtype in sample_df.dtypes.items()}
 
     artifacts_dir = Path(run_path) / "artifacts"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
 
     sample_path = artifacts_dir / "sample.parquet"
-    sample_df.to_parquet(sample_path, index=False)
+    if sample_pl is not None:
+        sample_pl.write_parquet(sample_path)
+        try:
+            shutil.copy(sample_path, sample_cache)
+        except Exception:
+            pass
+    else:
+        shutil.copy(sample_cache, sample_path)
 
     # Profile current sample
     current_profile = profile_dataframe(sample_df)
@@ -93,7 +119,7 @@ def prepare_run_data(
             drift_report.setdefault("summary", []).append(f"Sample drift check failed: {e}")
     else:
         # Write baseline sample on first run
-        sample_df.to_parquet(baseline_sample_path, index=False)
+        pd.DataFrame(sample_df).to_parquet(baseline_sample_path, index=False)
 
     # Recency drift if time column present (compare last N rows to first N rows)
     time_cols = [c for c in sample_df.columns if "date" in c.lower() or "time" in c.lower()]
@@ -133,56 +159,56 @@ def prepare_run_data(
     coercion_path = artifacts_dir / "coercion_report.json"
     save_json(coercion_path, {"columns": coercion})
 
-    cleaned_path = Path(run_path) / "cleaned_uploaded.csv"
-    total_rows = 0
-    chunks = 0
+    # Optionally convert to parquet for full mode; avoid streaming rewrite
+    parquet_path = None
+    if not fast:
+        parquet_path = artifacts_dir / "dataset.parquet"
+        parquet_cache = cache_dir / f"{cache_base}.parquet"
+        if parquet_cache.exists():
+            shutil.copy(parquet_cache, parquet_path)
+        else:
+            csv_to_parquet_duckdb(upload_path, parquet_path)
+            try:
+                shutil.copy(parquet_path, parquet_cache)
+            except Exception:
+                pass
 
-    if progress:
-        progress.update(
-            "ingestion",
-            {
-                "status": "streaming",
-                "sample_rows": len(sample_df),
-                "dtype_columns": len(dtypes),
-            },
-        )
-
-    for idx, chunk in enumerate(reader.iter_chunks(upload_path)):
-        write_header = idx == 0
-        chunk.to_csv(cleaned_path, mode="w" if write_header else "a", index=False, header=write_header)
-        total_rows += len(chunk)
-        chunks += 1
-        if progress and idx % 1 == 0:
-            progress.update(
-                "ingestion",
-                {
-                    "status": "streaming",
-                    "chunks_written": chunks,
-                    "rows_processed": total_rows,
-                },
-            )
+    manifest = {
+        "source_path": str(Path(upload_path).resolve()),
+        "parquet_path": str(parquet_path.resolve()) if parquet_path else None,
+        "sample_parquet_path": str(sample_path.resolve()),
+        "row_count_estimate": len(sample_df),
+        "columns": list(sample_df.columns),
+        "fast_mode_used": fast,
+        "sha256": file_hash,
+        "cache_key": cache_base,
+    }
+    manifest_path = artifacts_dir / "dataset_manifest.json"
+    save_json(manifest_path, manifest)
 
     if progress:
         progress.update(
             "ingestion",
             {
                 "status": "completed",
-                "chunks_written": chunks,
-                "rows_processed": total_rows,
-                "sample_path": str(sample_path),
+                "sample_rows": len(sample_df),
+                "dtype_columns": len(dtypes),
+                "manifest": str(manifest_path),
             },
         )
 
     meta = {
         "sample_path": str(sample_path),
-        "dtypes": {k: str(v) for k, v in dtypes.items()},
-        "rows": total_rows,
+        "dtypes": dtypes,
+        "rows": len(sample_df),
         "schema_profile": str(schema_profile_path),
         "drift_report": str(drift_report_path),
         "drift_status": drift_report.get("status", "none"),
         "coercion_report": str(coercion_path),
+        "dataset_manifest": str(manifest_path),
+        "fast_mode": fast,
     }
-    return str(cleaned_path), meta
+    return str(manifest_path), meta
 
 
 
