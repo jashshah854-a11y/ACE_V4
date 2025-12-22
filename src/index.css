@@ -234,6 +234,23 @@
     background: linear-gradient(135deg, hsl(var(--navy-900)) 0%, hsl(var(--teal-500)) 100%);
   }
   
+  /* Meridian brand gradient - navy to teal with depth */
+  .gradient-meridian {
+    background: linear-gradient(135deg, hsl(var(--navy-900)) 0%, hsl(var(--teal-600)) 100%);
+  }
+  
+  /* Primary glow effect */
+  .glow-primary {
+    box-shadow: 
+      0 4px 12px hsl(var(--teal-500) / 0.25),
+      0 2px 4px hsl(var(--navy-900) / 0.1);
+  }
+  
+  /* Teal accent glow */
+  .glow-accent {
+    box-shadow: 0 4px 16px hsl(var(--teal-500) / 0.3);
+  }
+  
   /* Selection colors */
   .selection-copper ::selection {
     background-color: hsl(var(--copper-100));
