@@ -11,6 +11,7 @@ import { ExecutiveNarrative } from "./consultant/ExecutiveNarrative";
 import { DataTable } from "./consultant/DataTable";
 import { InteractiveLineChart } from "./consultant/charts/InteractiveLineChart";
 import { IntelligenceRail } from "./IntelligenceRail";
+import { ReportMetadata } from "./ReportMetadata";
 import {
   transformToMetricCards,
   transformToAllocationData,
@@ -67,12 +68,35 @@ export function WideReportViewer({
   const heroInsight = extractHeroInsight(content, metrics);
   const mondayActions = generateMondayActions(content, metrics, anomalies);
 
-  // Key takeaways for intelligence rail
+  // Key takeaways for intelligence rail - clean up markdown formatting
+  const cleanMarkdown = (text: string) => {
+    return text
+      .replace(/\*\*([^*]+)\*\*/g, '$1')  // Remove bold **text**
+      .replace(/\*([^*]+)\*/g, '$1')       // Remove italic *text*
+      .replace(/`([^`]+)`/g, '$1')         // Remove code `text`
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')  // Remove links [text](url)
+      .replace(/#{1,6}\s*/g, '')           // Remove headers
+      .trim();
+  };
+
   const keyTakeaways = content
     .split('\n')
-    .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
-    .map(line => line.replace(/^[-*]\s*/, '').trim())
-    .filter(line => line.length > 20 && line.length < 150)
+    .filter(line => {
+      const trimmed = line.trim();
+      // Filter out technical metadata lines
+      if (trimmed.includes('Run ID:') || 
+          trimmed.includes('Generated:') || 
+          trimmed.includes('R²') || 
+          trimmed.includes('RMSE') ||
+          trimmed.includes('MAE') ||
+          trimmed.includes('customer_id') ||
+          trimmed.includes('mock_domain')) {
+        return false;
+      }
+      return trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*');
+    })
+    .map(line => cleanMarkdown(line.replace(/^[-•*]\s*/, '').trim()))
+    .filter(line => line.length > 20 && line.length < 200 && !line.includes('`'))
     .slice(0, 5);
 
   // Build sections for navigation
@@ -209,6 +233,13 @@ export function WideReportViewer({
               />
             </section>
           )}
+
+          {/* Report Metadata - at the bottom */}
+          <ReportMetadata
+            runId={runId}
+            qualityScore={metrics.dataQualityScore ? metrics.dataQualityScore / 100 : undefined}
+            className="mt-12"
+          />
         </div>
 
         {/* Hidden PDF exporter */}
