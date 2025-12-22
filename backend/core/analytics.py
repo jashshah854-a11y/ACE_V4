@@ -145,11 +145,14 @@ def run_universal_clustering(df: pd.DataFrame, schema_map, fast_mode: bool = Fal
         raise ValueError("Dataset contains no rows after sanitization.")
 
     # 1. Feature Selection
-    features = schema_map.feature_plan.clustering_features
+    features = list(schema_map.feature_plan.clustering_features)
     if not features:
         # Fallback if no clustering features defined
-        features = schema_map.basic_types.numeric
-    
+        features = list(schema_map.basic_types.numeric)
+    if not features:
+        # Final fallback: use numeric columns present in the dataframe
+        features = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col])]
+
     # Ensure features exist in DF
     valid_features = [f for f in features if f in df.columns]
     if not valid_features:
@@ -283,7 +286,7 @@ def run_universal_clustering(df: pd.DataFrame, schema_map, fast_mode: bool = Fal
         "silhouette": best_score,
         "sizes": sizes,
         "fingerprints": fingerprints,
-        "labels": best_labels.tolist()
+        "labels": best_labels_full.tolist()
     }
 
 def detect_universal_anomalies(df: pd.DataFrame, schema_map):

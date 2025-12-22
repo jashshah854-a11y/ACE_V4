@@ -61,6 +61,17 @@ def main():
     base_dir = Path(__file__).parent
     run_path = prepare_run_path(base_dir)
 
+    # Ensure active_dataset metadata exists for downstream agents (expositor/enhanced analytics)
+    active_dataset_path = Path(run_path) / "active_dataset.json"
+    if not active_dataset_path.exists():
+        import json
+        active_dataset = {
+            "path": str(Path(run_path) / "cleaned_uploaded.csv"),
+            "source": str(Path(run_path) / "cleaned_uploaded.csv"),
+            "strategy": "debug-run",
+        }
+        active_dataset_path.write_text(json.dumps(active_dataset, indent=2), encoding="utf-8")
+
     agents = [
         ("Overseer", "agents/overseer.py"),
         ("Sentry", "agents/sentry.py"),
@@ -68,14 +79,14 @@ def main():
         ("Fabricator", "agents/fabricator.py"),
         ("Expositor", "agents/expositor.py"),
     ]
-
+    
     for name, script in agents:
         if not run_agent(name, script, run_path):
             print(f"\n⚠️  Chain stopped at {name}")
             return
-
+    
     print("\n✅ Full chain executed successfully!")
-
+    
     # Verify report
     report_path = base_dir / "data" / "ace_v2_report.json"
     run_report_md = run_path / "final_report.md"
