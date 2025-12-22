@@ -100,7 +100,7 @@ export function SegmentOverviewTable({ segments, totalCustomers, className }: Se
                                     <td className="py-4 px-6">
                                         <div className="flex items-center gap-3">
                                             {idx === 0 && (
-                                                <span className="text-copper-400 text-lg" title="Highest Value">
+                                                <span className="text-teal-500 text-lg" title="Highest Value">
                                                     ★
                                                 </span>
                                             )}
@@ -128,7 +128,7 @@ export function SegmentOverviewTable({ segments, totalCustomers, className }: Se
                                     </td>
                                     <td className="py-4 px-6 text-right">
                                         <div className="tabular-nums">
-                                            <span className="font-semibold text-copper-600">
+                                            <span className="font-semibold text-teal-500">
                                                 ${segment.avgValue.toLocaleString()}
                                             </span>
                                             <div className="text-xs text-muted-foreground">
