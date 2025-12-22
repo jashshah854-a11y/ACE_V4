@@ -81,9 +81,9 @@ export function SegmentComparison({ segments, totalCustomers, className }: Segme
                         >
                             {/* Segment Header */}
                             <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3">
                                     {index === 0 && (
-                                        <span className="text-copper-400 text-xl">★</span>
+                                        <span className="text-teal-500 text-xl">★</span>
                                     )}
                                     <div>
                                         <h4 className="font-serif text-lg font-semibold text-navy-900">
@@ -136,7 +136,7 @@ export function SegmentComparison({ segments, totalCustomers, className }: Segme
                                     <div className="text-xs text-muted-foreground uppercase tracking-wider">
                                         Avg Value
                                     </div>
-                                    <div className="font-semibold text-lg text-copper-600 tabular-nums">
+                                    <div className="font-semibold text-lg text-teal-500 tabular-nums">
                                         ${segment.avgValue.toLocaleString()}
                                     </div>
                                     <div className="h-1.5 bg-muted rounded-full overflow-hidden">
@@ -146,8 +146,8 @@ export function SegmentComparison({ segments, totalCustomers, className }: Segme
                                             transition={{ duration: 0.6, delay: 0.25 + index * 0.05 }}
                                             className={cn(
                                                 "h-full rounded-full",
-                                                valuePercent > 80 ? "bg-success" :
-                                                valuePercent > 50 ? "bg-copper-400" : "bg-warning"
+                                                valuePercent > 80 ? "bg-teal-500" :
+                                                valuePercent > 50 ? "bg-accent" : "bg-warning"
                                             )}
                                         />
                                     </div>
@@ -196,7 +196,7 @@ export function SegmentComparison({ segments, totalCustomers, className }: Segme
                 className="px-6 py-5 border-t border-border bg-navy-50"
             >
                 <div className="flex items-start gap-3">
-                    <span className="text-copper-400 text-lg">💡</span>
+                    <span className="text-teal-500 text-lg">💡</span>
                     <div>
                         <h5 className="font-serif font-semibold text-navy-900 mb-1">
                             Strategic Recommendation
