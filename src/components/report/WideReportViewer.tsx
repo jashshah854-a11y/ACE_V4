@@ -122,6 +122,50 @@ export function WideReportViewer({
         [content]
     );
 
+    const limitationsMode = useMemo(() => {
+        const lower = content.toLowerCase();
+        const signals = [
+            "mode: limitations",
+            "insights suppressed",
+            "suppressed due to confidence",
+            "suppressed due to contract",
+            "suppressed due to validation"
+        ];
+        const hasSignal = signals.some((sig) => lower.includes(sig));
+        const lowConfidence = typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel <= 5;
+        return hasSignal || lowConfidence;
+    }, [content, metrics]);
+
+    const shouldEmitInsights = !limitationsMode;
+
+    const taskContractSection = useMemo(
+        () => sections.find((s) => s.title.toLowerCase().includes("contract")),
+        [sections]
+    );
+    const decisionSection = useMemo(
+        () => sections.find((s) => s.title.toLowerCase().includes("decision") || s.title.toLowerCase().includes("purpose")),
+        [sections]
+    );
+
+    const summarize = (text?: string) => text ? text.split('\n').slice(0, 4).join('\n').slice(0, 600) : undefined;
+    const decisionSummary = summarize(decisionSection?.content);
+    const taskContractSummary = summarize(taskContractSection?.content);
+
+    const uncertaintySignals = useMemo(() => {
+        const lower = content.toLowerCase();
+        const signals: string[] = [];
+        if (limitationsMode) {
+            signals.push("Insights suppressed by confidence/contract/validation gates.");
+        }
+        if (typeof metrics.confidenceLevel === "number") {
+            signals.push(`Confidence: ${metrics.confidenceLevel}%`);
+        }
+        if (lower.includes("conflict")) {
+            signals.push("Report text mentions conflicts across datasets or models.");
+        }
+        return signals;
+    }, [content, limitationsMode, metrics]);
+
     const handleCopy = async () => {
         const success = await copyToClipboard(content);
         if (success) {
@@ -155,6 +199,32 @@ export function WideReportViewer({
 
     // Build accordion sections from content with intelligent routing
     const accordionSections = [
+        ...(limitationsMode ? [{
+            id: "limitations",
+            title: "Insights Suppressed",
+            icon: SECTION_ICONS.anomalies,
+            defaultOpen: true,
+            content: (
+                <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30">
+                    Insights are in limitations mode due to confidence/contract/validation gates. Rankings, risk labels, and strategies are withheld until the gates clear.
+                </div>
+            ),
+        }] : []),
+
+        ...(uncertaintySignals.length > 0 ? [{
+            id: "uncertainty",
+            title: "Uncertainty & Conflicts",
+            icon: SECTION_ICONS.anomalies,
+            defaultOpen: true,
+            content: (
+                <ul className="list-disc pl-5 text-sm space-y-2 text-foreground">
+                    {uncertaintySignals.map((sig, idx) => (
+                        <li key={idx}>{sig}</li>
+                    ))}
+                </ul>
+            ),
+        }] : []),
+
         ...(anomalies && anomalies.count > 0 ? [{
             id: "anomalies-alert",
             title: `⚠️ ${anomalies.count} Anomalies Detected`,
@@ -169,28 +239,24 @@ export function WideReportViewer({
             ),
         }] : []),
 
-        {
+        ...(shouldEmitInsights && segmentComparisonData && segmentComparisonData.length > 0 ? [{
             id: "segments",
             title: "Customer Segments & Actions",
             icon: SECTION_ICONS.summary,
             defaultOpen: true,
             content: (
                 <div className="space-y-8">
-                    {segmentComparisonData && segmentComparisonData.length > 0 && (
-                        <>
-                            <SegmentOverviewTable
-                                segments={segmentComparisonData}
-                                totalCustomers={metrics.recordsProcessed || 10000}
-                            />
-                            <SegmentComparison
-                                segments={segmentComparisonData}
-                                totalCustomers={metrics.recordsProcessed || 10000}
-                            />
-                        </>
-                    )}
+                    <SegmentOverviewTable
+                        segments={segmentComparisonData}
+                        totalCustomers={metrics.recordsProcessed || 10000}
+                    />
+                    <SegmentComparison
+                        segments={segmentComparisonData}
+                        totalCustomers={metrics.recordsProcessed || 10000}
+                    />
                 </div>
             ),
-        },
+        }] : []),
 
         {
             id: "visualizations",
@@ -210,7 +276,7 @@ export function WideReportViewer({
                                 confidenceLevel: (metrics.dataQualityScore || 0) >= 85 ? "high" : (metrics.dataQualityScore || 0) >= 70 ? "medium" : "low",
                                 helpText: "Measures completeness, consistency, and accuracy of your dataset"
                             },
-                            ...(clusterMetrics?.silhouetteScore ? [{
+                            ...(shouldEmitInsights && clusterMetrics?.silhouetteScore ? [{
                                 name: "Clustering Quality (Silhouette Score)",
                                 value: clusterMetrics.silhouetteScore.toFixed(2),
                                 interpretation: interpretSilhouetteScore(clusterMetrics.silhouetteScore),
@@ -218,7 +284,7 @@ export function WideReportViewer({
                                 confidenceLevel: clusterMetrics.silhouetteScore >= 0.51 ? "high" : "medium" as "high" | "medium",
                                 helpText: "Indicates how well-separated and distinct your customer segments are"
                             }] : []),
-                            ...(outcomeModel?.r2Score !== undefined ? [{
+                            ...(shouldEmitInsights && outcomeModel?.r2Score !== undefined ? [{
                                 name: "Model Fit (R² Score)",
                                 value: outcomeModel.r2Score.toFixed(3),
                                 interpretation: interpretR2Score(outcomeModel.r2Score),
@@ -230,18 +296,19 @@ export function WideReportViewer({
                     />
 
                     {/* Business Intelligence Dashboard */}
-                    {enhancedAnalytics?.business_intelligence?.available && (
+                    {shouldEmitInsights && enhancedAnalytics?.business_intelligence?.available && (
                         <BusinessIntelligenceDashboard
                             valueMetrics={enhancedAnalytics.business_intelligence.value_metrics}
                             clvProxy={enhancedAnalytics.business_intelligence.clv_proxy}
                             segmentValue={enhancedAnalytics.business_intelligence.segment_value}
                             churnRisk={enhancedAnalytics.business_intelligence.churn_risk}
                             insights={enhancedAnalytics.business_intelligence.insights}
+                            evidence={enhancedAnalytics.business_intelligence.evidence}
                         />
                     )}
 
                     {/* Correlation Analysis */}
-                    {enhancedAnalytics?.correlation_analysis?.available &&
+                    {shouldEmitInsights && enhancedAnalytics?.correlation_analysis?.available &&
                      enhancedAnalytics.correlation_analysis.strong_correlations && (
                         <CorrelationHeatmap
                             correlations={enhancedAnalytics.correlation_analysis.strong_correlations}
@@ -250,7 +317,7 @@ export function WideReportViewer({
                     )}
 
                     {/* Distribution Analysis */}
-                    {enhancedAnalytics?.distribution_analysis?.available &&
+                    {shouldEmitInsights && enhancedAnalytics?.distribution_analysis?.available &&
                      enhancedAnalytics.distribution_analysis.distributions && (
                         <DistributionCharts
                             distributions={enhancedAnalytics.distribution_analysis.distributions}
@@ -259,7 +326,7 @@ export function WideReportViewer({
                     )}
 
                     {/* Cluster Gauges */}
-                    {clusterMetrics && (
+                    {shouldEmitInsights && clusterMetrics && (
                         <div>
                             <h3 className="text-lg font-semibold mb-4">Behavioral Clusters</h3>
                             <ClusterGaugeSection data={clusterMetrics} />
@@ -267,7 +334,7 @@ export function WideReportViewer({
                     )}
 
                     {/* Fallback Charts */}
-                    {(!clusterMetrics && !personas.length && !outcomeModel && !enhancedAnalytics) && (
+                    {shouldEmitInsights && (!clusterMetrics && !personas.length && !outcomeModel && !enhancedAnalytics) && (
                         <ReportCharts
                             qualityScore={metrics.dataQualityScore}
                             segmentData={segmentData}
@@ -278,7 +345,7 @@ export function WideReportViewer({
             ),
         },
 
-        ...(personas.length > 0 ? [{
+        ...(shouldEmitInsights && personas.length > 0 ? [{
             id: "personas",
             title: "Customer Personas",
             icon: SECTION_ICONS.insights,
@@ -290,7 +357,7 @@ export function WideReportViewer({
             ),
         }] : []),
 
-        ...(outcomeModel ? [{
+        ...(shouldEmitInsights && outcomeModel ? [{
             id: "outcome-model",
             title: "Outcome Modeling",
             icon: SECTION_ICONS.anomalies,
@@ -339,10 +406,34 @@ export function WideReportViewer({
                 hero={
                     <>
                         {/* Hero Insight Panel - The Dominant Visual Anchor */}
-                        <HeroInsightPanel {...heroInsight} />
+                        {shouldEmitInsights ? (
+                            <>
+                                <HeroInsightPanel {...heroInsight} />
+                                {mondayActions.length > 0 && (
+                                    <MondayMorningActions actions={mondayActions} className="mt-8" />
+                                )}
+                            </>
+                        ) : (
+                            <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-6 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30">
+                                Insights are suppressed due to confidence/contract/validation gates. No rankings, risk labels, or strategies are shown until data quality and confidence improve.
+                            </div>
+                        )}
 
-                        {/* Monday Morning Actions */}
-                        <MondayMorningActions actions={mondayActions} className="mt-8" />
+                        {(decisionSummary || taskContractSummary) && (
+                            <div className="mt-6 rounded-lg border bg-muted/30 p-4 space-y-2">
+                                <div className="text-sm font-semibold text-foreground">Decision & Task Contract</div>
+                                {decisionSummary && (
+                                    <p className="text-sm text-foreground whitespace-pre-line">
+                                        {decisionSummary}
+                                    </p>
+                                )}
+                                {taskContractSummary && (
+                                    <p className="text-xs text-muted-foreground whitespace-pre-line">
+                                        {taskContractSummary}
+                                    </p>
+                                )}
+                            </div>
+                        )}
 
                         {/* Export Toolbar */}
                         <div className="flex gap-2 justify-end flex-wrap mt-8 mb-6">
