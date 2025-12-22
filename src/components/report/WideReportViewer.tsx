@@ -43,6 +43,9 @@ import { SegmentComparison } from "./SegmentComparison";
 import { SegmentOverviewTable } from "./SegmentOverviewTable";
 import { MetricGrid, interpretSilhouetteScore, interpretR2Score, interpretDataQuality } from "./MetricInterpretation";
 import { extractHeroInsight, generateMondayActions, extractSegmentData } from "@/lib/insightExtractors";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ShieldAlert } from "lucide-react";
 
 interface WideReportViewerProps {
     content?: string;
@@ -95,6 +98,15 @@ export function WideReportViewer({
     const progressMetrics = extractProgressMetrics(content);
     const sections = extractSections(content);
     const { segmentData, compositionData } = extractChartData(content);
+    const measurableSegments = useMemo(
+        () =>
+            (segmentData || []).map((seg: any) => ({
+                ...seg,
+                label: seg?.label ? `${seg.label}` : "Segment",
+                subtitle: seg?.avgValue ? `avg=${Math.round(seg.avgValue)}` : undefined,
+            })),
+        [segmentData]
+    );
 
     // NEW: Extract structured data for visual components
     const clusterMetrics = parseClusterMetrics(content);
@@ -166,6 +178,95 @@ export function WideReportViewer({
         return signals;
     }, [content, limitationsMode, metrics]);
 
+    // Derived Safe Mode and gating flags
+    const safeMode = limitationsMode || (typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel <= 40);
+    const hideActions = safeMode || (typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel <= 60);
+
+    // Identity + trust snapshots (best-effort from metrics / enhanced analytics)
+    const identityStats = {
+        rows: enhancedAnalytics?.quality_metrics?.total_records ?? metrics.totalRows ?? "n/a",
+        completeness: enhancedAnalytics?.quality_metrics?.overall_completeness,
+        confidence: metrics.confidenceLevel ?? "n/a",
+    };
+
+    const renderSafeModeBanner = () => {
+        if (!safeMode) return null;
+        return (
+            <Card className="mb-4 border-amber-400 bg-amber-50 text-amber-900">
+                <div className="flex items-start gap-3 p-4">
+                    <ShieldAlert className="h-5 w-5 text-amber-600 mt-0.5" />
+                    <div>
+                        <div className="font-semibold">Safe Mode (Descriptive Only)</div>
+                        <p className="text-sm text-amber-800">
+                            Validation or confidence gates are active. Insights are limited; recommendations may be hidden.
+                        </p>
+                    </div>
+                </div>
+            </Card>
+        );
+    };
+
+    const renderHero = () => (
+        <Card className="mb-4 p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <div className="text-xs uppercase text-muted-foreground">Report</div>
+                    <div className="text-xl font-semibold">ACE Report Viewer</div>
+                    {runId && (
+                        <div className="text-xs text-muted-foreground">Run ID: {runId}</div>
+                    )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {safeMode && <Badge variant="outline" className="border-amber-500 text-amber-700">Safe Mode</Badge>}
+                    <Badge variant="outline">Confidence: {metrics.confidenceLevel ?? "n/a"}%</Badge>
+                </div>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <Card className="p-3 bg-muted/50">
+                    <div className="text-xs uppercase text-muted-foreground">Task Contract</div>
+                    <div className="text-sm whitespace-pre-line">{taskContractSummary || "Contract not provided."}</div>
+                </Card>
+                <Card className="p-3 bg-muted/50">
+                    <div className="text-xs uppercase text-muted-foreground">Scope / Decision</div>
+                    <div className="text-sm whitespace-pre-line">{decisionSummary || "Scope not provided."}</div>
+                </Card>
+            </div>
+        </Card>
+    );
+
+    const renderIdentityTrust = () => (
+        <div className="grid gap-3 md:grid-cols-2 mb-4">
+            <Card className="p-3">
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold">Dataset Identity</span>
+                    <Badge variant="secondary">Top-of-fold</Badge>
+                </div>
+                <div className="mt-2 text-sm text-muted-foreground">Rows: {identityStats.rows}</div>
+                {identityStats.completeness !== undefined && (
+                    <div className="text-sm text-muted-foreground">
+                        Completeness: {(identityStats.completeness * 100).toFixed(1)}%
+                    </div>
+                )}
+            </Card>
+            <Card className="p-3">
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold">Trust & Validation</span>
+                    <Badge variant="secondary">Confidence-aware</Badge>
+                </div>
+                <div className="mt-2 text-sm text-muted-foreground">
+                    Confidence: {metrics.confidenceLevel ?? "n/a"}%
+                </div>
+                {uncertaintySignals.length > 0 && (
+                    <ul className="mt-2 text-xs text-muted-foreground list-disc list-inside space-y-1">
+                        {uncertaintySignals.map((s, i) => (
+                            <li key={i}>{s}</li>
+                        ))}
+                    </ul>
+                )}
+            </Card>
+        </div>
+    );
+
     const handleCopy = async () => {
         const success = await copyToClipboard(content);
         if (success) {
@@ -196,6 +297,40 @@ export function WideReportViewer({
     const handleSectionClick = (sectionId: string) => {
         setCurrentSection(sectionId);
     };
+
+    // Evidence-first gating: only keep sections that mention evidence/data columns
+    const hasTimeField = useMemo(() => {
+        const lower = content.toLowerCase();
+        return lower.includes("date") || lower.includes("time");
+    }, [content]);
+
+    const filteredSections = useMemo(
+        () =>
+            sections.filter((s) => {
+                const lowerTitle = s.title.toLowerCase();
+                const lowerContent = s.content.toLowerCase();
+                if (!hasTimeField && (lowerTitle.includes("time") || lowerTitle.includes("forecast") || lowerContent.includes("time-series") || lowerContent.includes("forecast"))) {
+                    return false;
+                }
+                return true;
+            }),
+        [sections, hasTimeField]
+    );
+
+    const evidenceSections = useMemo(
+        () =>
+            filteredSections.filter((s) => {
+                const lower = s.content.toLowerCase();
+                return lower.includes("evidence") || lower.includes("column") || lower.includes("data");
+            }),
+        [filteredSections]
+    );
+
+    useEffect(() => {
+        if (evidenceSections.length === 0) {
+            console.warn("Evidence gating removed all sections; report may show only system banners.");
+        }
+    }, [evidenceSections.length]);
 
     // Build accordion sections from content with intelligent routing
     const accordionSections = [
@@ -239,7 +374,7 @@ export function WideReportViewer({
             ),
         }] : []),
 
-        ...(shouldEmitInsights && segmentComparisonData && segmentComparisonData.length > 0 ? [{
+        ...(shouldEmitInsights && measurableSegments && measurableSegments.length > 0 ? [{
             id: "segments",
             title: "Customer Segments & Actions",
             icon: SECTION_ICONS.summary,
@@ -247,11 +382,11 @@ export function WideReportViewer({
             content: (
                 <div className="space-y-8">
                     <SegmentOverviewTable
-                        segments={segmentComparisonData}
+                        segments={measurableSegments}
                         totalCustomers={metrics.recordsProcessed || 10000}
                     />
                     <SegmentComparison
-                        segments={segmentComparisonData}
+                        segments={measurableSegments}
                         totalCustomers={metrics.recordsProcessed || 10000}
                     />
                 </div>
@@ -405,11 +540,15 @@ export function WideReportViewer({
             <WideReportLayout
                 hero={
                     <>
+                        {renderSafeModeBanner()}
+                        {renderHero()}
+                        {renderIdentityTrust()}
+
                         {/* Hero Insight Panel - The Dominant Visual Anchor */}
                         {shouldEmitInsights ? (
                             <>
                                 <HeroInsightPanel {...heroInsight} />
-                                {mondayActions.length > 0 && (
+                                {mondayActions.length > 0 && !hideActions && (
                                     <MondayMorningActions actions={mondayActions} className="mt-8" />
                                 )}
                             </>
@@ -510,8 +649,14 @@ export function WideReportViewer({
                 }
                 intelligenceRail={
                     <div className="space-y-4">
+                        <Card className="p-3 space-y-1">
+                            <div className="text-xs uppercase text-muted-foreground">Traceability</div>
+                            {runId && <div className="text-sm">Run ID: {runId}</div>}
+                            <div className="text-sm">Safe Mode: {safeMode ? "Yes" : "No"}</div>
+                            <div className="text-xs text-muted-foreground">Engine: ACE Viewer</div>
+                        </Card>
                         <TableOfContents
-                            sections={sections}
+                            sections={evidenceSections}
                         />
                         <IntelligenceRail
                             keyTakeaways={keyTakeaways}
@@ -524,7 +669,7 @@ export function WideReportViewer({
                                 confidence: metrics.confidenceLevel,
                                 anomalies: metrics.anomalyCount
                             }}
-                            sections={sections.map(s => ({ id: s.id, title: s.title }))}
+                            sections={evidenceSections.map(s => ({ id: s.id, title: s.title }))}
                             currentSection={currentSection}
                             readingProgress={readingProgress}
                             onSectionClick={handleSectionClick}
