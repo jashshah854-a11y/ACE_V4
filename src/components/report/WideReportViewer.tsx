@@ -45,6 +45,7 @@ import { MetricGrid, interpretSilhouetteScore, interpretR2Score, interpretDataQu
 import { extractHeroInsight, generateMondayActions, extractSegmentData } from "@/lib/insightExtractors";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ShieldAlert } from "lucide-react";
 
 interface WideReportViewerProps {
@@ -63,6 +64,9 @@ export function WideReportViewer({
     const [copied, setCopied] = useState(false);
     const [readingProgress, setReadingProgress] = useState(0);
     const [currentSection, setCurrentSection] = useState("");
+    const [confidenceMode, setConfidenceMode] = useState<"strict" | "exploratory">("exploratory");
+    const confidenceThreshold = confidenceMode === "strict" ? 90 : 60;
+    const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
     const { toast } = useToast();
 
     const { data: enhancedAnalytics, loading: analyticsLoading } = useEnhancedAnalytics(runId);
@@ -148,7 +152,9 @@ export function WideReportViewer({
         return hasSignal || lowConfidence;
     }, [content, metrics]);
 
-    const shouldEmitInsights = !limitationsMode;
+    const shouldEmitInsights =
+        !limitationsMode &&
+        (typeof metrics.confidenceLevel !== "number" || metrics.confidenceLevel >= confidenceThreshold);
 
     const taskContractSection = useMemo(
         () => sections.find((s) => s.title.toLowerCase().includes("contract")),
@@ -179,8 +185,11 @@ export function WideReportViewer({
     }, [content, limitationsMode, metrics]);
 
     // Derived Safe Mode and gating flags
-    const safeMode = limitationsMode || (typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel <= 40);
-    const hideActions = safeMode || (typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel <= 60);
+    const safeMode =
+        limitationsMode ||
+        (typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel < confidenceThreshold);
+    const hideActions =
+        safeMode || (typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel < confidenceThreshold);
 
     // Identity + trust snapshots (best-effort from metrics / enhanced analytics)
     const identityStats = {
@@ -205,6 +214,53 @@ export function WideReportViewer({
             </Card>
         );
     };
+
+    const safeModeReasons = useMemo(() => {
+        const reasons: string[] = [];
+        if (limitationsMode) reasons.push("Validation/contract gates active (limitations mode).");
+        if (typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel < confidenceThreshold) {
+            reasons.push(`Confidence ${metrics.confidenceLevel}% below threshold ${confidenceThreshold}%.`);
+        }
+        if (!hasTimeField) reasons.push("Time fields not detected; time-series suppressed.");
+        if (evidenceSections.length === 0) reasons.push("No evidence-bearing sections detected.");
+        return reasons;
+    }, [limitationsMode, metrics.confidenceLevel, confidenceThreshold, hasTimeField, evidenceSections.length]);
+
+    const renderDiagnosticsCard = () => (
+        <Card className="mb-4 p-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-3 justify-between">
+                <div>
+                    <div className="text-xs uppercase text-muted-foreground">Diagnostics</div>
+                    <div className="text-sm font-semibold">Why Am I in Safe Mode?</div>
+                </div>
+                <div className="flex gap-2">
+                    <Button
+                        size="sm"
+                        variant={confidenceMode === "strict" ? "default" : "outline"}
+                        onClick={() => setConfidenceMode("strict")}
+                    >
+                        Strict (&gt;=90%)
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant={confidenceMode === "exploratory" ? "default" : "outline"}
+                        onClick={() => setConfidenceMode("exploratory")}
+                    >
+                        Exploratory (&gt;=60%)
+                    </Button>
+                </div>
+            </div>
+            <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                {safeModeReasons.length === 0 && <li>No blocking reasons detected.</li>}
+                {safeModeReasons.map((r, i) => (
+                    <li key={i}>{r}</li>
+                ))}
+            </ul>
+            <div className="mt-2 text-xs text-muted-foreground">
+                Scope check: {(decisionSummary || taskContractSummary) ? "OK" : "No contract/scope provided"} • Fields: {hasTimeField ? "Time present" : "Time missing"}
+            </div>
+        </Card>
+    );
 
     const renderHero = () => (
         <Card className="mb-4 p-4">
@@ -332,6 +388,11 @@ export function WideReportViewer({
         }
     }, [evidenceSections.length]);
 
+    const limitationFootnote = useMemo(() => {
+        if (!hasTimeField) return "Time analysis suppressed: no date/time fields detected.";
+        return null;
+    }, [hasTimeField]);
+
     // Build accordion sections from content with intelligent routing
     const accordionSections = [
         ...(limitationsMode ? [{
@@ -389,6 +450,16 @@ export function WideReportViewer({
                         segments={measurableSegments}
                         totalCustomers={metrics.recordsProcessed || 10000}
                     />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        {measurableSegments.map((seg, idx) => (
+                            <Card key={idx} className="p-3">
+                                <div className="text-sm font-semibold">Segment {idx + 1}</div>
+                                <div className="text-xs text-muted-foreground">
+                                    {seg.subtitle || "Data-driven segment"}{seg.mean && ` • mean=${Math.round(seg.mean)}`}
+                                </div>
+                            </Card>
+                        ))}
+                    </div>
                 </div>
             ),
         }] : []),
@@ -440,6 +511,21 @@ export function WideReportViewer({
                             insights={enhancedAnalytics.business_intelligence.insights}
                             evidence={enhancedAnalytics.business_intelligence.evidence}
                         />
+                    )}
+
+                    {/* Model Transparency */}
+                    {enhancedAnalytics?.feature_importance?.feature_importance && (
+                        <Card className="p-3">
+                            <div className="text-sm font-semibold mb-2">Model Drivers</div>
+                            <ul className="text-sm space-y-1">
+                                {enhancedAnalytics.feature_importance.feature_importance.slice(0, 5).map((f: any, i: number) => (
+                                    <li key={i} className="flex justify-between">
+                                        <span>{f.feature || f[0]}</span>
+                                        <span className="text-muted-foreground">{(f.importance || f[1])?.toFixed?.(3) ?? f.importance ?? f[1]}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </Card>
                     )}
 
                     {/* Correlation Analysis */}
@@ -524,6 +610,11 @@ export function WideReportViewer({
                     >
                         {content}
                     </ReactMarkdown>
+                    {limitationFootnote && (
+                        <div className="mt-4 text-xs text-muted-foreground">
+                            {limitationFootnote}
+                        </div>
+                    )}
                 </article>
             ),
         },
@@ -543,6 +634,7 @@ export function WideReportViewer({
                         {renderSafeModeBanner()}
                         {renderHero()}
                         {renderIdentityTrust()}
+                        {renderDiagnosticsCard()}
 
                         {/* Hero Insight Panel - The Dominant Visual Anchor */}
                         {shouldEmitInsights ? (
@@ -600,6 +692,20 @@ export function WideReportViewer({
                                 contentId="report-content"
                                 filename={runId ? `ace-report-${runId}.pdf` : "ace-report.pdf"}
                             />
+                            <Button
+                                onClick={() => toast({ title: "Run diff", description: "Diff view not available in this build." })}
+                                variant="outline"
+                                size="sm"
+                            >
+                                Run Diff
+                            </Button>
+                            <Button
+                                onClick={() => toast({ title: "PPTX export", description: "Evidence deck export not available in this build." })}
+                                variant="outline"
+                                size="sm"
+                            >
+                                PPTX
+                            </Button>
                         </div>
 
                         {/* Executive Brief - Consultant Summary */}
@@ -632,6 +738,70 @@ export function WideReportViewer({
                 mainContent={
                     <div id="report-content" className="space-y-8">
                         <ReportAccordion sections={accordionSections} />
+
+                        {/* Evidence Drill-Down */}
+                        {evidenceSections.length > 0 && (
+                            <Card className="p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div>
+                                        <div className="text-xs uppercase text-muted-foreground">Evidence Inspector</div>
+                                        <div className="text-sm font-semibold">Click to inspect evidence</div>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    {evidenceSections.map((sec, idx) => (
+                                        <div key={idx} className="flex items-start gap-3 border rounded-md p-2">
+                                            <div className="text-xs font-semibold text-muted-foreground">#{idx + 1}</div>
+                                            <div className="flex-1">
+                                                <div className="text-sm font-medium">{sec.title}</div>
+                                                <div className="text-xs text-muted-foreground line-clamp-2">{sec.content}</div>
+                                            </div>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => setEvidencePreview(sec.content)}
+                                            >
+                                                Inspect
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                                {evidencePreview && (
+                                    <div className="mt-3 rounded-md border bg-muted/30 p-3 text-sm">
+                                        <div className="font-semibold mb-1">Sample Rows (stub)</div>
+                                        <div className="text-xs text-muted-foreground">
+                                            Sample rows not available in this build. Hook evidence-id endpoint to fetch 5–10 source rows. Preview:
+                                        </div>
+                                        <div className="mt-2 text-xs whitespace-pre-line">{evidencePreview.slice(0, 500)}</div>
+                                        <div className="mt-2">
+                                            <Button size="sm" onClick={() => setEvidencePreview(null)}>Close</Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </Card>
+                        )}
+
+                        {/* Action Priority Matrix (stub) */}
+                        {mondayActions.length > 0 && (
+                            <Card className="p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div>
+                                        <div className="text-xs uppercase text-muted-foreground">Actions</div>
+                                        <div className="text-sm font-semibold">Confidence vs Impact</div>
+                                    </div>
+                                </div>
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                    {mondayActions.map((a, idx) => (
+                                        <div key={idx} className="border rounded-md p-2 text-sm">
+                                            <div className="font-semibold">{a.title || `Action ${idx + 1}`}</div>
+                                            <div className="text-xs text-muted-foreground">{a.description || a}</div>
+                                            <div className="mt-1 text-xs">Confidence: {metrics.confidenceLevel ?? "n/a"}%</div>
+                                            {hideActions && <div className="text-xs text-amber-700">Hidden in strict mode</div>}
+                                        </div>
+                                    ))}
+                                </div>
+                            </Card>
+                        )}
 
                         {/* Report Conclusion - Decision Boundaries */}
                         <motion.div
