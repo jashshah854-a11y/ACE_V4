@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,41 +6,41 @@
 
 @layer base {
   :root {
-    /* Softer, more cohesive light theme palette */
-    --background: 220 20% 98%;
-    --foreground: 220 20% 15%;
+    /* Premium Consultant Theme - Light */
+    --background: 40 20% 98%;
+    --foreground: 220 30% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 15%;
+    --card-foreground: 220 30% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 15%;
+    --popover-foreground: 220 30% 12%;
     
-    /* Primary: Refined blue with softer saturation */
-    --primary: 220 65% 52%;
+    /* Navy Primary */
+    --primary: 220 45% 15%;
     --primary-foreground: 0 0% 100%;
     
-    /* Secondary: Warm neutral */
-    --secondary: 220 12% 93%;
-    --secondary-foreground: 220 20% 20%;
-    
-    /* Muted: Soft gray with slight warmth */
-    --muted: 220 12% 94%;
-    --muted-foreground: 220 10% 50%;
-    
-    /* Accent: Soft violet - complementary but not harsh */
-    --accent: 255 55% 58%;
+    /* Copper Accent */
+    --accent: 22 50% 50%;
     --accent-foreground: 0 0% 100%;
     
-    /* Destructive: Softer red */
+    /* Secondary: Warm gray */
+    --secondary: 220 10% 95%;
+    --secondary-foreground: 220 30% 20%;
+    
+    /* Muted */
+    --muted: 220 10% 96%;
+    --muted-foreground: 220 10% 45%;
+    
+    /* Destructive */
     --destructive: 0 65% 55%;
     --destructive-foreground: 0 0% 100%;
     
-    /* Borders & Inputs */
-    --border: 220 12% 88%;
-    --input: 220 12% 88%;
-    --ring: 220 65% 52%;
-    --radius: 0.75rem;
+    /* Borders */
+    --border: 220 10% 88%;
+    --input: 220 10% 88%;
+    --ring: 22 50% 50%;
+    --radius: 0.25rem;
     
-    /* Semantic colors - softer variants */
+    /* Semantic */
     --warning: 38 85% 52%;
     --warning-foreground: 0 0% 100%;
     --info: 200 80% 48%;
@@ -48,52 +48,61 @@
     --success: 145 60% 42%;
     --success-foreground: 0 0% 100%;
     
+    /* Custom colors for consultant theme */
+    --navy-50: 220 30% 96%;
+    --navy-100: 220 30% 90%;
+    --navy-900: 220 45% 15%;
+    --copper-50: 22 40% 96%;
+    --copper-100: 22 40% 90%;
+    --copper-400: 22 50% 55%;
+    --copper-600: 22 50% 45%;
+    
     /* Sidebar */
-    --sidebar-background: 220 20% 98%;
-    --sidebar-foreground: 220 20% 15%;
-    --sidebar-primary: 220 65% 52%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 30% 12%;
+    --sidebar-primary: 220 45% 15%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 12% 93%;
-    --sidebar-accent-foreground: 220 20% 20%;
-    --sidebar-border: 220 12% 88%;
-    --sidebar-ring: 220 65% 52%;
+    --sidebar-accent: 220 10% 95%;
+    --sidebar-accent-foreground: 220 30% 20%;
+    --sidebar-border: 220 10% 88%;
+    --sidebar-ring: 22 50% 50%;
   }
 
   .dark {
-    /* Rich dark theme with better depth */
-    --background: 222 40% 7%;
-    --foreground: 210 30% 96%;
-    --card: 222 40% 9%;
-    --card-foreground: 210 30% 96%;
-    --popover: 222 40% 9%;
-    --popover-foreground: 210 30% 96%;
+    /* Premium Consultant Theme - Dark */
+    --background: 220 30% 8%;
+    --foreground: 40 20% 96%;
+    --card: 220 30% 10%;
+    --card-foreground: 40 20% 96%;
+    --popover: 220 30% 10%;
+    --popover-foreground: 40 20% 96%;
     
-    /* Primary: Vibrant but not harsh blue */
-    --primary: 217 85% 62%;
-    --primary-foreground: 222 40% 7%;
+    /* Navy Primary (lighter for dark mode) */
+    --primary: 220 40% 75%;
+    --primary-foreground: 220 30% 8%;
+    
+    /* Copper Accent */
+    --accent: 22 55% 58%;
+    --accent-foreground: 220 30% 8%;
     
     /* Secondary */
-    --secondary: 217 25% 16%;
-    --secondary-foreground: 210 30% 96%;
+    --secondary: 220 25% 16%;
+    --secondary-foreground: 40 20% 96%;
     
     /* Muted */
-    --muted: 217 25% 13%;
-    --muted-foreground: 215 15% 58%;
-    
-    /* Accent: Softer violet */
-    --accent: 255 60% 62%;
-    --accent-foreground: 0 0% 100%;
+    --muted: 220 25% 14%;
+    --muted-foreground: 220 15% 55%;
     
     /* Destructive */
     --destructive: 0 55% 50%;
     --destructive-foreground: 0 0% 100%;
     
     /* Borders */
-    --border: 217 25% 18%;
-    --input: 217 25% 18%;
-    --ring: 217 85% 62%;
+    --border: 220 25% 20%;
+    --input: 220 25% 20%;
+    --ring: 22 55% 58%;
     
-    /* Semantic colors */
+    /* Semantic */
     --warning: 38 80% 55%;
     --warning-foreground: 0 0% 100%;
     --info: 200 75% 55%;
@@ -101,15 +110,24 @@
     --success: 145 55% 48%;
     --success-foreground: 0 0% 100%;
     
+    /* Custom colors for dark mode */
+    --navy-50: 220 25% 16%;
+    --navy-100: 220 25% 20%;
+    --navy-900: 220 40% 85%;
+    --copper-50: 22 30% 16%;
+    --copper-100: 22 30% 20%;
+    --copper-400: 22 55% 58%;
+    --copper-600: 22 50% 65%;
+    
     /* Sidebar */
-    --sidebar-background: 222 40% 7%;
-    --sidebar-foreground: 210 30% 96%;
-    --sidebar-primary: 217 85% 62%;
-    --sidebar-primary-foreground: 222 40% 7%;
-    --sidebar-accent: 217 25% 16%;
-    --sidebar-accent-foreground: 210 30% 96%;
-    --sidebar-border: 217 25% 18%;
-    --sidebar-ring: 217 85% 62%;
+    --sidebar-background: 220 30% 8%;
+    --sidebar-foreground: 40 20% 96%;
+    --sidebar-primary: 220 40% 75%;
+    --sidebar-primary-foreground: 220 30% 8%;
+    --sidebar-accent: 220 25% 16%;
+    --sidebar-accent-foreground: 40 20% 96%;
+    --sidebar-border: 220 25% 20%;
+    --sidebar-ring: 22 55% 58%;
   }
 }
 
@@ -118,92 +136,94 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, sans-serif;
   }
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
+  .font-serif {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
 }
 
 @layer utilities {
-  /* Softer gradient - refined blue to violet */
-  .gradient-meridian {
-    background: linear-gradient(135deg, hsl(220 65% 52%) 0%, hsl(255 55% 58%) 100%);
+  /* Navy text */
+  .text-navy-900 {
+    color: hsl(var(--navy-900));
   }
   
-  .gradient-meridian-subtle {
-    background: linear-gradient(135deg, hsl(220 65% 52% / 0.08) 0%, hsl(255 55% 58% / 0.08) 100%);
+  /* Copper accent colors */
+  .text-copper-400 {
+    color: hsl(var(--copper-400));
+  }
+  .text-copper-600 {
+    color: hsl(var(--copper-600));
+  }
+  .bg-copper-50 {
+    background-color: hsl(var(--copper-50));
+  }
+  .bg-copper-100 {
+    background-color: hsl(var(--copper-100));
+  }
+  .border-copper-400 {
+    border-color: hsl(var(--copper-400));
   }
   
-  /* Dark theme mesh background */
-  .gradient-dark-mesh {
-    background: 
-      radial-gradient(at 40% 20%, hsl(217 85% 62% / 0.12) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, hsl(255 60% 62% / 0.08) 0px, transparent 50%),
-      radial-gradient(at 0% 50%, hsl(217 85% 62% / 0.06) 0px, transparent 50%),
-      radial-gradient(at 80% 50%, hsl(255 60% 62% / 0.04) 0px, transparent 50%),
-      radial-gradient(at 0% 100%, hsl(217 85% 62% / 0.08) 0px, transparent 50%);
+  /* Navy backgrounds */
+  .bg-navy-50 {
+    background-color: hsl(var(--navy-50));
+  }
+  .bg-navy-900 {
+    background-color: hsl(var(--navy-900));
   }
   
-  /* Text gradient */
-  .text-gradient {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(220 65% 52%) 0%, hsl(255 55% 58%) 100%);
+  /* Consultant gradient */
+  .gradient-consultant {
+    background: linear-gradient(135deg, hsl(220 45% 15%) 0%, hsl(22 50% 50%) 100%);
   }
   
-  /* Glows */
-  .glow-primary {
-    box-shadow: 0 0 40px hsl(220 65% 52% / 0.25);
+  /* Selection colors */
+  .selection-copper ::selection {
+    background-color: hsl(var(--copper-100));
+    color: hsl(var(--copper-600));
   }
   
-  .glow-accent {
-    box-shadow: 0 0 40px hsl(255 55% 58% / 0.25);
-  }
-  
-  /* Soft shadows for cards */
+  /* Soft shadows */
   .shadow-soft {
     box-shadow: 
-      0 1px 2px hsl(220 20% 15% / 0.03),
-      0 4px 8px hsl(220 20% 15% / 0.04),
-      0 12px 24px hsl(220 20% 15% / 0.05);
+      0 1px 2px hsl(220 30% 12% / 0.03),
+      0 4px 8px hsl(220 30% 12% / 0.04),
+      0 12px 24px hsl(220 30% 12% / 0.05);
   }
   
   .shadow-soft-lg {
     box-shadow: 
-      0 2px 4px hsl(220 20% 15% / 0.02),
-      0 8px 16px hsl(220 20% 15% / 0.04),
-      0 24px 48px hsl(220 20% 15% / 0.06);
-  }
-  
-  /* Success gradient */
-  .gradient-success {
-    background: linear-gradient(135deg, hsl(145 60% 42%) 0%, hsl(160 55% 45%) 100%);
-  }
-  
-  /* Warning gradient */
-  .gradient-warning {
-    background: linear-gradient(135deg, hsl(38 85% 52%) 0%, hsl(28 80% 55%) 100%);
+      0 2px 4px hsl(220 30% 12% / 0.02),
+      0 8px 16px hsl(220 30% 12% / 0.04),
+      0 24px 48px hsl(220 30% 12% / 0.06);
   }
 }
 
 @layer components {
+  /* Glass card */
   .glass-card {
     @apply bg-card/90 backdrop-blur-xl border border-border/50 shadow-soft;
   }
   
-  .input-meridian {
-    @apply bg-muted/40 border-border/50 focus:border-primary/50 focus:ring-primary/20 transition-all duration-200;
-  }
-  
-  /* Improved prose styling */
+  /* Report prose styling */
   .prose-report {
     @apply prose prose-slate dark:prose-invert max-w-none;
-    @apply prose-headings:font-semibold prose-headings:tracking-tight;
+    @apply prose-headings:font-serif prose-headings:font-bold prose-headings:text-navy-900 prose-headings:tracking-tight;
     @apply prose-p:text-muted-foreground prose-p:leading-relaxed;
-    @apply prose-a:text-primary prose-a:no-underline hover:prose-a:underline;
+    @apply prose-a:text-copper-600 prose-a:no-underline hover:prose-a:underline;
     @apply prose-strong:text-foreground prose-strong:font-semibold;
-    @apply prose-code:text-primary prose-code:bg-muted/50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded;
+    @apply prose-code:text-copper-600 prose-code:bg-muted/50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded;
+  }
+  
+  /* Consultant report section */
+  .report-section {
+    @apply py-16 md:py-24 border-b border-border last:border-0;
   }
 }
 
@@ -213,20 +233,10 @@
   50% { transform: translateY(-8px); }
 }
 
-@keyframes pulse-glow {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.6; }
-}
-
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
 @keyframes fade-in-up {
   0% { 
     opacity: 0; 
-    transform: translateY(8px); 
+    transform: translateY(12px); 
   }
   100% { 
     opacity: 1; 
@@ -245,27 +255,28 @@
   }
 }
 
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
 
-.animate-pulse-glow {
-  animation: pulse-glow 3s ease-in-out infinite;
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-shimmer {
   animation: shimmer 2s ease-in-out infinite;
 }
 
-.animate-fade-in-up {
-  animation: fade-in-up 0.4s ease-out forwards;
-}
-
-.animate-scale-in {
-  animation: scale-in 0.3s ease-out forwards;
-}
-
-/* Stagger animation delays */
+/* Stagger delays */
 .stagger-1 { animation-delay: 0.05s; }
 .stagger-2 { animation-delay: 0.1s; }
 .stagger-3 { animation-delay: 0.15s; }
