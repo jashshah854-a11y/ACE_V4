@@ -8,6 +8,8 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from core.state_manager import StateManager
 from core.data_guardrails import SUPPORTED_DATA_TYPES
+from core.data_loader import smart_load_dataset
+from ace_v4.performance.config import PerformanceConfig
 
 
 DATA_TYPE_KEYWORDS: Dict[str, List[str]] = {
@@ -54,14 +56,24 @@ def main():
 
     run_path = sys.argv[1]
     state = StateManager(run_path)
-    data_path = state.get_file_path("cleaned_uploaded.csv")
+    dataset_info = state.read("active_dataset") or {}
+    data_path = dataset_info.get("path") or state.get_file_path("cleaned_uploaded.csv")
 
-    if not Path(data_path).exists():
+    if not data_path or not Path(data_path).exists():
         print(f"[DATA_TYPING] Missing dataset at {data_path}")
         state.write("data_type", {"primary_type": "unknown", "confidence": "low", "reason": "missing_dataset"})
         sys.exit(1)
 
-    df = pd.read_csv(data_path, nrows=5000)
+    run_config = state.read("run_config") or {}
+    ingestion_meta = state.read("ingestion_meta") or {}
+    fast_mode = bool(run_config.get("fast_mode", ingestion_meta.get("fast_mode", False)))
+    df = smart_load_dataset(
+        data_path,
+        config=PerformanceConfig(),
+        max_rows=5000,
+        fast_mode=fast_mode,
+        prefer_parquet=True,
+    )
 
     scores = score_data_types(df)
     top_type, top_score = scores[0]
