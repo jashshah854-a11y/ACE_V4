@@ -160,7 +160,7 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
 
       {/* Pipeline Steps */}
       <div className="space-y-2">
-        {PIPELINE_STEPS.map((step) => {
+        {PIPELINE_STEPS.map((step, index) => {
           const status = getStepStatus(step.key, state);
           const isActive = status === 'active';
           const isCompleted = status === 'completed' || isComplete;
