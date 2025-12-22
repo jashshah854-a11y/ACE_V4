@@ -17,7 +17,34 @@ export interface MondayAction {
     owner?: string;
 }
 
+function isLimitationsMode(content: string, metrics: any): boolean {
+    const lower = (content || "").toLowerCase();
+    const signals = [
+        "mode: limitations",
+        "insights suppressed",
+        "suppressed due to confidence",
+        "suppressed due to contract",
+        "suppressed due to validation"
+    ];
+    const hasSignal = signals.some((sig) => lower.includes(sig));
+    const lowConfidence =
+        typeof metrics?.confidenceLevel === "number" && metrics.confidenceLevel <= 5;
+    return hasSignal || lowConfidence;
+}
+
 export function extractHeroInsight(content: string, metrics: any): HeroInsight {
+    if (isLimitationsMode(content, metrics)) {
+        return {
+            keyInsight: "Insights suppressed due to governance limits",
+            impact: "low",
+            trend: "neutral",
+            confidence: metrics?.confidenceLevel ?? 0,
+            dataQuality: metrics?.dataQualityScore ?? 0,
+            recommendation: "No strategies recommended until confidence/contract gates clear.",
+            context: "Report is in limitations mode; review validation, contract, and data quality."
+        };
+    }
+
     const dataQuality = metrics.dataQualityScore || 75;
     const anomalyCount = metrics.anomalyCount || 0;
     const totalRecords = metrics.recordsProcessed || 1000;
@@ -75,6 +102,10 @@ export function extractHeroInsight(content: string, metrics: any): HeroInsight {
 }
 
 export function generateMondayActions(content: string, metrics: any, anomalies: any): MondayAction[] {
+    if (isLimitationsMode(content, metrics)) {
+        return [];
+    }
+
     const actions: MondayAction[] = [];
     const anomalyRate = metrics.anomalyCount ? (metrics.anomalyCount / metrics.recordsProcessed) * 100 : 0;
 
@@ -134,28 +165,6 @@ export function generateMondayActions(content: string, metrics: any, anomalies: 
                 owner: "Product Team"
             });
         }
-    }
-
-    if (actions.length < 3) {
-        actions.push({
-            title: "Schedule Monthly Data Quality Reviews",
-            description: "Establish a regular cadence to monitor data quality metrics, review anomaly trends, and adjust data governance policies as needed.",
-            priority: "medium",
-            effort: "low",
-            expectedImpact: "Maintain high data quality and catch issues before they become critical",
-            owner: "Data Governance Team"
-        });
-    }
-
-    if (actions.length < 3) {
-        actions.push({
-            title: "Share Insights with Stakeholders",
-            description: "Present the key findings from this analysis to relevant business stakeholders. Focus on actionable insights and specific recommendations for each department.",
-            priority: "medium",
-            effort: "low",
-            expectedImpact: "Align organization on data-driven priorities and foster data culture",
-            owner: "Analytics Team"
-        });
     }
 
     return actions.slice(0, 4);
@@ -268,39 +277,5 @@ export function extractSegmentData(content: string): any[] {
         return segments;
     }
 
-    return [
-        {
-            name: "High-Value Customers",
-            size: 2500,
-            sizePercent: 25,
-            avgValue: 5000,
-            riskLevel: "low" as const,
-            keyTrait: "High spending, high engagement",
-            differentiator: "Premium product preference and loyalty",
-            keyBehavior: "High engagement",
-            recommendedAction: "Retain" as const
-        },
-        {
-            name: "Growth Potential",
-            size: 3500,
-            sizePercent: 35,
-            avgValue: 2500,
-            riskLevel: "medium" as const,
-            keyTrait: "Moderate spending, growing engagement",
-            differentiator: "Increasing transaction frequency",
-            keyBehavior: "Mixed behavior",
-            recommendedAction: "Upsell" as const
-        },
-        {
-            name: "At-Risk Segment",
-            size: 4000,
-            sizePercent: 40,
-            avgValue: 1000,
-            riskLevel: "high" as const,
-            keyTrait: "Low spending, declining activity",
-            differentiator: "High churn risk indicators",
-            keyBehavior: "Declining activity",
-            recommendedAction: "Re-engage" as const
-        }
-    ];
+    return [];
 }
