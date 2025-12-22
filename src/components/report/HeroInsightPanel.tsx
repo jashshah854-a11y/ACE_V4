@@ -1,9 +1,6 @@
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, Minus, Info, CheckCircle2 } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { TrendingUp, TrendingDown, Minus, Lightbulb, ArrowRight, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface HeroInsightPanelProps {
     keyInsight: string;
@@ -26,34 +23,37 @@ export function HeroInsightPanel({
 }: HeroInsightPanelProps) {
     const impactConfig = {
         high: {
-            color: "text-warning",
-            bg: "bg-warning/8",
-            border: "border-warning/20",
-            label: "High Impact"
+            color: "text-copper-600",
+            bg: "bg-copper-50",
+            border: "border-copper-200",
+            label: "High Impact",
+            gradient: "from-copper-50 to-transparent"
         },
         medium: {
-            color: "text-info",
-            bg: "bg-info/8",
-            border: "border-info/20",
-            label: "Medium Impact"
+            color: "text-teal-600",
+            bg: "bg-teal-50",
+            border: "border-teal-200",
+            label: "Medium Impact",
+            gradient: "from-teal-50 to-transparent"
         },
         low: {
-            color: "text-success",
-            bg: "bg-success/8",
-            border: "border-success/20",
-            label: "Low Impact"
+            color: "text-muted-foreground",
+            bg: "bg-muted",
+            border: "border-border",
+            label: "Low Impact",
+            gradient: "from-muted to-transparent"
         }
     };
 
     const trendConfig = {
         positive: {
             icon: TrendingUp,
-            color: "text-success",
+            color: "text-teal-500",
             label: "Positive Trend"
         },
         negative: {
             icon: TrendingDown,
-            color: "text-warning",
+            color: "text-copper-500",
             label: "Negative Trend"
         },
         neutral: {
@@ -67,147 +67,142 @@ export function HeroInsightPanel({
     const trendInfo = trendConfig[trend];
     const TrendIcon = trendInfo.icon;
 
-    const getConfidenceLevel = (score: number) => {
-        if (score >= 85) return { label: "Very High", color: "bg-success" };
-        if (score >= 70) return { label: "High", color: "bg-info" };
-        if (score >= 50) return { label: "Moderate", color: "bg-warning" };
-        return { label: "Low", color: "bg-destructive/80" };
+    const getQualityLabel = (score: number) => {
+        if (score >= 85) return "Excellent";
+        if (score >= 70) return "Good";
+        if (score >= 50) return "Fair";
+        return "Needs Improvement";
     };
 
-    const confidenceInfo = getConfidenceLevel(confidence);
-    const qualityInfo = getConfidenceLevel(dataQuality);
-
     return (
-        <TooltipProvider>
-            <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
-            >
-                <Card className={cn(
-                    "relative overflow-hidden border shadow-soft-lg",
-                    config.border,
-                    config.bg
-                )}>
-                    {/* Subtle background decoration */}
-                    <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-primary/3 to-accent/3 rounded-full blur-3xl pointer-events-none" />
+        <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="relative"
+        >
+            {/* Main Card */}
+            <div className={cn(
+                "relative overflow-hidden border rounded-sm shadow-soft bg-card",
+                config.border
+            )}>
+                {/* Subtle gradient overlay */}
+                <div className={cn(
+                    "absolute inset-0 bg-gradient-to-br opacity-50 pointer-events-none",
+                    config.gradient
+                )} />
 
-                    <div className="relative p-6 md:p-8 space-y-6">
-                        {/* Header with badges */}
-                        <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div className="relative">
+                    {/* Header with badges and stats */}
+                    <div className="px-6 sm:px-8 pt-6 pb-4 border-b border-border/50">
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                            {/* Left: Impact + Trend */}
                             <div className="flex items-center gap-3">
-                                <motion.div 
-                                    initial={{ scale: 0.8, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    transition={{ delay: 0.1, duration: 0.3 }}
-                                    className={cn("p-2.5 rounded-xl", config.bg)}
-                                >
-                                    <Info className={cn("h-5 w-5", config.color)} />
-                                </motion.div>
-                                <div className="space-y-1">
-                                    <Badge variant="outline" className={cn("font-medium text-xs", config.color, "border-current/30")}>
-                                        {config.label}
-                                    </Badge>
-                                    <div className="flex items-center gap-1.5">
-                                        <TrendIcon className={cn("h-3.5 w-3.5", trendInfo.color)} />
-                                        <span className={cn("text-xs font-medium", trendInfo.color)}>
-                                            {trendInfo.label}
-                                        </span>
-                                    </div>
+                                <div className={cn(
+                                    "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold",
+                                    config.bg, config.color
+                                )}>
+                                    <Sparkles className="h-3 w-3" />
+                                    {config.label}
+                                </div>
+                                <div className={cn(
+                                    "flex items-center gap-1.5 text-xs font-medium",
+                                    trendInfo.color
+                                )}>
+                                    <TrendIcon className="h-3.5 w-3.5" />
+                                    {trendInfo.label}
                                 </div>
                             </div>
 
-                            {/* Confidence & Quality indicators */}
-                            <div className="flex gap-4">
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <div className="text-right cursor-help">
-                                            <div className="text-xs text-muted-foreground mb-1.5">Confidence</div>
-                                            <div className="flex items-center justify-end gap-2">
-                                                <div className="h-1.5 w-14 bg-muted rounded-full overflow-hidden">
-                                                    <motion.div
-                                                        initial={{ width: 0 }}
-                                                        animate={{ width: `${confidence}%` }}
-                                                        transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-                                                        className={cn("h-full rounded-full", confidenceInfo.color)}
-                                                    />
-                                                </div>
-                                                <span className="text-sm font-semibold tabular-nums">{confidence}%</span>
-                                            </div>
-                                            <div className="text-[10px] text-muted-foreground mt-0.5">{confidenceInfo.label}</div>
+                            {/* Right: Quality metrics */}
+                            <div className="flex items-center gap-6">
+                                <div className="text-right">
+                                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                                        Confidence
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
+                                            <motion.div
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${confidence}%` }}
+                                                transition={{ duration: 0.8, delay: 0.2 }}
+                                                className={cn(
+                                                    "h-full rounded-full",
+                                                    confidence >= 70 ? "bg-teal-500" : confidence >= 50 ? "bg-copper-400" : "bg-muted-foreground"
+                                                )}
+                                            />
                                         </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="bottom">
-                                        <p className="text-xs">How confident the model is in these findings</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                                
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <div className="text-right cursor-help">
-                                            <div className="text-xs text-muted-foreground mb-1.5">Data Quality</div>
-                                            <div className="flex items-center justify-end gap-2">
-                                                <div className="h-1.5 w-14 bg-muted rounded-full overflow-hidden">
-                                                    <motion.div
-                                                        initial={{ width: 0 }}
-                                                        animate={{ width: `${dataQuality}%` }}
-                                                        transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
-                                                        className={cn("h-full rounded-full", qualityInfo.color)}
-                                                    />
-                                                </div>
-                                                <span className="text-sm font-semibold tabular-nums">{dataQuality}%</span>
-                                            </div>
-                                            <div className="text-[10px] text-muted-foreground mt-0.5">{qualityInfo.label}</div>
+                                        <span className="text-sm font-bold tabular-nums">{confidence}%</span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                                        Data Quality
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
+                                            <motion.div
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${dataQuality}%` }}
+                                                transition={{ duration: 0.8, delay: 0.3 }}
+                                                className={cn(
+                                                    "h-full rounded-full",
+                                                    dataQuality >= 70 ? "bg-teal-500" : dataQuality >= 50 ? "bg-copper-400" : "bg-muted-foreground"
+                                                )}
+                                            />
                                         </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="bottom">
-                                        <p className="text-xs">Completeness and accuracy of your dataset</p>
-                                    </TooltipContent>
-                                </Tooltip>
+                                        <span className="text-sm font-bold tabular-nums">{dataQuality}%</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Key Insight - The Hero Statement */}
+                    {/* Key Insight */}
+                    <div className="px-6 sm:px-8 py-6 sm:py-8">
                         <motion.div 
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.2, duration: 0.4 }}
-                            className="space-y-3"
                         >
-                            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground leading-tight">
+                            <p className="text-muted-foreground text-sm font-medium mb-2">
+                                {getQualityLabel(dataQuality)} data quality foundation
+                            </p>
+                            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-navy-900 leading-tight tracking-tight">
                                 {keyInsight}
                             </h2>
                             {context && (
-                                <p className="text-muted-foreground text-base md:text-lg leading-relaxed">
+                                <p className="text-muted-foreground text-base sm:text-lg leading-relaxed mt-4">
                                     {context}
                                 </p>
                             )}
                         </motion.div>
-
-                        {/* Recommendation */}
-                        <motion.div 
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.3, duration: 0.4 }}
-                            className="pt-5 border-t border-border/40"
-                        >
-                            <div className="flex items-start gap-3">
-                                <div className="mt-0.5 p-2 rounded-lg bg-primary/10">
-                                    <CheckCircle2 className="h-4 w-4 text-primary" />
-                                </div>
-                                <div className="flex-1 space-y-1">
-                                    <h3 className="font-medium text-xs text-muted-foreground uppercase tracking-wide">
-                                        Recommended Action
-                                    </h3>
-                                    <p className="text-sm md:text-base font-medium text-foreground leading-relaxed">
-                                        {recommendation}
-                                    </p>
-                                </div>
-                            </div>
-                        </motion.div>
                     </div>
-                </Card>
-            </motion.div>
-        </TooltipProvider>
+
+                    {/* Recommendation */}
+                    <motion.div 
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3, duration: 0.4 }}
+                        className="px-6 sm:px-8 py-5 border-t border-border/50 bg-muted/30"
+                    >
+                        <div className="flex items-start gap-4">
+                            <div className="p-2.5 rounded-sm bg-navy-900 shrink-0">
+                                <Lightbulb className="h-4 w-4 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-[10px] uppercase tracking-wider text-copper-600 font-bold mb-1">
+                                    Recommended Action
+                                </h3>
+                                <p className="text-sm sm:text-base font-medium text-foreground leading-relaxed">
+                                    {recommendation}
+                                </p>
+                            </div>
+                            <ArrowRight className="h-5 w-5 text-copper-400 shrink-0 hidden sm:block" />
+                        </div>
+                    </motion.div>
+                </div>
+            </div>
+        </motion.div>
     );
 }
