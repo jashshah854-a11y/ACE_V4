@@ -1,8 +1,11 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { PDFExporter, downloadMarkdown, copyToClipboard } from "./PDFExporter";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useEnhancedAnalytics } from "@/hooks/useEnhancedAnalytics";
+import { useDiagnostics } from "@/hooks/useDiagnostics";
+import { useModelArtifacts } from "@/hooks/useModelArtifacts";
 import { ReportSkeleton } from "./ReportSkeleton";
 import { ExecutiveReportLayout } from "./ExecutiveReportLayout";
 import { MetricCardRow } from "./consultant/MetricCardRow";
@@ -20,9 +23,17 @@ import {
   extractNarrativeContent,
   hasVisualizableData
 } from "@/lib/reportDataTransformer";
-import { extractMetrics, extractSections } from "@/lib/reportParser";
+import { 
+  extractMetrics, 
+  extractSections, 
+  extractProgressMetrics, 
+  extractChartData, 
+  parseClusterMetrics, 
+  extractPersonas, 
+  extractOutcomeModel,
+  extractAnomalies 
+} from "@/lib/reportParser";
 import { extractHeroInsight, generateMondayActions, extractSegmentData } from "@/lib/insightExtractors";
-import { extractAnomalies } from "@/lib/reportParser";
 import { HeroInsightPanel } from "./HeroInsightPanel";
 import { MondayMorningActions } from "./MondayMorningActions";
 
