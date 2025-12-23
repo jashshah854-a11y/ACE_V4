@@ -62,7 +62,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="fixed inset-0 gradient-dark-mesh pointer-events-none" />
       <Navbar />
       
       <main className="relative pt-24 pb-16 min-h-screen flex flex-col items-center justify-center">
