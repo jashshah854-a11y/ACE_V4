@@ -26,6 +26,7 @@ from jobs.queue import enqueue, get_job
 from jobs.models import JobStatus
 from jobs.progress import ProgressTracker
 from core.config import settings
+import pandas as pd
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -422,6 +423,143 @@ async def get_enhanced_analytics(run_id: str):
 
     return enhanced_analytics
 
+@app.get("/runs/{run_id}/evidence/sample", tags=["Artifacts"])
+async def get_evidence_sample(run_id: str, rows: int = 5):
+    """
+    Return a small sample of the source dataset (redacted) for evidence inspection.
+    """
+    _validate_run_id(run_id)
+    rows = max(1, min(rows, 10))
+    run_path = DATA_DIR / "runs" / run_id
+    state = StateManager(str(run_path))
+
+    active = state.read("active_dataset") or {}
+    dataset_path = active.get("path")
+    if not dataset_path or not Path(dataset_path).exists():
+        raise HTTPException(status_code=404, detail="Dataset not found for this run")
+
+    df = None
+    try:
+        if str(dataset_path).lower().endswith(".parquet"):
+            df = pd.read_parquet(dataset_path)
+        else:
+            df = pd.read_csv(dataset_path, nrows=rows * 2)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load dataset: {e}")
+
+    # Simple redaction: drop common sensitive columns
+    redact_cols = [c for c in df.columns if any(k in c.lower() for k in ["email", "phone", "ssn", "password"])]
+    if redact_cols:
+        df = df.drop(columns=redact_cols)
+
+    sample = df.head(rows).to_dict(orient="records")
+    return {"rows": sample, "row_count": len(sample)}
+
+@app.get("/runs/{run_id}/diagnostics", tags=["Artifacts"])
+async def get_diagnostics(run_id: str):
+    """
+    Return Safe Mode / validation diagnostics for a run.
+    """
+    _validate_run_id(run_id)
+    run_path = DATA_DIR / "runs" / run_id
+    state = StateManager(str(run_path))
+
+    validation = state.read("validation_report") or {}
+    identity = state.read("dataset_identity_card") or {}
+    confidence = state.read("confidence_report") or {}
+    mode = state.read("run_mode") or "strict"
+
+    has_time = False
+    if isinstance(identity, dict):
+        cols = []
+        if "columns" in identity:
+            cols = identity.get("columns") or []
+        if "fields" in identity:
+            cols.extend([f.get("name") for f in identity.get("fields") if isinstance(f, dict) and f.get("name")])
+        cols = [c for c in cols if c]
+        has_time = any("date" in c.lower() or "time" in c.lower() for c in cols)
+
+    reasons = []
+    if validation.get("mode") == "limitations":
+        reasons.append("Validation: limitations mode")
+    if validation.get("target_column") in [None, ""]:
+        reasons.append("Validation: missing target column")
+    if not has_time:
+        reasons.append("Identity: time fields not detected")
+    if confidence.get("confidence_label") == "low":
+        reasons.append("Confidence: low")
+
+    return {
+        "mode": mode,
+        "validation": validation,
+        "identity": identity,
+        "confidence": confidence,
+        "reasons": reasons,
+    }
+
+@app.get("/runs/{run_id}/model-artifacts", tags=["Artifacts"])
+async def get_model_artifacts(run_id: str):
+    """
+    Return model transparency artifacts (feature importances/coefficients) if available.
+    """
+    _validate_run_id(run_id)
+    run_path = DATA_DIR / "runs" / run_id
+    state = StateManager(str(run_path))
+
+    regression = state.read("regression_insights") or {}
+    enhanced = state.read("enhanced_analytics") or {}
+
+    feature_importance = regression.get("feature_importance") or enhanced.get("feature_importance")
+    coefficients = regression.get("coefficients") or enhanced.get("coefficients")
+
+    if not feature_importance and not coefficients:
+        raise HTTPException(status_code=404, detail="Model artifacts not found")
+
+    return {
+        "feature_importance": feature_importance,
+        "coefficients": coefficients,
+    }
+
+
+@app.get("/runs/{run_id}/diff/{other_run_id}", tags=["Artifacts"])
+async def diff_runs(run_id: str, other_run_id: str):
+    """
+    Minimal diff: compare confidence and presence of overseer/personas/strategies between two runs.
+    """
+    _validate_run_id(run_id)
+    _validate_run_id(other_run_id)
+
+    def load(run: str):
+        rp = DATA_DIR / "runs" / run
+        st = StateManager(str(rp))
+        return {
+            "confidence": st.read("confidence_report") or {},
+            "overseer": st.read("overseer_output") or {},
+            "personas": st.read("personas") or {},
+            "strategies": st.read("strategies") or {},
+        }
+
+    a = load(run_id)
+    b = load(other_run_id)
+
+    def get_conf(c):
+        return c.get("data_confidence") or c.get("confidence_score") or 0
+
+    diff = {
+        "confidence_delta": get_conf(a["confidence"]) - get_conf(b["confidence"]),
+        "segments_delta": (len(a["overseer"].get("labels") or []) - len(b["overseer"].get("labels") or [])),
+        "personas_delta": (len(a["personas"].get("personas") or []) - len(b["personas"].get("personas") or [])),
+        "strategies_delta": (len(a["strategies"].get("strategies") or []) - len(b["strategies"].get("strategies") or [])),
+    }
+    return {"run_a": run_id, "run_b": other_run_id, "diff": diff}
+
+
+@app.get("/runs/{run_id}/pptx", tags=["Artifacts"])
+async def export_pptx(run_id: str):
+    """
+    Placeholder for PPTX Evidence Deck export.
+    """
+    raise HTTPException(status_code=501, detail="PPTX export not implemented yet.")
 @app.get("/runs/{run_id}/insights", tags=["Artifacts"])
 async def get_key_insights(run_id: str):
     """Extract and return key insights from analysis.
