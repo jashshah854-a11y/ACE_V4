@@ -64,7 +64,6 @@ def main():
     # Ensure active_dataset metadata exists for downstream agents (expositor/enhanced analytics)
     active_dataset_path = Path(run_path) / "active_dataset.json"
     if not active_dataset_path.exists():
-        import json
         active_dataset = {
             "path": str(Path(run_path) / "cleaned_uploaded.csv"),
             "source": str(Path(run_path) / "cleaned_uploaded.csv"),
