@@ -1264,3 +1264,5 @@ export function WideReportViewer({
         </motion.div>
     );
 }
+
+export default WideReportViewer;
