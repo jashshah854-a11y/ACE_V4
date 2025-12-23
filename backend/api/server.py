@@ -519,6 +519,47 @@ async def get_model_artifacts(run_id: str):
         "feature_importance": feature_importance,
         "coefficients": coefficients,
     }
+
+
+@app.get("/runs/{run_id}/diff/{other_run_id}", tags=["Artifacts"])
+async def diff_runs(run_id: str, other_run_id: str):
+    """
+    Minimal diff: compare confidence and presence of overseer/personas/strategies between two runs.
+    """
+    _validate_run_id(run_id)
+    _validate_run_id(other_run_id)
+
+    def load(run: str):
+        rp = DATA_DIR / "runs" / run
+        st = StateManager(str(rp))
+        return {
+            "confidence": st.read("confidence_report") or {},
+            "overseer": st.read("overseer_output") or {},
+            "personas": st.read("personas") or {},
+            "strategies": st.read("strategies") or {},
+        }
+
+    a = load(run_id)
+    b = load(other_run_id)
+
+    def get_conf(c):
+        return c.get("data_confidence") or c.get("confidence_score") or 0
+
+    diff = {
+        "confidence_delta": get_conf(a["confidence"]) - get_conf(b["confidence"]),
+        "segments_delta": (len(a["overseer"].get("labels") or []) - len(b["overseer"].get("labels") or [])),
+        "personas_delta": (len(a["personas"].get("personas") or []) - len(b["personas"].get("personas") or [])),
+        "strategies_delta": (len(a["strategies"].get("strategies") or []) - len(b["strategies"].get("strategies") or [])),
+    }
+    return {"run_a": run_id, "run_b": other_run_id, "diff": diff}
+
+
+@app.get("/runs/{run_id}/pptx", tags=["Artifacts"])
+async def export_pptx(run_id: str):
+    """
+    Placeholder for PPTX Evidence Deck export.
+    """
+    raise HTTPException(status_code=501, detail="PPTX export not implemented yet.")
 @app.get("/runs/{run_id}/insights", tags=["Artifacts"])
 async def get_key_insights(run_id: str):
     """Extract and return key insights from analysis.

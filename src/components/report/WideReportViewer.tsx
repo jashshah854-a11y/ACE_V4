@@ -47,7 +47,6 @@ import { MetricGrid, interpretSilhouetteScore, interpretR2Score, interpretDataQu
 import { extractHeroInsight, generateMondayActions, extractSegmentData } from "@/lib/insightExtractors";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ShieldAlert } from "lucide-react";
 
 interface WideReportViewerProps {
@@ -473,7 +472,7 @@ export function WideReportViewer({
             icon: SECTION_ICONS.summary,
             defaultOpen: true,
             content: (
-                <div className="space-y-8">
+                        <div className="space-y-8">
                     <SegmentOverviewTable
                         segments={measurableSegments}
                         totalCustomers={metrics.recordsProcessed || 10000}
