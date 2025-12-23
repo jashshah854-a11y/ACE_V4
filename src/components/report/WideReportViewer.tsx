@@ -1,54 +1,3 @@
-import React from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeHighlight from "rehype-highlight";
-import { motion } from "framer-motion";
-import { cn } from "../../lib/utils";
-import { MetricsCards } from "./MetricsCards";
-import { PDFExporter, downloadMarkdown, copyToClipboard } from "./PDFExporter";
-import { WideReportLayout } from "./WideReportLayout";
-import { IntelligenceRail } from "./IntelligenceRail";
-import { ReportCharts } from "./ReportCharts";
-import { ReportAccordion, SECTION_ICONS } from "./ReportAccordion";
-import { TableOfContents } from "./TableOfContents";
-import { AnomalyBanner } from "./AnomalyBanner";
-import { Button } from "../ui/button";
-import { Copy, FileDown } from "lucide-react";
-import {
-    extractMetrics,
-    extractProgressMetrics,
-    extractSections,
-    extractChartData,
-    parseClusterMetrics,
-    extractPersonas,
-    extractOutcomeModel,
-    extractAnomalies
-} from "../../lib/reportParser";
-import { useState, useEffect, useMemo } from "react";
-import { useToast } from "../../hooks/use-toast";
-import { ClusterGaugeSection } from "./ClusterGaugeSection";
-import { PersonaSection } from "./PersonaSection";
-import { OutcomeModelSection } from "./OutcomeModelSection";
-import { ReportSkeleton } from "./ReportSkeleton";
-import { ExecutiveBrief } from "./ExecutiveBrief";
-import { TechnicalDetailsSection } from "./TechnicalDetailsSection";
-import { ReportConclusion } from "./ReportConclusion";
-import { extractExecutiveBrief, extractConclusion } from "../../lib/narrativeExtractors";
-import { useEnhancedAnalytics } from "../../hooks/useEnhancedAnalytics";
-import { useDiagnostics } from "../../hooks/useDiagnostics";
-import { useModelArtifacts } from "../../hooks/useModelArtifacts";
-import { CorrelationHeatmap } from "./CorrelationHeatmap";
-import { DistributionCharts } from "./DistributionCharts";
-import { BusinessIntelligenceDashboard } from "./BusinessIntelligenceDashboard";
-import { HeroInsightPanel } from "./HeroInsightPanel";
-import { MondayMorningActions } from "./MondayMorningActions";
-import { SegmentComparison } from "./SegmentComparison";
-import { SegmentOverviewTable } from "./SegmentOverviewTable";
-import { MetricGrid, interpretSilhouetteScore, interpretR2Score, interpretDataQuality } from "./MetricInterpretation";
-import { extractHeroInsight, generateMondayActions, extractSegmentData } from "../../lib/insightExtractors";
-import { Card } from "../ui/card";
-import { Badge } from "../ui/badge";
-import { ShieldAlert } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { PDFExporter, downloadMarkdown, copyToClipboard } from "./PDFExporter";
@@ -1302,6 +1251,12 @@ export function WideReportViewer({
                 }
             />
         </motion.div>
+    );
+  }
+
+  // Guard for no content - show empty state
+  if (!content) {
+    return (
       <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
         No report content available.
       </div>
