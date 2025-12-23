@@ -34,6 +34,8 @@ import { TechnicalDetailsSection } from "./TechnicalDetailsSection";
 import { ReportConclusion } from "./ReportConclusion";
 import { extractExecutiveBrief, extractConclusion } from "@/lib/narrativeExtractors";
 import { useEnhancedAnalytics } from "@/hooks/useEnhancedAnalytics";
+import { useDiagnostics } from "@/hooks/useDiagnostics";
+import { useModelArtifacts } from "@/hooks/useModelArtifacts";
 import { CorrelationHeatmap } from "./CorrelationHeatmap";
 import { DistributionCharts } from "./DistributionCharts";
 import { BusinessIntelligenceDashboard } from "./BusinessIntelligenceDashboard";
@@ -67,9 +69,14 @@ export function WideReportViewer({
     const [confidenceMode, setConfidenceMode] = useState<"strict" | "exploratory">("exploratory");
     const confidenceThreshold = confidenceMode === "strict" ? 90 : 60;
     const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
+    const [evidenceSample, setEvidenceSample] = useState<any[] | null>(null);
+    const [evidenceLoading, setEvidenceLoading] = useState(false);
+    const [evidenceError, setEvidenceError] = useState<string | null>(null);
     const { toast } = useToast();
 
     const { data: enhancedAnalytics, loading: analyticsLoading } = useEnhancedAnalytics(runId);
+    const { data: diagnostics } = useDiagnostics(runId);
+    const { data: modelArtifacts } = useModelArtifacts(runId);
 
     // Track reading progress
     useEffect(() => {
@@ -195,7 +202,7 @@ export function WideReportViewer({
     const identityStats = {
         rows: enhancedAnalytics?.quality_metrics?.total_records ?? metrics.totalRows ?? "n/a",
         completeness: enhancedAnalytics?.quality_metrics?.overall_completeness,
-        confidence: metrics.confidenceLevel ?? "n/a",
+        confidence: diagnostics?.confidence?.data_confidence ?? metrics.confidenceLevel ?? "n/a",
     };
 
     const renderSafeModeBanner = () => {
@@ -217,14 +224,15 @@ export function WideReportViewer({
 
     const safeModeReasons = useMemo(() => {
         const reasons: string[] = [];
+        if (diagnostics?.reasons?.length) reasons.push(...diagnostics.reasons);
         if (limitationsMode) reasons.push("Validation/contract gates active (limitations mode).");
         if (typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel < confidenceThreshold) {
             reasons.push(`Confidence ${metrics.confidenceLevel}% below threshold ${confidenceThreshold}%.`);
         }
         if (!hasTimeField) reasons.push("Time fields not detected; time-series suppressed.");
         if (evidenceSections.length === 0) reasons.push("No evidence-bearing sections detected.");
-        return reasons;
-    }, [limitationsMode, metrics.confidenceLevel, confidenceThreshold, hasTimeField, evidenceSections.length]);
+        return Array.from(new Set(reasons));
+    }, [diagnostics?.reasons, limitationsMode, metrics.confidenceLevel, confidenceThreshold, hasTimeField, evidenceSections.length]);
 
     const renderDiagnosticsCard = () => (
         <Card className="mb-4 p-4 space-y-3">
@@ -352,6 +360,30 @@ export function WideReportViewer({
 
     const handleSectionClick = (sectionId: string) => {
         setCurrentSection(sectionId);
+    };
+
+    const handleFetchEvidenceSample = async (contentSnippet: string) => {
+        if (!runId) {
+            setEvidenceError("Run ID not available");
+            return;
+        }
+        setEvidencePreview(contentSnippet);
+        setEvidenceLoading(true);
+        setEvidenceError(null);
+        setEvidenceSample(null);
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8001";
+            const res = await fetch(`${apiUrl}/runs/${runId}/evidence/sample?rows=5`);
+            if (!res.ok) {
+                throw new Error(`Failed to fetch evidence sample: ${res.statusText}`);
+            }
+            const json = await res.json();
+            setEvidenceSample(json.rows || []);
+        } catch (err) {
+            setEvidenceError(err instanceof Error ? err.message : "Unknown error");
+        } finally {
+            setEvidenceLoading(false);
+        }
     };
 
     // Evidence-first gating: only keep sections that mention evidence/data columns
@@ -514,11 +546,11 @@ export function WideReportViewer({
                     )}
 
                     {/* Model Transparency */}
-                    {enhancedAnalytics?.feature_importance?.feature_importance && (
+                    {(enhancedAnalytics?.feature_importance?.feature_importance || modelArtifacts?.feature_importance) && (
                         <Card className="p-3">
                             <div className="text-sm font-semibold mb-2">Model Drivers</div>
                             <ul className="text-sm space-y-1">
-                                {enhancedAnalytics.feature_importance.feature_importance.slice(0, 5).map((f: any, i: number) => (
+                                {(enhancedAnalytics?.feature_importance?.feature_importance || modelArtifacts?.feature_importance || []).slice(0, 5).map((f: any, i: number) => (
                                     <li key={i} className="flex justify-between">
                                         <span>{f.feature || f[0]}</span>
                                         <span className="text-muted-foreground">{(f.importance || f[1])?.toFixed?.(3) ?? f.importance ?? f[1]}</span>
@@ -759,7 +791,7 @@ export function WideReportViewer({
                                             <Button
                                                 size="sm"
                                                 variant="outline"
-                                                onClick={() => setEvidencePreview(sec.content)}
+                                                onClick={() => handleFetchEvidenceSample(sec.content)}
                                             >
                                                 Inspect
                                             </Button>
@@ -768,13 +800,19 @@ export function WideReportViewer({
                                 </div>
                                 {evidencePreview && (
                                     <div className="mt-3 rounded-md border bg-muted/30 p-3 text-sm">
-                                        <div className="font-semibold mb-1">Sample Rows (stub)</div>
-                                        <div className="text-xs text-muted-foreground">
-                                            Sample rows not available in this build. Hook evidence-id endpoint to fetch 5–10 source rows. Preview:
-                                        </div>
-                                        <div className="mt-2 text-xs whitespace-pre-line">{evidencePreview.slice(0, 500)}</div>
+                                        <div className="font-semibold mb-1">Sample Rows</div>
+                                        {evidenceLoading && <div className="text-xs text-muted-foreground">Loading...</div>}
+                                        {evidenceError && <div className="text-xs text-red-600">{evidenceError}</div>}
+                                        {evidenceSample && evidenceSample.length > 0 && (
+                                            <pre className="mt-2 text-xs whitespace-pre-wrap">
+{JSON.stringify(evidenceSample, null, 2)}
+                                            </pre>
+                                        )}
+                                        {!evidenceLoading && !evidenceSample && !evidenceError && (
+                                            <div className="text-xs text-muted-foreground">No sample returned.</div>
+                                        )}
                                         <div className="mt-2">
-                                            <Button size="sm" onClick={() => setEvidencePreview(null)}>Close</Button>
+                                            <Button size="sm" onClick={() => { setEvidencePreview(null); setEvidenceSample(null); setEvidenceError(null); }}>Close</Button>
                                         </div>
                                     </div>
                                 )}
