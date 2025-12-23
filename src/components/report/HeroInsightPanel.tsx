@@ -1,7 +1,5 @@
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, Info } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { TrendingUp, TrendingDown, Minus, Lightbulb, ArrowRight, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface HeroInsightPanelProps {
@@ -25,155 +23,186 @@ export function HeroInsightPanel({
 }: HeroInsightPanelProps) {
     const impactConfig = {
         high: {
-            color: "text-red-600 dark:text-red-400",
-            bg: "bg-red-50 dark:bg-red-950/20",
-            border: "border-red-200 dark:border-red-800",
-            icon: AlertTriangle,
-            label: "High Impact"
+            color: "text-copper-600",
+            bg: "bg-copper-50",
+            border: "border-copper-200",
+            label: "High Impact",
+            gradient: "from-copper-50 to-transparent"
         },
         medium: {
-            color: "text-yellow-600 dark:text-yellow-400",
-            bg: "bg-yellow-50 dark:bg-yellow-950/20",
-            border: "border-yellow-200 dark:border-yellow-800",
-            icon: Info,
-            label: "Medium Impact"
+            color: "text-teal-600",
+            bg: "bg-teal-50",
+            border: "border-teal-200",
+            label: "Medium Impact",
+            gradient: "from-teal-50 to-transparent"
         },
         low: {
-            color: "text-green-600 dark:text-green-400",
-            bg: "bg-green-50 dark:bg-green-950/20",
-            border: "border-green-200 dark:border-green-800",
-            icon: CheckCircle,
-            label: "Low Impact"
+            color: "text-muted-foreground",
+            bg: "bg-muted",
+            border: "border-border",
+            label: "Low Impact",
+            gradient: "from-muted to-transparent"
         }
     };
 
     const trendConfig = {
         positive: {
             icon: TrendingUp,
-            color: "text-green-600 dark:text-green-400",
-            label: "Positive"
+            color: "text-teal-500",
+            label: "Positive Trend"
         },
         negative: {
             icon: TrendingDown,
-            color: "text-red-600 dark:text-red-400",
-            label: "Negative"
+            color: "text-copper-500",
+            label: "Negative Trend"
         },
         neutral: {
             icon: Minus,
-            color: "text-slate-600 dark:text-slate-400",
-            label: "Neutral"
+            color: "text-muted-foreground",
+            label: "Neutral Trend"
         }
     };
 
     const config = impactConfig[impact];
     const trendInfo = trendConfig[trend];
     const TrendIcon = trendInfo.icon;
-    const ImpactIcon = config.icon;
 
-    const getConfidenceLabel = (score: number) => {
-        if (score >= 90) return { label: "Very High", color: "bg-green-500" };
-        if (score >= 70) return { label: "High", color: "bg-blue-500" };
-        if (score >= 50) return { label: "Moderate", color: "bg-yellow-500" };
-        return { label: "Low", color: "bg-orange-500" };
+    const getQualityLabel = (score: number) => {
+        if (score >= 85) return "Excellent";
+        if (score >= 70) return "Good";
+        if (score >= 50) return "Fair";
+        return "Needs Improvement";
     };
-
-    const confidenceInfo = getConfidenceLabel(confidence);
-    const qualityInfo = getConfidenceLabel(dataQuality);
 
     return (
         <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="relative"
         >
-            <Card className={cn(
-                "relative overflow-hidden border-2 shadow-xl",
-                config.border,
-                config.bg
+            {/* Main Card */}
+            <div className={cn(
+                "relative overflow-hidden border rounded-sm shadow-soft bg-card",
+                config.border
             )}>
-                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-primary/5 to-transparent rounded-full blur-3xl" />
+                {/* Subtle gradient overlay */}
+                <div className={cn(
+                    "absolute inset-0 bg-gradient-to-br opacity-50 pointer-events-none",
+                    config.gradient
+                )} />
 
-                <div className="relative p-8 space-y-6">
-                    {/* Header with badges */}
-                    <div className="flex items-start justify-between gap-4 flex-wrap">
-                        <div className="flex items-center gap-3">
-                            <div className={cn("p-3 rounded-xl", config.bg)}>
-                                <ImpactIcon className={cn("h-6 w-6", config.color)} />
-                            </div>
-                            <div>
-                                <Badge variant="outline" className={cn("font-semibold", config.color)}>
+                <div className="relative">
+                    {/* Header with badges and stats */}
+                    <div className="px-6 sm:px-8 pt-6 pb-4 border-b border-border/50">
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                            {/* Left: Impact + Trend */}
+                            <div className="flex items-center gap-3">
+                                <div className={cn(
+                                    "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold",
+                                    config.bg, config.color
+                                )}>
+                                    <Sparkles className="h-3 w-3" />
                                     {config.label}
-                                </Badge>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <TrendIcon className={cn("h-4 w-4", trendInfo.color)} />
-                                    <span className={cn("text-xs font-medium", trendInfo.color)}>
-                                        {trendInfo.label} Trend
-                                    </span>
+                                </div>
+                                <div className={cn(
+                                    "flex items-center gap-1.5 text-xs font-medium",
+                                    trendInfo.color
+                                )}>
+                                    <TrendIcon className="h-3.5 w-3.5" />
+                                    {trendInfo.label}
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Confidence & Quality indicators */}
-                        <div className="flex gap-3">
-                            <div className="text-right">
-                                <div className="text-xs text-muted-foreground mb-1">Confidence</div>
-                                <div className="flex items-center gap-2">
-                                    <div className="h-2 w-16 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                                        <div
-                                            className={cn("h-full", confidenceInfo.color)}
-                                            style={{ width: `${confidence}%` }}
-                                        />
+                            {/* Right: Quality metrics */}
+                            <div className="flex items-center gap-6">
+                                <div className="text-right">
+                                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                                        Confidence
                                     </div>
-                                    <span className="text-sm font-semibold">{confidence}%</span>
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-0.5">{confidenceInfo.label}</div>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-xs text-muted-foreground mb-1">Data Quality</div>
-                                <div className="flex items-center gap-2">
-                                    <div className="h-2 w-16 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                                        <div
-                                            className={cn("h-full", qualityInfo.color)}
-                                            style={{ width: `${dataQuality}%` }}
-                                        />
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
+                                            <motion.div
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${confidence}%` }}
+                                                transition={{ duration: 0.8, delay: 0.2 }}
+                                                className={cn(
+                                                    "h-full rounded-full",
+                                                    confidence >= 70 ? "bg-teal-500" : confidence >= 50 ? "bg-copper-400" : "bg-muted-foreground"
+                                                )}
+                                            />
+                                        </div>
+                                        <span className="text-sm font-bold tabular-nums">{confidence}%</span>
                                     </div>
-                                    <span className="text-sm font-semibold">{dataQuality}%</span>
                                 </div>
-                                <div className="text-xs text-muted-foreground mt-0.5">{qualityInfo.label}</div>
+                                <div className="text-right">
+                                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                                        Data Quality
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
+                                            <motion.div
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${dataQuality}%` }}
+                                                transition={{ duration: 0.8, delay: 0.3 }}
+                                                className={cn(
+                                                    "h-full rounded-full",
+                                                    dataQuality >= 70 ? "bg-teal-500" : dataQuality >= 50 ? "bg-copper-400" : "bg-muted-foreground"
+                                                )}
+                                            />
+                                        </div>
+                                        <span className="text-sm font-bold tabular-nums">{dataQuality}%</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Key Insight - The Hero Statement */}
-                    <div className="space-y-3">
-                        <h2 className="text-3xl font-bold tracking-tight text-foreground leading-tight">
-                            {keyInsight}
-                        </h2>
-                        {context && (
-                            <p className="text-muted-foreground text-lg leading-relaxed">
-                                {context}
+                    {/* Key Insight */}
+                    <div className="px-6 sm:px-8 py-6 sm:py-8">
+                        <motion.div 
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2, duration: 0.4 }}
+                        >
+                            <p className="text-muted-foreground text-sm font-medium mb-2">
+                                {getQualityLabel(dataQuality)} data quality foundation
                             </p>
-                        )}
+                            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-navy-900 leading-tight tracking-tight">
+                                {keyInsight}
+                            </h2>
+                            {context && (
+                                <p className="text-muted-foreground text-base sm:text-lg leading-relaxed mt-4">
+                                    {context}
+                                </p>
+                            )}
+                        </motion.div>
                     </div>
 
-                    {/* Recommendation - What to do */}
-                    <div className="pt-4 border-t border-border/50">
-                        <div className="flex items-start gap-3">
-                            <div className="mt-1 p-2 rounded-lg bg-primary/10">
-                                <CheckCircle className="h-5 w-5 text-primary" />
+                    {/* Recommendation */}
+                    <motion.div 
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3, duration: 0.4 }}
+                        className="px-6 sm:px-8 py-5 border-t border-border/50 bg-muted/30"
+                    >
+                        <div className="flex items-start gap-4">
+                            <div className="p-2.5 rounded-sm bg-navy-900 shrink-0">
+                                <Lightbulb className="h-4 w-4 text-white" />
                             </div>
-                            <div className="flex-1">
-                                <h3 className="font-semibold text-sm text-muted-foreground mb-1">
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-[10px] uppercase tracking-wider text-copper-600 font-bold mb-1">
                                     Recommended Action
                                 </h3>
-                                <p className="text-base font-medium text-foreground">
+                                <p className="text-sm sm:text-base font-medium text-foreground leading-relaxed">
                                     {recommendation}
                                 </p>
                             </div>
+                            <ArrowRight className="h-5 w-5 text-copper-400 shrink-0 hidden sm:block" />
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
-            </Card>
+            </div>
         </motion.div>
     );
 }
