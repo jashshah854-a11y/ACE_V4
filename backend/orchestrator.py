@@ -361,6 +361,12 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
     if run_config:
         state["run_config"] = run_config
         state_manager.write("run_config", run_config)
+    # Default mode handling
+    run_mode = "strict"
+    if run_config and run_config.get("mode") in {"strict", "exploratory"}:
+        run_mode = run_config["mode"]
+    state["run_mode"] = run_mode
+    state_manager.write("run_mode", run_mode)
 
     # Build governance artifacts (identity card, task contract, confidence)
     rebuild_governance_artifacts(state_manager)
@@ -538,7 +544,9 @@ def main_loop(run_path):
             from core.data_guardrails import check_validation_passed
             state_mgr = StateManager(run_path)
             can_proceed, reason = check_validation_passed(state_mgr)
-            if not can_proceed:
+            # Allow exploratory mode to continue with limitations
+            run_mode = state_mgr.read("run_mode") or "strict"
+            if not can_proceed and run_mode != "exploratory":
                 state["status"] = "complete_with_errors"
                 state["next_step"] = "blocked"
                 update_history(state, f"Agent '{current}' blocked: {reason}", returncode=1)
@@ -546,6 +554,8 @@ def main_loop(run_path):
                 append_limitation(state_mgr, f"Cannot run {current}: {reason}", agent=current, severity="error")
                 save_state(state_path, state)
                 continue
+            elif not can_proceed and run_mode == "exploratory":
+                update_history(state, f"Validation failed but continuing (exploratory): {reason}", returncode=0)
         
         # Guard: Check domain constraints before running agents
         if current in ["overseer", "regression", "personas"]:
