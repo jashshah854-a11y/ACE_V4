@@ -2,6 +2,36 @@
 .DS_Store
 Thumbs.db
 .cursor/
+.idea
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.tmp
+*.swp
+*.swo
+
+# Node artifacts
+node_modules
+dist
+dist-ssr
+*.local
+ACE_V3_Source/node_modules/
+ACE_V3_Source/dist/
+ACE_V3_Source/dist-ssr/
+.vercel
 
 # Python environments and caches
 venv/
@@ -14,15 +44,10 @@ __pycache__/
 *.pyd
 *.egg-info/
 .pytest_cache/
-
-# Node artifacts
-ACE_V3_Source/node_modules/
-ACE_V3_Source/dist/
-ACE_V3_Source/dist-ssr/
-
-# Project data and cache directories
 ACE_V3_Source/venv/
 ACE_V3_Source/.pytest_cache/
+
+# Project data and cache directories
 ACE_V3_Source/data/cache/
 ACE_V3_Source/data/runs/
 ACE_V3_Source/data/uploads/
@@ -46,11 +71,3 @@ archive/
 *.exe
 *.dll
 *.pdb
-
-# Logs and temporary files
-logs/
-*.log
-*.tmp
-*.swp
-*.swo
-

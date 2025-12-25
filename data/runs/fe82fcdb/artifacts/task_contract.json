@@ -1,0 +1,16 @@
+{
+  "task": "eda_clustering",
+  "template": "marketing",
+  "data_type": "marketing_performance",
+  "allowed_sections": [
+    "data_overview",
+    "quality",
+    "eda",
+    "clustering",
+    "insights"
+  ],
+  "forbidden_sections": [],
+  "limitations": [
+    "Validation in limitation mode; insights downgraded."
+  ]
+}

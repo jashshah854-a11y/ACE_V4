@@ -1,0 +1,20 @@
+{
+  "mode": "insight",
+  "allowed_sections": [
+    "insights",
+    "eda",
+    "clustering",
+    "data_overview",
+    "quality"
+  ],
+  "data_type": "marketing_performance",
+  "confidence": {
+    "data_confidence": 0.6,
+    "confidence_label": "moderate",
+    "reasons": [
+      "Target variance insufficient."
+    ]
+  },
+  "limitations": [],
+  "insights": []
+}

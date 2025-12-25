@@ -1,0 +1,11 @@
+# Minimal requirements for Vercel serverless function
+# Only include what's needed for the FastAPI API server
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+
+# Note: ML libraries (pandas, numpy, scikit-learn, scipy) are large
+# and may cause deployment issues. Consider using external ML service
+# or deploying backend separately on Railway/Render if needed.

@@ -1,0 +1,18 @@
+# Nixpacks Configuration for Full Stack (FastAPI + Vite)
+
+[phases.setup]
+nixPkgs = ["python311", "nodejs_20"]
+
+[phases.install]
+cmds = [
+    "pip install -r backend/requirements.txt",
+    "bun install"
+]
+
+[phases.build]
+cmds = [
+    "bun run build"
+]
+
+[start]
+cmd = "uvicorn backend.api.server:app --host 0.0.0.0 --port $PORT"
