@@ -1,0 +1,1 @@
+{"connectors":[{"name":"local-chaos","type":"local_file","enabled":true,"interval_seconds":1,"options":{"path":"data/test_sets","pattern":"*.csv","output_dir":"data/chaos_out"}}]}

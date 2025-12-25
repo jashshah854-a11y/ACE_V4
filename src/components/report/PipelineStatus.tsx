@@ -1,3 +1,4 @@
+import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { getRunState, RunState } from "@/lib/api-client";
@@ -133,7 +134,9 @@ function calculateProgress(stepStates: Record<string, StepState>): number {
 
 export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
   const [displayProgress, setDisplayProgress] = useState(0);
+  const [showCelebration, setShowCelebration] = useState(false);
   const prevProgressRef = useRef(0);
+  const prevCompleteRef = useRef(false);
 
   const { data: state, isLoading } = useQuery<RunState>({
     queryKey: ["run-state", runId],
@@ -199,8 +202,13 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
 
   useEffect(() => {
     if (isComplete && onComplete) {
+      if (!prevCompleteRef.current) {
+        setShowCelebration(true);
+        setTimeout(() => setShowCelebration(false), 3000);
+      }
       onComplete();
     }
+    prevCompleteRef.current = isComplete;
   }, [isComplete, onComplete]);
 
   if (isLoading) {
@@ -227,8 +235,39 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="p-6 rounded-2xl border border-border/40 bg-card shadow-sm"
+        className="p-6 rounded-2xl border border-border/40 bg-card shadow-sm relative overflow-hidden"
       >
+        {/* Celebration Confetti Effect */}
+        <AnimatePresence>
+          {showCelebration && (
+            <>
+              {[...Array(20)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  initial={{
+                    opacity: 1,
+                    x: "50%",
+                    y: "50%",
+                    scale: 0,
+                  }}
+                  animate={{
+                    opacity: 0,
+                    x: `${Math.random() * 200 - 100}%`,
+                    y: `${Math.random() * 200 - 100}%`,
+                    scale: 1,
+                  }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 1.5, ease: "easeOut", delay: i * 0.05 }}
+                  className="absolute top-1/2 left-1/2 w-2 h-2 rounded-full pointer-events-none"
+                  style={{
+                    backgroundColor: ["#10b981", "#3b82f6", "#8b5cf6", "#ec4899"][i % 4],
+                  }}
+                />
+              ))}
+            </>
+          )}
+        </AnimatePresence>
+
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -285,12 +324,14 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="relative h-2 bg-muted/60 rounded-full overflow-hidden mb-6">
+        {/* Progress Bar with Enhanced Styling */}
+        <div className="relative h-3 bg-muted/60 rounded-full overflow-hidden mb-2">
           <motion.div
             className={cn(
               "absolute inset-y-0 left-0 rounded-full",
-              isComplete ? "bg-success" : isFailed ? "bg-destructive" : "bg-primary"
+              isComplete ? "bg-gradient-to-r from-green-500 to-green-600" :
+                isFailed ? "bg-gradient-to-r from-red-500 to-red-600" :
+                  "bg-gradient-to-r from-primary to-primary/80"
             )}
             initial={{ width: 0 }}
             animate={{ width: `${displayProgress}%` }}
@@ -304,7 +345,23 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
               transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
             />
           )}
+          {/* Pulsing glow effect on active */}
+          {!isComplete && !isFailed && displayProgress > 0 && (
+            <motion.div
+              className="absolute inset-0 bg-primary/20 blur-sm"
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              style={{ width: `${displayProgress}%` }}
+            />
+          )}
         </div>
+
+        {/* Estimated Time Remaining */}
+        {!isComplete && !isFailed && displayProgress > 0 && (
+          <p className="text-xs text-muted-foreground text-right mb-6">
+            Estimated time: ~{Math.ceil((100 - displayProgress) / 10)} min remaining
+          </p>
+        )}
 
         {/* Currently Processing Callout */}
         <AnimatePresence mode="wait">
@@ -336,8 +393,95 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
           )}
         </AnimatePresence>
 
-        {/* Pipeline Steps Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* Desktop: Horizontal Timeline */}
+        <div className="hidden md:block mb-6">
+          <div className="relative flex items-center justify-between">
+            {PIPELINE_STEPS.map((step, index) => {
+              const status = stepStates[step.key] || "pending";
+              const isActive = status === "active" && !isComplete && !isFailed;
+              const isCompleted = status === "completed" || isComplete;
+              const isPending = status === "pending" && !isComplete && !isFailed;
+              const Icon = step.icon;
+
+              return (
+                <React.Fragment key={step.key}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: index * 0.05, duration: 0.3 }}
+                        className="flex flex-col items-center gap-2 flex-1"
+                      >
+                        {/* Icon Circle */}
+                        <motion.div
+                          className={cn(
+                            "w-12 h-12 rounded-full flex items-center justify-center shrink-0 border-2 transition-all duration-300 relative z-10",
+                            isCompleted && "bg-green-500 border-green-500 text-white",
+                            isActive && "bg-primary border-primary text-primary-foreground shadow-lg shadow-primary/50",
+                            isPending && "bg-muted border-border text-muted-foreground"
+                          )}
+                          animate={isActive ? { scale: [1, 1.05, 1] } : {}}
+                          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                        >
+                          {isCompleted ? (
+                            <motion.div
+                              initial={{ scale: 0, rotate: -180 }}
+                              animate={{ scale: 1, rotate: 0 }}
+                              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                            >
+                              <CheckCircle2 className="w-6 h-6" />
+                            </motion.div>
+                          ) : isActive ? (
+                            <Loader2 className="w-6 h-6 animate-spin" />
+                          ) : (
+                            <Icon className="w-5 h-5" />
+                          )}
+                        </motion.div>
+
+                        {/* Label */}
+                        <p
+                          className={cn(
+                            "text-xs font-medium text-center transition-colors duration-300",
+                            isActive && "text-primary font-semibold",
+                            isCompleted && "text-foreground",
+                            isPending && "text-muted-foreground"
+                          )}
+                        >
+                          {step.label}
+                        </p>
+                      </motion.div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p className="font-medium">{step.label}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{step.description}</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  {/* Connecting Line */}
+                  {index < PIPELINE_STEPS.length - 1 && (
+                    <div className="flex-1 h-0.5 bg-border relative -mx-4 mt-[-38px] z-0">
+                      <motion.div
+                        className={cn(
+                          "h-full transition-all duration-500",
+                          (stepStates[step.key] === "completed" || isComplete) ? "bg-green-500" : "bg-border"
+                        )}
+                        initial={{ width: "0%" }}
+                        animate={{
+                          width: (stepStates[step.key] === "completed" || isComplete) ? "100%" : "0%"
+                        }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                      />
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Mobile: Vertical Stack (IN ORDER) */}
+        <div className="md:hidden space-y-3">
           {PIPELINE_STEPS.map((step, index) => {
             const status = stepStates[step.key] || "pending";
             const isActive = status === "active" && !isComplete && !isFailed;
@@ -346,72 +490,76 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
             const Icon = step.icon;
 
             return (
-              <Tooltip key={step.key}>
-                <TooltipTrigger asChild>
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.05, duration: 0.3 }}
+              <motion.div
+                key={step.key}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05, duration: 0.3 }}
+                className={cn(
+                  "relative p-4 rounded-xl border transition-all duration-300",
+                  isActive && "bg-primary/5 border-primary/30 shadow-sm",
+                  isCompleted && "bg-green-500/5 border-green-500/20",
+                  isPending && "bg-muted/30 border-border/40 opacity-60"
+                )}
+              >
+                <div className="flex items-center gap-4">
+                  {/* Icon */}
+                  <div
                     className={cn(
-                      "relative p-3 rounded-xl border transition-all duration-300 cursor-default",
-                      isActive && "bg-primary/5 border-primary/30 shadow-sm",
-                      isCompleted && "bg-success/5 border-success/20",
-                      isPending && "bg-muted/30 border-border/40 opacity-50"
+                      "w-10 h-10 rounded-full flex items-center justify-center shrink-0 border-2",
+                      isCompleted && "bg-green-500 border-green-500 text-white",
+                      isActive && "bg-primary border-primary text-primary-foreground",
+                      isPending && "bg-muted border-border text-muted-foreground"
                     )}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <div
-                        className={cn(
-                          "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all duration-300",
-                          isActive && "bg-primary/15 text-primary",
-                          isCompleted && "bg-success/15 text-success",
-                          isPending && "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        {isCompleted ? (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ type: "spring", stiffness: 400, damping: 20, delay: 0.1 }}
-                          >
-                            <CheckCircle2 className="w-4 h-4" />
-                          </motion.div>
-                        ) : isActive ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Icon className="w-4 h-4" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className={cn(
-                            "text-xs font-medium truncate transition-colors duration-300",
-                            isActive && "text-primary",
-                            isCompleted && "text-foreground",
-                            isPending && "text-muted-foreground"
-                          )}
-                        >
-                          {step.label}
-                        </p>
-                      </div>
-                    </div>
+                    {isCompleted ? (
+                      <CheckCircle2 className="w-5 h-5" />
+                    ) : isActive ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Icon className="w-5 h-5" />
+                    )}
+                  </div>
 
-                    {/* Step Number Badge */}
-                    <div className={cn(
-                      "absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full text-[10px] font-medium flex items-center justify-center",
-                      isCompleted && "bg-success text-success-foreground",
-                      isActive && "bg-primary text-primary-foreground",
+                  {/* Content */}
+                  <div className="flex-1">
+                    <p
+                      className={cn(
+                        "text-sm font-medium mb-0.5",
+                        isActive && "text-primary",
+                        isCompleted && "text-foreground",
+                        isPending && "text-muted-foreground"
+                      )}
+                    >
+                      {step.label}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {step.description}
+                    </p>
+                  </div>
+
+                  {/* Step Number */}
+                  <span
+                    className={cn(
+                      "text-xs font-semibold px-2 py-1 rounded-full",
+                      isCompleted && "bg-green-500/10 text-green-700 dark:text-green-400",
+                      isActive && "bg-primary/10 text-primary",
                       isPending && "bg-muted text-muted-foreground"
-                    )}>
-                      {index + 1}
-                    </div>
-                  </motion.div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-[200px]">
-                  <p className="font-medium">{step.label}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{step.description}</p>
-                </TooltipContent>
-              </Tooltip>
+                    )}
+                  >
+                    {index + 1}
+                  </span>
+                </div>
+
+                {/* Connecting Line for Mobile */}
+                {index < PIPELINE_STEPS.length - 1 && (
+                  <div className="absolute left-9 top-14 w-0.5 h-4 bg-border">
+                    {(stepStates[step.key] === "completed" || isComplete) && (
+                      <div className="w-full h-full bg-green-500" />
+                    )}
+                  </div>
+                )}
+              </motion.div>
             );
           })}
         </div>

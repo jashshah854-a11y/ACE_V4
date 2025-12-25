@@ -1,3 +1,4 @@
+// Force rebuild - all imports are correct
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -33,7 +34,7 @@ import { ReportSkeleton } from "./ReportSkeleton";
 import { ExecutiveBrief } from "./ExecutiveBrief";
 import { TechnicalDetailsSection } from "./TechnicalDetailsSection";
 import { ReportConclusion } from "./ReportConclusion";
-import * as narrativeExtractors from "../../lib/narrativeExtractors";
+import { extractExecutiveBrief, extractConclusion } from "../../lib/narrativeExtractors";
 import { useEnhancedAnalytics } from "../../hooks/useEnhancedAnalytics";
 import { useDiagnostics } from "../../hooks/useDiagnostics";
 import { useModelArtifacts } from "../../hooks/useModelArtifacts";
@@ -184,35 +185,8 @@ export function WideReportViewer({
     const anomalies = extractAnomalies(content);
 
     // Extract narrative components for consultant-style presentation
-    const executiveBrief = useMemo(() => {
-        const extractor = narrativeExtractors?.extractExecutiveBrief;
-        if (typeof extractor === "function") {
-            return extractor(content);
-        }
-        // Fallback so the UI still renders if the extractor is missing at runtime
-        return {
-            purpose: "Analysis summary unavailable",
-            keyFindings: [
-                "Key findings could not be generated for this report",
-                "Please retry the analysis or refresh the page",
-                "If the issue persists, contact support with the run ID",
-            ],
-            confidenceVerdict: "Confidence not available",
-            recommendedAction: "Review the report content and rerun the analysis.",
-        };
-    }, [content]);
-
-    const conclusion = useMemo(() => {
-        const extractor = narrativeExtractors?.extractConclusion;
-        if (typeof extractor === "function") {
-            return extractor(content);
-        }
-        return {
-            shouldUseFor: [],
-            shouldNotUseFor: [],
-            nextStep: "Review the report content and rerun the analysis if needed.",
-        };
-    }, [content]);
+    const executiveBrief = useMemo(() => extractExecutiveBrief(content), [content]);
+    const conclusion = useMemo(() => extractConclusion(content), [content]);
 
     // NEW: Extract hero insight and Monday morning actions
     const heroInsight = useMemo(() => extractHeroInsight(content, metrics), [content, metrics]);
