@@ -61,6 +61,11 @@ import { ReportCharts } from "./ReportCharts";
 import { WideReportLayout } from "./WideReportLayout";
 import { TechnicalDetailsSection } from "./TechnicalDetailsSection";
 import { ReportConclusion } from "./ReportConclusion";
+import { TableOfContents } from "./TableOfContents";
+import { MetricsCards } from "./MetricsCards";
+import { ProgressIndicators } from "./ProgressIndicators";
+import { ProgressRing } from "./ProgressRing";
+import { Activity, BarChart3 } from "lucide-react";
 
 interface WideReportViewerProps {
   content?: string;
