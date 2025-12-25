@@ -43,9 +43,24 @@ import { OutcomeModelSection } from "./OutcomeModelSection";
 import { ExecutiveBrief } from "./ExecutiveBrief";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
+import { Copy, FileDown, ShieldAlert } from "lucide-react";
+import { AnomalyBanner } from "./AnomalyBanner";
+import { SegmentOverviewTable } from "./SegmentOverviewTable";
+import { SegmentComparison } from "./SegmentComparison";
+import { MetricGrid, interpretSilhouetteScore, interpretR2Score, interpretDataQuality } from "./MetricInterpretation";
+import { BusinessIntelligenceDashboard } from "./BusinessIntelligenceDashboard";
+import { CorrelationHeatmap } from "./CorrelationHeatmap";
+import { DistributionCharts } from "./DistributionCharts";
+import { ClusterGaugeSection } from "./ClusterGaugeSection";
+import { ReportCharts } from "./ReportCharts";
+import { WideReportLayout } from "./WideReportLayout";
+import { TechnicalDetailsSection } from "./TechnicalDetailsSection";
+import { ReportConclusion } from "./ReportConclusion";
 
 interface WideReportViewerProps {
   content?: string;
