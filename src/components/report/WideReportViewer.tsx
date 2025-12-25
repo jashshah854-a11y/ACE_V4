@@ -27,6 +27,9 @@ import {
   ReportInsightStoryboard,
 } from "./viewer";
 
+// Validation component
+import { ReportDataValidator } from "./ReportDataValidator";
+
 // Existing components
 import { HeroInsightPanel } from "./HeroInsightPanel";
 import { MondayMorningActions } from "./MondayMorningActions";
@@ -492,7 +495,8 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className={cn("w-full", className)}>
-      <WideReportLayout
+      <ReportDataValidator data={reportData} content={content || ""}>
+        <WideReportLayout
         hero={
           <>
             <SafeModeBanner safeMode={reportData.safeMode} />
@@ -669,7 +673,8 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
             />
           </div>
         }
-      />
+        />
+      </ReportDataValidator>
     </motion.div>
   );
 }
