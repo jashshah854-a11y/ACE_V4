@@ -1,0 +1,18 @@
+[project]
+name = "ace-engine"
+version = "3.0.0"
+description = "Autonomous Cognitive Entity V3 - Universal Analytics Engine"
+dependencies = [
+    "pandas",
+    "numpy",
+    "scikit-learn",
+    "scipy",
+    "pydantic",
+    "google-genai",
+    "requests",
+    "fastapi",
+    "uvicorn"
+]
+
+[project.scripts]
+ace = "cli:main"
