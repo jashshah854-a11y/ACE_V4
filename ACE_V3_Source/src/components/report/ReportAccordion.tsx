@@ -1,76 +1,84 @@
-import React, { useState } from "react";
-import { ChevronDown } from "lucide-react";
-import { cn } from "../../lib/utils";
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+    FileText,
+    BarChart3,
+    Users,
+    Target,
+    Shield,
+    Lightbulb
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { LucideIcon } from "lucide-react";
+import { ReactNode } from "react";
 
-export const SECTION_ICONS = {
-    summary: "📊",
-    anomalies: "⚠️",
-    quality: "✅",
-    insights: "💡",
-    segments: "👥",
-    default: "•",
-};
-
-interface AccordionSection {
+interface ReportSection {
     id: string;
     title: string;
-    content: React.ReactNode;
-    icon?: React.ReactNode;
+    icon: LucideIcon;
+    content: ReactNode;
     defaultOpen?: boolean;
+    itemCount?: number;
 }
 
 interface ReportAccordionProps {
-    sections?: AccordionSection[];
+    sections: ReportSection[];
     className?: string;
 }
 
 /**
- * Minimal accordion to host report sections.
- * Defensive to avoid runtime "undefined" errors when sections are absent.
+ * Collapsible accordion sections to reduce vertical scroll
+ * and organize report content logically
  */
-export function ReportAccordion({ sections = [], className }: ReportAccordionProps) {
-    if (!sections || sections.length === 0) return null;
+export function ReportAccordion({ sections, className }: ReportAccordionProps) {
+    const defaultOpenSections = sections
+        .filter(s => s.defaultOpen)
+        .map(s => s.id);
 
     return (
-        <div className={cn("space-y-2", className)}>
-            {sections.map((section) => (
-                <AccordionItem key={section.id} section={section} />
-            ))}
-        </div>
+        <Accordion
+            type="multiple"
+            defaultValue={defaultOpenSections}
+            className={className}
+        >
+            {sections.map((section) => {
+                const Icon = section.icon;
+
+                return (
+                    <AccordionItem key={section.id} value={section.id}>
+                        <AccordionTrigger className="hover:no-underline">
+                            <div className="flex items-center gap-3 text-left">
+                                <Icon className="h-5 w-5 shrink-0 text-primary" />
+                                <span className="font-semibold">{section.title}</span>
+                                {section.itemCount !== undefined && (
+                                    <Badge variant="secondary" className="ml-2">
+                                        {section.itemCount}
+                                    </Badge>
+                                )}
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                            <div className="pt-4 pb-2 pl-8">
+                                {section.content}
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                );
+            })}
+        </Accordion>
     );
 }
 
-function AccordionItem({ section }: { section: AccordionSection }) {
-    const [open, setOpen] = useState(Boolean(section.defaultOpen));
-    const icon =
-        section.icon ??
-        SECTION_ICONS[(section.title?.toLowerCase() as keyof typeof SECTION_ICONS) ?? "default"] ??
-        SECTION_ICONS.default;
-
-    return (
-        <div className="border rounded-md">
-            <button
-                type="button"
-                className="w-full flex items-center justify-between px-3 py-2 text-left"
-                onClick={() => setOpen((v) => !v)}
-            >
-                <div className="flex items-center gap-2">
-                    <span className="text-lg leading-none">{icon}</span>
-                    <span className="font-semibold text-sm">{section.title}</span>
-                </div>
-                <ChevronDown
-                    className={cn(
-                        "h-4 w-4 text-muted-foreground transition-transform",
-                        open && "rotate-180"
-                    )}
-                />
-            </button>
-            {open && (
-                <div className="px-3 pb-3 pt-1 text-sm space-y-2">
-                    {section.content}
-                </div>
-            )}
-        </div>
-    );
-}
-
+// Preset icons for common report sections
+export const SECTION_ICONS = {
+    summary: FileText,
+    quality: BarChart3,
+    clusters: Users,
+    outcomes: Target,
+    anomalies: Shield,
+    insights: Lightbulb,
+} as const;

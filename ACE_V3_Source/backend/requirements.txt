@@ -1,0 +1,28 @@
+fastapi
+uvicorn
+python-multipart
+slowapi
+pandas
+numpy
+scikit-learn
+scipy
+pydantic
+pydantic-settings
+google-genai
+requests
+joblib
+openai
+python-dotenv
+altair
+# Columnar IO and fast ingest
+duckdb
+polars
+pyarrow
+# PDF Report Generation
+weasyprint
+markdown
+sqlalchemy
+pyjwt
+boto3
+snowflake-connector-python
+google-cloud-bigquery
