@@ -12,7 +12,12 @@ interface PersonaSectionProps {
  * Visual persona section with distribution chart and persona cards
  */
 export function PersonaSection({ personas }: PersonaSectionProps) {
-    if (personas.length === 0) {
+    // Null safety - filter valid personas
+    const validPersonas = Array.isArray(personas) 
+        ? personas.filter(p => p && p.name && typeof p.size === 'number')
+        : [];
+
+    if (validPersonas.length === 0) {
         return (
             <div className="text-center py-8 text-muted-foreground">
                 <p>No personas generated</p>
@@ -21,15 +26,15 @@ export function PersonaSection({ personas }: PersonaSectionProps) {
     }
 
     // Prepare data for pie chart
-    const chartData = personas.map((p, idx) => ({
-        name: p.name,
-        value: p.size,
+    const chartData = validPersonas.map((p, idx) => ({
+        name: p.name || `Persona ${idx + 1}`,
+        value: p.size || 0,
         color: PERSONA_GRADIENTS[idx % PERSONA_GRADIENTS.length].split(' ')[1] // Extract first color from gradient
     }));
 
     const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f97316', '#ec4899', '#6366f1'];
 
-    const total = personas.reduce((sum, p) => sum + p.size, 0);
+    const total = validPersonas.reduce((sum, p) => sum + (p.size || 0), 0);
 
     return (
         <div className="space-y-6">
@@ -69,15 +74,15 @@ export function PersonaSection({ personas }: PersonaSectionProps) {
 
             {/* Persona Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {personas.map((persona, idx) => {
-                    const percentage = total > 0 ? (persona.size / total) * 100 : 0;
+                {validPersonas.map((persona, idx) => {
+                    const percentage = total > 0 ? ((persona.size || 0) / total) * 100 : 0;
 
                     return (
                         <PersonaCard
                             key={idx}
-                            name={persona.name}
-                            description={persona.summary || persona.motivation || ''}
-                            size={persona.size}
+                            name={persona.name || `Persona ${idx + 1}`}
+                            description={persona.summary || persona.motivation || 'No description available'}
+                            size={persona.size || 0}
                             percentage={percentage}
                             gradient={PERSONA_GRADIENTS[idx % PERSONA_GRADIENTS.length]}
                             icon="👤"
