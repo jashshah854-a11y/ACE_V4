@@ -34,6 +34,7 @@ import {
   extractAnomalies 
 } from "@/lib/reportParser";
 import { extractHeroInsight, generateMondayActions, extractSegmentData } from "@/lib/insightExtractors";
+import { extractExecutiveBrief, extractConclusion } from "@/lib/narrativeExtractors";
 import { HeroInsightPanel } from "./HeroInsightPanel";
 import { MondayMorningActions } from "./MondayMorningActions";
 
