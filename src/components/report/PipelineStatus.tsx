@@ -25,61 +25,61 @@ interface PipelineStatusProps {
 }
 
 const PIPELINE_STEPS = [
-  { 
-    key: "ingestion", 
-    label: "Data Ingestion", 
+  {
+    key: "ingestion",
+    label: "Data Ingestion",
     description: "Loading and parsing your dataset",
-    icon: Database, 
-    backendSteps: ["ingestion", "type_identifier"] 
+    icon: Database,
+    backendSteps: ["ingestion", "type_identifier"]
   },
-  { 
-    key: "scanner", 
-    label: "Schema Analysis", 
+  {
+    key: "scanner",
+    label: "Schema Analysis",
     description: "Understanding column types and structure",
-    icon: Scan, 
-    backendSteps: ["scanner", "interpreter"] 
+    icon: Scan,
+    backendSteps: ["scanner", "interpreter"]
   },
-  { 
-    key: "validator", 
-    label: "Data Validation", 
+  {
+    key: "validator",
+    label: "Data Validation",
     description: "Checking data quality and integrity",
-    icon: ShieldCheck, 
-    backendSteps: ["validator"] 
+    icon: ShieldCheck,
+    backendSteps: ["validator"]
   },
-  { 
-    key: "clustering", 
-    label: "Behavioral Clustering", 
+  {
+    key: "clustering",
+    label: "Behavioral Clustering",
     description: "Grouping similar customers together",
-    icon: Users, 
-    backendSteps: ["overseer"] 
+    icon: Users,
+    backendSteps: ["overseer"]
   },
-  { 
-    key: "regression", 
-    label: "Predictive Modeling", 
+  {
+    key: "regression",
+    label: "Predictive Modeling",
     description: "Building forecasting models",
-    icon: LineChart, 
-    backendSteps: ["regression"] 
+    icon: LineChart,
+    backendSteps: ["regression"]
   },
-  { 
-    key: "anomaly", 
-    label: "Anomaly Detection", 
+  {
+    key: "anomaly",
+    label: "Anomaly Detection",
     description: "Finding unusual patterns",
-    icon: AlertTriangle, 
-    backendSteps: ["sentry"] 
+    icon: AlertTriangle,
+    backendSteps: ["sentry"]
   },
-  { 
-    key: "personas", 
-    label: "Persona Generation", 
+  {
+    key: "personas",
+    label: "Persona Generation",
     description: "Creating customer profiles",
-    icon: Sparkles, 
-    backendSteps: ["personas"] 
+    icon: Sparkles,
+    backendSteps: ["personas"]
   },
-  { 
-    key: "report", 
-    label: "Report Generation", 
+  {
+    key: "report",
+    label: "Report Generation",
     description: "Compiling insights into your report",
-    icon: FileText, 
-    backendSteps: ["fabricator", "expositor"] 
+    icon: FileText,
+    backendSteps: ["fabricator", "expositor"]
   },
 ];
 
@@ -97,11 +97,14 @@ function getStepStates(state: RunState): Record<string, StepState> {
     const isActive = step.backendSteps.some((s) => currentStage.includes(s.toLowerCase()));
 
     if (allCompleted) {
+      // All backend steps for this stage are complete
       result[step.key] = "completed";
-    } else if (isActive || (!foundActive && !allCompleted)) {
+    } else if (!foundActive && (isActive || !allCompleted)) {
+      // First incomplete step is the active one
       result[step.key] = "active";
       foundActive = true;
     } else {
+      // All subsequent steps are pending
       result[step.key] = "pending";
     }
   }
@@ -178,13 +181,13 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
     const animate = (currentTime: number) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      
+
       // Ease out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
       const currentValue = startValue + (endValue - startValue) * eased;
-      
+
       setDisplayProgress(Math.round(currentValue));
-      
+
       if (progress < 1) {
         requestAnimationFrame(animate);
       }
@@ -229,7 +232,7 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <motion.div 
+            <motion.div
               className={cn(
                 "w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-500",
                 isComplete && "bg-success/10",
@@ -262,7 +265,7 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
               </p>
             </div>
           </div>
-          
+
           {/* Percentage Display */}
           <div className="text-right">
             <motion.span
@@ -392,7 +395,7 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
                         </p>
                       </div>
                     </div>
-                    
+
                     {/* Step Number Badge */}
                     <div className={cn(
                       "absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full text-[10px] font-medium flex items-center justify-center",
