@@ -37,6 +37,15 @@ import { extractHeroInsight, generateMondayActions, extractSegmentData } from "@
 import { extractExecutiveBrief, extractConclusion } from "@/lib/narrativeExtractors";
 import { HeroInsightPanel } from "./HeroInsightPanel";
 import { MondayMorningActions } from "./MondayMorningActions";
+import { SECTION_ICONS, ReportAccordion } from "./ReportAccordion";
+import { PersonaSection } from "./PersonaSection";
+import { OutcomeModelSection } from "./OutcomeModelSection";
+import { ExecutiveBrief } from "./ExecutiveBrief";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
 
 interface WideReportViewerProps {
   content?: string;
