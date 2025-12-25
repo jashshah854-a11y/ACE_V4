@@ -27,13 +27,25 @@ export function SegmentOverviewTable({ segments, totalCustomers, className }: Se
     // Don't render if no meaningful data
     if (!segments || segments.length === 0) return null;
 
-    const riskConfig = {
+    // Filter and validate segments
+    const validSegments = segments.filter(s => 
+        s && 
+        s.name &&
+        typeof s.size === 'number' &&
+        typeof s.avgValue === 'number'
+    );
+
+    if (validSegments.length === 0) return null;
+
+    const riskConfig: Record<string, { bg: string; text: string; label: string }> = {
         low: { bg: "bg-success/10", text: "text-success", label: "Low" },
         medium: { bg: "bg-warning/10", text: "text-warning", label: "Medium" },
         high: { bg: "bg-destructive/10", text: "text-destructive", label: "High" }
     };
 
-    const actionConfig = {
+    const defaultRisk = { bg: "bg-muted/10", text: "text-muted-foreground", label: "Unknown" };
+
+    const actionConfig: Record<string, { bg: string; text: string }> = {
         Retain: { bg: "bg-primary", text: "Retain" },
         Upsell: { bg: "bg-success", text: "Grow" },
         "Re-engage": { bg: "bg-warning", text: "Win Back" },
@@ -41,8 +53,10 @@ export function SegmentOverviewTable({ segments, totalCustomers, className }: Se
         Acquire: { bg: "bg-accent", text: "Acquire" }
     };
 
-    const avgValue = segments.reduce((sum, s) => sum + s.avgValue, 0) / segments.length;
-    const sortedSegments = [...segments].sort((a, b) => b.avgValue - a.avgValue);
+    const defaultAction = { bg: "bg-muted", text: "—" };
+
+    const avgValue = validSegments.reduce((sum, s) => sum + (s.avgValue || 0), 0) / validSegments.length || 1;
+    const sortedSegments = [...validSegments].sort((a, b) => (b.avgValue || 0) - (a.avgValue || 0));
 
     return (
         <motion.div
@@ -85,9 +99,9 @@ export function SegmentOverviewTable({ segments, totalCustomers, className }: Se
                     </thead>
                     <tbody className="divide-y divide-border/50">
                         {sortedSegments.map((segment, idx) => {
-                            const risk = riskConfig[segment.riskLevel];
-                            const action = actionConfig[segment.recommendedAction];
-                            const valueIndex = Math.round((segment.avgValue / avgValue) * 100);
+                            const risk = riskConfig[segment.riskLevel] || defaultRisk;
+                            const action = actionConfig[segment.recommendedAction] || defaultAction;
+                            const valueIndex = avgValue > 0 ? Math.round(((segment.avgValue || 0) / avgValue) * 100) : 0;
 
                             return (
                                 <motion.tr
