@@ -27,21 +27,34 @@ export function SegmentComparison({ segments, totalCustomers, className }: Segme
     // Don't render if no meaningful data
     if (!segments || segments.length === 0) return null;
 
-    const sortedSegments = [...segments].sort((a, b) => b.avgValue - a.avgValue);
-    const maxValue = Math.max(...segments.map(s => s.avgValue));
-    const maxSize = Math.max(...segments.map(s => s.size));
+    // Filter out segments with missing required fields
+    const validSegments = segments.filter(s => 
+        s && 
+        typeof s.avgValue === 'number' && 
+        typeof s.size === 'number' &&
+        s.name
+    );
 
-    const riskStyles = {
+    if (validSegments.length === 0) return null;
+
+    const sortedSegments = [...validSegments].sort((a, b) => (b.avgValue || 0) - (a.avgValue || 0));
+    const maxValue = Math.max(...validSegments.map(s => s.avgValue || 0), 1);
+    const maxSize = Math.max(...validSegments.map(s => s.size || 0), 1);
+
+    const riskStyles: Record<string, string> = {
         low: "border-success/30 bg-success/5",
         medium: "border-warning/30 bg-warning/5",
         high: "border-destructive/30 bg-destructive/5"
     };
 
-    const riskLabels = {
+    const riskLabels: Record<string, { text: string; color: string }> = {
         low: { text: "Low Risk", color: "text-success" },
         medium: { text: "Moderate", color: "text-warning" },
         high: { text: "At Risk", color: "text-destructive" }
     };
+
+    // Default risk for segments without riskLevel
+    const defaultRisk = { text: "Unknown", color: "text-muted-foreground" };
 
     return (
         <motion.div
@@ -63,20 +76,21 @@ export function SegmentComparison({ segments, totalCustomers, className }: Segme
             {/* Segment Cards */}
             <div className="p-6 space-y-4">
                 {sortedSegments.map((segment, index) => {
-                    const valuePercent = (segment.avgValue / maxValue) * 100;
-                    const sizePercent = (segment.size / maxSize) * 100;
-                    const risk = riskLabels[segment.riskLevel];
-                    const displayName = segment.displayName || segment.name;
+                    const valuePercent = ((segment.avgValue || 0) / maxValue) * 100;
+                    const sizePercent = ((segment.size || 0) / maxSize) * 100;
+                    const risk = riskLabels[segment.riskLevel] || defaultRisk;
+                    const riskStyle = riskStyles[segment.riskLevel] || "border-muted/30 bg-muted/5";
+                    const displayName = segment.displayName || segment.name || `Segment ${index + 1}`;
 
                     return (
                         <motion.div
-                            key={segment.name}
+                            key={segment.name || index}
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.1 + index * 0.08, duration: 0.4 }}
                             className={cn(
                                 "p-5 rounded-sm border-l-4 transition-all duration-300 hover:shadow-soft",
-                                riskStyles[segment.riskLevel]
+                                riskStyle
                             )}
                         >
                             {/* Segment Header */}
