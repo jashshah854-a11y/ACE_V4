@@ -22,8 +22,13 @@ export function ClusterGaugeSection({ data }: ClusterGaugeSectionProps) {
         );
     }
 
-    const silhouettePercent = Math.round(data.silhouetteScore * 100);
-    const qualityPercent = Math.round(data.dataQuality * 100);
+    // Safe defaults for metrics
+    const silhouetteScore = typeof data.silhouetteScore === 'number' ? data.silhouetteScore : 0;
+    const dataQuality = typeof data.dataQuality === 'number' ? data.dataQuality : 0;
+    const clusterCount = typeof data.k === 'number' ? data.k : 0;
+
+    const silhouettePercent = Math.round(silhouetteScore * 100);
+    const qualityPercent = Math.round(dataQuality * 100);
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -96,7 +101,7 @@ export function ClusterGaugeSection({ data }: ClusterGaugeSectionProps) {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="py-6">
-                        <div className="text-6xl font-bold text-center">{data.k}</div>
+                        <div className="text-6xl font-bold text-center">{clusterCount}</div>
                         <p className="text-sm text-muted-foreground text-center mt-2">
                             Behavioral segments
                         </p>

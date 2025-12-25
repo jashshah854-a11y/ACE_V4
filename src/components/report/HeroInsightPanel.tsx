@@ -21,7 +21,19 @@ export function HeroInsightPanel({
     recommendation,
     context
 }: HeroInsightPanelProps) {
-    const impactConfig = {
+    // Null safety - return empty if no insight
+    if (!keyInsight) {
+        return null;
+    }
+
+    // Safe defaults for all values
+    const safeImpact = impact || "medium";
+    const safeTrend = trend || "neutral";
+    const safeConfidence = typeof confidence === 'number' ? confidence : 0;
+    const safeDataQuality = typeof dataQuality === 'number' ? dataQuality : 0;
+    const safeRecommendation = recommendation || "Review the data for more insights";
+
+    const impactConfig: Record<string, { color: string; bg: string; border: string; label: string; gradient: string }> = {
         high: {
             color: "text-copper-600",
             bg: "bg-copper-50",
@@ -45,7 +57,7 @@ export function HeroInsightPanel({
         }
     };
 
-    const trendConfig = {
+    const trendConfig: Record<string, { icon: typeof TrendingUp; color: string; label: string }> = {
         positive: {
             icon: TrendingUp,
             color: "text-teal-500",
@@ -63,8 +75,8 @@ export function HeroInsightPanel({
         }
     };
 
-    const config = impactConfig[impact];
-    const trendInfo = trendConfig[trend];
+    const config = impactConfig[safeImpact] || impactConfig.medium;
+    const trendInfo = trendConfig[safeTrend] || trendConfig.neutral;
     const TrendIcon = trendInfo.icon;
 
     const getQualityLabel = (score: number) => {
@@ -124,15 +136,15 @@ export function HeroInsightPanel({
                                         <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
                                             <motion.div
                                                 initial={{ width: 0 }}
-                                                animate={{ width: `${confidence}%` }}
+                                                animate={{ width: `${safeConfidence}%` }}
                                                 transition={{ duration: 0.8, delay: 0.2 }}
                                                 className={cn(
                                                     "h-full rounded-full",
-                                                    confidence >= 70 ? "bg-teal-500" : confidence >= 50 ? "bg-copper-400" : "bg-muted-foreground"
+                                                    safeConfidence >= 70 ? "bg-teal-500" : safeConfidence >= 50 ? "bg-copper-400" : "bg-muted-foreground"
                                                 )}
                                             />
                                         </div>
-                                        <span className="text-sm font-bold tabular-nums">{confidence}%</span>
+                                        <span className="text-sm font-bold tabular-nums">{safeConfidence}%</span>
                                     </div>
                                 </div>
                                 <div className="text-right">
@@ -143,15 +155,15 @@ export function HeroInsightPanel({
                                         <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
                                             <motion.div
                                                 initial={{ width: 0 }}
-                                                animate={{ width: `${dataQuality}%` }}
+                                                animate={{ width: `${safeDataQuality}%` }}
                                                 transition={{ duration: 0.8, delay: 0.3 }}
                                                 className={cn(
                                                     "h-full rounded-full",
-                                                    dataQuality >= 70 ? "bg-teal-500" : dataQuality >= 50 ? "bg-copper-400" : "bg-muted-foreground"
+                                                    safeDataQuality >= 70 ? "bg-teal-500" : safeDataQuality >= 50 ? "bg-copper-400" : "bg-muted-foreground"
                                                 )}
                                             />
                                         </div>
-                                        <span className="text-sm font-bold tabular-nums">{dataQuality}%</span>
+                                        <span className="text-sm font-bold tabular-nums">{safeDataQuality}%</span>
                                     </div>
                                 </div>
                             </div>
@@ -166,7 +178,7 @@ export function HeroInsightPanel({
                             transition={{ delay: 0.2, duration: 0.4 }}
                         >
                             <p className="text-muted-foreground text-sm font-medium mb-2">
-                                {getQualityLabel(dataQuality)} data quality foundation
+                                {getQualityLabel(safeDataQuality)} data quality foundation
                             </p>
                             <h2 className="font-serif text-2xl sm:text-3xl font-bold text-navy-900 leading-tight tracking-tight">
                                 {keyInsight}
