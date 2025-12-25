@@ -18,17 +18,29 @@ interface MondayMorningActionsProps {
 }
 
 export function MondayMorningActions({ actions, className }: MondayMorningActionsProps) {
-    const priorityConfig = {
+    // Null safety - return empty if no actions
+    if (!actions || actions.length === 0) return null;
+
+    const priorityConfig: Record<string, { label: string; bg: string; text: string; border: string }> = {
         immediate: { label: "High Priority", bg: "bg-copper-100", text: "text-copper-700", border: "border-copper-200" },
         high: { label: "High Priority", bg: "bg-copper-100", text: "text-copper-700", border: "border-copper-200" },
         medium: { label: "Medium Priority", bg: "bg-teal-100", text: "text-teal-700", border: "border-teal-200" }
     };
 
-    const effortConfig = {
+    const defaultPriority = { label: "Priority", bg: "bg-muted", text: "text-muted-foreground", border: "border-border" };
+
+    const effortConfig: Record<string, { label: string; color: string }> = {
         low: { label: "Quick Win", color: "text-teal-600 border-teal-200" },
         medium: { label: "Significant Effort", color: "text-copper-600 border-copper-200" },
         high: { label: "Significant Effort", color: "text-copper-600 border-copper-200" }
     };
+
+    const defaultEffort = { label: "Effort TBD", color: "text-muted-foreground border-border" };
+
+    // Filter valid actions
+    const validActions = actions.filter(a => a && (a.title || a.description));
+
+    if (validActions.length === 0) return null;
 
     return (
         <motion.div
@@ -55,9 +67,9 @@ export function MondayMorningActions({ actions, className }: MondayMorningAction
 
                 {/* Actions List */}
                 <div className="divide-y divide-border/50">
-                    {actions.map((action, index) => {
-                        const priority = priorityConfig[action.priority];
-                        const effort = effortConfig[action.effort];
+                    {validActions.map((action, index) => {
+                        const priority = priorityConfig[action.priority] || defaultPriority;
+                        const effort = effortConfig[action.effort] || defaultEffort;
 
                         return (
                             <motion.div
