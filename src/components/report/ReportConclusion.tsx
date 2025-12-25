@@ -22,6 +22,14 @@ export function ReportConclusion({
     nextStep,
     className,
 }: ReportConclusionProps) {
+    // Safe defaults
+    const safeShouldUseFor = Array.isArray(shouldUseFor) && shouldUseFor.length > 0
+        ? shouldUseFor.filter(s => s && typeof s === 'string')
+        : ["General business intelligence and trend analysis"];
+    const safeShouldNotUseFor = Array.isArray(shouldNotUseFor) && shouldNotUseFor.length > 0
+        ? shouldNotUseFor.filter(s => s && typeof s === 'string')
+        : ["Making critical decisions without additional validation"];
+    const safeNextStep = nextStep || "Review findings with your team and identify areas for deeper analysis";
     return (
         <Card className={className}>
             <CardHeader>
@@ -39,7 +47,7 @@ export function ReportConclusion({
                         <h3 className="font-semibold text-lg">✅ This Analysis Should Be Used For</h3>
                     </div>
                     <ul className="space-y-2">
-                        {shouldUseFor.map((item, index) => (
+                        {safeShouldUseFor.map((item, index) => (
                             <li key={index} className="flex items-start gap-3 text-base">
                                 <span className="text-green-600 mt-0.5">•</span>
                                 <span>{item}</span>
@@ -55,7 +63,7 @@ export function ReportConclusion({
                         <h3 className="font-semibold text-lg">❌ This Analysis Should NOT Be Used For</h3>
                     </div>
                     <ul className="space-y-2">
-                        {shouldNotUseFor.map((item, index) => (
+                        {safeShouldNotUseFor.map((item, index) => (
                             <li key={index} className="flex items-start gap-3 text-base">
                                 <span className="text-red-600 mt-0.5">•</span>
                                 <span>{item}</span>
@@ -72,7 +80,7 @@ export function ReportConclusion({
                     </div>
                     <div className="bg-blue-50 dark:bg-blue-950/20 border-l-4 border-blue-600 p-4 rounded-r-md">
                         <p className="text-base font-medium leading-relaxed">
-                            {nextStep}
+                            {safeNextStep}
                         </p>
                     </div>
                 </div>
