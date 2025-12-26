@@ -18,6 +18,7 @@ from ace_v4.performance.config import PerformanceConfig
 from anti_gravity.core.regression import compute_regression_insights
 
 
+from core.scope_enforcer import ScopeEnforcer, ScopeViolationError
 class RegressionAgent:
     """Train a lightweight regression model to explain value-oriented targets."""
 
@@ -43,6 +44,12 @@ class RegressionAgent:
     def run(self):
         log_launch("Training regression explainer...")
         df = self._load_dataset()
+        try:
+            scope_guard = ScopeEnforcer(self.state, agent="regression")
+            df = scope_guard.trim_dataframe(df)
+        except ScopeViolationError as exc:
+            log_warn(f"Scope lock blocked Regression: {exc}")
+            raise
         run_config = self.state.read("run_config") or {}
         insights = compute_regression_insights(
             df,

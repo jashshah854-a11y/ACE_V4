@@ -13,7 +13,7 @@ interface ReportEvidenceInspectorProps {
   evidenceSample: any[] | null;
   evidenceLoading: boolean;
   evidenceError: string | null;
-  onFetchEvidenceSample: (contentSnippet: string, evidenceId?: string) => void;
+  onFetchEvidenceSample: (payload: { contentSnippet: string; evidenceId?: string; sectionTitle?: string }) => void;
   onCloseEvidence: () => void;
 }
 
@@ -47,7 +47,9 @@ export function ReportEvidenceInspector({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => onFetchEvidenceSample(sec.content, sec.id)}
+              onClick={() =>
+                onFetchEvidenceSample({ contentSnippet: sec.content, evidenceId: sec.id, sectionTitle: sec.title })
+              }
             >
               Inspect
             </Button>
