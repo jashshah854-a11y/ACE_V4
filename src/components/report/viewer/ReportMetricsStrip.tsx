@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ConfidenceBadge } from "../ConfidenceBadge";
 
 interface ReportMetricsStripProps {
   confidenceValue: number | undefined;
@@ -12,8 +13,13 @@ export function ReportMetricsStrip({ confidenceValue, dataQualityValue, clusterM
     <div className="grid gap-3 md:grid-cols-3 mb-4">
       {/* Confidence bar */}
       <Card className="p-3">
-        <div className="text-xs uppercase text-muted-foreground">Confidence</div>
-        <div className="text-lg font-semibold">{confidenceValue ?? "n/a"}%</div>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-xs uppercase text-muted-foreground">Confidence</div>
+            <div className="text-lg font-semibold">{confidenceValue ?? "n/a"}%</div>
+          </div>
+          <ConfidenceBadge value={confidenceValue} />
+        </div>
         <div className="mt-2 h-2 w-full rounded-full bg-muted">
           <div
             className="h-2 rounded-full bg-primary"
@@ -24,8 +30,13 @@ export function ReportMetricsStrip({ confidenceValue, dataQualityValue, clusterM
 
       {/* Data quality bar */}
       <Card className="p-3">
-        <div className="text-xs uppercase text-muted-foreground">Data Quality</div>
-        <div className="text-lg font-semibold">{dataQualityValue ?? "n/a"}%</div>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-xs uppercase text-muted-foreground">Data Quality</div>
+            <div className="text-lg font-semibold">{dataQualityValue ?? "n/a"}%</div>
+          </div>
+          <ConfidenceBadge value={dataQualityValue} label="Quality" />
+        </div>
         <div className="mt-2 h-2 w-full rounded-full bg-muted">
           <div
             className="h-2 rounded-full bg-green-500"

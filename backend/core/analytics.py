@@ -6,6 +6,8 @@ from sklearn.metrics import silhouette_score
 from sklearn.ensemble import IsolationForest
 from typing import Dict, List, Optional
 from .schema_utils import pick_first_role_column
+from .analyst_core import ModelSelector, ModelGovernanceError
+from .explainability import EvidenceObject
 
 def load_data(path: str) -> pd.DataFrame:
     df = pd.read_csv(path)
@@ -144,6 +146,8 @@ def run_universal_clustering(df: pd.DataFrame, schema_map, fast_mode: bool = Fal
     if row_count == 0:
         raise ValueError("Dataset contains no rows after sanitization.")
 
+    selector = ModelSelector()
+
     # 1. Feature Selection
     features = list(schema_map.feature_plan.clustering_features)
     if not features:
@@ -157,6 +161,30 @@ def run_universal_clustering(df: pd.DataFrame, schema_map, fast_mode: bool = Fal
     valid_features = [f for f in features if f in df.columns]
     if not valid_features:
         raise ValueError("No valid clustering features found in dataset.")
+
+    try:
+        selector.ensure_clustering_allowed(row_count, len(valid_features))
+    except ModelGovernanceError as exc:
+        fallback_labels = fallback_segmentation(df)
+        evidence = EvidenceObject(
+            columns_used=valid_features or df.columns.tolist(),
+            computation_method="GovernanceFallback",
+            result_statistic={"reason": str(exc)},
+            confidence_level=25.0,
+            limitations=["Complex clustering blocked by explainability policy"],
+        ).to_payload()
+        return {
+            "k": 1,
+            "silhouette": -1,
+            "sizes": [len(df)],
+            "labels": fallback_labels,
+            "fingerprints": {},
+            "warnings": [str(exc)],
+            "evidence": evidence,
+            "feature_importance": [],
+            "confidence_interval": (-1.0, -0.5),
+            "artifacts": {},
+        }
 
     # Cap numeric features by variance for fast mode
     if fast_mode and valid_features:
@@ -281,12 +309,24 @@ def run_universal_clustering(df: pd.DataFrame, schema_map, fast_mode: bool = Fal
             "role_summaries": role_summaries
         }
 
+    if best_model is None:
+        raise ValueError("Failed to train explainable clustering model")
+
+    explainable = selector.wrap_kmeans(best_model, valid_features, best_score)
+    evidence_payload = explainable.get_evidence().to_payload()
+    feature_importance = [entry.as_dict() for entry in explainable.get_feature_importance()]
+    confidence_interval = explainable.get_confidence_interval()
+
     return {
         "k": best_k,
         "silhouette": best_score,
         "sizes": sizes,
         "fingerprints": fingerprints,
-        "labels": best_labels_full.tolist()
+        "labels": best_labels_full.tolist(),
+        "evidence": evidence_payload,
+        "feature_importance": feature_importance,
+        "confidence_interval": confidence_interval,
+        "artifacts": explainable.serialize_artifacts(),
     }
 
 def detect_universal_anomalies(df: pd.DataFrame, schema_map):

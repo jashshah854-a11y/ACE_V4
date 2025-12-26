@@ -1,12 +1,13 @@
 import json
 from pathlib import Path
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Optional, Any
 
 from core.identity_card import build_identity_card, save_identity_card
 from core.task_contract import build_task_contract, save_task_contract
 from core.confidence import compute_data_confidence
 from core.insights import validate_insights, load_insights
 from core.state_manager import StateManager
+from core.sentry import EvidenceSentry
 
 INSIGHT_AGENTS = {"overseer", "regression", "personas", "fabricator", "expositor"}
 
@@ -44,7 +45,7 @@ def _load_json_if_exists(path: str) -> Dict:
         return json.load(f)
 
 
-def rebuild_governance_artifacts(state_manager: StateManager) -> Dict[str, Dict]:
+def rebuild_governance_artifacts(state_manager: StateManager, user_intent: Optional[Dict[str, Any]] = None) -> Dict[str, Dict]:
     """
     Rebuild identity card, task contract, and confidence report from current state.
     Returns dict with rebuilt artifacts.
@@ -53,6 +54,7 @@ def rebuild_governance_artifacts(state_manager: StateManager) -> Dict[str, Dict]
     artifacts_dir = Path(run_path) / "artifacts"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
 
+    user_intent = user_intent or state_manager.read("task_intent") or None
     ingestion_meta = state_manager.read("ingestion_meta") or {}
     schema_profile = _load_json_if_exists(ingestion_meta.get("schema_profile", "")) if isinstance(ingestion_meta, dict) else {}
     drift_report = _load_json_if_exists(ingestion_meta.get("drift_report", "")) if isinstance(ingestion_meta, dict) else {}
@@ -74,6 +76,7 @@ def rebuild_governance_artifacts(state_manager: StateManager) -> Dict[str, Dict]
         ingestion_meta.get("drift_status", "none") if isinstance(ingestion_meta, dict) else "none",
         has_target=has_target,
         target_is_binary=target_is_binary,
+        user_intent=user_intent,
     )
     contract_path = artifacts_dir / "task_contract.json"
     save_task_contract(contract_path, task_contract)
@@ -107,12 +110,14 @@ def should_block_agent(agent: str, state_manager: StateManager) -> Tuple[bool, s
 
     reasons: List[str] = []
 
+    if not contract.get("is_signed"):
+        reasons.append("Missing signed task contract")
+
     if validation.get("blocked_agents") and agent in set(validation.get("blocked_agents")):
         reasons.append("Blocked by validator")
     if validation.get("mode") == "limitations" or not validation.get("allow_insights", True):
         reasons.append("Validation in limitation mode")
 
-    conf_label = confidence.get("confidence_label")
     confidence_blocked, conf_reason = is_confidence_blocked(confidence)
     if confidence_blocked:
         reasons.append(conf_reason)
@@ -126,8 +131,14 @@ def should_block_agent(agent: str, state_manager: StateManager) -> Tuple[bool, s
     if agent == "regression" and "modeling" in forbidden_sections:
         reasons.append("Modeling forbidden by contract")
 
+    required_output = (contract.get("required_output_type") or "").lower()
+    if required_output in {"diagnostic", "descriptive"} and agent in {"regression", "fabricator"}:
+        reasons.append("Predictive modeling out of scope for this task contract")
+    if required_output == "predictive" and agent == "overseer":
+        reasons.append("Predictive runs bypass exploratory clustering")
+
     if reasons:
-        return True, "; ".join(reasons)
+        return True, "; ".join(reason for reason in reasons if reason)
 
     return False, ""
 
@@ -145,6 +156,12 @@ def render_governed_report(state_manager: StateManager, insights_path: Path) -> 
     confidence = state_manager.read("confidence_report") or {}
     validation = state_manager.read("data_validation_report") or {}
     data_type = (state_manager.read("data_type_identification") or {}).get("primary_type")
+    sentry = EvidenceSentry(state_manager)
+
+    contract_threshold = float(contract.get("confidence_threshold") or 0.0)
+    data_conf_pct = confidence.get("data_confidence")
+    if isinstance(data_conf_pct, (int, float)) and data_conf_pct <= 1:
+        data_conf_pct *= 100
 
     raw_insights = load_insights(insights_path) if insights_path.exists() else []
     valid_report = validate_insights(raw_insights)
@@ -153,24 +170,55 @@ def render_governed_report(state_manager: StateManager, insights_path: Path) -> 
     if not valid_report["ok"]:
         limitations.append({"agent": "expositor", "message": "Insights missing evidence; omitted from report.", "severity": "error"})
 
-    # If insights not allowed, ensure they are not emitted and note the limitation
     if "insights" not in allowed_sections:
         if insights:
             insights = []
         limitations.append({"agent": "expositor", "message": "Insights section not allowed by task contract.", "severity": "warning"})
 
     confidence_blocked, conf_reason = is_confidence_blocked(confidence)
+    if contract_threshold and isinstance(data_conf_pct, (int, float)):
+        if data_conf_pct < contract_threshold:
+            confidence_blocked = True
+            limitations.append({"agent": "governance", "message": f"Confidence {data_conf_pct:.1f}% below contract threshold {contract_threshold:.1f}%", "severity": "warning"})
+
     if confidence_blocked:
         insights = []
-        limitations.append({"agent": "governance", "message": f"Insights suppressed: {conf_reason}", "severity": "error"})
+        if conf_reason:
+            limitations.append({"agent": "governance", "message": f"Insights suppressed: {conf_reason}", "severity": "error"})
+
+    if insights:
+        sentry_result = sentry.enforce(insights)
+        insights = sentry_result["insights"]
+        if sentry_result["dropped"]:
+            limitations.append({
+                "agent": "sentry",
+                "message": f"{len(sentry_result['dropped'])} insights dropped due to missing evidence",
+                "severity": "warning",
+            })
+        if sentry_result["missing_artifacts"]:
+            limitations.append({
+                "agent": "sentry",
+                "message": "Evidence artifacts missing from audit trail",
+                "severity": "warning",
+            })
+        if sentry_result["safe_mode"]:
+            limitations.append({
+                "agent": "sentry",
+                "message": "Safe Mode triggered: >20% insights lacked traceable evidence",
+                "severity": "error",
+            })
+            confidence_blocked = True
+
+    report_mode = "limitations" if validation.get("mode") == "limitations" or confidence_blocked else "insight"
 
     report = {
-        "mode": "limitations" if validation.get("mode") == "limitations" or confidence_blocked else "insight",
+        "mode": report_mode,
         "allowed_sections": list(allowed_sections),
         "data_type": data_type,
         "confidence": confidence,
         "limitations": limitations,
         "insights": insights,
+        "task_contract": contract,
     }
 
     output_path = state_manager.run_path / "artifacts" / "governed_report.json"

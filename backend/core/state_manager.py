@@ -50,6 +50,14 @@ class StateManager:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
 
+    def append(self, name: str, record: Any):
+        """Append a JSON-serializable record to a list stored under `name`."""
+        existing = self.read(name)
+        if not isinstance(existing, list):
+            existing = []
+        existing.append(record)
+        self.write(name, existing)
+
     def exists(self, name: str) -> bool:
         """
         Checks if a state file exists.

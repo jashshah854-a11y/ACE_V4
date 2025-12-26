@@ -14,6 +14,7 @@ import { extractExecutiveBrief, extractConclusion } from "@/lib/narrativeExtract
 import { useEnhancedAnalytics } from "@/hooks/useEnhancedAnalytics";
 import { useDiagnostics } from "@/hooks/useDiagnostics";
 import { useModelArtifacts } from "@/hooks/useModelArtifacts";
+import type { GovernedReport, TaskContractSnapshot } from "@/hooks/useGovernedReport";
 
 export interface ReportDataResult {
   // Core extracted data
@@ -57,6 +58,9 @@ export interface ReportDataResult {
   runContext: { mode: string; freshness: string; scopeLimits: string[] };
   identityStats: { rows: any; completeness: any; confidence: any };
   highlights: { label: string; tone: "default" | "warn" | "ok" }[];
+  primaryQuestion?: string;
+  outOfScopeDimensions: string[];
+  scoredSections: Array<ReturnType<typeof extractSections>[number] & { importance: number }>;
   
   // External data
   enhancedAnalytics: any;
@@ -65,12 +69,97 @@ export interface ReportDataResult {
   modelArtifacts: any;
 }
 
+const MIN_IMPORTANCE = 0.05;
+
+function parseImportanceFromContent(content: string, index: number) {
+  const importanceMatch = content.match(/importance(?:\s*score)?[:\s]+(\d+(?:\.\d+)?)/i);
+  if (importanceMatch) {
+    const raw = parseFloat(importanceMatch[1]);
+    if (!Number.isNaN(raw)) {
+      const normalized = raw > 1 ? raw / 100 : raw;
+      return Math.max(MIN_IMPORTANCE, Math.min(1, normalized));
+    }
+  }
+  if (/executive|summary/.test(content.toLowerCase())) {
+    return 0.9;
+  }
+  return Math.max(MIN_IMPORTANCE, 0.75 - index * 0.05);
+}
+
+function extractPrimaryQuestion(taskContract?: string, decisionCopy?: string) {
+  const corpus = taskContract || decisionCopy || "";
+  if (!corpus) return undefined;
+  const match = corpus.match(/primary\s+(?:decision|question)[^:]*:\s*(.+)/i);
+  if (match) {
+    return match[1].split("\n")[0]?.trim();
+  }
+  const firstLine = corpus.split("\n").find((line) => line.trim().length > 0);
+  return firstLine?.replace(/^[-*#\d.\)\s]+/, "").trim();
+}
+
+function extractOutOfScope(contractCopy?: string) {
+  if (!contractCopy) return [];
+  const lines = contractCopy.split("\n");
+  const dims = new Set<string>();
+  let capture = false;
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    const lower = trimmed.toLowerCase();
+    if (!trimmed) {
+      capture = false;
+      return;
+    }
+    if (lower.includes("out of scope") || lower.startsWith("excluded") || lower.startsWith("not in scope")) {
+      const afterColon = trimmed.split(":")[1];
+      if (afterColon && afterColon.trim()) {
+        dims.add(afterColon.trim());
+      }
+      capture = true;
+      return;
+    }
+    if (capture && (trimmed.startsWith("-") || trimmed.startsWith("*"))) {
+      dims.add(trimmed.replace(/^[-*]\s*/, ""));
+      return;
+    }
+    if (capture) {
+      capture = false;
+    }
+  });
+  return Array.from(dims);
+}
+
+function normalizeConfidence(value?: number) {
+  if (typeof value !== "number" || Number.isNaN(value)) return undefined;
+  return value <= 1 ? value * 100 : value;
+}
+
+function buildContractSummary(contract?: TaskContractSnapshot) {
+  if (!contract) return undefined;
+  const parts: string[] = [];
+  if (contract.primary_question) parts.push(`Primary Question: ${contract.primary_question}`);
+  if (contract.decision_context) parts.push(`Decision Context: ${contract.decision_context}`);
+  if (contract.required_output_type) parts.push(`Output Type: ${contract.required_output_type}`);
+  if (contract.success_criteria) parts.push(`Success Criteria: ${contract.success_criteria}`);
+  if (contract.constraints) parts.push(`Constraints: ${contract.constraints}`);
+  const scope = contract.out_of_scope_dimensions?.length
+    ? contract.out_of_scope_dimensions
+    : contract.scope_exclusions;
+  if (scope && scope.length) {
+    parts.push(`Out-of-scope: ${scope.join(", ")}`);
+  }
+  return parts.join(`\n`);
+}
+
 export function useReportData(
   content: string,
   runId: string | undefined,
-  confidenceMode: "strict" | "exploratory"
+  confidenceMode: "strict" | "exploratory",
+  governedReport?: GovernedReport | null
 ): ReportDataResult {
-  const confidenceThreshold = confidenceMode === "strict" ? 90 : 60;
+  const contractSnapshot = governedReport?.task_contract;
+  const governedConfidence = normalizeConfidence(governedReport?.confidence?.data_confidence);
+  const contractConfidenceThreshold = normalizeConfidence(contractSnapshot?.confidence_threshold);
+  const confidenceThreshold = contractConfidenceThreshold ?? (confidenceMode === "strict" ? 90 : 60);
 
   const { data: enhancedAnalytics, loading: analyticsLoading } = useEnhancedAnalytics(runId);
   const { data: diagnostics } = useDiagnostics(runId);
@@ -80,6 +169,10 @@ export function useReportData(
   const metrics = useMemo(() => extractMetrics(content), [content]);
   const progressMetrics = useMemo(() => extractProgressMetrics(content), [content]);
   const sections = useMemo(() => extractSections(content), [content]);
+  const scoredSections = useMemo(
+    () => sections.map((section, index) => ({ ...section, importance: parseImportanceFromContent(section.content, index) })),
+    [sections]
+  );
   const { segmentData, compositionData } = useMemo(() => extractChartData(content), [content]);
   
   const measurableSegments = useMemo(
@@ -117,10 +210,11 @@ export function useReportData(
 
   // Computed values
   const confidenceValue = useMemo(() => {
+    if (governedConfidence !== undefined) return governedConfidence;
     if (typeof metrics.confidenceLevel === "number") return metrics.confidenceLevel;
     if (Number.isFinite(Number(metrics.confidenceLevel))) return Number(metrics.confidenceLevel);
     return undefined;
-  }, [metrics.confidenceLevel]);
+  }, [governedConfidence, metrics.confidenceLevel]);
 
   const dataQualityValue = useMemo(() => {
     if (typeof metrics.dataQualityScore === "number") return metrics.dataQualityScore;
@@ -129,6 +223,7 @@ export function useReportData(
   }, [metrics.dataQualityScore]);
 
   const limitationsMode = useMemo(() => {
+    if (governedReport?.mode === "limitations") return true;
     const lower = content.toLowerCase();
     const signals = [
       "mode: limitations",
@@ -138,9 +233,10 @@ export function useReportData(
       "suppressed due to validation",
     ];
     const hasSignal = signals.some((sig) => lower.includes(sig));
-    const lowConfidence = typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel <= 5;
-    return hasSignal || lowConfidence;
-  }, [content, metrics.confidenceLevel]);
+    const metricLowConfidence = typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel <= 5;
+    const governedLowConfidence = typeof governedConfidence === "number" && governedConfidence < confidenceThreshold;
+    return hasSignal || metricLowConfidence || governedLowConfidence;
+  }, [content, metrics.confidenceLevel, governedReport?.mode, governedConfidence, confidenceThreshold]);
 
   const safeMode = useMemo(
     () =>
@@ -176,7 +272,24 @@ export function useReportData(
 
   const summarize = (text?: string) => (text ? text.split("\n").slice(0, 4).join("\n").slice(0, 600) : undefined);
   const decisionSummary = useMemo(() => summarize(decisionSection?.content), [decisionSection?.content]);
-  const taskContractSummary = useMemo(() => summarize(taskContractSection?.content), [taskContractSection?.content]);
+  const structuredContractSummary = useMemo(() => buildContractSummary(contractSnapshot), [contractSnapshot]);
+  const taskContractSummary = useMemo(
+    () => structuredContractSummary || summarize(taskContractSection?.content),
+    [structuredContractSummary, taskContractSection?.content]
+  );
+  const primaryQuestion = useMemo(
+    () => contractSnapshot?.primary_question || extractPrimaryQuestion(taskContractSection?.content, decisionSection?.content),
+    [contractSnapshot?.primary_question, taskContractSection?.content, decisionSection?.content]
+  );
+  const outOfScopeDimensions = useMemo(() => {
+    const structured = (contractSnapshot?.out_of_scope_dimensions && contractSnapshot.out_of_scope_dimensions.length
+      ? contractSnapshot.out_of_scope_dimensions
+      : contractSnapshot?.scope_exclusions) || [] as string[];
+    if (structured.length) {
+      return structured;
+    }
+    return extractOutOfScope(taskContractSection?.content);
+  }, [contractSnapshot?.out_of_scope_dimensions, contractSnapshot?.scope_exclusions, taskContractSection?.content]) || [];
 
   const filteredSections = useMemo(
     () =>
@@ -317,6 +430,9 @@ export function useReportData(
     runContext: runContext || { mode: "standard", freshness: "unknown", scopeLimits: [] },
     identityStats: identityStats || { rows: "n/a", completeness: undefined, confidence: "n/a" },
     highlights: highlights || [],
+    primaryQuestion,
+    outOfScopeDimensions,
+    scoredSections,
     enhancedAnalytics,
     analyticsLoading,
     diagnostics,

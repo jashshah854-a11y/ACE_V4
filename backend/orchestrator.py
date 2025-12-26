@@ -289,6 +289,9 @@ def run_agent(agent_name, run_path):
         return False, "", f"Agent execution failed. Please check server logs."
 
 def orchestrate_new_run(data_path, run_config=None, run_id=None):
+    run_config = run_config or {}
+    if "task_intent" not in run_config and not os.getenv("ACE_ALLOW_UNSCOPED"):
+        raise ValueError("Task Contract missing. Provide task_intent payload or set ACE_ALLOW_UNSCOPED=1 for legacy runs.")
     print("=== ACE V3 ORCHESTRATOR START ===")
     
     # 1. Create Run
@@ -361,6 +364,8 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
     if run_config:
         state["run_config"] = run_config
         state_manager.write("run_config", run_config)
+        if run_config.get("task_intent"):
+            state_manager.write("task_intent", run_config["task_intent"])
     # Default mode handling
     run_mode = "strict"
     if run_config and run_config.get("mode") in {"strict", "exploratory"}:

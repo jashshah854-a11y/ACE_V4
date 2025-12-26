@@ -22,6 +22,8 @@ from core.data_loader import smart_load_dataset
 from ace_v4.performance.config import PerformanceConfig
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
+from core.explainability import persist_evidence
+from core.scope_enforcer import ScopeEnforcer, ScopeViolationError
 
 def build_feature_matrix(df, schema_map):
     # UNIVERSAL NORMALIZATION PATCH
@@ -113,6 +115,13 @@ class Overseer:
         except Exception as e:
             raise ValueError(f"Could not load data from {data_path}: {e}")
 
+        try:
+            scope_guard = ScopeEnforcer(self.state, agent=self.name.lower())
+            df = scope_guard.trim_dataframe(df)
+        except ScopeViolationError as exc:
+            log_warn(f"Scope lock blocked Overseer: {exc}")
+            raise
+
         # 1. Run Universal Clustering
         print(f"[Overseer] Starting clustering...")
         try:
@@ -127,8 +136,19 @@ class Overseer:
                 "stats": stats,
                 "fingerprints": clustering_results.get("fingerprints", {}),
                 "labels": clustering_results.get("labels", []),
-                "sizes": clustering_results.get("sizes", [])
+                "sizes": clustering_results.get("sizes", []),
+                "feature_importance": clustering_results.get("feature_importance", []),
+                "confidence_interval": clustering_results.get("confidence_interval"),
             }
+
+            evidence_id = None
+            if clustering_results.get("evidence") and self.state:
+                evidence_id = persist_evidence(self.state, clustering_results["evidence"], scope="clustering")
+            if evidence_id:
+                payload["evidence_id"] = evidence_id
+
+            if clustering_results.get("artifacts") and self.state:
+                self.state.write("clustering_artifacts", clustering_results["artifacts"])
 
             # Save output
             if self.state:

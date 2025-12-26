@@ -90,7 +90,12 @@ class Expositor:
                 # Convert schema_map to dict if it's a Pydantic model
                 schema_dict = self.schema_map.model_dump() if hasattr(self.schema_map, "model_dump") else None
 
-                enhanced_analytics = run_enhanced_analytics(df, schema_dict, cluster_labels)
+                enhanced_analytics = run_enhanced_analytics(
+                    df,
+                    schema_dict,
+                    cluster_labels,
+                    state_manager=self.state,
+                )
                 self.state.write("enhanced_analytics", enhanced_analytics)
                 log_ok("Enhanced analytics completed")
             else:
