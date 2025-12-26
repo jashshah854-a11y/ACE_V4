@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LineChart as RechartsLineChart,
@@ -11,6 +11,7 @@ import {
   CartesianGrid,
   Legend,
   ReferenceLine,
+  ReferenceArea,
 } from "recharts";
 import { ComparisonToggle, type ComparisonMode } from "../ComparisonToggle";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,32 @@ export function InteractiveLineChart({
 
   const hasPriorData = data.some(d => d.prior !== undefined);
   const hasForecastData = data.some(d => d.forecast !== undefined);
+  const hasForecastBand = data.some((d: any) => typeof d.forecast_lower === "number" && typeof d.forecast_upper === "number");
+  const maxActualValue = useMemo(() => Math.max(...data.map((point) => point.actual ?? 0), 1), [data]);
+  const forecastSpread = hasForecastBand
+    ? Math.max(...data.map((point: any) => Math.abs((point.forecast_upper ?? 0) - (point.forecast_lower ?? 0))))
+    : 0;
+  const fogOpacity = hasForecastData
+    ? Math.min(0.65, Math.max(0.2, (forecastSpread || 0.1) / Math.max(maxActualValue, 1)))
+    : 0;
+  const missingWindows = useMemo(() => {
+    const windows: Array<{ start: string; end: string }> = [];
+    let currentStart: string | null = null;
+    data.forEach((point, idx) => {
+      const isMissing = point.actual === null || point.actual === undefined;
+      if (isMissing && currentStart === null) {
+        currentStart = point.name;
+      }
+      if (!isMissing && currentStart !== null) {
+        windows.push({ start: currentStart, end: data[idx - 1]?.name || currentStart });
+        currentStart = null;
+      }
+    });
+    if (currentStart !== null) {
+      windows.push({ start: currentStart, end: data[data.length - 1]?.name || currentStart });
+    }
+    return windows;
+  }, [data]);
 
   const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; dataKey: string; color: string }>; label?: string }) => {
     if (active && payload && payload.length) {
@@ -118,7 +145,7 @@ export function InteractiveLineChart({
                 <stop offset="95%" stopColor={COLORS.actual} stopOpacity={0} />
               </linearGradient>
               <linearGradient id="forecastGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={COLORS.forecast} stopOpacity={0.1} />
+                <stop offset="5%" stopColor={COLORS.forecast} stopOpacity={fogOpacity} />
                 <stop offset="95%" stopColor={COLORS.forecast} stopOpacity={0} />
               </linearGradient>
             </defs>
@@ -165,6 +192,16 @@ export function InteractiveLineChart({
                 dataKey="forecast"
                 stroke="none"
                 fill="url(#forecastGradient)"
+                fillOpacity={fogOpacity}
+              />
+            )}
+            {showForecast && hasForecastBand && (
+              <Area
+                type="monotone"
+                dataKey="forecast_upper"
+                stroke="none"
+                fill="url(#forecastGradient)"
+                fillOpacity={fogOpacity}
               />
             )}
 
@@ -191,6 +228,7 @@ export function InteractiveLineChart({
               strokeWidth={2.5}
               dot={{ fill: COLORS.actual, strokeWidth: 0, r: 4 }}
               activeDot={{ fill: COLORS.actual, strokeWidth: 3, stroke: "#fff", r: 7 }}
+              connectNulls={false}
               animationDuration={2000}
             />
 
@@ -201,12 +239,17 @@ export function InteractiveLineChart({
                 dataKey="forecast"
                 name="Forecast"
                 stroke={COLORS.forecast}
-                strokeWidth={2}
+                strokeWidth={fogOpacity > 0.4 ? 1 : 2}
                 strokeDasharray="8 4"
                 dot={false}
+                connectNulls={false}
                 animationDuration={2000}
               />
             )}
+
+            {missingWindows.map((window, idx) => (
+              <ReferenceArea key={`${window.start}-${idx}`} x1={window.start} x2={window.end} strokeOpacity={0} fill="rgba(250,204,21,0.15)" />
+            ))}
           </RechartsLineChart>
         </ResponsiveContainer>
 
@@ -254,6 +297,18 @@ export function InteractiveLineChart({
           )}
         </AnimatePresence>
       </div>
+      {missingWindows.length > 0 && (
+        <div className="mt-3 text-xs text-amber-700">
+          {missingWindows.map((window, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <span className="font-semibold">Data Missing</span>
+              <span>
+                {window.start === window.end ? window.start : `${window.start} -> ${window.end}`}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 }

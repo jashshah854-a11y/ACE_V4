@@ -14,7 +14,7 @@ interface ReportInsightStoryboardProps {
   safeMode: boolean;
   hideActions: boolean;
   getSectionLimitations: (section: Section) => string[];
-  onInspectEvidence: (content: string, id?: string) => void;
+  onInspectEvidence: (payload: { content: string; id?: string; title?: string }) => void;
 }
 
 export function ReportInsightStoryboard({
@@ -66,7 +66,11 @@ export function ReportInsightStoryboard({
                   </div>
                 )}
                 <div className="mt-2">
-                  <Button size="sm" variant="ghost" onClick={() => onInspectEvidence(sec.content, sec.id)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onInspectEvidence({ content: sec.content, id: sec.id, title: sec.title })}
+                  >
                     Inspect evidence
                   </Button>
                 </div>

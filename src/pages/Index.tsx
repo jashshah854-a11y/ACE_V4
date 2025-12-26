@@ -1,8 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Upload, FileText, Sparkles, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { submitRun } from "@/lib/api-client";
@@ -14,6 +16,42 @@ const Index = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [taskIntent, setTaskIntent] = useState({
+    primaryQuestion: "",
+    decisionContext: "",
+    requiredOutputType: "diagnostic" as "diagnostic" | "descriptive" | "predictive",
+    successCriteria: "",
+    constraints: "",
+    confidenceThreshold: 80,
+    confidenceAcknowledged: false,
+  });
+  const contractAssessment = useMemo(() => {
+    const trimmed = {
+      primary: taskIntent.primaryQuestion.trim(),
+      context: taskIntent.decisionContext.trim(),
+      success: taskIntent.successCriteria.trim(),
+      constraints: taskIntent.constraints.trim(),
+    };
+    const wordCount = (value: string) => value.split(/\s+/).filter(Boolean).length;
+    const vaguePattern = /(anything|whatever|not sure|idk|tbd|overview|summary|trends?)/i;
+
+    if (wordCount(trimmed.primary) < 8 || vaguePattern.test(trimmed.primary)) {
+      return { valid: false, message: "Primary decision is too vague." };
+    }
+    if (wordCount(trimmed.context) < 10 || vaguePattern.test(trimmed.context)) {
+      return { valid: false, message: "Decision context must explain why the analysis matters." };
+    }
+    if (wordCount(trimmed.success) < 4) {
+      return { valid: false, message: "Success criteria must describe the win condition." };
+    }
+    if (wordCount(trimmed.constraints) < 3) {
+      return { valid: false, message: "Please document constraints or exclusions." };
+    }
+    if (!taskIntent.confidenceAcknowledged) {
+      return { valid: false, message: "Acknowledgement required: low-confidence insights will be suppressed." };
+    }
+    return { valid: true, message: null };
+  }, [taskIntent]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -43,10 +81,14 @@ const Index = () => {
 
   const handleAnalyze = async () => {
     if (!file) return;
+    if (!contractAssessment.valid) {
+      toast.error(contractAssessment.message || "Task contract incomplete");
+      return;
+    }
     
     setIsUploading(true);
     try {
-      const result = await submitRun(file);
+      const result = await submitRun(file, taskIntent);
       toast.success("Analysis started", {
         description: `Run ID: ${result.run_id}`,
       });
@@ -151,6 +193,79 @@ const Index = () => {
               )}
             </div>
 
+            <div className="mt-8 space-y-4">
+              <div>
+                <div className="text-sm font-semibold mb-1">Primary decision question</div>
+                <Textarea
+                  value={taskIntent.primaryQuestion}
+                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, primaryQuestion: e.target.value }))}
+                  placeholder="Example: Should we expand to the Asian market in Q4?"
+                />
+              </div>
+              <div>
+                <div className="text-sm font-semibold mb-1">Decision context</div>
+                <Textarea
+                  value={taskIntent.decisionContext}
+                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, decisionContext: e.target.value }))}
+                  placeholder="Describe the business situation, stakeholders, and why the decision matters."
+                />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <div className="text-sm font-semibold mb-1">Required output type</div>
+                  <select
+                    value={taskIntent.requiredOutputType}
+                    onChange={(e) => setTaskIntent((prev) => ({ ...prev, requiredOutputType: e.target.value as typeof prev.requiredOutputType }))}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <option value="diagnostic">Diagnostic (root-cause)</option>
+                    <option value="descriptive">Descriptive (data health)</option>
+                    <option value="predictive">Predictive (forward-looking)</option>
+                  </select>
+                </div>
+                <div>
+                  <div className="text-sm font-semibold mb-1">Confidence floor (%)</div>
+                  <Input
+                    type="number"
+                    min={60}
+                    max={95}
+                    value={taskIntent.confidenceThreshold}
+                    onChange={(e) =>
+                      setTaskIntent((prev) => ({ ...prev, confidenceThreshold: Number(e.target.value) || prev.confidenceThreshold }))
+                    }
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="text-sm font-semibold mb-1">Success criteria</div>
+                <Textarea
+                  value={taskIntent.successCriteria}
+                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, successCriteria: e.target.value }))}
+                  placeholder="Example: Win = 20% lift in CLV while keeping CAC below $200."
+                />
+              </div>
+              <div>
+                <div className="text-sm font-semibold mb-1">Constraints & out-of-scope dimensions</div>
+                <Textarea
+                  value={taskIntent.constraints}
+                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, constraints: e.target.value }))}
+                  placeholder="Budgets, markets, timelines, banned metrics, or excluded cohorts."
+                />
+              </div>
+              <label className="flex items-start gap-2 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={taskIntent.confidenceAcknowledged}
+                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, confidenceAcknowledged: e.target.checked }))}
+                />
+                <span>I understand that insights with confidence below the selected threshold will be suppressed.</span>
+              </label>
+              {!contractAssessment.valid && (
+                <div className="text-xs text-red-600">{contractAssessment.message}</div>
+              )}
+            </div>
+
             {/* Action Button */}
             {file && (
               <motion.div
@@ -161,7 +276,7 @@ const Index = () => {
                 <Button
                   size="lg"
                   onClick={handleAnalyze}
-                  disabled={isUploading}
+                  disabled={isUploading || !contractAssessment.valid}
                   className="gradient-meridian text-white px-8 h-12 text-base font-medium glow-primary hover:opacity-90 transition-opacity"
                 >
                   {isUploading ? (

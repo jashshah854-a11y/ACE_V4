@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, Minus, Lightbulb, ArrowRight, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ConfidenceBadge } from "./ConfidenceBadge";
 
 interface HeroInsightPanelProps {
     keyInsight: string;
@@ -128,9 +129,10 @@ export function HeroInsightPanel({
 
                             {/* Right: Quality metrics */}
                             <div className="flex items-center gap-6">
-                                <div className="text-right">
-                                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-                                        Confidence
+                            <div className="text-right">
+                                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-2 justify-end">
+                                        <span>Confidence</span>
+                                        <ConfidenceBadge value={safeConfidence} className="px-2 py-0" />
                                     </div>
                                     <div className="flex items-center gap-2 mt-1">
                                         <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
@@ -148,8 +150,9 @@ export function HeroInsightPanel({
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-                                        Data Quality
+                                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-2 justify-end">
+                                        <span>Data Quality</span>
+                                        <ConfidenceBadge value={safeDataQuality} label="Quality" className="px-2 py-0" />
                                     </div>
                                     <div className="flex items-center gap-2 mt-1">
                                         <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">

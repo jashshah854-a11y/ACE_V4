@@ -3,7 +3,9 @@ import { cn } from "@/lib/utils";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useReportData } from "@/hooks/useReportData";
+import { useEvidenceRegistry } from "@/hooks/useEvidenceRegistry";
 import { copyToClipboard, downloadMarkdown } from "./PDFExporter";
+import { useGovernedReport } from "@/hooks/useGovernedReport";
 import { ReportSkeleton } from "./ReportSkeleton";
 import { WideReportLayout } from "./WideReportLayout";
 import { Card } from "@/components/ui/card";
@@ -11,6 +13,9 @@ import { Badge } from "@/components/ui/badge";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
+import { useTaskContext } from "@/context/TaskContext";
+import { LimitationBanner } from "./LimitationBanner";
+import { ScopeLockModal } from "./ScopeLockModal";
 
 // Refactored viewer components
 import {
@@ -50,6 +55,7 @@ import { TechnicalDetailsSection } from "./TechnicalDetailsSection";
 import { ReportConclusion } from "./ReportConclusion";
 import { TableOfContents } from "./TableOfContents";
 import { IntelligenceRail } from "./IntelligenceRail";
+import { EvidencePanel } from "./EvidencePanel";
 
 interface WideReportViewerProps {
   content?: string;
@@ -84,10 +90,24 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
   const [pptxError, setPptxError] = useState<string | null>(null);
   
   const { toast } = useToast();
+  const { updateTaskContract } = useTaskContext();
+  const { data: governedReport } = useGovernedReport(runId);
 
   // Use refactored data hook
-  const reportData = useReportData(content || "", runId, confidenceMode);
+  const reportData = useReportData(content || "", runId, confidenceMode, governedReport);
+  const { data: evidenceRegistry } = useEvidenceRegistry(runId);
   const confidenceThreshold = confidenceMode === "strict" ? 90 : 60;
+  const [scopeLockDimension, setScopeLockDimension] = useState<string | null>(null);
+  const outOfScopeLookup = useMemo(
+    () => reportData.outOfScopeDimensions.map((item) => item.toLowerCase()),
+    [reportData.outOfScopeDimensions]
+  );
+  useEffect(() => {
+    updateTaskContract({
+      primaryQuestion: reportData.primaryQuestion,
+      outOfScopeDimensions: reportData.outOfScopeDimensions,
+    });
+  }, [reportData.primaryQuestion, reportData.outOfScopeDimensions, updateTaskContract]);
 
   // Track reading progress
   useEffect(() => {
@@ -133,6 +153,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
     if (!reportData.hasTimeField) return "Time analysis suppressed: no date/time fields detected.";
     return null;
   }, [reportData.hasTimeField]);
+  const missingIdentityFields = reportData.diagnostics?.identity?.missing_fields as string[] | undefined;
 
   const getSectionLimitations = useCallback((section: { title: string; content: string }) => {
     const notes: string[] = [];
@@ -221,7 +242,22 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
     }
   };
 
-  const handleFetchEvidenceSample = async (contentSnippet: string, evidenceId?: string) => {
+  const handleFetchEvidenceSample = async ({
+    contentSnippet,
+    evidenceId,
+    sectionTitle,
+  }: {
+    contentSnippet: string;
+    evidenceId?: string;
+    sectionTitle?: string;
+  }) => {
+    if (sectionTitle) {
+      const blocked = outOfScopeLookup.some((item) => item && sectionTitle.toLowerCase().includes(item));
+      if (blocked) {
+        setScopeLockDimension(sectionTitle);
+        return;
+      }
+    }
     if (!runId) {
       setEvidenceError("Run ID not available");
       return;
@@ -499,6 +535,14 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
         <WideReportLayout
         hero={
           <>
+            {missingIdentityFields?.length ? (
+              <LimitationBanner
+                message="Dataset identity card flagged missing fields. Gaps are surfaced before visuals."
+                fields={missingIdentityFields}
+                severity="warning"
+                className="mb-4"
+              />
+            ) : null}
             <SafeModeBanner safeMode={reportData.safeMode} />
             <ReportHero
               runId={runId}
@@ -506,6 +550,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
               confidenceLevel={reportData.confidenceValue}
               taskContractSummary={reportData.taskContractSummary}
               decisionSummary={reportData.decisionSummary}
+              primaryQuestion={reportData.primaryQuestion}
               runContext={reportData.runContext}
               narrativeSummary={reportData.narrativeSummary}
             />
@@ -655,6 +700,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
               <div className="text-xs text-muted-foreground">Engine: ACE Viewer</div>
             </Card>
             <TableOfContents sections={reportData.evidenceSections} />
+            <EvidencePanel records={evidenceRegistry} />
             <IntelligenceRail
               keyTakeaways={reportData.keyTakeaways}
               criticalIssues={{
@@ -675,6 +721,11 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
         }
         />
       </ReportDataValidator>
+      <ScopeLockModal
+        open={Boolean(scopeLockDimension)}
+        dimension={scopeLockDimension || undefined}
+        onAcknowledge={() => setScopeLockDimension(null)}
+      />
     </motion.div>
   );
 }

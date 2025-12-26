@@ -31,6 +31,16 @@ export interface RunResponse {
   status: string;
 }
 
+export interface TaskIntentPayload {
+  primaryQuestion: string;
+  decisionContext: string;
+  requiredOutputType: "diagnostic" | "descriptive" | "predictive";
+  successCriteria: string;
+  constraints: string;
+  confidenceThreshold: number;
+  confidenceAcknowledged: boolean;
+}
+
 export interface ApiError {
   detail: string;
 }
@@ -47,9 +57,21 @@ export interface InsightsResponse {
   };
 }
 
-export async function submitRun(file: File): Promise<RunResponse> {
+export async function submitRun(file: File, taskIntent: TaskIntentPayload): Promise<RunResponse> {
   const formData = new FormData();
   formData.append("file", file);
+  formData.append(
+    "task_intent",
+    JSON.stringify({
+      primary_question: taskIntent.primaryQuestion,
+      decision_context: taskIntent.decisionContext,
+      required_output_type: taskIntent.requiredOutputType,
+      success_criteria: taskIntent.successCriteria,
+      constraints: taskIntent.constraints,
+      confidence_threshold: taskIntent.confidenceThreshold,
+    })
+  );
+  formData.append("confidence_acknowledged", taskIntent.confidenceAcknowledged ? "true" : "false");
 
   const response = await fetch(`${API_BASE}/run`, {
     method: "POST",
@@ -69,7 +91,6 @@ export async function submitRun(file: File): Promise<RunResponse> {
 
   return response.json();
 }
-
 export async function getRunState(runId: string): Promise<RunState> {
   const response = await fetch(`${API_BASE}/runs/${runId}/state`);
 

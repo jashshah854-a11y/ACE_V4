@@ -16,8 +16,6 @@ class Settings(BaseSettings):
     port: int = 8001
 
     allowed_origins: str = "http://localhost:5173,http://localhost:3000"
-
-<<<<<<< Updated upstream
     max_upload_size_mb: int = 600
 
     # Agent execution tuning
