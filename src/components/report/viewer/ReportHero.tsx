@@ -9,6 +9,7 @@ interface ReportHeroProps {
   decisionSummary?: string;
   runContext: { mode: string; freshness: string; scopeLimits: string[] };
   narrativeSummary: { wins: string[]; risks: string[]; meaning: string[] };
+  primaryQuestion?: string;
 }
 
 export function ReportHero({
@@ -19,6 +20,7 @@ export function ReportHero({
   decisionSummary,
   runContext,
   narrativeSummary,
+  primaryQuestion,
 }: ReportHeroProps) {
   return (
     <Card className="mb-4 p-4">
@@ -37,6 +39,14 @@ export function ReportHero({
           <Badge variant="outline">Confidence: {confidenceLevel ?? "n/a"}%</Badge>
         </div>
       </div>
+      {primaryQuestion && (
+        <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 p-3">
+          <div className="text-[11px] uppercase tracking-wide text-primary font-semibold">Primary Decision Question</div>
+          <p className="text-sm text-primary dark:text-white mt-1">
+            {primaryQuestion}
+          </p>
+        </div>
+      )}
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Card className="p-3 bg-muted/50">

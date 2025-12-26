@@ -26,6 +26,7 @@ from jobs.queue import enqueue, get_job
 from jobs.models import JobStatus
 from jobs.progress import ProgressTracker
 from core.config import settings
+from core.task_contract import parse_task_intent, TaskIntentValidationError
 import pandas as pd
 
 limiter = Limiter(key_func=get_remote_address)
@@ -260,7 +261,10 @@ class RunResponse(BaseModel):
 @app.post("/run", response_model=RunResponse, tags=["Execution"])
 @limiter.limit("10/minute")
 async def trigger_run(
+    request: Request,
     file: UploadFile = File(...),
+    task_intent: str = Form(...),
+    confidence_acknowledged: str = Form(...),
     target_column: Optional[str] = Form(None),
     feature_whitelist: Optional[str] = Form(None),
     model_type: Optional[str] = Form(None),
@@ -274,6 +278,17 @@ async def trigger_run(
     Accepts: CSV, JSON, XLSX, XLS, Parquet files (max configured size)
     Rate limit: 10 requests per minute
     """
+    try:
+        intent_payload = parse_task_intent(task_intent)
+    except TaskIntentValidationError as exc:
+        detail = str(exc)
+        if getattr(exc, 'reformulation', None):
+            detail = f"{detail} {exc.reformulation}"
+        raise HTTPException(status_code=400, detail=detail)
+
+    if _parse_bool(confidence_acknowledged) is not True:
+        raise HTTPException(status_code=400, detail="Please acknowledge the confidence threshold (>=80%).")
+
     _validate_upload(file)
 
     file_path = _safe_upload_path(file.filename)
@@ -283,7 +298,10 @@ async def trigger_run(
         model_type=model_type,
         include_categoricals=include_categoricals,
         fast_mode=fast_mode,
-    )
+    ) or {}
+    run_config["task_intent"] = intent_payload
+    run_config["confidence_threshold"] = intent_payload.get("confidence_threshold")
+    run_config["confidence_acknowledged"] = True
 
     try:
         bytes_written = 0
@@ -519,6 +537,23 @@ async def get_model_artifacts(run_id: str):
         "feature_importance": feature_importance,
         "coefficients": coefficients,
     }
+
+
+@app.get("/runs/{run_id}/evidence", tags=["Artifacts"])
+async def get_evidence(run_id: str, evidence_id: Optional[str] = None):
+    """Expose persisted evidence objects for inspection."""
+    _validate_run_id(run_id)
+    run_path = DATA_DIR / "runs" / run_id
+    state = StateManager(str(run_path))
+    registry = state.read("evidence_registry") or {}
+    if evidence_id:
+        record = registry.get(evidence_id)
+        if not record:
+            raise HTTPException(status_code=404, detail="Evidence not found")
+        return record
+    if not registry:
+        raise HTTPException(status_code=404, detail="No evidence recorded for this run")
+    return {"records": registry}
 
 
 @app.get("/runs/{run_id}/diff/{other_run_id}", tags=["Artifacts"])
