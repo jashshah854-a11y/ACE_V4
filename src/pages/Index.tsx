@@ -16,6 +16,7 @@ const Index = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [taskIntent, setTaskIntent] = useState({
     primaryQuestion: "",
     decisionContext: "",
@@ -26,32 +27,9 @@ const Index = () => {
     confidenceAcknowledged: false,
   });
   const contractAssessment = useMemo(() => {
-    const trimmed = {
-      primary: taskIntent.primaryQuestion.trim(),
-      context: taskIntent.decisionContext.trim(),
-      success: taskIntent.successCriteria.trim(),
-      constraints: taskIntent.constraints.trim(),
-    };
-    const wordCount = (value: string) => value.split(/\s+/).filter(Boolean).length;
-    const vaguePattern = /(anything|whatever|not sure|idk|tbd|overview|summary|trends?)/i;
-
-    if (wordCount(trimmed.primary) < 8 || vaguePattern.test(trimmed.primary)) {
-      return { valid: false, message: "Primary decision is too vague." };
-    }
-    if (wordCount(trimmed.context) < 10 || vaguePattern.test(trimmed.context)) {
-      return { valid: false, message: "Decision context must explain why the analysis matters." };
-    }
-    if (wordCount(trimmed.success) < 4) {
-      return { valid: false, message: "Success criteria must describe the win condition." };
-    }
-    if (wordCount(trimmed.constraints) < 3) {
-      return { valid: false, message: "Please document constraints or exclusions." };
-    }
-    if (!taskIntent.confidenceAcknowledged) {
-      return { valid: false, message: "Acknowledgement required: low-confidence insights will be suppressed." };
-    }
+    // If fields are empty, we allow it (will rely on defaults)
     return { valid: true, message: null };
-  }, [taskIntent]);
+  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -81,14 +59,21 @@ const Index = () => {
 
   const handleAnalyze = async () => {
     if (!file) return;
-    if (!contractAssessment.valid) {
-      toast.error(contractAssessment.message || "Task contract incomplete");
-      return;
-    }
-    
+
     setIsUploading(true);
     try {
-      const result = await submitRun(file, taskIntent);
+      // Use defaults if fields are empty
+      const finalTaskIntent = {
+        primaryQuestion: taskIntent.primaryQuestion.trim() || "Analyze dataset for key insights, anomalies, and trends.",
+        decisionContext: taskIntent.decisionContext.trim() || "General exploratory analysis to understand data distribution and quality.",
+        requiredOutputType: taskIntent.requiredOutputType,
+        successCriteria: taskIntent.successCriteria.trim() || "Clear report identifying main drivers, clusters, and outliers.",
+        constraints: taskIntent.constraints.trim() || "None specific.",
+        confidenceThreshold: taskIntent.confidenceThreshold,
+        confidenceAcknowledged: true, // Auto-acknowledge for frictionless experience
+      };
+
+      const result = await submitRun(file, finalTaskIntent);
       toast.success("Analysis started", {
         description: `Run ID: ${result.run_id}`,
       });
@@ -105,11 +90,11 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       <main className="relative pt-24 pb-16 min-h-screen flex flex-col items-center justify-center">
         <div className="container px-4 max-w-4xl">
           {/* Hero */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
@@ -119,14 +104,14 @@ const Index = () => {
               <Sparkles className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-primary">AI-Powered Data Analysis</span>
             </div>
-            
+
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4">
               Discover insights with
               <span className="text-gradient block mt-2">Meridian Intelligence</span>
             </h1>
-            
+
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Upload your data files and let our autonomous engine detect anomalies, 
+              Upload your data files and let our autonomous engine detect anomalies,
               validate quality, and generate comprehensive intelligence reports.
             </p>
           </motion.div>
@@ -145,8 +130,8 @@ const Index = () => {
               onDrop={handleDrop}
               className={cn(
                 "relative border-2 border-dashed rounded-xl p-12 text-center transition-all duration-300",
-                isDragging 
-                  ? "border-primary bg-primary/5 scale-[1.02]" 
+                isDragging
+                  ? "border-primary bg-primary/5 scale-[1.02]"
                   : "border-border/50 hover:border-primary/50 hover:bg-muted/30",
                 file && "border-success bg-success/5"
               )}
@@ -157,7 +142,7 @@ const Index = () => {
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 accept=".csv,.json,.xlsx,.xls,.parquet"
               />
-              
+
               {file ? (
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-16 h-16 rounded-2xl bg-success/10 flex items-center justify-center">
@@ -193,78 +178,116 @@ const Index = () => {
               )}
             </div>
 
-            <div className="mt-8 space-y-4">
-              <div>
-                <div className="text-sm font-semibold mb-1">Primary decision question</div>
-                <Textarea
-                  value={taskIntent.primaryQuestion}
-                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, primaryQuestion: e.target.value }))}
-                  placeholder="Example: Should we expand to the Asian market in Q4?"
-                />
-              </div>
-              <div>
-                <div className="text-sm font-semibold mb-1">Decision context</div>
-                <Textarea
-                  value={taskIntent.decisionContext}
-                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, decisionContext: e.target.value }))}
-                  placeholder="Describe the business situation, stakeholders, and why the decision matters."
-                />
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
+            {/* Advanced Options Toggle */}
+            <div className="mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                className="w-full flex items-center justify-between"
+              >
+                <span className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  Advanced Analysis Options
+                  <span className="text-xs text-muted-foreground">(Optional)</span>
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {showAdvancedOptions ? "Hide" : "Show"}
+                </span>
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Skip this to run a quick exploratory analysis with smart defaults
+              </p>
+            </div>
+
+            {showAdvancedOptions && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="mt-6 space-y-4"
+              >
                 <div>
-                  <div className="text-sm font-semibold mb-1">Required output type</div>
-                  <select
-                    value={taskIntent.requiredOutputType}
-                    onChange={(e) => setTaskIntent((prev) => ({ ...prev, requiredOutputType: e.target.value as typeof prev.requiredOutputType }))}
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    <option value="diagnostic">Diagnostic (root-cause)</option>
-                    <option value="descriptive">Descriptive (data health)</option>
-                    <option value="predictive">Predictive (forward-looking)</option>
-                  </select>
-                </div>
-                <div>
-                  <div className="text-sm font-semibold mb-1">Confidence floor (%)</div>
-                  <Input
-                    type="number"
-                    min={60}
-                    max={95}
-                    value={taskIntent.confidenceThreshold}
-                    onChange={(e) =>
-                      setTaskIntent((prev) => ({ ...prev, confidenceThreshold: Number(e.target.value) || prev.confidenceThreshold }))
-                    }
+                  <div className="text-sm font-semibold mb-1">
+                    Primary decision question <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
+                  </div>
+                  <Textarea
+                    value={taskIntent.primaryQuestion}
+                    onChange={(e) => setTaskIntent((prev) => ({ ...prev, primaryQuestion: e.target.value }))}
+                    placeholder="Example: Should we expand to the Asian market in Q4?"
                   />
                 </div>
-              </div>
-              <div>
-                <div className="text-sm font-semibold mb-1">Success criteria</div>
-                <Textarea
-                  value={taskIntent.successCriteria}
-                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, successCriteria: e.target.value }))}
-                  placeholder="Example: Win = 20% lift in CLV while keeping CAC below $200."
-                />
-              </div>
-              <div>
-                <div className="text-sm font-semibold mb-1">Constraints & out-of-scope dimensions</div>
-                <Textarea
-                  value={taskIntent.constraints}
-                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, constraints: e.target.value }))}
-                  placeholder="Budgets, markets, timelines, banned metrics, or excluded cohorts."
-                />
-              </div>
-              <label className="flex items-start gap-2 text-sm text-muted-foreground">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={taskIntent.confidenceAcknowledged}
-                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, confidenceAcknowledged: e.target.checked }))}
-                />
-                <span>I understand that insights with confidence below the selected threshold will be suppressed.</span>
-              </label>
-              {!contractAssessment.valid && (
-                <div className="text-xs text-red-600">{contractAssessment.message}</div>
-              )}
-            </div>
+                <div>
+                  <div className="text-sm font-semibold mb-1">
+                    Decision context <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
+                  </div>
+                  <Textarea
+                    value={taskIntent.decisionContext}
+                    onChange={(e) => setTaskIntent((prev) => ({ ...prev, decisionContext: e.target.value }))}
+                    placeholder="Describe the business situation, stakeholders, and why the decision matters."
+                  />
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <div className="text-sm font-semibold mb-1">Required output type</div>
+                    <select
+                      value={taskIntent.requiredOutputType}
+                      onChange={(e) => setTaskIntent((prev) => ({ ...prev, requiredOutputType: e.target.value as typeof prev.requiredOutputType }))}
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                      <option value="diagnostic">Diagnostic (root-cause)</option>
+                      <option value="descriptive">Descriptive (data health)</option>
+                      <option value="predictive">Predictive (forward-looking)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold mb-1">Confidence floor (%)</div>
+                    <Input
+                      type="number"
+                      min={60}
+                      max={95}
+                      value={taskIntent.confidenceThreshold}
+                      onChange={(e) =>
+                        setTaskIntent((prev) => ({ ...prev, confidenceThreshold: Number(e.target.value) || prev.confidenceThreshold }))
+                      }
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm font-semibold mb-1">
+                    Success criteria <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
+                  </div>
+                  <Textarea
+                    value={taskIntent.successCriteria}
+                    onChange={(e) => setTaskIntent((prev) => ({ ...prev, successCriteria: e.target.value }))}
+                    placeholder="Example: Win = 20% lift in CLV while keeping CAC below $200."
+                  />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold mb-1">
+                    Constraints & out-of-scope dimensions <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
+                  </div>
+                  <Textarea
+                    value={taskIntent.constraints}
+                    onChange={(e) => setTaskIntent((prev) => ({ ...prev, constraints: e.target.value }))}
+                    placeholder="Budgets, markets, timelines, banned metrics, or excluded cohorts."
+                  />
+                </div>
+                <label className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={taskIntent.confidenceAcknowledged}
+                    onChange={(e) => setTaskIntent((prev) => ({ ...prev, confidenceAcknowledged: e.target.checked }))}
+                  />
+                  <span>I understand that insights with confidence below the selected threshold will be suppressed.</span>
+                </label>
+                {!contractAssessment.valid && (
+                  <div className="text-xs text-red-600">{contractAssessment.message}</div>
+                )}
+              </motion.div>
+            )}
 
             {/* Action Button */}
             {file && (
@@ -315,7 +338,7 @@ const Index = () => {
           </motion.div>
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );
