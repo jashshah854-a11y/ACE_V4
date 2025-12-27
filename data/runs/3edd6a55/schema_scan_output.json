@@ -1,0 +1,253 @@
+{
+  "dataset_info": {
+    "name": "a6d7a7a23e814958a78f70d42c4991b1",
+    "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\a6d7a7a23e814958a78f70d42c4991b1.csv",
+    "row_count": 100,
+    "column_count": 10,
+    "sample_rows": [
+      {
+        "customer_id": 1001,
+        "age": 56,
+        "tenure_months": 47,
+        "monthly_spend": 124.85,
+        "total_purchases": 48,
+        "avg_order_value": 96.12,
+        "days_since_last_purchase": 119,
+        "product_category_preference": "Sports",
+        "customer_segment": "Premium",
+        "churn_risk": 0
+      },
+      {
+        "customer_id": 1002,
+        "age": 69,
+        "tenure_months": 53,
+        "monthly_spend": 219.92,
+        "total_purchases": 20,
+        "avg_order_value": 139.32,
+        "days_since_last_purchase": 163,
+        "product_category_preference": "Fashion",
+        "customer_segment": "Occasional",
+        "churn_risk": 1
+      },
+      {
+        "customer_id": 1003,
+        "age": 46,
+        "tenure_months": 24,
+        "monthly_spend": 443.97,
+        "total_purchases": 8,
+        "avg_order_value": 75.71,
+        "days_since_last_purchase": 20,
+        "product_category_preference": "Books",
+        "customer_segment": "Premium",
+        "churn_risk": 0
+      },
+      {
+        "customer_id": 1004,
+        "age": 32,
+        "tenure_months": 26,
+        "monthly_spend": 175.69,
+        "total_purchases": 7,
+        "avg_order_value": 43.68,
+        "days_since_last_purchase": 163,
+        "product_category_preference": "Fashion",
+        "customer_segment": "Regular",
+        "churn_risk": 1
+      },
+      {
+        "customer_id": 1005,
+        "age": 60,
+        "tenure_months": 25,
+        "monthly_spend": 78.6,
+        "total_purchases": 3,
+        "avg_order_value": 196.64,
+        "days_since_last_purchase": 137,
+        "product_category_preference": "Books",
+        "customer_segment": "Occasional",
+        "churn_risk": 1
+      }
+    ]
+  },
+  "basic_types": {
+    "numeric": [
+      "customer_id",
+      "age",
+      "tenure_months",
+      "monthly_spend",
+      "total_purchases",
+      "avg_order_value",
+      "days_since_last_purchase",
+      "churn_risk"
+    ],
+    "categorical": [
+      "product_category_preference",
+      "customer_segment"
+    ],
+    "datetime": [],
+    "text": []
+  },
+  "stats": {
+    "customer_id": {
+      "mean": 1050.5,
+      "median": 1050.5,
+      "std": 29.011491975882016,
+      "min": 1001.0,
+      "max": 1100.0,
+      "skew": 0.0,
+      "missing_rate": 0.0
+    },
+    "age": {
+      "mean": 45.19,
+      "median": 43.0,
+      "std": 16.47814285407163,
+      "min": 19.0,
+      "max": 74.0,
+      "skew": 0.07968488635693936,
+      "missing_rate": 0.0
+    },
+    "tenure_months": {
+      "mean": 29.01,
+      "median": 29.0,
+      "std": 16.35372567442488,
+      "min": 1.0,
+      "max": 59.0,
+      "skew": -0.06253393945096668,
+      "missing_rate": 0.0
+    },
+    "monthly_spend": {
+      "mean": 266.8013,
+      "median": 255.07999999999998,
+      "std": 136.78790370980627,
+      "min": 20.25,
+      "max": 498.92,
+      "skew": 0.1465721673573113,
+      "missing_rate": 0.0
+    },
+    "total_purchases": {
+      "mean": 27.39,
+      "median": 28.5,
+      "std": 13.77297529529653,
+      "min": 1.0,
+      "max": 49.0,
+      "skew": -0.2562792898272105,
+      "missing_rate": 0.0
+    },
+    "avg_order_value": {
+      "mean": 105.62160000000003,
+      "median": 100.275,
+      "std": 54.49193603060582,
+      "min": 17.83,
+      "max": 196.64,
+      "skew": 0.05708182297649115,
+      "missing_rate": 0.0
+    },
+    "days_since_last_purchase": {
+      "mean": 97.9,
+      "median": 105.5,
+      "std": 52.765059605306185,
+      "min": 4.0,
+      "max": 179.0,
+      "skew": -0.2414062954690605,
+      "missing_rate": 0.0
+    },
+    "churn_risk": {
+      "mean": 0.57,
+      "median": 1.0,
+      "std": 0.4975698519562429,
+      "min": 0.0,
+      "max": 1.0,
+      "skew": -0.2827850071363719,
+      "missing_rate": 0.0
+    }
+  },
+  "relationships": {
+    "correlations": {
+      "customer_id": {
+        "age": -0.026084203047610405,
+        "tenure_months": 0.08299951826107173,
+        "monthly_spend": 0.26111507608230555,
+        "total_purchases": -0.10469468600892694,
+        "avg_order_value": 0.0823816779358173,
+        "days_since_last_purchase": 0.024368433736398906,
+        "churn_risk": 0.22007024806374964
+      },
+      "age": {
+        "customer_id": -0.026084203047610405,
+        "tenure_months": 0.11885297380205032,
+        "monthly_spend": -0.1402089542914826,
+        "total_purchases": -0.010966981277757974,
+        "avg_order_value": 0.15234805870503396,
+        "days_since_last_purchase": 0.08147188317883945,
+        "churn_risk": 0.006369319381757147
+      },
+      "tenure_months": {
+        "customer_id": 0.08299951826107173,
+        "age": 0.11885297380205032,
+        "monthly_spend": 0.1267185530183965,
+        "total_purchases": -0.20783223447786844,
+        "avg_order_value": 0.03786190178369794,
+        "days_since_last_purchase": 0.06184299232773555,
+        "churn_risk": 0.014188623642420916
+      },
+      "monthly_spend": {
+        "customer_id": 0.26111507608230555,
+        "age": -0.1402089542914826,
+        "tenure_months": 0.1267185530183965,
+        "total_purchases": 0.05046187515683024,
+        "avg_order_value": -0.09003326645440886,
+        "days_since_last_purchase": -0.25523488013299034,
+        "churn_risk": -0.15256456503677254
+      },
+      "total_purchases": {
+        "customer_id": -0.10469468600892694,
+        "age": -0.010966981277757974,
+        "tenure_months": -0.20783223447786844,
+        "monthly_spend": 0.05046187515683024,
+        "avg_order_value": 0.001246651920280829,
+        "days_since_last_purchase": -0.04534066380651731,
+        "churn_risk": -0.07551049799404495
+      },
+      "avg_order_value": {
+        "customer_id": 0.0823816779358173,
+        "age": 0.15234805870503396,
+        "tenure_months": 0.03786190178369794,
+        "monthly_spend": -0.09003326645440886,
+        "total_purchases": 0.001246651920280829,
+        "days_since_last_purchase": 0.025739964257897617,
+        "churn_risk": -0.026637400442944142
+      },
+      "days_since_last_purchase": {
+        "customer_id": 0.024368433736398906,
+        "age": 0.08147188317883945,
+        "tenure_months": 0.06184299232773555,
+        "monthly_spend": -0.25523488013299034,
+        "total_purchases": -0.04534066380651731,
+        "avg_order_value": 0.025739964257897617,
+        "churn_risk": 0.6112321782404618
+      },
+      "churn_risk": {
+        "customer_id": 0.22007024806374964,
+        "age": 0.006369319381757147,
+        "tenure_months": 0.014188623642420916,
+        "monthly_spend": -0.15256456503677254,
+        "total_purchases": -0.07551049799404495,
+        "avg_order_value": -0.026637400442944142,
+        "days_since_last_purchase": 0.6112321782404618
+      }
+    },
+    "strong_pairs": [
+      [
+        "days_since_last_purchase",
+        "churn_risk"
+      ],
+      [
+        "churn_risk",
+        "days_since_last_purchase"
+      ]
+    ]
+  },
+  "warnings": {
+    "missing_numeric": false,
+    "low_row_count": false,
+    "suspected_data_issues": []
+  }
+}

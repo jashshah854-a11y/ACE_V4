@@ -1,0 +1,8 @@
+{
+    "primary_question": "Identify the top 5 customers by total revenue and calculate their average order value.",
+    "decision_context": "We need to identify our VIP customers to target them with loyalty programs.",
+    "required_output_type": "descriptive",
+    "success_criteria": "A list of 5 customers with their ID, total revenue, and AOV.",
+    "constraints": "None",
+    "confidence_threshold": 0.7
+}

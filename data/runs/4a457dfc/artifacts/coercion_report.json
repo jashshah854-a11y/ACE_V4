@@ -1,0 +1,12 @@
+{
+  "columns": {
+    "product_category_preference": {
+      "numeric_parse_rate": 0.0,
+      "datetime_parse_rate": 0.0
+    },
+    "customer_segment": {
+      "numeric_parse_rate": 0.0,
+      "datetime_parse_rate": 0.0
+    }
+  }
+}

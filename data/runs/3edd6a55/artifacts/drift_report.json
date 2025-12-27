@@ -1,0 +1,58 @@
+{
+  "columns": {
+    "customer_id": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "age": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "tenure_months": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "monthly_spend": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "total_purchases": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "avg_order_value": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "days_since_last_purchase": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "churn_risk": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "product_category_preference": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "customer_segment": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    }
+  },
+  "status": "none",
+  "summary": [
+    "No material profile drift detected."
+  ]
+}

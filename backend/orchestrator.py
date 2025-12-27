@@ -475,6 +475,18 @@ def main_loop(run_path):
                 _record_final_status(run_path, "complete")
                 break
 
+        # Special handling for ingestion step - it's already done in orchestrate_new_run()
+        if current == "ingestion":
+            # Ingestion was already completed during run initialization
+            # Mark it as completed and move to next step
+            finalize_step(state, "ingestion", True, "Ingestion completed during run initialization", "")
+            idx = PIPELINE_SEQUENCE.index("type_identifier")  # First real agent step
+            if idx < len(PIPELINE_SEQUENCE):
+                state["current_step"] = PIPELINE_SEQUENCE[idx]
+                state["next_step"] = PIPELINE_SEQUENCE[idx]
+            save_state(state_path, state)
+            continue
+
         # Run the agent
         mark_step_running(state, current)
         save_state(state_path, state)
