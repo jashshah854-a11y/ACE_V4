@@ -6,7 +6,16 @@ import { useTaskContext } from "@/context/TaskContext";
 
 export const Navbar = () => {
   const location = useLocation();
-  const { primaryQuestion } = useTaskContext();
+  
+  // Safely access TaskContext with fallback
+  let primaryQuestion: string | undefined;
+  try {
+    const context = useTaskContext();
+    primaryQuestion = context.primaryQuestion;
+  } catch (error) {
+    console.warn("TaskContext not available in Navbar", error);
+    primaryQuestion = undefined;
+  }
 
   const isPulse = location.pathname === "/" || location.pathname.startsWith("/report/summary");
   const isUpload = location.pathname.startsWith("/upload");
@@ -77,10 +86,12 @@ export const Navbar = () => {
           </div>
         </div>
 
-        <div className="text-xs text-muted-foreground truncate" title={primaryQuestion || "Awaiting task contract"}>
-          <span className="font-semibold text-foreground mr-1">Primary Decision:</span>
-          {primaryQuestion || "Awaiting task contract"}
-        </div>
+        {primaryQuestion && (
+          <div className="text-xs text-muted-foreground truncate" title={primaryQuestion}>
+            <span className="font-semibold text-foreground mr-1">Primary Decision:</span>
+            {primaryQuestion}
+          </div>
+        )}
       </div>
     </nav>
   );
