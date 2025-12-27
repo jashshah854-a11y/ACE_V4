@@ -7,6 +7,7 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { GlobalErrorOverlay } from "@/components/ui/GlobalErrorOverlay";
 import Index from "./pages/Index";
 import Reports from "./pages/Reports";
+import DemoPipelineStatus from "./pages/DemoPipelineStatus";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,6 +22,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/demo/pipeline-status" element={<DemoPipelineStatus />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
