@@ -1,0 +1,40 @@
+{
+  "task": "regression",
+  "template": "marketing",
+  "data_type": "marketing_performance",
+  "allowed_sections": [
+    "data_overview",
+    "quality",
+    "eda",
+    "modeling",
+    "insights"
+  ],
+  "forbidden_sections": [],
+  "limitations": [],
+  "scope_inclusions": [
+    "age",
+    "avg_order_value",
+    "churn_risk",
+    "customer_id",
+    "customer_segment",
+    "days_since_last_purchase",
+    "monthly_spend",
+    "product_category_preference",
+    "tenure_months",
+    "total_purchases"
+  ],
+  "scope_exclusions": [],
+  "forbidden_claims": {
+    "allow_causality": false,
+    "allow_forecasting": true
+  },
+  "primary_question": "Analyze dataset to identify patterns, trends, and actionable insights for business decision-making",
+  "decision_context": "General business intelligence and data exploration to support strategic planning and operational improvements",
+  "required_output_type": "descriptive",
+  "success_criteria": "insights",
+  "constraints": "none",
+  "confidence_threshold": 70.0,
+  "out_of_scope_dimensions": [],
+  "is_signed": true,
+  "signed_at": "2025-12-26T20:15:37.482256Z"
+}

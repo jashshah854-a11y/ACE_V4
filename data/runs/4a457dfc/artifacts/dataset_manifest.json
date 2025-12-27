@@ -1,0 +1,21 @@
+{
+  "source_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\33597192c8a840eda15b0d4776bc3f3d.csv",
+  "parquet_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\4a457dfc\\artifacts\\dataset.parquet",
+  "sample_parquet_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\4a457dfc\\artifacts\\sample.parquet",
+  "row_count_estimate": 100,
+  "columns": [
+    "customer_id",
+    "age",
+    "tenure_months",
+    "monthly_spend",
+    "total_purchases",
+    "avg_order_value",
+    "days_since_last_purchase",
+    "product_category_preference",
+    "customer_segment",
+    "churn_risk"
+  ],
+  "fast_mode_used": false,
+  "sha256": "a6cd3aed7ce5df3e0253391cbe37a55e073c4b43d7962f318e6c2efd90e281f3",
+  "cache_key": "a6cd3aed7ce5df3e0253391cbe37a55e073c4b43d7962f318e6c2efd90e281f3_full_ingest-fast-v1"
+}

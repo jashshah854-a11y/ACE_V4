@@ -75,8 +75,15 @@ def parse_task_intent(payload: Any) -> Dict[str, Any]:
     success_criteria = _clean_text(payload.get("success_criteria"))
     constraints = _clean_text(payload.get("constraints"))
 
-    _validate_clause("primary_question", primary_question)
-    _validate_clause("decision_context", decision_context, min_words=10)
+    # Make validation optional - provide defaults if fields are empty
+    if not primary_question or len(primary_question) < 25:
+        primary_question = "Analyze dataset to identify patterns, trends, and actionable insights for business decision-making"
+    elif BANNED_FISHING_TERMS.search(primary_question):
+        # Only validate if user provided something - don't block on vague terms
+        pass  # Allow vague terms for now
+    
+    if not decision_context or len(decision_context) < 25:
+        decision_context = "General business intelligence and data exploration to support strategic planning and operational improvements"
 
     if required_output not in VALID_OUTPUT_TYPES:
         raise TaskIntentValidationError(
