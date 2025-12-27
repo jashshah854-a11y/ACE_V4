@@ -27,10 +27,8 @@ const Index = () => {
     confidenceAcknowledged: false,
   });
 
-  const contractAssessment = useMemo(() => {
-    // If fields are empty, we allow it (will rely on defaults)
-    return { valid: true, message: null };
-  }, []);
+  // Validation is always true since we allow empty fields (backend will use defaults)
+  const contractAssessment = { valid: true, message: null };
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -75,22 +73,6 @@ const Index = () => {
       };
 
       const result = await submitRun(file, finalTaskIntent);
-    if (!file || !contractAssessment.valid) {
-      toast.error(contractAssessment.message || "Please select a file first");
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      const finalTaskIntent = {
-        ...taskIntent,
-        primaryQuestion: taskIntent.primaryQuestion || "Analyze this industrial safety document for compliance",
-        decisionContext: taskIntent.decisionContext || "Standard safety audit and risk assessment",
-        successCriteria: taskIntent.successCriteria || "Identification of key risks and mitigation strategies",
-        constraints: taskIntent.constraints || "Must adhere to ISO 45001 standards",
-      };
-
-      await submitRun(file, finalTaskIntent);
       toast.success("Analysis started", {
         description: "Your document is being analyzed.",
       });
