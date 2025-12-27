@@ -26,6 +26,7 @@ const Index = () => {
     confidenceThreshold: 80,
     confidenceAcknowledged: false,
   });
+
   const contractAssessment = useMemo(() => {
     // If fields are empty, we allow it (will rely on defaults)
     return { valid: true, message: null };
@@ -74,13 +75,29 @@ const Index = () => {
       };
 
       const result = await submitRun(file, finalTaskIntent);
+    if (!file || !contractAssessment.valid) {
+      toast.error(contractAssessment.message || "Please select a file first");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const finalTaskIntent = {
+        ...taskIntent,
+        primaryQuestion: taskIntent.primaryQuestion || "Analyze this industrial safety document for compliance",
+        decisionContext: taskIntent.decisionContext || "Standard safety audit and risk assessment",
+        successCriteria: taskIntent.successCriteria || "Identification of key risks and mitigation strategies",
+        constraints: taskIntent.constraints || "Must adhere to ISO 45001 standards",
+      };
+
+      await submitRun(file, finalTaskIntent);
       toast.success("Analysis started", {
-        description: `Run ID: ${result.run_id}`,
+        description: "Your document is being analyzed.",
       });
-      navigate(`/reports?run=${result.run_id}`);
+      navigate("/pipeline");
     } catch (error) {
-      toast.error("Failed to start analysis", {
-        description: error instanceof Error ? error.message : "Please try again",
+      toast.error("Analysis failed", {
+        description: "There was an error starting the analysis.",
       });
     } finally {
       setIsUploading(false);
@@ -113,6 +130,8 @@ const Index = () => {
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Upload your data files and let our autonomous engine detect anomalies,
               validate quality, and generate comprehensive intelligence reports.
+              Upload your data files and let our autonomous engine detect anomalies, validate quality, and generate
+              comprehensive intelligence reports.
             </p>
           </motion.div>
 
@@ -133,7 +152,7 @@ const Index = () => {
                 isDragging
                   ? "border-primary bg-primary/5 scale-[1.02]"
                   : "border-border/50 hover:border-primary/50 hover:bg-muted/30",
-                file && "border-success bg-success/5"
+                file && "border-success bg-success/5",
               )}
             >
               <input
@@ -157,22 +176,19 @@ const Index = () => {
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-4">
-                  <div className={cn(
-                    "w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300",
-                    isDragging ? "gradient-meridian glow-primary" : "bg-muted"
-                  )}>
-                    <Upload className={cn(
-                      "w-8 h-8 transition-colors",
-                      isDragging ? "text-white" : "text-muted-foreground"
-                    )} />
+                  <div
+                    className={cn(
+                      "w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300",
+                      isDragging ? "gradient-meridian glow-primary" : "bg-muted",
+                    )}
+                  >
+                    <Upload
+                      className={cn("w-8 h-8 transition-colors", isDragging ? "text-white" : "text-muted-foreground")}
+                    />
                   </div>
                   <div>
-                    <p className="font-medium text-foreground">
-                      Drop your data file here
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      or click to browse · CSV, JSON, Excel, Parquet
-                    </p>
+                    <p className="font-medium text-foreground">Drop your data file here</p>
+                    <p className="text-sm text-muted-foreground">or click to browse · CSV, JSON, Excel, Parquet</p>
                   </div>
                 </div>
               )}
@@ -288,6 +304,65 @@ const Index = () => {
                 )}
               </motion.div>
             )}
+                  <div className="text-sm font-semibold mb-1">Required output type</div>
+                  <select
+                    value={taskIntent.requiredOutputType}
+                    onChange={(e) =>
+                      setTaskIntent((prev) => ({
+                        ...prev,
+                        requiredOutputType: e.target.value as typeof prev.requiredOutputType,
+                      }))
+                    }
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <option value="diagnostic">Diagnostic (root-cause)</option>
+                    <option value="descriptive">Descriptive (data health)</option>
+                    <option value="predictive">Predictive (forward-looking)</option>
+                  </select>
+                </div>
+                <div>
+                  <div className="text-sm font-semibold mb-1">Confidence floor (%)</div>
+                  <Input
+                    type="number"
+                    min={60}
+                    max={95}
+                    value={taskIntent.confidenceThreshold}
+                    onChange={(e) =>
+                      setTaskIntent((prev) => ({
+                        ...prev,
+                        confidenceThreshold: Number(e.target.value) || prev.confidenceThreshold,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="text-sm font-semibold mb-1">Success criteria</div>
+                <Textarea
+                  value={taskIntent.successCriteria}
+                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, successCriteria: e.target.value }))}
+                  placeholder="Example: Win = 20% lift in CLV while keeping CAC below $200."
+                />
+              </div>
+              <div>
+                <div className="text-sm font-semibold mb-1">Constraints & out-of-scope dimensions</div>
+                <Textarea
+                  value={taskIntent.constraints}
+                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, constraints: e.target.value }))}
+                  placeholder="Budgets, markets, timelines, banned metrics, or excluded cohorts."
+                />
+              </div>
+              <label className="flex items-start gap-2 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={taskIntent.confidenceAcknowledged}
+                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, confidenceAcknowledged: e.target.checked }))}
+                />
+                <span>I understand that insights with confidence below the selected threshold will be suppressed.</span>
+              </label>
+              {!contractAssessment.valid && <div className="text-xs text-red-600">{contractAssessment.message}</div>}
+            </div>
 
             {/* Action Button */}
             {file && (
