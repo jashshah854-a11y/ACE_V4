@@ -1,0 +1,8 @@
+{
+  "ingestion": {
+    "status": "sampling",
+    "source": "data\\3201aeb6fcf047de85e2120dfc74d7eb.csv",
+    "file_mb": 0.0,
+    "fast_mode": false
+  }
+}

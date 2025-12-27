@@ -1,0 +1,22 @@
+{
+  "sample_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\48d5c5ff\\artifacts\\sample.parquet",
+  "dtypes": {
+    "customer_id": "int64",
+    "age": "int64",
+    "tenure_months": "int64",
+    "monthly_spend": "float64",
+    "total_purchases": "int64",
+    "avg_order_value": "float64",
+    "days_since_last_purchase": "int64",
+    "product_category_preference": "object",
+    "customer_segment": "object",
+    "churn_risk": "int64"
+  },
+  "rows": 100,
+  "schema_profile": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\48d5c5ff\\artifacts\\schema_profile.json",
+  "drift_report": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\48d5c5ff\\artifacts\\drift_report.json",
+  "drift_status": "none",
+  "coercion_report": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\48d5c5ff\\artifacts\\coercion_report.json",
+  "dataset_manifest": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\48d5c5ff\\artifacts\\dataset_manifest.json",
+  "fast_mode": false
+}

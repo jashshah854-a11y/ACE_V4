@@ -1,0 +1,28 @@
+{
+  "primary_type": "marketing_performance",
+  "secondary_types": [
+    "time_series_trend",
+    "risk_compliance",
+    "operational_supply_chain",
+    "mixed_structured_unstructured"
+  ],
+  "confidence": 0.2,
+  "confidence_label": "exploratory",
+  "signals": {
+    "marketing_performance": [
+      "columns:spend"
+    ],
+    "time_series_trend": [
+      "columns:month"
+    ],
+    "operational_supply_chain": [
+      "values:po"
+    ],
+    "risk_compliance": [
+      "columns:risk"
+    ]
+  },
+  "notes": [
+    "Primary type inferred from column/value signals (score=2)."
+  ]
+}

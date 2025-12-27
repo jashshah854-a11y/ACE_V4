@@ -1,0 +1,6 @@
+{
+  "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\48d5c5ff\\artifacts\\dataset.parquet",
+  "source": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\e81194b3ebb4458fb2dbaa36c11e0c4e.csv",
+  "strategy": "full",
+  "manifest": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\48d5c5ff\\artifacts\\dataset_manifest.json"
+}

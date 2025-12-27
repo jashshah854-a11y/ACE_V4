@@ -1,0 +1,13 @@
+{
+  "task_intent": {
+    "primary_question": "Analyze dataset to identify patterns, trends, and actionable insights for business decision-making",
+    "decision_context": "General business intelligence and data exploration to support strategic planning and operational improvements",
+    "required_output_type": "descriptive",
+    "success_criteria": "insights",
+    "constraints": "none",
+    "confidence_threshold": 70.0,
+    "out_of_scope_dimensions": []
+  },
+  "confidence_threshold": 70.0,
+  "confidence_acknowledged": true
+}

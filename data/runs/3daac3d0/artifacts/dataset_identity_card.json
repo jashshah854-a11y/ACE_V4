@@ -1,0 +1,124 @@
+{
+  "source_path": "",
+  "row_count": 100,
+  "column_count": 10,
+  "columns": {
+    "customer_id": {
+      "dtype": "int64",
+      "null_pct": 0.0,
+      "distinct_pct": 1.0,
+      "min": 1001.0,
+      "max": 1100.0,
+      "mean": 1050.5,
+      "std": 28.86607004772212,
+      "p25": 1025.75,
+      "p50": 1050.5,
+      "p75": 1075.25
+    },
+    "age": {
+      "dtype": "int64",
+      "null_pct": 0.0,
+      "distinct_pct": 0.5,
+      "min": 19.0,
+      "max": 74.0,
+      "mean": 45.19,
+      "std": 16.395545126649495,
+      "p25": 31.75,
+      "p50": 43.0,
+      "p75": 60.25
+    },
+    "tenure_months": {
+      "dtype": "int64",
+      "null_pct": 0.0,
+      "distinct_pct": 0.47,
+      "min": 1.0,
+      "max": 59.0,
+      "mean": 29.01,
+      "std": 16.271751595940742,
+      "p25": 14.75,
+      "p50": 29.0,
+      "p75": 42.0
+    },
+    "monthly_spend": {
+      "dtype": "float64",
+      "null_pct": 0.0,
+      "distinct_pct": 1.0,
+      "min": 20.25,
+      "max": 498.92,
+      "mean": 266.8013,
+      "std": 136.10224573940727,
+      "p25": 149.0025,
+      "p50": 255.07999999999998,
+      "p75": 378.91499999999996
+    },
+    "total_purchases": {
+      "dtype": "int64",
+      "null_pct": 0.0,
+      "distinct_pct": 0.47,
+      "min": 1.0,
+      "max": 49.0,
+      "mean": 27.39,
+      "std": 13.703937390399885,
+      "p25": 17.75,
+      "p50": 28.5,
+      "p75": 38.0
+    },
+    "avg_order_value": {
+      "dtype": "float64",
+      "null_pct": 0.0,
+      "distinct_pct": 1.0,
+      "min": 17.83,
+      "max": 196.64,
+      "mean": 105.62160000000003,
+      "std": 54.21879177407037,
+      "p25": 60.815,
+      "p50": 100.275,
+      "p75": 147.915
+    },
+    "days_since_last_purchase": {
+      "dtype": "int64",
+      "null_pct": 0.0,
+      "distinct_pct": 0.78,
+      "min": 4.0,
+      "max": 179.0,
+      "mean": 97.9,
+      "std": 52.500571425461644,
+      "p25": 51.75,
+      "p50": 105.5,
+      "p75": 143.0
+    },
+    "product_category_preference": {
+      "dtype": "object",
+      "null_pct": 0.0,
+      "distinct_pct": 0.05,
+      "text_len_mean": 6.92,
+      "text_len_p95": 11.0
+    },
+    "customer_segment": {
+      "dtype": "object",
+      "null_pct": 0.0,
+      "distinct_pct": 0.03,
+      "text_len_mean": 7.57,
+      "text_len_p95": 10.0
+    },
+    "churn_risk": {
+      "dtype": "int64",
+      "null_pct": 0.0,
+      "distinct_pct": 0.02,
+      "min": 0.0,
+      "max": 1.0,
+      "mean": 0.57,
+      "std": 0.49507575177946245,
+      "p25": 0.0,
+      "p50": 1.0,
+      "p75": 1.0
+    }
+  },
+  "data_type": {},
+  "quality": {
+    "avg_null_pct": 0.0,
+    "max_null_pct": 0,
+    "avg_distinct_pct": 0.532
+  },
+  "drift_status": "none"
+}
