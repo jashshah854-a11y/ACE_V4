@@ -99,7 +99,8 @@ function getStepStates(state: RunState): Record<string, StepState> {
   const completedSteps = state.steps_completed || [];
   const result: Record<string, StepState> = {};
 
-  let foundActive = false;
+  // First pass: Mark all steps based on completion and backend state
+  let foundActiveFromBackend = false;
 
   for (const step of PIPELINE_STEPS) {
     const allCompleted = step.backendSteps.every((s) => completedSteps.includes(s));
@@ -107,11 +108,26 @@ function getStepStates(state: RunState): Record<string, StepState> {
 
     if (allCompleted) {
       result[step.key] = "completed";
+<<<<<<< Updated upstream
     } else if (!foundActive && (isActive || !allCompleted)) {
+=======
+    } else if (isActive && !foundActiveFromBackend) {
+      // Prioritize backend state: if backend says this step is active, mark it
+>>>>>>> Stashed changes
       result[step.key] = "active";
-      foundActive = true;
+      foundActiveFromBackend = true;
     } else {
       result[step.key] = "pending";
+    }
+  }
+
+  // Second pass: Fallback - if no step was marked active from backend, mark first incomplete step
+  if (!foundActiveFromBackend) {
+    for (const step of PIPELINE_STEPS) {
+      if (result[step.key] === "pending") {
+        result[step.key] = "active";
+        break;
+      }
     }
   }
 

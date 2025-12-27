@@ -1,0 +1,21 @@
+{
+  "ingestion": {
+    "status": "completed",
+    "source": "data\\a6d7a7a23e814958a78f70d42c4991b1.csv",
+    "file_mb": 0.0,
+    "fast_mode": false,
+    "sample_rows": 100,
+    "dtype_columns": 10,
+    "manifest": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\3edd6a55\\artifacts\\dataset_manifest.json"
+  },
+  "job": {
+    "status": "completed",
+    "run_id": "3edd6a55"
+  },
+  "type_identifier": {
+    "status": "completed"
+  },
+  "validator": {
+    "status": "completed"
+  }
+}
