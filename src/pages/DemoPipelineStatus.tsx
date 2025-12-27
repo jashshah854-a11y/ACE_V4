@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { PipelineStatus, PipelineStep } from "@/components/report/PipelineStatus";
@@ -11,11 +10,26 @@ import { Link } from "react-router-dom";
 
 const DEMO_STEPS: PipelineStep[] = [
   { id: "data_ingest", label: "Data Ingestion", description: "Loading and parsing uploaded file", status: "pending" },
-  { id: "schema_analysis", label: "Schema Analysis", description: "Understanding column types and structure", status: "pending" },
-  { id: "validation", label: "Data Validation", description: "Checking for quality issues and anomalies", status: "pending" },
+  {
+    id: "schema_analysis",
+    label: "Schema Analysis",
+    description: "Understanding column types and structure",
+    status: "pending",
+  },
+  {
+    id: "validation",
+    label: "Data Validation",
+    description: "Checking for quality issues and anomalies",
+    status: "pending",
+  },
   { id: "clustering", label: "Clustering", description: "Grouping similar data patterns", status: "pending" },
   { id: "model_training", label: "Model Training", description: "Building predictive models", status: "pending" },
-  { id: "anomaly_detection", label: "Anomaly Detection", description: "Identifying outliers and unusual patterns", status: "pending" },
+  {
+    id: "anomaly_detection",
+    label: "Anomaly Detection",
+    description: "Identifying outliers and unusual patterns",
+    status: "pending",
+  },
   { id: "persona_gen", label: "Persona Generation", description: "Creating customer segments", status: "pending" },
   { id: "report_gen", label: "Report Generation", description: "Compiling final analysis report", status: "pending" },
 ];
@@ -44,7 +58,7 @@ export default function DemoPipelineStatus() {
 
   const handleNextStep = () => {
     if (currentStepIndex < DEMO_STEPS.length - 1) {
-      setCurrentStepIndex(prev => prev + 1);
+      setCurrentStepIndex((prev) => prev + 1);
       setProgress(Math.round(((currentStepIndex + 2) / DEMO_STEPS.length) * 100));
       setHasError(false);
       setErrorMessage(undefined);
@@ -53,7 +67,7 @@ export default function DemoPipelineStatus() {
 
   const handlePrevStep = () => {
     if (currentStepIndex > 0) {
-      setCurrentStepIndex(prev => prev - 1);
+      setCurrentStepIndex((prev) => prev - 1);
       setProgress(Math.round((currentStepIndex / DEMO_STEPS.length) * 100));
       setHasError(false);
       setErrorMessage(undefined);
@@ -77,10 +91,7 @@ export default function DemoPipelineStatus() {
   const handleProgressChange = (value: number[]) => {
     const newProgress = value[0];
     setProgress(newProgress);
-    const newStepIndex = Math.min(
-      Math.floor((newProgress / 100) * DEMO_STEPS.length),
-      DEMO_STEPS.length - 1
-    );
+    const newStepIndex = Math.min(Math.floor((newProgress / 100) * DEMO_STEPS.length), DEMO_STEPS.length - 1);
     setCurrentStepIndex(newStepIndex);
     setHasError(false);
     setErrorMessage(undefined);
@@ -96,9 +107,9 @@ export default function DemoPipelineStatus() {
   // Auto-play effect
   useEffect(() => {
     if (!isAutoPlaying) return;
-    
+
     const interval = setInterval(() => {
-      setCurrentStepIndex(prev => {
+      setCurrentStepIndex((prev) => {
         if (prev >= DEMO_STEPS.length - 1) {
           setIsAutoPlaying(false);
           return prev;
@@ -139,39 +150,22 @@ export default function DemoPipelineStatus() {
           <CardContent className="space-y-6">
             {/* Step Navigation */}
             <div className="flex flex-wrap gap-3">
-              <Button 
-                variant="outline" 
-                onClick={handlePrevStep}
-                disabled={currentStepIndex === 0}
-              >
+              <Button variant="outline" onClick={handlePrevStep} disabled={currentStepIndex === 0}>
                 Previous Step
               </Button>
-              <Button 
-                onClick={handleNextStep}
-                disabled={currentStepIndex >= DEMO_STEPS.length - 1 || hasError}
-              >
+              <Button onClick={handleNextStep} disabled={currentStepIndex >= DEMO_STEPS.length - 1 || hasError}>
                 <Play className="h-4 w-4 mr-2" />
                 Next Step
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={handleReset}
-              >
+              <Button variant="outline" onClick={handleReset}>
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Reset
               </Button>
-              <Button 
-                variant="destructive" 
-                onClick={handleSimulateError}
-                disabled={hasError}
-              >
+              <Button variant="destructive" onClick={handleSimulateError} disabled={hasError}>
                 <AlertTriangle className="h-4 w-4 mr-2" />
                 Simulate Error
               </Button>
-              <Button 
-                variant="secondary" 
-                onClick={handleCompleteAll}
-              >
+              <Button variant="secondary" onClick={handleCompleteAll}>
                 Complete All
               </Button>
             </div>
@@ -184,22 +178,18 @@ export default function DemoPipelineStatus() {
                   Step {currentStepIndex + 1} of {DEMO_STEPS.length}
                 </span>
               </div>
-              <Slider
-                value={[progress]}
-                onValueChange={handleProgressChange}
-                max={100}
-                step={1}
-                className="w-full"
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={progress}
+                onChange={(e) => handleProgressChange([parseInt(e.target.value)])}
               />
             </div>
 
             {/* Auto-play Toggle */}
             <div className="flex items-center gap-3">
-              <Switch
-                id="auto-play"
-                checked={isAutoPlaying}
-                onCheckedChange={setIsAutoPlaying}
-              />
+              <Switch id="auto-play" checked={isAutoPlaying} onCheckedChange={setIsAutoPlaying} />
               <Label htmlFor="auto-play">Auto-advance steps (2s interval)</Label>
             </div>
 
@@ -214,14 +204,14 @@ export default function DemoPipelineStatus() {
                 <div className="text-xs text-muted-foreground">Progress</div>
               </div>
               <div className="text-center p-3 bg-muted/30 rounded-lg">
-                <div className={`text-2xl font-bold ${hasError ? 'text-destructive' : 'text-green-500'}`}>
-                  {hasError ? 'Error' : 'OK'}
+                <div className={`text-2xl font-bold ${hasError ? "text-destructive" : "text-green-500"}`}>
+                  {hasError ? "Error" : "OK"}
                 </div>
                 <div className="text-xs text-muted-foreground">Status</div>
               </div>
               <div className="text-center p-3 bg-muted/30 rounded-lg">
                 <div className="text-2xl font-bold text-foreground">
-                  {getStepsWithStatus().filter(s => s.status === 'completed').length}
+                  {getStepsWithStatus().filter((s) => s.status === "completed").length}
                 </div>
                 <div className="text-xs text-muted-foreground">Completed</div>
               </div>
@@ -230,21 +220,21 @@ export default function DemoPipelineStatus() {
         </Card>
 
         {/* Pipeline Status Component */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
           <PipelineStatus
             steps={getStepsWithStatus()}
             progress={progress}
             runId="demo-run-123abc"
             estimatedTimeRemaining={hasError ? undefined : "~3 min remaining"}
             error={errorMessage}
-            onRetry={hasError ? () => {
-              setHasError(false);
-              setErrorMessage(undefined);
-            } : undefined}
+            onRetry={
+              hasError
+                ? () => {
+                    setHasError(false);
+                    setErrorMessage(undefined);
+                  }
+                : undefined
+            }
           />
         </motion.div>
 
