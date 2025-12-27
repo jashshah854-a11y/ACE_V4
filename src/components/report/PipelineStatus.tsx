@@ -108,12 +108,7 @@ function getStepStates(state: RunState): Record<string, StepState> {
 
     if (allCompleted) {
       result[step.key] = "completed";
-<<<<<<< Updated upstream
-    } else if (!foundActive && (isActive || !allCompleted)) {
-=======
     } else if (isActive && !foundActiveFromBackend) {
-      // Prioritize backend state: if backend says this step is active, mark it
->>>>>>> Stashed changes
       result[step.key] = "active";
       foundActiveFromBackend = true;
     } else {
