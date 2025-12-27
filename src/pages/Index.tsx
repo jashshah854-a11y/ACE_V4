@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Upload, FileText, Sparkles, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
