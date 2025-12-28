@@ -73,6 +73,11 @@ const Index = () => {
       };
 
       const result = await submitRun(file, finalTaskIntent);
+
+      // Save to recent reports with filename for better naming
+      const { saveRecentReport } = await import("@/lib/localStorage");
+      saveRecentReport(result.run_id, undefined, file.name);
+
       toast.success("Analysis started", {
         description: "Your document is being analyzed.",
       });
@@ -112,8 +117,6 @@ const Index = () => {
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Upload your data files and let our autonomous engine detect anomalies,
               validate quality, and generate comprehensive intelligence reports.
-              Upload your data files and let our autonomous engine detect anomalies, validate quality, and generate
-              comprehensive intelligence reports.
             </p>
           </motion.div>
 

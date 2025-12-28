@@ -6,15 +6,44 @@ export interface RecentReport {
     runId: string;
     timestamp: string;
     title?: string;
+    filename?: string;
+    createdAt?: string;
 }
 
 const STORAGE_KEY = 'ace_recent_reports';
 const MAX_RECENT = 10;
 
 /**
+ * Generate a meaningful report title from filename and timestamp
+ */
+export function generateReportTitle(filename?: string, timestamp?: string): string {
+    if (filename) {
+        // Remove extension and clean up
+        const cleanName = filename
+            .replace(/\.(csv|json|xlsx|xls|parquet)$/i, '')
+            .replace(/[_-]/g, ' ')
+            .trim();
+        return `${cleanName} Analysis`;
+    }
+
+    if (timestamp) {
+        const date = new Date(timestamp);
+        const formatted = date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+        });
+        return `Report - ${formatted}`;
+    }
+
+    return 'Analysis Report';
+}
+
+/**
  * Save a report to recent reports list
  */
-export function saveRecentReport(runId: string, title?: string): void {
+export function saveRecentReport(runId: string, title?: string, filename?: string): void {
     try {
         const recent = getRecentReports();
 
@@ -22,10 +51,21 @@ export function saveRecentReport(runId: string, title?: string): void {
         const exists = recent.find(r => r.runId === runId);
         if (exists) return;
 
+        const timestamp = new Date().toISOString();
+        const generatedTitle = title || generateReportTitle(filename, timestamp);
+
         const newReport: RecentReport = {
             runId,
-            timestamp: new Date().toISOString(),
-            title: title || `Report ${runId.substring(0, 8)}`,
+            timestamp,
+            title: generatedTitle,
+            filename,
+            createdAt: new Date(timestamp).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+            })
         };
 
         recent.unshift(newReport);
