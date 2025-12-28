@@ -8,6 +8,8 @@ import { GlobalErrorOverlay } from "@/components/ui/GlobalErrorOverlay";
 import Index from "./pages/Index";
 import Reports from "./pages/Reports";
 import ExecutivePulse from "./pages/ExecutivePulse";
+import Pipeline from "./pages/Pipeline";
+import DemoPipelineStatus from "./pages/DemoPipelineStatus";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +26,9 @@ const App = () => (
             <Route path="/report/summary" element={<ExecutivePulse />} />
             <Route path="/upload" element={<Index />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/pipeline/:runId" element={<Pipeline />} />
+            <Route path="/pipeline" element={<Pipeline />} />
+            <Route path="/demo/pipeline-status" element={<DemoPipelineStatus />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
