@@ -3,11 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { motion } from "framer-motion";
-import { 
-  Upload, 
-  FileText, 
-  ArrowRight, 
-  Clock, 
+import {
+  Upload,
+  FileText,
+  ArrowRight,
+  Clock,
   Sparkles,
   BarChart3,
   TrendingUp,
@@ -84,7 +84,7 @@ const ExecutivePulse = () => {
         >
           <SafeIcon icon={BarChart3} className="w-10 h-10 text-primary" />
         </motion.div>
-        
+
         <motion.h2
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -93,7 +93,7 @@ const ExecutivePulse = () => {
         >
           Welcome to Executive Pulse
         </motion.h2>
-        
+
         <motion.p
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -110,16 +110,16 @@ const ExecutivePulse = () => {
           transition={{ delay: 0.4 }}
           className="flex flex-col sm:flex-row items-center justify-center gap-3"
         >
-          <Button 
-            onClick={() => navigate("/upload")} 
+          <Button
+            onClick={() => navigate("/upload")}
             size="lg"
             className="gap-2"
           >
             <SafeIcon icon={Upload} className="w-4 h-4" />
             Upload Dataset
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="lg"
             onClick={() => navigate("/reports")}
             className="gap-2"
@@ -150,8 +150,7 @@ const ExecutivePulse = () => {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.5 + index * 0.1 }}
                 onClick={() => {
-                  setRunInput(report.runId);
-                  setActiveRun(report.runId);
+                  navigate(`/reports?run=${report.runId}`);
                 }}
                 className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40 hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 text-left group"
               >
@@ -160,7 +159,15 @@ const ExecutivePulse = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{report.title || "Analysis Report"}</p>
-                  <code className="text-xs text-muted-foreground font-mono">{report.runId.slice(0, 8)}</code>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <code className="font-mono">{report.runId.slice(0, 8)}</code>
+                    {report.createdAt && (
+                      <>
+                        <span>•</span>
+                        <span className="truncate">{report.createdAt}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <SafeIcon icon={ArrowRight} className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
               </motion.button>
