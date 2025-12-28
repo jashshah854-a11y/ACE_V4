@@ -81,7 +81,7 @@ const Index = () => {
       toast.success("Analysis started", {
         description: "Your document is being analyzed.",
       });
-      navigate("/pipeline");
+      navigate(`/pipeline/${result.run_id}`);
     } catch (error) {
       toast.error("Analysis failed", {
         description: "There was an error starting the analysis.",

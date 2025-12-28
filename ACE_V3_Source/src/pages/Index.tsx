@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Upload, FileText, Sparkles, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
@@ -43,7 +43,7 @@ const Index = () => {
 
   const handleAnalyze = async () => {
     if (!file) return;
-    
+
     setIsUploading(true);
     try {
       const result = await submitRun(file);
@@ -64,11 +64,11 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <div className="fixed inset-0 gradient-dark-mesh pointer-events-none" />
       <Navbar />
-      
+
       <main className="relative pt-24 pb-16 min-h-screen flex flex-col items-center justify-center">
         <div className="container px-4 max-w-4xl">
           {/* Hero */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
@@ -78,15 +78,15 @@ const Index = () => {
               <Sparkles className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-primary">AI-Powered Data Analysis</span>
             </div>
-            
+
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4">
               Discover insights with
               <span className="text-gradient block mt-2">Meridian Intelligence</span>
             </h1>
-            
+
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Upload your data files and let our autonomous engine detect anomalies, 
-              validate quality, and generate comprehensive intelligence reports.
+              Upload your data files and let our autonomous engine detect anomalies, validate quality, and generate
+              comprehensive intelligence reports.
             </p>
           </motion.div>
 
@@ -104,10 +104,10 @@ const Index = () => {
               onDrop={handleDrop}
               className={cn(
                 "relative border-2 border-dashed rounded-xl p-12 text-center transition-all duration-300",
-                isDragging 
-                  ? "border-primary bg-primary/5 scale-[1.02]" 
+                isDragging
+                  ? "border-primary bg-primary/5 scale-[1.02]"
                   : "border-border/50 hover:border-primary/50 hover:bg-muted/30",
-                file && "border-success bg-success/5"
+                file && "border-success bg-success/5",
               )}
             >
               <input
@@ -116,7 +116,7 @@ const Index = () => {
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 accept=".csv,.json,.xlsx,.xls,.parquet"
               />
-              
+
               {file ? (
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-16 h-16 rounded-2xl bg-success/10 flex items-center justify-center">
@@ -131,22 +131,19 @@ const Index = () => {
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-4">
-                  <div className={cn(
-                    "w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300",
-                    isDragging ? "gradient-meridian glow-primary" : "bg-muted"
-                  )}>
-                    <Upload className={cn(
-                      "w-8 h-8 transition-colors",
-                      isDragging ? "text-white" : "text-muted-foreground"
-                    )} />
+                  <div
+                    className={cn(
+                      "w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300",
+                      isDragging ? "gradient-meridian glow-primary" : "bg-muted",
+                    )}
+                  >
+                    <Upload
+                      className={cn("w-8 h-8 transition-colors", isDragging ? "text-white" : "text-muted-foreground")}
+                    />
                   </div>
                   <div>
-                    <p className="font-medium text-foreground">
-                      Drop your data file here
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      or click to browse · CSV, JSON, Excel, Parquet
-                    </p>
+                    <p className="font-medium text-foreground">Drop your data file here</p>
+                    <p className="text-sm text-muted-foreground">or click to browse · CSV, JSON, Excel, Parquet</p>
                   </div>
                 </div>
               )}
@@ -201,7 +198,7 @@ const Index = () => {
           </motion.div>
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );
