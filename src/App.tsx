@@ -25,6 +25,7 @@ const App = () => (
             <Route path="/report/summary" element={<ExecutivePulse />} />
             <Route path="/upload" element={<Index />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/pipeline" element={<DemoPipelineStatus />} />
             <Route path="/demo/pipeline-status" element={<DemoPipelineStatus />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
