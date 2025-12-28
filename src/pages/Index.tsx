@@ -73,6 +73,11 @@ const Index = () => {
       };
 
       const result = await submitRun(file, finalTaskIntent);
+
+      // Save to recent reports with filename for better naming
+      const { saveRecentReport } = await import("@/lib/localStorage");
+      saveRecentReport(result.run_id, undefined, file.name);
+
       toast.success("Analysis started", {
         description: "Your document is being analyzed.",
       });
@@ -112,8 +117,6 @@ const Index = () => {
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Upload your data files and let our autonomous engine detect anomalies,
               validate quality, and generate comprehensive intelligence reports.
-              Upload your data files and let our autonomous engine detect anomalies, validate quality, and generate
-              comprehensive intelligence reports.
             </p>
           </motion.div>
 
@@ -286,65 +289,6 @@ const Index = () => {
                 )}
               </motion.div>
             )}
-                  <div className="text-sm font-semibold mb-1">Required output type</div>
-                  <select
-                    value={taskIntent.requiredOutputType}
-                    onChange={(e) =>
-                      setTaskIntent((prev) => ({
-                        ...prev,
-                        requiredOutputType: e.target.value as typeof prev.requiredOutputType,
-                      }))
-                    }
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    <option value="diagnostic">Diagnostic (root-cause)</option>
-                    <option value="descriptive">Descriptive (data health)</option>
-                    <option value="predictive">Predictive (forward-looking)</option>
-                  </select>
-                </div>
-                <div>
-                  <div className="text-sm font-semibold mb-1">Confidence floor (%)</div>
-                  <Input
-                    type="number"
-                    min={60}
-                    max={95}
-                    value={taskIntent.confidenceThreshold}
-                    onChange={(e) =>
-                      setTaskIntent((prev) => ({
-                        ...prev,
-                        confidenceThreshold: Number(e.target.value) || prev.confidenceThreshold,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-              <div>
-                <div className="text-sm font-semibold mb-1">Success criteria</div>
-                <Textarea
-                  value={taskIntent.successCriteria}
-                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, successCriteria: e.target.value }))}
-                  placeholder="Example: Win = 20% lift in CLV while keeping CAC below $200."
-                />
-              </div>
-              <div>
-                <div className="text-sm font-semibold mb-1">Constraints & out-of-scope dimensions</div>
-                <Textarea
-                  value={taskIntent.constraints}
-                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, constraints: e.target.value }))}
-                  placeholder="Budgets, markets, timelines, banned metrics, or excluded cohorts."
-                />
-              </div>
-              <label className="flex items-start gap-2 text-sm text-muted-foreground">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={taskIntent.confidenceAcknowledged}
-                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, confidenceAcknowledged: e.target.checked }))}
-                />
-                <span>I understand that insights with confidence below the selected threshold will be suppressed.</span>
-              </label>
-              {!contractAssessment.valid && <div className="text-xs text-red-600">{contractAssessment.message}</div>}
-            </div>
 
             {/* Action Button */}
             {file && (
