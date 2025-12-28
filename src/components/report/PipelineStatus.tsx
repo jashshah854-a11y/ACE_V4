@@ -108,12 +108,8 @@ function getStepStates(state: RunState): Record<string, StepState> {
 
     if (allCompleted) {
       result[step.key] = "completed";
-<<<<<<< Updated upstream
-    } else if (!foundActive && (isActive || !allCompleted)) {
-=======
     } else if (isActive && !foundActiveFromBackend) {
       // Prioritize backend state: if backend says this step is active, mark it
->>>>>>> Stashed changes
       result[step.key] = "active";
       foundActiveFromBackend = true;
     } else {
@@ -159,10 +155,25 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
   const prevProgressRef = useRef(0);
   const prevCompleteRef = useRef(false);
 
-  const { data: state, isLoading } = useQuery<RunState>({
+  const {
+    data: state,
+    isLoading,
+    isFetching,
+    isError,
+    error
+  } = useQuery<RunState>({
     queryKey: ["run-state", runId],
     queryFn: () => getRunState(runId),
     enabled: Boolean(runId),
+    retry: (failureCount, error) => {
+      // Retry 404 errors (state not created yet) up to 10 times
+      if (error instanceof Error && error.message.includes('404') && failureCount < 10) {
+        return true;
+      }
+      // Don't retry other errors
+      return false;
+    },
+    retryDelay: 2000,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       if (status === "completed" || status === "complete" || status === "failed") {
@@ -230,7 +241,12 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
     prevCompleteRef.current = isComplete;
   }, [isComplete, onComplete]);
 
-  if (isLoading) {
+  // Only show "Connecting..." on initial load (no data yet) or if we have a 404 error (state not created yet)
+  const isInitialLoading = isLoading && !state;
+  const is404Error = isError && error instanceof Error && error.message.includes('404');
+  const shouldShowConnecting = isInitialLoading || is404Error;
+
+  if (shouldShowConnecting) {
     return (
       <div className="p-8 rounded-2xl border border-border/40 bg-card shadow-sm">
         <div className="flex items-center gap-4 text-muted-foreground">
@@ -323,9 +339,17 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
                     {runId.slice(0, 8)}
                   </code>
                   {!isComplete && !isFailed && (
-                    <span className="text-xs text-muted-foreground">
-                      Est. ~{Math.max(1, Math.ceil((100 - displayProgress) / 12))} min
-                    </span>
+                    <>
+                      <span className="text-xs text-muted-foreground">
+                        Est. ~{Math.max(1, Math.ceil((100 - displayProgress) / 12))} min
+                      </span>
+                      {isFetching && !isInitialLoading && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span>Updating...</span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -444,7 +468,7 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
                           ) : (
                             <SafeIcon icon={step.icon} className="w-4 h-4" />
                           )}
-                          
+
                           {/* Active glow ring */}
                           {isActive && (
                             <motion.div
@@ -581,7 +605,7 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
                       <SafeIcon icon={step.icon} className="w-4 h-4" />
                     )}
                   </div>
-                  
+
                   {/* Vertical connector */}
                   {!isLast && (
                     <div className={cn(

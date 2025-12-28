@@ -19,6 +19,7 @@ export interface RunState {
   next_step?: string;
   progress?: number;
   steps?: Record<string, PipelineStep>;
+  steps_completed?: string[];
   error?: string;
   started_at?: string;
   completed_at?: string;
