@@ -24,6 +24,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
 from core.explainability import persist_evidence
 from core.scope_enforcer import ScopeEnforcer, ScopeViolationError
+from core.cache import RailwayClusteringCache
 
 def build_feature_matrix(df, schema_map):
     # UNIVERSAL NORMALIZATION PATCH
@@ -81,6 +82,7 @@ class Overseer:
         self.schema_map = ensure_schema_map(schema_map)
         self.state = state
         self.name = "Overseer"
+        self.cache = RailwayClusteringCache()  # Initialize cache
 
     def run(self):
         log_launch(f"Triggering ACE {self.name}...")
@@ -122,6 +124,24 @@ class Overseer:
             log_warn(f"Scope lock blocked Overseer: {exc}")
             raise
 
+        # Check cache before clustering
+        fingerprint = self.cache.get_fingerprint(df)
+        print(f"[Overseer] Dataset fingerprint: {fingerprint[:16]}...")
+        
+        cached_results = self.cache.get(fingerprint)
+        if cached_results and self.cache.validate(fingerprint, df):
+            print(f"[Overseer] Cache HIT! Using cached clustering results")
+            
+            # Save cached results to state
+            if self.state:
+                self.state.write("overseer_output", cached_results)
+            
+            log_ok("Overseer Complete (from cache)")
+            return "overseer done (cached)"
+
+        # Cache miss - run clustering
+        print(f"[Overseer] Cache MISS - running fresh clustering...")
+        
         # 1. Run Universal Clustering
         print(f"[Overseer] Starting clustering...")
         try:
@@ -139,6 +159,12 @@ class Overseer:
                 "sizes": clustering_results.get("sizes", []),
                 "feature_importance": clustering_results.get("feature_importance", []),
                 "confidence_interval": clustering_results.get("confidence_interval"),
+                # Add metadata for cache validation
+                "_metadata": {
+                    "row_count": len(df),
+                    "columns": df.columns.tolist(),
+                    "fingerprint": fingerprint,
+                },
             }
 
             evidence_id = None
@@ -156,6 +182,10 @@ class Overseer:
             else:
                 with open("data/overseer_output.json", "w") as f:
                     json.dump(payload, f, indent=2)
+
+            # Cache results for future runs
+            self.cache.set(fingerprint, payload)
+            print(f"[Overseer] Results cached for future runs")
 
             log_ok("Overseer V3 Complete. Output saved.")
             return "overseer done"
