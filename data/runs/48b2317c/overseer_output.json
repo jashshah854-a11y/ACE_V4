@@ -1,0 +1,204 @@
+{
+  "stats": {
+    "k": 3,
+    "silhouette": 0.30558161366238756,
+    "data_quality": 0.94
+  },
+  "fingerprints": {
+    "cluster_0": {
+      "cluster_id": 0,
+      "size": 31,
+      "feature_means": {},
+      "role_summaries": {
+        "income_like": 0.0,
+        "spend_like": 0.0,
+        "risk_like": 0.0,
+        "value_like": 0.0,
+        "activity_like": 0.0,
+        "frequency_like": 0.0,
+        "volume_like": 0.0,
+        "demographic_like": 0.0
+      }
+    },
+    "cluster_1": {
+      "cluster_id": 1,
+      "size": 44,
+      "feature_means": {},
+      "role_summaries": {
+        "income_like": 0.0,
+        "spend_like": 0.0,
+        "risk_like": 0.0,
+        "value_like": 0.0,
+        "activity_like": 0.0,
+        "frequency_like": 0.0,
+        "volume_like": 0.0,
+        "demographic_like": 0.0
+      }
+    },
+    "cluster_2": {
+      "cluster_id": 2,
+      "size": 25,
+      "feature_means": {},
+      "role_summaries": {
+        "income_like": 0.0,
+        "spend_like": 0.0,
+        "risk_like": 0.0,
+        "value_like": 0.0,
+        "activity_like": 0.0,
+        "frequency_like": 0.0,
+        "volume_like": 0.0,
+        "demographic_like": 0.0
+      }
+    }
+  },
+  "labels": [
+    1,
+    1,
+    2,
+    1,
+    1,
+    1,
+    2,
+    1,
+    0,
+    1,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    1,
+    1,
+    1,
+    1,
+    0,
+    0,
+    1,
+    1,
+    1,
+    0,
+    0,
+    1,
+    2,
+    1,
+    2,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    1,
+    1,
+    2,
+    0,
+    2,
+    1,
+    2,
+    2,
+    1,
+    0,
+    0,
+    2,
+    1,
+    1,
+    0,
+    2,
+    1,
+    1,
+    2,
+    1,
+    0,
+    2,
+    0,
+    0,
+    1,
+    0,
+    0,
+    1,
+    1,
+    2,
+    0,
+    1,
+    2,
+    2,
+    0,
+    2,
+    1,
+    1,
+    0,
+    2,
+    2,
+    1,
+    2,
+    2,
+    2,
+    2,
+    0,
+    0,
+    1,
+    2,
+    2,
+    1,
+    1,
+    0,
+    0,
+    2,
+    1,
+    1,
+    0
+  ],
+  "sizes": [
+    31,
+    44,
+    25
+  ],
+  "feature_importance": [
+    {
+      "feature": "customer_id",
+      "importance": 6.990166177908122
+    },
+    {
+      "feature": "age",
+      "importance": 2.502098403388729
+    },
+    {
+      "feature": "tenure_months",
+      "importance": 2.616663408276312
+    },
+    {
+      "feature": "monthly_spend",
+      "importance": 106.52520091234926
+    },
+    {
+      "feature": "total_purchases",
+      "importance": 0.5951971326164873
+    },
+    {
+      "feature": "avg_order_value",
+      "importance": 6.0801463668947475
+    },
+    {
+      "feature": "days_since_last_purchase",
+      "importance": 14.499928315412182
+    },
+    {
+      "feature": "churn_risk",
+      "importance": 0.07019224503095482
+    },
+    {
+      "feature": "risk_score",
+      "importance": 0.0
+    }
+  ],
+  "confidence_interval": [
+    -0.041627579506418655,
+    0.6527908068311938
+  ],
+  "evidence_id": "10d271d4"
+}

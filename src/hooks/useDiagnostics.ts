@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API_BASE } from "@/lib/api-client";
 
 interface DiagnosticsResponse {
   mode?: string;
@@ -22,8 +23,7 @@ export function useDiagnostics(runId?: string) {
       setLoading(true);
       setError(null);
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8001";
-        const res = await fetch(`${apiUrl}/runs/${runId}/diagnostics`);
+        const res = await fetch(`${API_BASE}/runs/${runId}/diagnostics`);
         if (!res.ok) {
           throw new Error(`Failed to fetch diagnostics: ${res.statusText}`);
         }

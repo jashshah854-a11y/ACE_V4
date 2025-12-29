@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_ACE_API_BASE_URL || "http://localhost:8001";
+export const API_BASE = import.meta.env.VITE_ACE_API_BASE_URL || "http://localhost:8001";
 
 export type StepStatus = "pending" | "running" | "completed" | "failed";
 export type RunStatus = "pending" | "running" | "completed" | "complete" | "failed" | "complete_with_errors";
