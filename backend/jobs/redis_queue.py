@@ -77,7 +77,7 @@ class RedisJobQueue:
         job_data = {
             "run_id": job_id,
             "file_path": file_path,
-            "status": JobStatus.PENDING.value,
+            "status": JobStatus.QUEUED.value,  # Use QUEUED which exists in the enum
             "created_at": now,
             "updated_at": now,
             "run_config": run_config or {},
