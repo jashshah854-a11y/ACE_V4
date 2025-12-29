@@ -423,6 +423,39 @@ async def trigger_run(
         file_path.unlink(missing_ok=True)
         raise HTTPException(status_code=500, detail=f"ACE Execution Failed: {str(e)}")
 
+@app.get("/runs/{run_id}/state", tags=["Execution"])
+async def get_run_state(run_id: str):
+    """Get the current state of a run from Redis queue."""
+    _validate_run_id(run_id)
+    
+    if not job_queue:
+        raise HTTPException(status_code=503, detail="Job queue unavailable")
+    
+    # Get job from Redis
+    job = job_queue.get_job(run_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Run not found")
+    
+    # If job is completed, try to read orchestrator state file
+    if job.status == JobStatus.COMPLETED and job.run_path:
+        state_file = Path(job.run_path) / "orchestrator_state.json"
+        if state_file.exists():
+            try:
+                with open(state_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.error(f"[API] Failed to read state file: {e}")
+    
+    # Return job status from Redis
+    return {
+        "run_id": job.run_id,
+        "status": job.status.value if isinstance(job.status, JobStatus) else job.status,
+        "message": job.message,
+        "run_path": job.run_path,
+        "created_at": getattr(job, "created_at", None),
+        "updated_at": getattr(job, "updated_at", None),
+    }
+
 @app.get("/runs/{run_id}/progress", tags=["Execution"])
 async def get_progress(run_id: str):
     _validate_run_id(run_id)
