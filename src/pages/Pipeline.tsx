@@ -1,10 +1,58 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { PipelineStatus } from "@/components/report/PipelineStatus";
+import { ThinkingView } from "@/components/thinking/ThinkingView";
 import { Home, ChevronRight, Upload, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { getRunState } from "@/lib/api-client";
+
+// Wrapper component to poll run state and pass to ThinkingView
+function ThinkingViewWithPolling({ runId, onComplete }: { runId: string; onComplete: () => void }) {
+  const [currentStep, setCurrentStep] = useState<string | undefined>();
+  const [stepsCompleted, setStepsCompleted] = useState<string[]>([]);
+  const [status, setStatus] = useState<string>("running");
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    const pollState = async () => {
+      try {
+        const state = await getRunState(runId);
+        setCurrentStep(state.current_step);
+        setStepsCompleted(state.steps_completed || []);
+        setStatus(state.status);
+
+        if (state.status === "complete" || state.status === "complete_with_errors") {
+          clearInterval(interval);
+          setTimeout(onComplete, 1500); // Small delay before navigating
+        }
+      } catch (error) {
+        console.error("Error polling run state:", error);
+      }
+    };
+
+    pollState(); // Initial fetch
+    interval = setInterval(pollState, 2000); // Poll every 2 seconds
+
+    return () => clearInterval(interval);
+  }, [runId, onComplete]);
+
+  if (status === "complete" || status === "complete_with_errors") {
+    return (
+      <div className="text-center py-12">
+        <div className="text-[hsl(var(--lab-signal))] font-[family-name:var(--font-lab)] text-lg mb-4">
+          ✓ Analysis Complete
+        </div>
+        <p className="text-[hsl(var(--library-muted))] font-[family-name:var(--font-library-body)]">
+          Redirecting to report...
+        </p>
+      </div>
+    );
+  }
+
+  return <ThinkingView currentStep={currentStep} stepsCompleted={stepsCompleted} />;
+}
 
 export default function Pipeline() {
   const { runId } = useParams<{ runId: string }>();
@@ -48,7 +96,7 @@ export default function Pipeline() {
                   <div>
                     <h2 className="text-xl font-semibold mb-2">No Analysis Found</h2>
                     <p className="text-muted-foreground mb-6">
-                      It looks like you navigated here without starting an analysis. 
+                      It looks like you navigated here without starting an analysis.
                       Please upload a file to begin.
                     </p>
                   </div>
@@ -94,13 +142,13 @@ export default function Pipeline() {
           transition={{ duration: 0.3 }}
           className="max-w-4xl mx-auto"
         >
-          <PipelineStatus runId={runId} onComplete={handleComplete} />
+          <ThinkingViewWithPolling runId={runId} onComplete={handleComplete} />
         </motion.div>
 
         {/* Back to upload link */}
         <div className="text-center mt-8">
-          <Link 
-            to="/upload" 
+          <Link
+            to="/upload"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             ← Back to Upload
