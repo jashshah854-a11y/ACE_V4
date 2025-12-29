@@ -8,6 +8,7 @@ from typing import Dict, List, Optional
 from .schema_utils import pick_first_role_column
 from .analyst_core import ModelSelector, ModelGovernanceError
 from .explainability import EvidenceObject
+from .parallel_clustering import run_parallel_clustering, should_use_parallel
 
 def load_data(path: str) -> pd.DataFrame:
     df = pd.read_csv(path)
@@ -212,41 +213,77 @@ def run_universal_clustering(df: pd.DataFrame, schema_map, fast_mode: bool = Fal
     else:
         df_scaled_sample = df_scaled
     
-    # 3. Auto-K Selection
+    # 3. Auto-K Selection (Parallel or Sequential)
     best_k = 3
     best_score = -1
     best_labels_full = None
     best_model = None
     
     # If dataset is small, limit K
-    max_k = min(8, len(df_scaled_sample))
+    max_k = min(5, len(df_scaled_sample))  # Reduced from 8 to 5 for speed
     if max_k < 3:
         max_k = 3
     
     print(f"   Universal Clustering on {valid_features} (K=3-{max_k})...")
     
-    for k in range(3, max_k + 1):
-        if len(df_scaled_sample) < k:
-            continue  # Not enough samples for this k
-        if fast_mode:
-            model = MiniBatchKMeans(n_clusters=k, random_state=42, batch_size=2048, n_init="auto")
-            model.fit(df_scaled_sample)
-            labels_full = model.predict(df_scaled)
-            sil_subset = df_scaled_sample.sample(n=min(len(df_scaled_sample), 20_000), random_state=42) if len(df_scaled_sample) > 20_000 else df_scaled_sample
-            sil_labels = model.predict(sil_subset)
-            score = silhouette_score(sil_subset, sil_labels) if len(set(sil_labels)) > 1 else -1
-        else:
-            model = KMeans(n_clusters=k, random_state=42, n_init=10)
-            labels_full = model.fit_predict(df_scaled)
-            if len(set(labels_full)) < 2:
-                continue
-            score = silhouette_score(df_scaled, labels_full)
+    # Decide: parallel or sequential?
+    use_parallel = should_use_parallel(len(df_scaled), len(valid_features))
+    
+    if use_parallel and not fast_mode:
+        # Use parallel processing for large datasets in normal mode
+        print(f"   Using PARALLEL clustering (dataset large enough)")
         
-        if score > best_score:
-            best_score = score
-            best_k = k
-            best_labels_full = labels_full
-            best_model = model
+        parallel_results = run_parallel_clustering(
+            df_scaled,
+            min_k=3,
+            max_k=max_k,
+            fast_mode=False,  # Use standard KMeans for quality
+            max_workers=None  # Auto-detect (16 on Railway)
+        )
+        
+        if parallel_results["error"]:
+            # Parallel failed, fall back to sequential
+            print(f"   Parallel clustering failed: {parallel_results['error']}")
+            print(f"   Falling back to sequential...")
+            use_parallel = False
+        else:
+            best_k = parallel_results["best_k"]
+            best_score = parallel_results["best_score"]
+            best_labels_full = np.array(parallel_results["best_labels"])
+            
+            # Reconstruct model from centroids (for compatibility)
+            best_model = KMeans(n_clusters=best_k, random_state=42, n_init=1)
+            best_model.cluster_centers_ = np.array(parallel_results["best_centroids"])
+            best_model.labels_ = best_labels_full
+            best_model.inertia_ = parallel_results.get("best_inertia", 0.0)
+    
+    # Sequential fallback or fast mode
+    if not use_parallel or fast_mode:
+        mode_str = "FAST" if fast_mode else "SEQUENTIAL"
+        print(f"   Using {mode_str} clustering")
+        
+        for k in range(3, max_k + 1):
+            if len(df_scaled_sample) < k:
+                continue  # Not enough samples for this k
+            if fast_mode:
+                model = MiniBatchKMeans(n_clusters=k, random_state=42, batch_size=2048, n_init="auto")
+                model.fit(df_scaled_sample)
+                labels_full = model.predict(df_scaled)
+                sil_subset = df_scaled_sample.sample(n=min(len(df_scaled_sample), 20_000), random_state=42) if len(df_scaled_sample) > 20_000 else df_scaled_sample
+                sil_labels = model.predict(sil_subset)
+                score = silhouette_score(sil_subset, sil_labels) if len(set(sil_labels)) > 1 else -1
+            else:
+                model = KMeans(n_clusters=k, random_state=42, n_init=3)  # Reduced from 10
+                labels_full = model.fit_predict(df_scaled)
+                if len(set(labels_full)) < 2:
+                    continue
+                score = silhouette_score(df_scaled, labels_full)
+            
+            if score > best_score:
+                best_score = score
+                best_k = k
+                best_labels_full = labels_full
+                best_model = model
             
     if best_labels_full is None:
         # Fallback to single cluster
