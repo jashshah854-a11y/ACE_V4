@@ -14,10 +14,7 @@ cmds = [
     "bun run build"
 ]
 
-[start]
-cmd = "uvicorn backend.api.server:app --host 0.0.0.0 --port ${PORT:-8001}"
-
-# Railway Volume for persistent caching
-# Configure in Railway dashboard:
+# No [start] section - using Procfile for start command
+# Railway Volume: Configure in Railway dashboard
 # - Name: ace-cache
 # - Mount Path: /app/data/cache
