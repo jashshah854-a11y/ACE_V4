@@ -1,0 +1,40 @@
+{
+  "task": "regression",
+  "template": "marketing",
+  "data_type": "marketing_performance",
+  "allowed_sections": [
+    "data_overview",
+    "quality",
+    "eda",
+    "modeling",
+    "insights"
+  ],
+  "forbidden_sections": [],
+  "limitations": [],
+  "scope_inclusions": [
+    "age",
+    "avg_order_value",
+    "churn_risk",
+    "customer_id",
+    "customer_segment",
+    "days_since_last_purchase",
+    "monthly_spend",
+    "product_category_preference",
+    "tenure_months",
+    "total_purchases"
+  ],
+  "scope_exclusions": [],
+  "forbidden_claims": {
+    "allow_causality": false,
+    "allow_forecasting": true
+  },
+  "primary_question": "Segment ecommerce customers based on purchasing behavior patterns to enable targeted marketing campaigns",
+  "decision_context": "Planning quarterly marketing budget allocation across customer segments to maximize revenue growth and customer lifetime value metrics",
+  "required_output_type": "descriptive",
+  "success_criteria": "Distinct customer segments with clear behavioral characteristics and actionable targeting recommendations",
+  "constraints": "Focus on purchase frequency and monetary value patterns excluding promotional campaign data",
+  "confidence_threshold": 70.0,
+  "out_of_scope_dimensions": [],
+  "is_signed": true,
+  "signed_at": "2025-12-27T22:51:43.996013Z"
+}
