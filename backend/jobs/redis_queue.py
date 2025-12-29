@@ -77,7 +77,7 @@ class RedisJobQueue:
         job_data = {
             "run_id": job_id,
             "file_path": file_path,
-            "status": JobStatus.PENDING.value,
+            "status": "pending",  # Use string directly instead of JobStatus.PENDING
             "created_at": now,
             "updated_at": now,
             "run_config": run_config or {},
