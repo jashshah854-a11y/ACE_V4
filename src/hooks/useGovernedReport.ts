@@ -59,7 +59,7 @@ export function useGovernedReport(runId?: string) {
       setLoading(true);
       setError(null);
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8001";
+        const apiUrl = import.meta.env.VITE_ACE_API_BASE_URL || "http://localhost:8001";
         const response = await fetch(`${apiUrl}/runs/${runId}/artifacts/governed_report`);
         if (!response.ok) {
           if (response.status === 404) {
