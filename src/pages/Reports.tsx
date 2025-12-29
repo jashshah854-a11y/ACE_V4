@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WideReportViewer } from "@/components/report/WideReportViewer";
 import { PipelineStatus } from "@/components/report/PipelineStatus";
-import { FileText, Plus, Search } from "lucide-react";
-import { getReport } from "@/lib/api-client";
-import { getRecentReports, saveRecentReport } from "@/lib/localStorage";
+import { FileText, Plus, Search, AlertCircle } from "lucide-react";
+import { getReport, API_BASE } from "@/lib/api-client";
+import { getRecentReports, saveRecentReport, validateAndCleanRecentReports, removeRecentReport } from "@/lib/localStorage";
 
 
 const Reports = () => {
@@ -24,6 +24,26 @@ const Reports = () => {
 
   const [runInput, setRunInput] = useState(initialRunId);
   const [activeRunId, setActiveRunId] = useState(initialRunId);
+  const [hasValidated, setHasValidated] = useState(false);
+
+  // Validate and clean localStorage on mount
+  useEffect(() => {
+    const cleanupInvalidRuns = async () => {
+      await validateAndCleanRecentReports(API_BASE);
+      setHasValidated(true);
+
+      // If the initial run ID was cleaned, clear it
+      if (initialRunId) {
+        const updatedRecent = getRecentReports();
+        const stillExists = updatedRecent.some(r => r.runId === initialRunId);
+        if (!stillExists) {
+          setActiveRunId("");
+          setRunInput("");
+        }
+      }
+    };
+    cleanupInvalidRuns();
+  }, []);
 
   useEffect(() => {
     if (runFromUrl) {
@@ -144,9 +164,28 @@ const Reports = () => {
                 </div>
               )}
 
+              {/* Show clear error message for non-404 errors */}
               {reportQuery.isError && !isReportNotReady && (
-                <div className="p-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 mb-4 text-sm">
-                  Error loading report: {reportQuery.error instanceof Error ? reportQuery.error.message : "Report not found or API error."}
+                <div className="p-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 mb-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-medium mb-1">Error loading report</p>
+                      <p className="text-sm">{reportQuery.error instanceof Error ? reportQuery.error.message : "Report not found or API error."}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-3"
+                        onClick={() => {
+                          removeRecentReport(activeRunId);
+                          setActiveRunId("");
+                          setRunInput("");
+                        }}
+                      >
+                        Clear and Start Fresh
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
 

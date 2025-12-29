@@ -120,6 +120,50 @@ export function removeRecentReport(runId: string): void {
 }
 
 /**
+ * Validate a run ID by checking if it exists on the backend
+ */
+export async function validateRunId(runId: string, apiBase: string): Promise<boolean> {
+    try {
+        const response = await fetch(`${apiBase}/runs/${runId}/state`);
+        return response.ok;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Clean invalid run IDs from recent reports
+ * This helps prevent the app from getting stuck on non-existent runs
+ */
+export async function validateAndCleanRecentReports(apiBase: string): Promise<void> {
+    try {
+        const recent = getRecentReports();
+        if (recent.length === 0) return;
+
+        // Validate each run ID
+        const validationResults = await Promise.all(
+            recent.map(async (report) => ({
+                report,
+                isValid: await validateRunId(report.runId, apiBase)
+            }))
+        );
+
+        // Filter out invalid runs
+        const validReports = validationResults
+            .filter(({ isValid }) => isValid)
+            .map(({ report }) => report);
+
+        // Only update if we removed some invalid runs
+        if (validReports.length !== recent.length) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(validReports));
+            console.log(`Cleaned ${recent.length - validReports.length} invalid run(s) from recent reports`);
+        }
+    } catch (error) {
+        console.warn('Failed to validate recent reports:', error);
+    }
+}
+
+/**
  * Check if localStorage is available
  */
 export function isStorageAvailable(): boolean {
