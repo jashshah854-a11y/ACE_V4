@@ -166,8 +166,8 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
     queryFn: () => getRunState(runId),
     enabled: Boolean(runId),
     retry: (failureCount, error) => {
-      // Retry 404 errors (state not created yet) up to 10 times
-      if (error instanceof Error && error.message.includes('404') && failureCount < 10) {
+      // Retry 404 errors (state not created yet) up to 3 times
+      if (error instanceof Error && error.message.includes('404') && failureCount < 3) {
         return true;
       }
       // Don't retry other errors
