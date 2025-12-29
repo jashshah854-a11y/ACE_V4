@@ -4,9 +4,8 @@ import { cn } from "@/lib/utils";
 interface ThinkingStage {
     id: string;
     agent: string;
-    message: string;
+    messages: string[];
     status: "pending" | "active" | "complete" | "skipped";
-    timestamp?: string;
 }
 
 interface ThinkingViewProps {
@@ -15,36 +14,72 @@ interface ThinkingViewProps {
     className?: string;
 }
 
-const STAGE_MESSAGES: Record<string, string> = {
-    ingestion: "Listening to your data...",
-    type_identifier: "Identifying data patterns and structure...",
-    scanner: "Scanning for quality signals...",
-    interpreter: "Interpreting schema and relationships...",
-    validator: "Validating data sufficiency...",
-    overseer: "Defining analytical scope...",
-    regression: "Computing statistical relationships...",
-    sentry: "Checking for anomalies and outliers...",
-    personas: "Modeling behavioral patterns...",
-    fabricator: "Assembling evidence chains...",
-    expositor: "Constructing narrative...",
+// Four-Stage Reasoning: Detailed progressive messages per agent
+const STAGE_MESSAGES: Record<string, string[]> = {
+    ingestion: [
+        "Listening to your data...",
+    ],
+    type_identifier: [
+        "Overseer: Establishing Task Contract...",
+        "Defining scope boundaries to ensure relevance...",
+    ],
+    scanner: [
+        "Sentry: Scanning dataset structure...",
+        "Validating schema integrity...",
+    ],
+    interpreter: [
+        "Sentry: Interpreting field relationships...",
+        "Mapping data semantics...",
+    ],
+    validator: [
+        "Sentry: Running validation checks...",
+        "Assessing data quality and completeness...",
+    ],
+    overseer: [
+        "Overseer: Locking analytical scope...",
+        "Preventing scope drift and hallucinations...",
+    ],
+    regression: [
+        "Analyst Core: Isolating signal from noise...",
+        "Testing correlations against context...",
+        "Computing confidence intervals for key findings...",
+    ],
+    sentry: [
+        "Sentry: Checking for anomalies and outliers...",
+        "Validating statistical assumptions...",
+    ],
+    personas: [
+        "Analyst Core: Modeling behavioral patterns...",
+        "Segmenting user cohorts...",
+    ],
+    fabricator: [
+        "Fabricator: Constructing evidence-backed narrative...",
+        "Verifying traceability links...",
+        "Finalizing the Insight Canvas...",
+    ],
+    expositor: [
+        "Fabricator: Weaving findings into story...",
+        "Ensuring Context → Finding → Why it matters structure...",
+    ],
 };
 
 const AGENT_LABELS: Record<string, string> = {
     ingestion: "Ingestion",
-    type_identifier: "Type Identifier",
-    scanner: "Scanner",
-    interpreter: "Schema Interpreter",
+    type_identifier: "Overseer",
+    scanner: "Sentry",
+    interpreter: "Sentry",
     validator: "Sentry",
     overseer: "Overseer",
     regression: "Analyst Core",
     sentry: "Sentry",
-    personas: "Persona Engine",
+    personas: "Analyst Core",
     fabricator: "Fabricator",
-    expositor: "Expositor",
+    expositor: "Fabricator",
 };
 
 export function ThinkingView({ currentStep, stepsCompleted = [], className }: ThinkingViewProps) {
     const [visibleStages, setVisibleStages] = useState<ThinkingStage[]>([]);
+    const [activeMessageIndex, setActiveMessageIndex] = useState(0);
     const [typingIndex, setTypingIndex] = useState(0);
 
     useEffect(() => {
@@ -61,29 +96,44 @@ export function ThinkingView({ currentStep, stepsCompleted = [], className }: Th
             return {
                 id,
                 agent: AGENT_LABELS[id] || id,
-                message: STAGE_MESSAGES[id] || "Processing...",
+                messages: STAGE_MESSAGES[id] || ["Processing..."],
                 status,
             };
         });
 
         setVisibleStages(stages);
+
+        // Reset message index when step changes
+        if (currentStep) {
+            setActiveMessageIndex(0);
+            setTypingIndex(0);
+        }
     }, [currentStep, stepsCompleted]);
 
-    // Typing animation for active stage
+    // Progressive message display with typing animation - READING PACE (60ms)
     useEffect(() => {
         if (!currentStep) return;
 
         const activeStage = visibleStages.find((s) => s.status === "active");
         if (!activeStage) return;
 
-        const message = activeStage.message;
-        if (typingIndex < message.length) {
+        const currentMessage = activeStage.messages[activeMessageIndex];
+        if (!currentMessage) return;
+
+        if (typingIndex < currentMessage.length) {
             const timer = setTimeout(() => {
                 setTypingIndex(typingIndex + 1);
-            }, 30);
+            }, 60); // Reading pace: 60ms per character (calm confidence)
+            return () => clearTimeout(timer);
+        } else if (activeMessageIndex < activeStage.messages.length - 1) {
+            // Move to next message after a pause
+            const timer = setTimeout(() => {
+                setActiveMessageIndex(activeMessageIndex + 1);
+                setTypingIndex(0);
+            }, 800); // 800ms pause between messages
             return () => clearTimeout(timer);
         }
-    }, [typingIndex, currentStep, visibleStages]);
+    }, [typingIndex, activeMessageIndex, currentStep, visibleStages]);
 
     return (
         <div className={cn("w-full max-w-4xl mx-auto", className)}>
@@ -99,55 +149,57 @@ export function ThinkingView({ currentStep, stepsCompleted = [], className }: Th
                 </span>
             </div>
 
-            {/* Terminal Body */}
+            {/* Terminal Body - The Cognitive Stream */}
             <div className="bg-[hsl(var(--lab-charcoal))] border-x border-b border-[hsl(var(--lab-border))] rounded-b-lg p-6 min-h-[400px] font-[family-name:var(--font-lab)] text-sm">
                 <div className="space-y-3">
-                    {visibleStages.map((stage, index) => (
-                        <div
-                            key={stage.id}
-                            className={cn(
-                                "flex items-start gap-3 transition-all duration-300",
-                                stage.status === "pending" && "opacity-30",
-                                stage.status === "active" && "opacity-100",
-                                stage.status === "complete" && "opacity-60",
-                                stage.status === "skipped" && "opacity-40 line-through"
-                            )}
-                            style={{
-                                animationDelay: `${index * 50}ms`,
-                            }}
-                        >
-                            {/* Status Indicator */}
-                            <div className="flex-shrink-0 mt-1">
-                                {stage.status === "complete" && (
-                                    <span className="text-[hsl(var(--lab-signal))]">✓</span>
-                                )}
-                                {stage.status === "active" && (
-                                    <span className="text-[hsl(var(--lab-signal))] animate-pulse">●</span>
-                                )}
-                                {stage.status === "pending" && (
-                                    <span className="text-[hsl(var(--lab-silver))]">○</span>
-                                )}
-                                {stage.status === "skipped" && (
-                                    <span className="text-[hsl(var(--lab-silver))]">−</span>
-                                )}
-                            </div>
+                    {visibleStages.map((stage, stageIndex) => (
+                        <div key={stage.id}>
+                            {stage.messages.map((message, msgIndex) => {
+                                const isActive = stage.status === "active" && msgIndex === activeMessageIndex;
+                                const isCompleted = stage.status === "complete" || (stage.status === "active" && msgIndex < activeMessageIndex);
+                                const isPending = stage.status === "pending" || (stage.status === "active" && msgIndex > activeMessageIndex);
 
-                            {/* Agent and Message */}
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-[hsl(var(--lab-signal))] font-medium">
-                                        [{stage.agent}]
-                                    </span>
-                                    <span className="text-[hsl(var(--lab-silver))]">
-                                        {stage.status === "active"
-                                            ? stage.message.substring(0, typingIndex)
-                                            : stage.message}
-                                        {stage.status === "active" && typingIndex < stage.message.length && (
-                                            <span className="inline-block w-2 h-4 bg-[hsl(var(--lab-signal))] ml-1 animate-pulse" />
+                                return (
+                                    <div
+                                        key={`${stage.id}-${msgIndex}`}
+                                        className={cn(
+                                            "flex items-start gap-3 transition-all duration-400",
+                                            isPending && "opacity-30",
+                                            isActive && "opacity-100",
+                                            isCompleted && "opacity-60",
+                                            stage.status === "skipped" && "opacity-40 line-through"
                                         )}
-                                    </span>
-                                </div>
-                            </div>
+                                    >
+                                        {/* Status Indicator */}
+                                        <div className="flex-shrink-0 mt-1">
+                                            {isCompleted && (
+                                                <span className="text-[hsl(var(--lab-signal))]">✓</span>
+                                            )}
+                                            {isActive && (
+                                                <span className="text-[hsl(var(--lab-signal))] animate-pulse">●</span>
+                                            )}
+                                            {isPending && (
+                                                <span className="text-[hsl(var(--lab-silver))]">○</span>
+                                            )}
+                                            {stage.status === "skipped" && (
+                                                <span className="text-[hsl(var(--lab-silver))]">−</span>
+                                            )}
+                                        </div>
+
+                                        {/* Message with typing animation */}
+                                        <div className="flex-1 min-w-0">
+                                            <span className="text-[hsl(var(--lab-silver))]">
+                                                {isActive
+                                                    ? message.substring(0, typingIndex)
+                                                    : message}
+                                                {isActive && typingIndex < message.length && (
+                                                    <span className="inline-block w-2 h-4 bg-[hsl(var(--lab-signal))] ml-1 animate-pulse" />
+                                                )}
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     ))}
                 </div>
