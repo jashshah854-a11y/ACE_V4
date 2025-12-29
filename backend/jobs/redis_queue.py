@@ -28,8 +28,21 @@ class RedisJobQueue:
         Args:
             redis_url: Redis connection URL (defaults to REDIS_URL env var)
         """
-        url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
-        self.redis = redis.from_url(url, decode_responses=True)
+        url = redis_url or os.getenv("REDIS_URL")
+        
+        if not url:
+            raise ValueError(
+                "REDIS_URL environment variable not set. "
+                "Please configure Redis service in Railway and link it to this service."
+            )
+        
+        print(f"[RedisQueue] Connecting to Redis...")
+        
+        try:
+            self.redis = redis.from_url(url, decode_responses=True, socket_connect_timeout=5)
+        except Exception as e:
+            print(f"[RedisQueue] Failed to create Redis client: {e}")
+            raise
         
         # Redis keys
         self.queue_key = "ace:jobs:queue"
@@ -38,9 +51,13 @@ class RedisJobQueue:
         # Test connection
         try:
             self.redis.ping()
-            print(f"[RedisQueue] Connected to Redis")
+            print(f"[RedisQueue] Connected to Redis successfully")
         except redis.ConnectionError as e:
             print(f"[RedisQueue] Failed to connect to Redis: {e}")
+            print(f"[RedisQueue] Redis URL: {url[:20]}...")  # Print first 20 chars for debugging
+            raise
+        except Exception as e:
+            print(f"[RedisQueue] Unexpected error during Redis ping: {e}")
             raise
     
     def enqueue(self, file_path: str, run_config: Optional[dict] = None) -> str:
