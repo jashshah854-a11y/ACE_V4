@@ -11,6 +11,7 @@ import sys
 import json
 import uuid
 import re
+import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -29,14 +30,12 @@ from core.config import settings
 from core.task_contract import parse_task_intent, TaskIntentValidationError
 import pandas as pd
 
-# Initialize Redis queue
-try:
-    job_queue = RedisJobQueue()
-    print("[API] Redis queue initialized")
-except Exception as e:
-    print(f"[API] Warning: Failed to initialize Redis queue: {e}")
-    print("[API] Make sure REDIS_URL environment variable is set")
-    job_queue = None
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("ace.api")
+
+# Global Redis queue instance (initialized on startup)
+job_queue: Optional[RedisJobQueue] = None
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -45,6 +44,43 @@ app = FastAPI(
     description="Universal Autonomous Cognitive Entity Engine API",
     version="3.0.0"
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Secure CORS middleware configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
+)
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize Redis queue on application startup."""
+    global job_queue
+    
+    logger.info("[API] Starting application...")
+    
+    try:
+        redis_url = os.getenv("REDIS_URL")
+        if not redis_url:
+            logger.error("[API] REDIS_URL environment variable not set!")
+            logger.error("[API] Job queue will not be available")
+            return
+        
+        logger.info(f"[API] Initializing Redis queue (URL: {redis_url[:25]}...)")
+        job_queue = RedisJobQueue(redis_url)
+        logger.info("[API] ✅ Redis queue initialized successfully")
+        
+    except Exception as e:
+        logger.exception("[API] ❌ CRITICAL: Failed to initialize Redis queue")
+        logger.error(f"[API] Error: {e}")
+        logger.error("[API] Job queue will not be available - /run endpoint will return 503")
+        # Don't raise - let app start but /run will return 503
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -260,6 +296,35 @@ async def health_check():
         "service": "ACE V3 API",
         "checks": checks
     }
+
+
+@app.get("/debug/redis", tags=["System"])
+async def debug_redis():
+    """Debug endpoint to check Redis connectivity."""
+    try:
+        redis_url = os.getenv("REDIS_URL")
+        has_queue = job_queue is not None
+        
+        result = {
+            "redis_url_set": bool(redis_url),
+            "redis_url_prefix": redis_url[:25] if redis_url else None,
+            "queue_initialized": has_queue,
+        }
+        
+        if job_queue:
+            try:
+                # Test Redis connection
+                job_queue.redis.ping()
+                result["redis_ping"] = "success"
+                result["queue_length"] = job_queue.get_queue_length()
+            except Exception as e:
+                result["redis_ping"] = f"failed: {str(e)}"
+        
+        return result
+        
+    except Exception as e:
+        logger.exception("[API] Redis debug failed")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 class RunResponse(BaseModel):
