@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from "react";
+import { API_BASE } from "@/lib/api-client";
 
 export interface TaskContractSnapshot {
   primary_question?: string;

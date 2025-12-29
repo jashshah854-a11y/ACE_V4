@@ -16,6 +16,7 @@ import rehypeHighlight from "rehype-highlight";
 import { useTaskContext } from "@/context/TaskContext";
 import { LimitationBanner } from "./LimitationBanner";
 import { ScopeLockModal } from "./ScopeLockModal";
+import { API_BASE } from "@/lib/api-client";
 
 // Refactored viewer components
 import {
@@ -72,23 +73,23 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
   const [confidenceMode, setConfidenceMode] = useState<"strict" | "exploratory">("exploratory");
   const [showAllActions, setShowAllActions] = useState(false);
   const [showAllPersonas, setShowAllPersonas] = useState(false);
-  
+
   // Evidence state
   const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
   const [evidenceSample, setEvidenceSample] = useState<any[] | null>(null);
   const [evidenceLoading, setEvidenceLoading] = useState(false);
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
-  
+
   // Diff state
   const [diffRunId, setDiffRunId] = useState("");
   const [diffData, setDiffData] = useState<any | null>(null);
   const [diffLoading, setDiffLoading] = useState(false);
   const [diffError, setDiffError] = useState<string | null>(null);
-  
+
   // PPTX state
   const [pptxLoading, setPptxLoading] = useState(false);
   const [pptxError, setPptxError] = useState<string | null>(null);
-  
+
   const { toast } = useToast();
   const { updateTaskContract } = useTaskContext();
   const { data: governedReport } = useGovernedReport(runId);
@@ -204,8 +205,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
     setDiffError(null);
     setDiffData(null);
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || "http://localhost:8001";
-      const res = await fetch(`${apiUrl}/runs/${runId}/diff/${diffRunId}`);
+      const res = await fetch(`${API_BASE}/runs/${runId}/diff/${diffRunId}`);
       if (!res.ok) throw new Error(`Diff failed: ${res.statusText}`);
       const json = await res.json();
       setDiffData(json);
@@ -224,8 +224,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
     setPptxLoading(true);
     setPptxError(null);
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || "http://localhost:8001";
-      const res = await fetch(`${apiUrl}/runs/${runId}/pptx`);
+      const res = await fetch(`${API_BASE}/runs/${runId}/pptx`);
       if (!res.ok) throw new Error(`PPTX export failed: ${res.statusText}`);
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -267,9 +266,8 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
     setEvidenceError(null);
     setEvidenceSample(null);
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || "http://localhost:8001";
       const qs = new URLSearchParams({ rows: "5", ...(evidenceId ? { evidence_id: evidenceId } : {}) });
-      const res = await fetch(`${apiUrl}/runs/${runId}/evidence/sample?${qs.toString()}`);
+      const res = await fetch(`${API_BASE}/runs/${runId}/evidence/sample?${qs.toString()}`);
       if (!res.ok) throw new Error(`Failed to fetch evidence sample: ${res.statusText}`);
       const json = await res.json();
       setEvidenceSample(json.rows || []);
@@ -290,82 +288,82 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
   const accordionSections = [
     ...(reportData.limitationsMode
       ? [
-          {
-            id: "limitations",
-            title: "Insights Suppressed",
-            icon: SECTION_ICONS.anomalies,
-            defaultOpen: true,
-            content: (
-              <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30">
-                Insights are in limitations mode due to confidence/contract/validation gates.
-              </div>
-            ),
-          },
-        ]
+        {
+          id: "limitations",
+          title: "Insights Suppressed",
+          icon: SECTION_ICONS.anomalies,
+          defaultOpen: true,
+          content: (
+            <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30">
+              Insights are in limitations mode due to confidence/contract/validation gates.
+            </div>
+          ),
+        },
+      ]
       : []),
 
     ...(reportData.uncertaintySignals.length > 0
       ? [
-          {
-            id: "uncertainty",
-            title: "Uncertainty & Conflicts",
-            icon: SECTION_ICONS.anomalies,
-            defaultOpen: true,
-            content: (
-              <ul className="list-disc pl-5 text-sm space-y-2 text-foreground">
-                {reportData.uncertaintySignals.map((sig, idx) => (
-                  <li key={idx}>{sig}</li>
-                ))}
-              </ul>
-            ),
-          },
-        ]
+        {
+          id: "uncertainty",
+          title: "Uncertainty & Conflicts",
+          icon: SECTION_ICONS.anomalies,
+          defaultOpen: true,
+          content: (
+            <ul className="list-disc pl-5 text-sm space-y-2 text-foreground">
+              {reportData.uncertaintySignals.map((sig, idx) => (
+                <li key={idx}>{sig}</li>
+              ))}
+            </ul>
+          ),
+        },
+      ]
       : []),
 
     ...(reportData.anomalies && reportData.anomalies.count > 0
       ? [
-          {
-            id: "anomalies-alert",
-            title: `⚠️ ${reportData.anomalies.count} Anomalies Detected`,
-            icon: SECTION_ICONS.anomalies,
-            defaultOpen: true,
-            content: (
-              <AnomalyBanner
-                count={reportData.anomalies.count}
-                totalRecords={reportData.metrics.recordsProcessed}
-                topDrivers={reportData.anomalies.drivers?.map((d) => `${d.field}: ${Math.round(d.score * 100)}%`) || []}
-              />
-            ),
-          },
-        ]
+        {
+          id: "anomalies-alert",
+          title: `⚠️ ${reportData.anomalies.count} Anomalies Detected`,
+          icon: SECTION_ICONS.anomalies,
+          defaultOpen: true,
+          content: (
+            <AnomalyBanner
+              count={reportData.anomalies.count}
+              totalRecords={reportData.metrics.recordsProcessed}
+              topDrivers={reportData.anomalies.drivers?.map((d) => `${d.field}: ${Math.round(d.score * 100)}%`) || []}
+            />
+          ),
+        },
+      ]
       : []),
 
     ...(reportData.shouldEmitInsights && reportData.measurableSegments.length > 0
       ? [
-          {
-            id: "segments",
-            title: "Customer Segments & Actions",
-            icon: SECTION_ICONS.summary,
-            defaultOpen: true,
-            content: (
-              <div className="space-y-8">
-                <SegmentOverviewTable segments={reportData.measurableSegments} totalCustomers={reportData.metrics.recordsProcessed || 10000} />
-                <SegmentComparison segments={reportData.measurableSegments} totalCustomers={reportData.metrics.recordsProcessed || 10000} />
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {reportData.measurableSegments.map((seg, idx) => (
-                    <Card key={idx} className="p-3">
-                      <div className="text-sm font-semibold">Segment {idx + 1}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {seg.subtitle || "Data-driven segment"}
-                        {seg.mean && ` • mean=${Math.round(seg.mean)}`}
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+        {
+          id: "segments",
+          title: "Customer Segments & Actions",
+          icon: SECTION_ICONS.summary,
+          defaultOpen: true,
+          content: (
+            <div className="space-y-8">
+              <SegmentOverviewTable segments={reportData.measurableSegments} totalCustomers={reportData.metrics.recordsProcessed || 10000} />
+              <SegmentComparison segments={reportData.measurableSegments} totalCustomers={reportData.metrics.recordsProcessed || 10000} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                {reportData.measurableSegments.map((seg, idx) => (
+                  <Card key={idx} className="p-3">
+                    <div className="text-sm font-semibold">Segment {idx + 1}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {seg.subtitle || "Data-driven segment"}
+                      {seg.mean && ` • mean=${Math.round(seg.mean)}`}
+                    </div>
+                  </Card>
+                ))}
               </div>
-            ),
-          },
-        ]
+            </div>
+          ),
+        },
+      ]
       : []),
 
     {
@@ -387,27 +385,27 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
               },
               ...(reportData.shouldEmitInsights && reportData.clusterMetrics?.silhouetteScore
                 ? [
-                    {
-                      name: "Clustering Quality (Silhouette Score)",
-                      value: reportData.clusterMetrics.silhouetteScore.toFixed(2),
-                      interpretation: interpretSilhouetteScore(reportData.clusterMetrics.silhouetteScore),
-                      benchmark: "Good: 0.51-0.70, Excellent: 0.71+",
-                      confidenceLevel: reportData.clusterMetrics.silhouetteScore >= 0.51 ? ("high" as const) : ("medium" as const),
-                      helpText: "Indicates how well-separated your customer segments are",
-                    },
-                  ]
+                  {
+                    name: "Clustering Quality (Silhouette Score)",
+                    value: reportData.clusterMetrics.silhouetteScore.toFixed(2),
+                    interpretation: interpretSilhouetteScore(reportData.clusterMetrics.silhouetteScore),
+                    benchmark: "Good: 0.51-0.70, Excellent: 0.71+",
+                    confidenceLevel: reportData.clusterMetrics.silhouetteScore >= 0.51 ? ("high" as const) : ("medium" as const),
+                    helpText: "Indicates how well-separated your customer segments are",
+                  },
+                ]
                 : []),
               ...(reportData.shouldEmitInsights && reportData.outcomeModel?.r2Score !== undefined
                 ? [
-                    {
-                      name: "Model Fit (R² Score)",
-                      value: reportData.outcomeModel.r2Score.toFixed(3),
-                      interpretation: interpretR2Score(reportData.outcomeModel.r2Score),
-                      benchmark: "Good: 0.50-0.89, Excellent: 0.90+",
-                      confidenceLevel: reportData.outcomeModel.r2Score >= 0.5 ? ("high" as const) : reportData.outcomeModel.r2Score >= 0 ? ("medium" as const) : ("low" as const),
-                      helpText: "Shows how well the model explains variance in your target outcome",
-                    },
-                  ]
+                  {
+                    name: "Model Fit (R² Score)",
+                    value: reportData.outcomeModel.r2Score.toFixed(3),
+                    interpretation: interpretR2Score(reportData.outcomeModel.r2Score),
+                    benchmark: "Good: 0.50-0.89, Excellent: 0.90+",
+                    confidenceLevel: reportData.outcomeModel.r2Score >= 0.5 ? ("high" as const) : reportData.outcomeModel.r2Score >= 0 ? ("medium" as const) : ("low" as const),
+                    helpText: "Shows how well the model explains variance in your target outcome",
+                  },
+                ]
                 : []),
             ]}
           />
@@ -481,26 +479,26 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
 
     ...(reportData.shouldEmitInsights && reportData.personas.length > 0
       ? [
-          {
-            id: "personas",
-            title: "Customer Personas",
-            icon: SECTION_ICONS.insights,
-            defaultOpen: false,
-            content: <PersonaSection personas={reportData.personas} />,
-          },
-        ]
+        {
+          id: "personas",
+          title: "Customer Personas",
+          icon: SECTION_ICONS.insights,
+          defaultOpen: false,
+          content: <PersonaSection personas={reportData.personas} />,
+        },
+      ]
       : []),
 
     ...(reportData.shouldEmitInsights && reportData.outcomeModel
       ? [
-          {
-            id: "outcome-model",
-            title: "Outcome Modeling",
-            icon: SECTION_ICONS.anomalies,
-            defaultOpen: false,
-            content: <OutcomeModelSection data={reportData.outcomeModel} />,
-          },
-        ]
+        {
+          id: "outcome-model",
+          title: "Outcome Modeling",
+          icon: SECTION_ICONS.anomalies,
+          defaultOpen: false,
+          content: <OutcomeModelSection data={reportData.outcomeModel} />,
+        },
+      ]
       : []),
 
     {
@@ -533,192 +531,192 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className={cn("w-full", className)}>
       <ReportDataValidator data={reportData} content={content || ""}>
         <WideReportLayout
-        hero={
-          <>
-            {missingIdentityFields?.length ? (
-              <LimitationBanner
-                message="Dataset identity card flagged missing fields. Gaps are surfaced before visuals."
-                fields={missingIdentityFields}
-                severity="warning"
-                className="mb-4"
+          hero={
+            <>
+              {missingIdentityFields?.length ? (
+                <LimitationBanner
+                  message="Dataset identity card flagged missing fields. Gaps are surfaced before visuals."
+                  fields={missingIdentityFields}
+                  severity="warning"
+                  className="mb-4"
+                />
+              ) : null}
+              <SafeModeBanner safeMode={reportData.safeMode} />
+              <ReportHero
+                runId={runId}
+                safeMode={reportData.safeMode}
+                confidenceLevel={reportData.confidenceValue}
+                taskContractSummary={reportData.taskContractSummary}
+                decisionSummary={reportData.decisionSummary}
+                primaryQuestion={reportData.primaryQuestion}
+                runContext={reportData.runContext}
+                narrativeSummary={reportData.narrativeSummary}
               />
-            ) : null}
-            <SafeModeBanner safeMode={reportData.safeMode} />
-            <ReportHero
-              runId={runId}
-              safeMode={reportData.safeMode}
-              confidenceLevel={reportData.confidenceValue}
-              taskContractSummary={reportData.taskContractSummary}
-              decisionSummary={reportData.decisionSummary}
-              primaryQuestion={reportData.primaryQuestion}
-              runContext={reportData.runContext}
-              narrativeSummary={reportData.narrativeSummary}
-            />
-            <ReportMetricsStrip
-              confidenceValue={reportData.confidenceValue}
-              dataQualityValue={reportData.dataQualityValue}
-              clusterMetrics={reportData.clusterMetrics}
-            />
-            <HighlightsRibbon highlights={reportData.highlights} />
-            <IdentityTrustStrip
-              identityStats={reportData.identityStats}
-              confidenceLevel={reportData.metrics.confidenceLevel}
-              uncertaintySignals={reportData.uncertaintySignals}
-            />
-            <DiagnosticsCard
-              confidenceMode={confidenceMode}
-              safeModeReasons={safeModeReasons}
-              decisionSummary={reportData.decisionSummary}
-              taskContractSummary={reportData.taskContractSummary}
-              hasTimeField={reportData.hasTimeField}
-              onConfidenceModeChange={setConfidenceMode}
-            />
+              <ReportMetricsStrip
+                confidenceValue={reportData.confidenceValue}
+                dataQualityValue={reportData.dataQualityValue}
+                clusterMetrics={reportData.clusterMetrics}
+              />
+              <HighlightsRibbon highlights={reportData.highlights} />
+              <IdentityTrustStrip
+                identityStats={reportData.identityStats}
+                confidenceLevel={reportData.metrics.confidenceLevel}
+                uncertaintySignals={reportData.uncertaintySignals}
+              />
+              <DiagnosticsCard
+                confidenceMode={confidenceMode}
+                safeModeReasons={safeModeReasons}
+                decisionSummary={reportData.decisionSummary}
+                taskContractSummary={reportData.taskContractSummary}
+                hasTimeField={reportData.hasTimeField}
+                onConfidenceModeChange={setConfidenceMode}
+              />
 
-            {reportData.shouldEmitInsights ? (
-              <>
-                <HeroInsightPanel {...reportData.heroInsight} />
-                {reportData.mondayActions.length > 0 && !reportData.hideActions && (
-                  <MondayMorningActions actions={reportData.mondayActions} className="mt-8" />
-                )}
-              </>
-            ) : (
-              <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-6 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30">
-                Insights are suppressed due to confidence/contract/validation gates.
-              </div>
-            )}
+              {reportData.shouldEmitInsights ? (
+                <>
+                  <HeroInsightPanel {...reportData.heroInsight} />
+                  {reportData.mondayActions.length > 0 && !reportData.hideActions && (
+                    <MondayMorningActions actions={reportData.mondayActions} className="mt-8" />
+                  )}
+                </>
+              ) : (
+                <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-6 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30">
+                  Insights are suppressed due to confidence/contract/validation gates.
+                </div>
+              )}
 
-            {(reportData.decisionSummary || reportData.taskContractSummary) && (
-              <div className="mt-6 rounded-lg border bg-muted/30 p-4 space-y-2">
-                <div className="text-sm font-semibold text-foreground">Decision & Task Contract</div>
-                {reportData.decisionSummary && <p className="text-sm text-foreground whitespace-pre-line">{reportData.decisionSummary}</p>}
-                {reportData.taskContractSummary && <p className="text-xs text-muted-foreground whitespace-pre-line">{reportData.taskContractSummary}</p>}
-              </div>
-            )}
+              {(reportData.decisionSummary || reportData.taskContractSummary) && (
+                <div className="mt-6 rounded-lg border bg-muted/30 p-4 space-y-2">
+                  <div className="text-sm font-semibold text-foreground">Decision & Task Contract</div>
+                  {reportData.decisionSummary && <p className="text-sm text-foreground whitespace-pre-line">{reportData.decisionSummary}</p>}
+                  {reportData.taskContractSummary && <p className="text-xs text-muted-foreground whitespace-pre-line">{reportData.taskContractSummary}</p>}
+                </div>
+              )}
 
-            <ReportToolbar
-              runId={runId}
-              copied={copied}
-              diffRunId={diffRunId}
-              diffLoading={diffLoading}
-              pptxLoading={pptxLoading}
-              onCopy={handleCopy}
-              onDownloadMarkdown={handleDownloadMarkdown}
-              onRunDiff={handleRunDiff}
-              onPptxExport={handlePptxExport}
-              onDiffRunIdChange={setDiffRunId}
-            />
+              <ReportToolbar
+                runId={runId}
+                copied={copied}
+                diffRunId={diffRunId}
+                diffLoading={diffLoading}
+                pptxLoading={pptxLoading}
+                onCopy={handleCopy}
+                onDownloadMarkdown={handleDownloadMarkdown}
+                onRunDiff={handleRunDiff}
+                onPptxExport={handlePptxExport}
+                onDiffRunIdChange={setDiffRunId}
+              />
 
-            {(diffError || diffData) && (
-              <Card className="mb-4 p-3">
-                <div className="text-sm font-semibold mb-1">Run Diff</div>
-                {diffError && <div className="text-xs text-red-600">{diffError}</div>}
-                {diffData && (
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <div>Confidence delta: {diffData.confidence_delta ?? "n/a"}</div>
-                    <div>New segments: {(diffData.new_segments || []).length}</div>
-                    <div>Removed segments: {(diffData.removed_segments || []).length}</div>
-                    <div>New personas: {(diffData.new_personas || []).length}</div>
-                    <div>Evidence changes: {(diffData.evidence_changes || []).length}</div>
-                  </div>
-                )}
+              {(diffError || diffData) && (
+                <Card className="mb-4 p-3">
+                  <div className="text-sm font-semibold mb-1">Run Diff</div>
+                  {diffError && <div className="text-xs text-red-600">{diffError}</div>}
+                  {diffData && (
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <div>Confidence delta: {diffData.confidence_delta ?? "n/a"}</div>
+                      <div>New segments: {(diffData.new_segments || []).length}</div>
+                      <div>Removed segments: {(diffData.removed_segments || []).length}</div>
+                      <div>New personas: {(diffData.new_personas || []).length}</div>
+                      <div>Evidence changes: {(diffData.evidence_changes || []).length}</div>
+                    </div>
+                  )}
+                </Card>
+              )}
+
+              {pptxError && (
+                <Card className="mb-4 p-3">
+                  <div className="text-sm font-semibold text-red-700">PPTX Export</div>
+                  <div className="text-xs text-red-700">{pptxError}</div>
+                </Card>
+              )}
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                <ExecutiveBrief
+                  purpose={reportData.executiveBrief.purpose}
+                  keyFindings={reportData.executiveBrief.keyFindings}
+                  confidenceVerdict={reportData.executiveBrief.confidenceVerdict}
+                  recommendedAction={reportData.executiveBrief.recommendedAction}
+                />
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+                <TechnicalDetailsSection metrics={reportData.metrics} runId={runId} />
+              </motion.div>
+            </>
+          }
+          mainContent={
+            <div id="report-content" className="space-y-8">
+              <ReportInsightStoryboard
+                sections={reportData.filteredSections}
+                confidenceLevel={reportData.confidenceValue}
+                safeMode={reportData.safeMode}
+                hideActions={reportData.hideActions}
+                getSectionLimitations={getSectionLimitations}
+                onInspectEvidence={handleFetchEvidenceSample}
+              />
+
+              <ReportAccordion sections={accordionSections} />
+
+              <ReportEvidenceInspector
+                evidenceSections={reportData.evidenceSections}
+                evidencePreview={evidencePreview}
+                evidenceSample={evidenceSample}
+                evidenceLoading={evidenceLoading}
+                evidenceError={evidenceError}
+                onFetchEvidenceSample={handleFetchEvidenceSample}
+                onCloseEvidence={handleCloseEvidence}
+              />
+
+              <ReportActionsPanel
+                actions={reportData.mondayActions}
+                hideActions={reportData.hideActions}
+                confidenceLevel={reportData.confidenceValue}
+                showAllActions={showAllActions}
+                onToggleShowAll={() => setShowAllActions((v) => !v)}
+              />
+
+              <ReportPersonasPanel
+                segments={reportData.measurableSegments}
+                showAllPersonas={showAllPersonas}
+                onToggleShowAll={() => setShowAllPersonas((v) => !v)}
+              />
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                <ReportConclusion
+                  shouldUseFor={reportData.conclusion.shouldUseFor}
+                  shouldNotUseFor={reportData.conclusion.shouldNotUseFor}
+                  nextStep={reportData.conclusion.nextStep}
+                />
+              </motion.div>
+            </div>
+          }
+          intelligenceRail={
+            <div className="space-y-4">
+              <Card className="p-3 space-y-1">
+                <div className="text-xs uppercase text-muted-foreground">Traceability</div>
+                {runId && <div className="text-sm">Run ID: {runId}</div>}
+                <div className="text-sm">Safe Mode: {reportData.safeMode ? "Yes" : "No"}</div>
+                <div className="text-xs text-muted-foreground">Engine: ACE Viewer</div>
               </Card>
-            )}
-
-            {pptxError && (
-              <Card className="mb-4 p-3">
-                <div className="text-sm font-semibold text-red-700">PPTX Export</div>
-                <div className="text-xs text-red-700">{pptxError}</div>
-              </Card>
-            )}
-
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-              <ExecutiveBrief
-                purpose={reportData.executiveBrief.purpose}
-                keyFindings={reportData.executiveBrief.keyFindings}
-                confidenceVerdict={reportData.executiveBrief.confidenceVerdict}
-                recommendedAction={reportData.executiveBrief.recommendedAction}
+              <TableOfContents sections={reportData.evidenceSections} />
+              <EvidencePanel records={evidenceRegistry} />
+              <IntelligenceRail
+                keyTakeaways={reportData.keyTakeaways}
+                criticalIssues={{
+                  count: reportData.metrics.anomalyCount || 0,
+                  items: reportData.metrics.anomalyCount ? [`${reportData.metrics.anomalyCount} anomalies detected`] : [],
+                }}
+                quickStats={{
+                  dataQuality: reportData.metrics.dataQualityScore,
+                  confidence: reportData.metrics.confidenceLevel,
+                  anomalies: reportData.metrics.anomalyCount,
+                }}
+                sections={reportData.evidenceSections.map((s) => ({ id: s.id, title: s.title }))}
+                currentSection={currentSection}
+                readingProgress={readingProgress}
+                onSectionClick={handleSectionClick}
               />
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
-              <TechnicalDetailsSection metrics={reportData.metrics} runId={runId} />
-            </motion.div>
-          </>
-        }
-        mainContent={
-          <div id="report-content" className="space-y-8">
-            <ReportInsightStoryboard
-              sections={reportData.filteredSections}
-              confidenceLevel={reportData.confidenceValue}
-              safeMode={reportData.safeMode}
-              hideActions={reportData.hideActions}
-              getSectionLimitations={getSectionLimitations}
-              onInspectEvidence={handleFetchEvidenceSample}
-            />
-
-            <ReportAccordion sections={accordionSections} />
-
-            <ReportEvidenceInspector
-              evidenceSections={reportData.evidenceSections}
-              evidencePreview={evidencePreview}
-              evidenceSample={evidenceSample}
-              evidenceLoading={evidenceLoading}
-              evidenceError={evidenceError}
-              onFetchEvidenceSample={handleFetchEvidenceSample}
-              onCloseEvidence={handleCloseEvidence}
-            />
-
-            <ReportActionsPanel
-              actions={reportData.mondayActions}
-              hideActions={reportData.hideActions}
-              confidenceLevel={reportData.confidenceValue}
-              showAllActions={showAllActions}
-              onToggleShowAll={() => setShowAllActions((v) => !v)}
-            />
-
-            <ReportPersonasPanel
-              segments={reportData.measurableSegments}
-              showAllPersonas={showAllPersonas}
-              onToggleShowAll={() => setShowAllPersonas((v) => !v)}
-            />
-
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-              <ReportConclusion
-                shouldUseFor={reportData.conclusion.shouldUseFor}
-                shouldNotUseFor={reportData.conclusion.shouldNotUseFor}
-                nextStep={reportData.conclusion.nextStep}
-              />
-            </motion.div>
-          </div>
-        }
-        intelligenceRail={
-          <div className="space-y-4">
-            <Card className="p-3 space-y-1">
-              <div className="text-xs uppercase text-muted-foreground">Traceability</div>
-              {runId && <div className="text-sm">Run ID: {runId}</div>}
-              <div className="text-sm">Safe Mode: {reportData.safeMode ? "Yes" : "No"}</div>
-              <div className="text-xs text-muted-foreground">Engine: ACE Viewer</div>
-            </Card>
-            <TableOfContents sections={reportData.evidenceSections} />
-            <EvidencePanel records={evidenceRegistry} />
-            <IntelligenceRail
-              keyTakeaways={reportData.keyTakeaways}
-              criticalIssues={{
-                count: reportData.metrics.anomalyCount || 0,
-                items: reportData.metrics.anomalyCount ? [`${reportData.metrics.anomalyCount} anomalies detected`] : [],
-              }}
-              quickStats={{
-                dataQuality: reportData.metrics.dataQualityScore,
-                confidence: reportData.metrics.confidenceLevel,
-                anomalies: reportData.metrics.anomalyCount,
-              }}
-              sections={reportData.evidenceSections.map((s) => ({ id: s.id, title: s.title }))}
-              currentSection={currentSection}
-              readingProgress={readingProgress}
-              onSectionClick={handleSectionClick}
-            />
-          </div>
-        }
+            </div>
+          }
         />
       </ReportDataValidator>
       <ScopeLockModal

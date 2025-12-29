@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API_BASE } from "@/lib/api-client";
 
 interface EvidenceRecord {
   evidence_id: string;
