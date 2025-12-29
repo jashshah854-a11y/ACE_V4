@@ -14,6 +14,7 @@ joblib
 openai
 python-dotenv
 altair
+redis>=5.0.0
 # Columnar IO and fast ingest
 duckdb
 polars

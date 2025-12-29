@@ -22,12 +22,21 @@ if os.name == 'nt':
     os.environ["LOKY_MAX_CPU_COUNT"] = str(os.cpu_count())
 
 from core.state_manager import StateManager
-from jobs.queue import enqueue, get_job
+from jobs.redis_queue import RedisJobQueue  # Changed from SQLite queue
 from jobs.models import JobStatus
 from jobs.progress import ProgressTracker
 from core.config import settings
 from core.task_contract import parse_task_intent, TaskIntentValidationError
 import pandas as pd
+
+# Initialize Redis queue
+try:
+    job_queue = RedisJobQueue()
+    print("[API] Redis queue initialized")
+except Exception as e:
+    print(f"[API] Warning: Failed to initialize Redis queue: {e}")
+    print("[API] Make sure REDIS_URL environment variable is set")
+    job_queue = None
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -320,7 +329,10 @@ async def trigger_run(
 
                 buffer.write(chunk)
 
-        run_id = enqueue(str(file_path), run_config=run_config)
+        if not job_queue:
+            raise HTTPException(status_code=503, detail="Job queue unavailable")
+
+        run_id = job_queue.enqueue(str(file_path), run_config=run_config)
 
         return {
             "run_id": run_id,
@@ -336,7 +348,11 @@ async def trigger_run(
 @app.get("/runs/{run_id}/progress", tags=["Execution"])
 async def get_progress(run_id: str):
     _validate_run_id(run_id)
-    job = get_job(run_id)
+    
+    if not job_queue:
+        raise HTTPException(status_code=503, detail="Job queue unavailable")
+    
+    job = job_queue.get_job(run_id)
     if not job:
         raise HTTPException(status_code=404, detail="Run not found")
 
