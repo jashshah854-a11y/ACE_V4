@@ -49,7 +49,7 @@ export function useEnhancedAnalytics(runId?: string) {
       setError(null);
 
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+        const apiUrl = import.meta.env.VITE_ACE_API_BASE_URL || 'http://localhost:8001';
         const response = await fetch(`${apiUrl}/runs/${runId}/enhanced-analytics`);
 
         if (!response.ok) {
