@@ -583,17 +583,32 @@ def main_loop(run_path):
             
             allowed, reason = is_agent_allowed(current, data_type)
             if not allowed:
-                state["status"] = "complete_with_errors"
-                state["next_step"] = "blocked"
-                update_history(state, f"Agent '{current}' not allowed for data type '{data_type}'", returncode=1)
+                # Skip this agent and continue to next step instead of blocking
+                step_state = state["steps"].setdefault(current, {"name": current})
+                step_state["status"] = "skipped"
+                step_state["message"] = reason
+                state["steps"][current] = step_state
+                state["steps_completed"].append(current)
+                update_history(state, f"Agent '{current}' not allowed for data type '{data_type}': {reason}", returncode=0)
                 from core.data_guardrails import append_limitation
-                append_limitation(state_mgr, reason, agent=current, severity="error")
+                append_limitation(state_mgr, reason, agent=current, severity="warning")
+                
+                # Advance to next step
+                idx = PIPELINE_SEQUENCE.index(current)
+                if idx + 1 < len(PIPELINE_SEQUENCE):
+                    state["current_step"] = PIPELINE_SEQUENCE[idx + 1]
+                    state["next_step"] = PIPELINE_SEQUENCE[idx + 1]
+                else:
+                    state["status"] = "complete_with_errors"
+                    state["next_step"] = "complete"
+                    update_history(state, "Pipeline completed with skipped agents")
                 save_state(state_path, state)
                 continue
             
             # Store domain constraints for agent awareness
             constraints = get_domain_constraints(data_type)
             state_mgr.write(f"{current}_domain_constraints", constraints)
+
         
         # Guard: if validation failed, stop pipeline unless force_run is set or insights are allowed
         if current == "validator":
