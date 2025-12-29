@@ -104,8 +104,13 @@ class RedisJobQueue:
         Returns:
             Job object or None if timeout
         """
+        # Check queue length before blocking
+        queue_len = self.redis.llen(self.queue_key)
+        print(f"[RedisQueue] Polling queue (length: {queue_len})...")
+        
         result = self.redis.brpop(self.queue_key, timeout=timeout)
         if not result:
+            print(f"[RedisQueue] No job available (timeout after {timeout}s)")
             return None
         
         _, job_json = result
