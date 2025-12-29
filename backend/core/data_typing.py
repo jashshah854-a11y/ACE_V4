@@ -69,7 +69,7 @@ DATA_TYPE_CATALOG: Dict[str, Dict[str, List[str]]] = {
         ],
         "values": ["ms", "timeout", "500", "502", "503"],
     },
-    "correlation_output": {
+    "correlation_outputs": {
         "columns": ["correlation", "rho", "coef", "p_value", "variable_a", "variable_b"],
         "values": ["pearson", "spearman", "kendall"],
     },
