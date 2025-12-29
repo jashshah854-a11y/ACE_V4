@@ -8,8 +8,14 @@ env/
 tests/
 test_*.py
 *.csv
-*.json
 *.pkl
+# Exclude data JSON files but allow package.json and package-lock.json
+data/**/*.json
+backend/**/*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!vite.config.ts
 data/
 *.log
 *.md
@@ -20,3 +26,4 @@ backend/ui/
 backend/scripts/
 backend/check_*.py
 backend/test_*.py
+
