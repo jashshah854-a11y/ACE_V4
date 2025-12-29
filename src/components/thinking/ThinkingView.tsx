@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { CognitiveStreamMessage, DynamicFeedback, SafeModeTrigger } from "./CognitiveStreamMessage";
 
 interface ThinkingStage {
     id: string;
@@ -8,9 +9,17 @@ interface ThinkingStage {
     status: "pending" | "active" | "complete" | "skipped";
 }
 
+interface ValidationIssue {
+    type: "sparse_data" | "missing_column" | "low_quality" | "other";
+    message: string;
+    context?: string;
+}
+
 interface ThinkingViewProps {
     currentStep?: string;
     stepsCompleted?: string[];
+    validationIssues?: ValidationIssue[];
+    confidenceScore?: number;
     className?: string;
 }
 
@@ -77,10 +86,24 @@ const AGENT_LABELS: Record<string, string> = {
     expositor: "Fabricator",
 };
 
-export function ThinkingView({ currentStep, stepsCompleted = [], className }: ThinkingViewProps) {
+export function ThinkingView({
+    currentStep,
+    stepsCompleted = [],
+    validationIssues = [],
+    confidenceScore,
+    className
+}: ThinkingViewProps) {
     const [visibleStages, setVisibleStages] = useState<ThinkingStage[]>([]);
     const [activeMessageIndex, setActiveMessageIndex] = useState(0);
     const [typingIndex, setTypingIndex] = useState(0);
+    const [showSafeModeWarning, setShowSafeModeWarning] = useState(false);
+
+    // Check if Safe Mode should be triggered
+    useEffect(() => {
+        if (confidenceScore !== undefined && confidenceScore < 0.3 && currentStep === "regression") {
+            setShowSafeModeWarning(true);
+        }
+    }, [confidenceScore, currentStep]);
 
     useEffect(() => {
         const allStages = Object.keys(STAGE_MESSAGES);
@@ -153,53 +176,49 @@ export function ThinkingView({ currentStep, stepsCompleted = [], className }: Th
             <div className="bg-[hsl(var(--lab-charcoal))] border-x border-b border-[hsl(var(--lab-border))] rounded-b-lg p-6 min-h-[400px] font-[family-name:var(--font-lab)] text-sm">
                 <div className="space-y-3">
                     {visibleStages.map((stage, stageIndex) => (
-                        <div key={stage.id}>
+                        <div key={stage.id} className="space-y-2">
                             {stage.messages.map((message, msgIndex) => {
                                 const isActive = stage.status === "active" && msgIndex === activeMessageIndex;
                                 const isCompleted = stage.status === "complete" || (stage.status === "active" && msgIndex < activeMessageIndex);
                                 const isPending = stage.status === "pending" || (stage.status === "active" && msgIndex > activeMessageIndex);
 
                                 return (
-                                    <div
+                                    <CognitiveStreamMessage
                                         key={`${stage.id}-${msgIndex}`}
-                                        className={cn(
-                                            "flex items-start gap-3 transition-all duration-400",
-                                            isPending && "opacity-30",
-                                            isActive && "opacity-100",
-                                            isCompleted && "opacity-60",
-                                            stage.status === "skipped" && "opacity-40 line-through"
-                                        )}
+                                        isActive={isActive}
+                                        isCompleted={isCompleted}
+                                        isPending={isPending}
+                                        className={stage.status === "skipped" ? "line-through" : ""}
                                     >
-                                        {/* Status Indicator */}
-                                        <div className="flex-shrink-0 mt-1">
-                                            {isCompleted && (
-                                                <span className="text-[hsl(var(--lab-signal))]">✓</span>
-                                            )}
-                                            {isActive && (
-                                                <span className="text-[hsl(var(--lab-signal))] animate-pulse">●</span>
-                                            )}
-                                            {isPending && (
-                                                <span className="text-[hsl(var(--lab-silver))]">○</span>
-                                            )}
-                                            {stage.status === "skipped" && (
-                                                <span className="text-[hsl(var(--lab-silver))]">−</span>
-                                            )}
-                                        </div>
-
-                                        {/* Message with typing animation */}
-                                        <div className="flex-1 min-w-0">
-                                            <span className="text-[hsl(var(--lab-silver))]">
-                                                {isActive
-                                                    ? message.substring(0, typingIndex)
-                                                    : message}
-                                                {isActive && typingIndex < message.length && (
-                                                    <span className="inline-block w-2 h-4 bg-[hsl(var(--lab-signal))] ml-1 animate-pulse" />
-                                                )}
-                                            </span>
-                                        </div>
-                                    </div>
+                                        {isActive
+                                            ? message.substring(0, typingIndex)
+                                            : message}
+                                        {isActive && typingIndex < message.length && (
+                                            <span className="inline-block w-2 h-4 bg-[hsl(var(--lab-signal))] ml-1 animate-pulse" />
+                                        )}
+                                    </CognitiveStreamMessage>
                                 );
                             })}
+
+                            {/* Dynamic Feedback: Show validation issues after Sentry stages */}
+                            {(stage.id === "validator" || stage.id === "scanner") && stage.status === "complete" && validationIssues.length > 0 && (
+                                <div className="ml-6 space-y-2">
+                                    {validationIssues.map((issue, idx) => (
+                                        <DynamicFeedback
+                                            key={idx}
+                                            issue={issue.message}
+                                            context={issue.context}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Safe Mode Trigger: Show after Analyst Core if confidence is low */}
+                            {stage.id === "regression" && stage.status === "complete" && showSafeModeWarning && (
+                                <div className="ml-6">
+                                    <SafeModeTrigger reason="Showing associations only, not causal relationships." />
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
