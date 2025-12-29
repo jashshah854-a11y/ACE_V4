@@ -352,15 +352,19 @@ async def trigger_run(
     Accepts: CSV, JSON, XLSX, XLS, Parquet files (max configured size)
     Rate limit: 10 requests per minute
     """
+    logger.info(f"[API] POST /run - File: {file.filename}")
+    
     try:
         intent_payload = parse_task_intent(task_intent)
     except TaskIntentValidationError as exc:
         detail = str(exc)
         if getattr(exc, 'reformulation', None):
             detail = f"{detail} {exc.reformulation}"
+        logger.error(f"[API] Task intent validation failed: {detail}")
         raise HTTPException(status_code=400, detail=detail)
 
     if _parse_bool(confidence_acknowledged) is not True:
+        logger.error("[API] Confidence not acknowledged")
         raise HTTPException(status_code=400, detail="Please acknowledge the confidence threshold (>=80%).")
 
     _validate_upload(file)
@@ -378,6 +382,7 @@ async def trigger_run(
     run_config["confidence_acknowledged"] = True
 
     try:
+        logger.info(f"[API] Saving file to {file_path}")
         bytes_written = 0
         with open(file_path, "wb") as buffer:
             chunk_size = 1024 * 1024
@@ -387,6 +392,7 @@ async def trigger_run(
                 if bytes_written > settings.max_upload_size_bytes:
                     buffer.close()
                     file_path.unlink(missing_ok=True)
+                    logger.error(f"[API] File too large: {bytes_written} bytes")
                     raise HTTPException(
                         status_code=413,
                         detail=f"File too large (max {settings.max_upload_size_mb}MB)"
@@ -394,10 +400,15 @@ async def trigger_run(
 
                 buffer.write(chunk)
 
+        logger.info(f"[API] File saved: {bytes_written} bytes")
+        
         if not job_queue:
+            logger.error("[API] Job queue not initialized!")
             raise HTTPException(status_code=503, detail="Job queue unavailable")
 
+        logger.info(f"[API] Enqueueing job...")
         run_id = job_queue.enqueue(str(file_path), run_config=run_config)
+        logger.info(f"[API] Job {run_id} enqueued successfully")
 
         return {
             "run_id": run_id,
@@ -407,6 +418,8 @@ async def trigger_run(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception(f"[API] Unexpected error in /run endpoint")
+        logger.error(f"[API] Error details: {type(e).__name__}: {str(e)}")
         file_path.unlink(missing_ok=True)
         raise HTTPException(status_code=500, detail=f"ACE Execution Failed: {str(e)}")
 
