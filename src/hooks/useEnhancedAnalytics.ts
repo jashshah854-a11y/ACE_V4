@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_BASE } from '@/lib/api-client';
 
 interface EnhancedAnalytics {
   correlation_analysis?: {
@@ -49,8 +50,7 @@ export function useEnhancedAnalytics(runId?: string) {
       setError(null);
 
       try {
-        const apiUrl = import.meta.env.VITE_ACE_API_BASE_URL || 'http://localhost:8001';
-        const response = await fetch(`${apiUrl}/runs/${runId}/enhanced-analytics`);
+        const response = await fetch(`${API_BASE}/runs/${runId}/enhanced-analytics`);
 
         if (!response.ok) {
           if (response.status === 404) {
