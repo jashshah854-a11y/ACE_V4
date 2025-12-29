@@ -27,6 +27,5 @@ RUN mkdir -p backend/data/runs
 ENV PORT=8080
 EXPOSE 8080
 
-# Start FastAPI server
-CMD uvicorn backend.api.server:app --host 0.0.0.0 --port $PORT
-
+# Start FastAPI server (shell form for variable expansion)
+CMD sh -c "uvicorn backend.api.server:app --host 0.0.0.0 --port ${PORT:-8080}"
