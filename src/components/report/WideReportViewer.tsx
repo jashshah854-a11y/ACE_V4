@@ -16,6 +16,7 @@ import rehypeHighlight from "rehype-highlight";
 import { useTaskContext } from "@/context/TaskContext";
 import { LimitationBanner } from "./LimitationBanner";
 import { ScopeLockModal } from "./ScopeLockModal";
+import { API_BASE } from "@/lib/api-client";
 
 // Refactored viewer components
 import {
@@ -204,8 +205,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
     setDiffError(null);
     setDiffData(null);
     try {
-      const apiUrl = (import.meta as any).env?.VITE_ACE_API_BASE_URL || "http://localhost:8001";
-      const res = await fetch(`${apiUrl}/runs/${runId}/diff/${diffRunId}`);
+      const res = await fetch(`${API_BASE}/runs/${runId}/diff/${diffRunId}`);
       if (!res.ok) throw new Error(`Diff failed: ${res.statusText}`);
       const json = await res.json();
       setDiffData(json);
@@ -224,8 +224,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
     setPptxLoading(true);
     setPptxError(null);
     try {
-      const apiUrl = (import.meta as any).env?.VITE_ACE_API_BASE_URL || "http://localhost:8001";
-      const res = await fetch(`${apiUrl}/runs/${runId}/pptx`);
+      const res = await fetch(`${API_BASE}/runs/${runId}/pptx`);
       if (!res.ok) throw new Error(`PPTX export failed: ${res.statusText}`);
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -267,9 +266,8 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
     setEvidenceError(null);
     setEvidenceSample(null);
     try {
-      const apiUrl = (import.meta as any).env?.VITE_ACE_API_BASE_URL || "http://localhost:8001";
       const qs = new URLSearchParams({ rows: "5", ...(evidenceId ? { evidence_id: evidenceId } : {}) });
-      const res = await fetch(`${apiUrl}/runs/${runId}/evidence/sample?${qs.toString()}`);
+      const res = await fetch(`${API_BASE}/runs/${runId}/evidence/sample?${qs.toString()}`);
       if (!res.ok) throw new Error(`Failed to fetch evidence sample: ${res.statusText}`);
       const json = await res.json();
       setEvidenceSample(json.rows || []);
