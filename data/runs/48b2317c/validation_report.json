@@ -1,0 +1,64 @@
+{
+  "allow_insights": true,
+  "mode": "insight",
+  "blocked_agents": [],
+  "checks": {
+    "sample_size": {
+      "ok": true,
+      "detail": "Rows=100, min_required=50"
+    },
+    "target_variable": {
+      "ok": true,
+      "detail": "avg_order_value"
+    },
+    "variance": {
+      "ok": true,
+      "detail": "usable=100, std=54.2188 unique=100"
+    },
+    "time_coverage": {
+      "ok": false,
+      "detail": "No time field with coverage"
+    },
+    "causal_context": {
+      "ok": false,
+      "detail": "No causal design detected; analysis treated as observational."
+    }
+  },
+  "row_count": 100,
+  "column_count": 10,
+  "target_column": "avg_order_value",
+  "confidence": 0.7,
+  "confidence_label": "moderate",
+  "notes": [
+    "Time coverage unknown; treat any trend/forecasting as exploratory only.",
+    "Dataset treated as observational; causal claims are prohibited."
+  ],
+  "data_type": {
+    "primary_type": "marketing_performance",
+    "secondary_types": [
+      "time_series_trend",
+      "risk_compliance",
+      "operational_supply_chain",
+      "mixed_structured_unstructured"
+    ],
+    "confidence": 0.2,
+    "confidence_label": "exploratory",
+    "signals": {
+      "marketing_performance": [
+        "columns:spend"
+      ],
+      "time_series_trend": [
+        "columns:month"
+      ],
+      "operational_supply_chain": [
+        "values:po"
+      ],
+      "risk_compliance": [
+        "columns:risk"
+      ]
+    },
+    "notes": [
+      "Primary type inferred from column/value signals (score=2)."
+    ]
+  }
+}

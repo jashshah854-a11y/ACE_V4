@@ -595,21 +595,28 @@ def main_loop(run_path):
             constraints = get_domain_constraints(data_type)
             state_mgr.write(f"{current}_domain_constraints", constraints)
         
-        # Guard: if validation failed, stop pipeline unless force_run is set
+        # Guard: if validation failed, stop pipeline unless force_run is set or insights are allowed
         if current == "validator":
-            validation = StateManager(run_path).read("data_validation_report") or {}
+            validation = StateManager(run_path).read("validation_report") or {}
             run_cfg = StateManager(run_path).read("run_config") or {}
             force_run = bool(run_cfg.get("force_run"))
-            if not validation.get("can_proceed", False) and not force_run:
+            allow_insights = validation.get("allow_insights", False)
+            
+            # Block only if validation failed AND insights are not allowed AND force_run is not set
+            if not validation.get("can_proceed", False) and not allow_insights and not force_run:
                 state["status"] = "complete_with_errors"
                 state["next_step"] = "blocked"
                 update_history(state, "Data validation failed; pipeline blocked", returncode=1)
                 save_state(state_path, state)
                 _record_final_status(run_path, "complete_with_errors", reason="data_validation_block")
-                # Don't break - allow pipeline to continue but mark as limited
-                continue
+                continue  # Block the pipeline and skip to next iteration
+            elif not validation.get("can_proceed", False) and allow_insights:
+                # Allow continuation with warnings when insights are allowed
+                update_history(state, "Validation warnings present but insights allowed; continuing", returncode=0)
+                # Pipeline will advance normally to next step
             elif not validation.get("can_proceed", False) and force_run:
                 update_history(state, "Validation failed but continuing due to force_run", returncode=0)
+                # Pipeline will advance normally to next step
 
         if success:
             idx = PIPELINE_SEQUENCE.index(current)

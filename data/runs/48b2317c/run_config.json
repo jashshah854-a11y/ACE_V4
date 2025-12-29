@@ -1,0 +1,13 @@
+{
+  "task_intent": {
+    "primary_question": "Segment ecommerce customers based on purchasing behavior patterns to enable targeted marketing campaigns",
+    "decision_context": "Planning quarterly marketing budget allocation across customer segments to maximize revenue growth and customer lifetime value metrics",
+    "required_output_type": "descriptive",
+    "success_criteria": "Distinct customer segments with clear behavioral characteristics and actionable targeting recommendations",
+    "constraints": "Focus on purchase frequency and monetary value patterns excluding promotional campaign data",
+    "confidence_threshold": 70.0,
+    "out_of_scope_dimensions": []
+  },
+  "confidence_threshold": 70.0,
+  "confidence_acknowledged": true
+}

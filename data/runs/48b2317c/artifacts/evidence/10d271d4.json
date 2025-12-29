@@ -1,0 +1,24 @@
+{
+  "columns_used": [
+    "customer_id",
+    "age",
+    "tenure_months",
+    "monthly_spend",
+    "total_purchases",
+    "avg_order_value",
+    "days_since_last_purchase",
+    "churn_risk",
+    "risk_score"
+  ],
+  "computation_method": "KMeans (k=3)",
+  "result_statistic": {
+    "silhouette": 0.30558161366238756,
+    "k": 3
+  },
+  "confidence_level": 65.27908068311939,
+  "data_confidence": null,
+  "limitations": [],
+  "evidence_id": "10d271d4",
+  "timestamp": "2025-12-27T22:53:51.871837",
+  "scope": "clustering"
+}

@@ -1,0 +1,22 @@
+{
+  "ingestion": {
+    "status": "completed",
+    "source": "data\\cbd30e124b58438f99188fc0d63a15b1.csv",
+    "file_mb": 0.0,
+    "fast_mode": false,
+    "sample_rows": 100,
+    "dtype_columns": 10,
+    "manifest": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\48b2317c\\artifacts\\dataset_manifest.json"
+  },
+  "job": {
+    "status": "failed",
+    "run_id": "48b2317c",
+    "error": "cannot access local variable 'append_limitation' where it is not associated with a value"
+  },
+  "type_identifier": {
+    "status": "completed"
+  },
+  "validator": {
+    "status": "completed"
+  }
+}
