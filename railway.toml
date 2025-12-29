@@ -1,8 +1,8 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "pip install -r requirements.txt && bun install && bun run build"
 
 [deploy]
-startCommand = "uvicorn backend.api.server:app --host 0.0.0.0 --port $PORT & python -m backend.jobs.worker"
+startCommand = "sh -c 'uvicorn backend.api.server:app --host 0.0.0.0 --port ${PORT:-8001} & python -m backend.jobs.worker & wait'"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
+
