@@ -20,7 +20,8 @@ export function useModelArtifacts(runId?: string) {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`${API_BASE}/runs/${runId}/model-artifacts`);
+        const apiUrl = import.meta.env.VITE_ACE_API_BASE_URL || "http://localhost:8001";
+        const res = await fetch(`${apiUrl}/runs/${runId}/model-artifacts`);
         if (!res.ok) {
           if (res.status === 404) {
             setData(null);
