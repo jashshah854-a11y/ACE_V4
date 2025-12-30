@@ -12,6 +12,7 @@ import json
 import uuid
 import re
 import logging
+import threading
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -60,7 +61,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize Redis queue on application startup."""
+    """Initialize Redis queue and start background worker on application startup."""
     global job_queue
     
     logger.info("[API] Starting application...")
@@ -76,24 +77,18 @@ async def startup_event():
         job_queue = RedisJobQueue(redis_url)
         logger.info("[API] ✅ Redis queue initialized successfully")
         
+        # Start background worker thread
+        logger.info("[API] Starting background worker thread...")
+        from jobs.worker import worker_loop
+        worker_thread = threading.Thread(target=worker_loop, daemon=True, name="ACE-Worker")
+        worker_thread.start()
+        logger.info("[API] ✅ Background worker started successfully")
+        
     except Exception as e:
-        logger.exception("[API] ❌ CRITICAL: Failed to initialize Redis queue")
+        logger.exception("[API] ❌ CRITICAL: Failed to initialize Redis queue or worker")
         logger.error(f"[API] Error: {e}")
         logger.error("[API] Job queue will not be available - /run endpoint will return 503")
         # Don't raise - let app start but /run will return 503
-
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-# Secure CORS middleware configuration
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "Accept"],
-)
-
 
 
 # Ensure data directory exists
@@ -422,39 +417,6 @@ async def trigger_run(
         logger.error(f"[API] Error details: {type(e).__name__}: {str(e)}")
         file_path.unlink(missing_ok=True)
         raise HTTPException(status_code=500, detail=f"ACE Execution Failed: {str(e)}")
-
-@app.get("/runs/{run_id}/state", tags=["Execution"])
-async def get_run_state(run_id: str):
-    """Get the current state of a run from Redis queue."""
-    _validate_run_id(run_id)
-    
-    if not job_queue:
-        raise HTTPException(status_code=503, detail="Job queue unavailable")
-    
-    # Get job from Redis
-    job = job_queue.get_job(run_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Run not found")
-    
-    # If job is completed, try to read orchestrator state file
-    if job.status == JobStatus.COMPLETED and job.run_path:
-        state_file = Path(job.run_path) / "orchestrator_state.json"
-        if state_file.exists():
-            try:
-                with open(state_file, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except Exception as e:
-                logger.error(f"[API] Failed to read state file: {e}")
-    
-    # Return job status from Redis
-    return {
-        "run_id": job.run_id,
-        "status": job.status.value if isinstance(job.status, JobStatus) else job.status,
-        "message": job.message,
-        "run_path": job.run_path,
-        "created_at": getattr(job, "created_at", None),
-        "updated_at": getattr(job, "updated_at", None),
-    }
 
 @app.get("/runs/{run_id}/progress", tags=["Execution"])
 async def get_progress(run_id: str):
