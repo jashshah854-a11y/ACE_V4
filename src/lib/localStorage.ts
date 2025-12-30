@@ -86,9 +86,13 @@ export function getRecentReports(): RecentReport[] {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (!stored) return [];
-
-        const reports = JSON.parse(stored);
-        return Array.isArray(reports) ? reports : [];
+        try {
+            const reports = JSON.parse(stored);
+            return Array.isArray(reports) ? reports : [];
+        } catch (e) {
+            console.error('Failed to parse stored reports:', e);
+            return [];
+        }
     } catch (error) {
         console.warn('Failed to load recent reports:', error);
         return [];
