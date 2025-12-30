@@ -1,5 +1,4 @@
-﻿import { useEffect, useState } from "react";
-import { API_BASE } from "@/lib/api-client";
+﻿import { useRemoteArtifact } from "@/hooks/useRemoteArtifact";
 
 export interface TaskContractSnapshot {
   primary_question?: string;
@@ -45,58 +44,6 @@ export function describeTaskContract(contract?: TaskContractSnapshot) {
 }
 
 export function useGovernedReport(runId?: string) {
-  const [data, setData] = useState<GovernedReport | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!runId) {
-      setData(null);
-      return;
-    }
-
-    let cancelled = false;
-    const fetchGovernedReport = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const apiUrl = import.meta.env.VITE_ACE_API_BASE_URL || "http://localhost:8001";
-        const response = await fetch(`${apiUrl}/runs/${runId}/artifacts/governed_report`);
-        if (!response.ok) {
-          if (response.status === 404) {
-            if (!cancelled) setData(null);
-            return;
-          }
-          throw new Error(`Failed to fetch governed report: ${response.statusText}`);
-        }
-        try {
-          const payload: GovernedReport = await response.json();
-          if (!cancelled) {
-            setData(payload);
-          }
-        } catch (parseError) {
-          if (!cancelled) {
-            console.error('Failed to parse governed report JSON:', parseError);
-            setData(null);
-          }
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Unknown error");
-          setData(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchGovernedReport();
-    return () => {
-      cancelled = true;
-    };
-  }, [runId]);
-
+  const { data, loading, error } = useRemoteArtifact<GovernedReport>(runId, "artifacts/governed_report");
   return { data, loading, error };
 }
