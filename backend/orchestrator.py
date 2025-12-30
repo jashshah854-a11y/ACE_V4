@@ -49,10 +49,22 @@ def load_state(state_path):
         return json.load(f)
 
 def save_state(state_path, state):
-    """Persist orchestrator state with safe writes."""
+    """Persist orchestrator state with atomic safe writes."""
     state["updated_at"] = iso_now()
-    with open(state_path, "w", encoding="utf-8") as f:
-        json.dump(state, f, indent=2)
+    tmp_path = f"{state_path}.tmp"
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, state_path)
+    except Exception as e:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+        print(f"[ERROR] Failed to save state atomically: {e}")
 
 
 def iso_now():
