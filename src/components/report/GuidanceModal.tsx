@@ -5,7 +5,7 @@
  * user-friendly guidance with actionable remediation steps.
  */
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { GuidanceEntry } from "@/lib/guidanceMap";
@@ -25,6 +25,8 @@ export function GuidanceModal({
     guidanceEntries,
     onUploadNewDataset
 }: GuidanceModalProps) {
+
+    if (!isOpen) return null;
 
     // Get icon component from lucide-react based on icon name
     const getIcon = (iconName: string) => {
@@ -65,18 +67,36 @@ export function GuidanceModal({
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-white dark:bg-gray-900">
-                <DialogHeader>
-                    <DialogTitle className="text-2xl font-serif text-gray-900 dark:text-gray-100">
-                        How to Unlock Predictive Modeling
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-600 dark:text-gary-400">
-                        Resolve these data quality issues to enable advanced analytics and forecasting.
-                    </DialogDescription>
-                </DialogHeader>
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={onClose}
+        >
+            <Card
+                className="w-full max-w-2xl max-h-[80vh] overflow-y-auto bg-white dark:bg-gray-900 mx-4"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="sticky top-0 bg-white dark:bg-gray-900 border-b p-6 flex items-start justify-between">
+                    <div>
+                        <h2 className="text-2xl font-serif font-bold text-gray-900 dark:text-gray-100">
+                            How to Unlock Predictive Modeling
+                        </h2>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            Resolve these data quality issues to enable advanced analytics and forecasting.
+                        </p>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={onClose}
+                        className="h-8 w-8 p-0 shrink-0"
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
 
-                <div className="space-y-4 py-4">
+                {/* Content */}
+                <div className="space-y-4 p-6">
                     {guidanceEntries.length === 0 ? (
                         <Alert className="border-blue-200 bg-blue-50">
                             <Info className="h-4 w-4" />
@@ -130,7 +150,8 @@ export function GuidanceModal({
                     )}
                 </div>
 
-                <DialogFooter className="flex-col sm:flex-row gap-2">
+                {/* Footer */}
+                <div className="sticky bottom-0 bg-white dark:bg-gray-900 border-t p-6 flex flex-col sm:flex-row gap-2 justify-end">
                     <Button variant="outline" onClick={onClose}>
                         Close
                     </Button>
@@ -139,8 +160,8 @@ export function GuidanceModal({
                             Upload New Dataset
                         </Button>
                     )}
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                </div>
+            </Card>
+        </div>
     );
 }
