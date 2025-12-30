@@ -28,18 +28,18 @@ export function InsightCanvasLayout({
                 className={cn(
                     "grid transition-all duration-300 ease-in-out mx-auto max-w-[1920px]",
                     isRightRailOpen
-                        ? "grid-cols-[280px_1fr_400px]" // Right rail expanded
-                        : "grid-cols-[280px_1fr_0px]"   // Right rail collapsed
+                        ? "grid-cols-[240px_1fr_auto]" // Right rail expands automatically based on content width
+                        : "grid-cols-[240px_1fr_auto]" // Right rail stays in grid but width is zeroed
                 )}
             >
                 {/* Zone 1: Navigation Rail - Sticky */}
-                <aside className="sticky top-[60px] h-[calc(100vh-60px)] z-30 hidden md:block">
+                <aside className="sticky top-[60px] h-[calc(100vh-60px)] z-30 hidden md:block w-[240px]">
                     {navigation}
                 </aside>
 
                 {/* Zone 2: Main Content - Scrollable */}
                 <main className="min-w-0 px-8 py-10">
-                    <div className="max-w-4xl mx-auto space-y-12">
+                    <div className="mx-auto space-y-12 prose-narrative">
                         {mainContent}
                     </div>
                 </main>
@@ -48,7 +48,7 @@ export function InsightCanvasLayout({
                 <aside
                     className={cn(
                         "sticky top-[60px] h-[calc(100vh-60px)] border-l bg-muted/20 overflow-hidden transition-all duration-300",
-                        !isRightRailOpen && "w-0 border-l-0 opacity-0"
+                        isRightRailOpen ? "w-[400px] opacity-100" : "w-0 border-l-0 opacity-0"
                     )}
                 >
                     <div className="h-full w-[400px] overflow-y-auto p-4">
