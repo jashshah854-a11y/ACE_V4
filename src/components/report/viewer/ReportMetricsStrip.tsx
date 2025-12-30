@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SignalWidget } from "@/components/trust/SignalWidget";
+import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
 
 interface ReportMetricsStripProps {
   confidenceValue: number | undefined;
@@ -14,10 +15,6 @@ export function ReportMetricsStrip({ confidenceValue, dataQualityValue, clusterM
       {/* Confidence bar */}
       <Card className="p-3">
         <div className="flex items-center justify-between">
-          import {AnimatedCounter} from "@/components/ui/AnimatedCounter";
-
-          // ... inside ReportMetricsStrip ...
-
           <div>
             <div className="text-xs uppercase text-muted-foreground">Confidence</div>
             <div className="text-lg font-semibold text-teal-600 dark:text-teal-400">
