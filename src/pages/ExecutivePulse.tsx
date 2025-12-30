@@ -27,6 +27,8 @@ import { SignalWidget } from "@/components/trust/SignalWidget";
 import { LimitationBanner } from "@/components/report/LimitationBanner";
 import { SafeIcon } from "@/components/ui/SafeIcon";
 import { useSimulation } from "@/context/SimulationContext";
+import { cn } from "@/lib/utils";
+import { translateTechnicalTerm } from "@/lib/dataTypeMapping";
 
 const ExecutivePulse = () => {
   const [searchParams] = useSearchParams();
@@ -35,6 +37,7 @@ const ExecutivePulse = () => {
   const initialRun = searchParams.get("run") || recentReports[0]?.runId || "";
   const [runInput, setRunInput] = useState(initialRun);
   const [activeRun, setActiveRun] = useState(initialRun);
+  const [viewMode, setViewMode] = useState<"story" | "technical">("story");
 
   const reportQuery = useQuery({
     queryKey: ["executive-pulse", activeRun],
@@ -240,19 +243,56 @@ const ExecutivePulse = () => {
             <EmptyState />
           ) : (
             <>
-              {/* Status Bar */}
-              <div className="flex flex-wrap items-center gap-3 text-sm">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <span>Run:</span>
-                  <code className="font-mono text-xs bg-muted px-2 py-1 rounded">{activeRun.slice(0, 8)}</code>
+              {/* Status Bar & Controls */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2 border-b border-border/40 mb-6">
+
+                {/* View Toggles */}
+                <div className="bg-muted/50 p-1 rounded-lg inline-flex self-start sm:self-auto">
+                  <button
+                    onClick={() => setViewMode("story")}
+                    className={cn(
+                      "px-3 py-1.5 text-sm font-medium rounded-md transition-all",
+                      viewMode === "story"
+                        ? "bg-background shadow-sm text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Story
+                  </button>
+                  <button
+                    onClick={() => setViewMode("technical")}
+                    className={cn(
+                      "px-3 py-1.5 text-sm font-medium rounded-md transition-all",
+                      viewMode === "technical"
+                        ? "bg-background shadow-sm text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Technical
+                  </button>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase text-muted-foreground">Report Trust:</span>
-                  <SignalWidget score={(reportData.confidenceValue || 0) / 100} compact={true} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase text-muted-foreground">Quality:</span>
-                  <SignalWidget score={(reportData.dataQualityValue || 0) / 100} compact={true} />
+
+                {/* Metadata Chips - Simplified in Story Mode */}
+                <div className="flex flex-wrap items-center gap-4 text-sm">
+                  {viewMode === "technical" ? (
+                    <>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <span>Run:</span>
+                        <code className="font-mono text-xs bg-muted px-2 py-1 rounded">{activeRun.slice(0, 8)}</code>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs uppercase text-muted-foreground">Report Trust:</span>
+                        <SignalWidget score={(reportData.confidenceValue || 0) / 100} compact={true} />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20">
+                      <Sparkles className="w-3 h-3" />
+                      <span className="text-xs font-medium">
+                        {reportData.confidenceValue && reportData.confidenceValue > 80 ? "Verified Intelligence" : "Preliminary Analysis"}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -285,10 +325,11 @@ const ExecutivePulse = () => {
                         id: section.id || `section-${idx}`,
                         summary: section.title,
                       }}
+                      viewMode={viewMode}
                       visualConfig={{
                         type: idx === 0 ? "spark" : "table",
-                        title: section.title,
-                        description: `Importance ${(section.importance * 100).toFixed(0)}%`,
+                        title: viewMode === "story" ? translateTechnicalTerm(section.title) : section.title,
+                        description: viewMode === "story" ? undefined : `Importance ${(section.importance * 100).toFixed(0)}%`,
                         confidence: reportData.confidenceValue,
                         render: () => (
                           <ReactMarkdown className="text-sm text-muted-foreground line-clamp-6">
@@ -309,9 +350,10 @@ const ExecutivePulse = () => {
                               key={section.id || `appendix-${idx}`}
                               narrativeText={section.content.split("\n").slice(0, 2).join(" ")}
                               evidenceObject={{ id: section.id || `appendix-${idx}`, summary: section.title }}
+                              viewMode={viewMode}
                               visualConfig={{
                                 type: "table",
-                                title: section.title,
+                                title: viewMode === "story" ? translateTechnicalTerm(section.title) : section.title,
                                 description: "Auto-collapsed",
                                 confidence: reportData.confidenceValue,
                                 render: () => (
