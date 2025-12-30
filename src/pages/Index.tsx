@@ -1,34 +1,26 @@
+
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Upload, FileText, Sparkles, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Upload, Sparkles, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { submitRun } from "@/lib/api-client";
+import { submitRun, previewDataset, DatasetIdentity } from "@/lib/api-client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { DatasetIdentityCard } from "@/components/upload/DatasetIdentityCard";
+import { OverseerInterview, TaskContract } from "@/components/upload/OverseerInterview";
+import { SafeModeWarning } from "@/components/upload/SafeModeWarning";
+
+type AnalysisStage = "upload" | "scanning" | "identity" | "contract" | "processing";
 
 const Index = () => {
   const navigate = useNavigate();
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
-  const [taskIntent, setTaskIntent] = useState({
-    primaryQuestion: "",
-    decisionContext: "",
-    requiredOutputType: "diagnostic" as "diagnostic" | "descriptive" | "predictive",
-    successCriteria: "",
-    constraints: "",
-    confidenceThreshold: 80,
-    confidenceAcknowledged: false,
-  });
-
-  // Validation is always true since we allow empty fields (backend will use defaults)
-  const contractAssessment = { valid: true, message: null };
+  const [stage, setStage] = useState<AnalysisStage>("upload");
+  const [identity, setIdentity] = useState<DatasetIdentity | null>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -45,302 +37,268 @@ const Index = () => {
     setIsDragging(false);
     const droppedFile = e.dataTransfer.files[0];
     if (droppedFile) {
-      setFile(droppedFile);
+      handleFileSelect(droppedFile);
     }
   }, []);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      setFile(selectedFile);
+      handleFileSelect(selectedFile);
     }
   };
 
-  const handleAnalyze = async () => {
+  const handleFileSelect = async (selectedFile: File) => {
+    setFile(selectedFile);
+    setStage("scanning");
+
+    try {
+      const result = await previewDataset(selectedFile);
+      setIdentity(result);
+      setStage("identity");
+      toast.success("Dataset Verified", {
+        description: `Sentry scan complete. Verified ${result.row_count} rows.`
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error("Scan Failed", {
+        description: "Could not analyze dataset structure. Please try again."
+      });
+      setStage("upload");
+      setFile(null);
+    }
+  };
+
+  const handleProceedToContract = () => {
+    if (!identity) return;
+    // Check quality score for Safe Mode
+    // If quality is VERY low (< 0.3), maybe reject? For now just warn.
+    setStage("contract");
+  };
+
+  const handleContractSubmit = async (contract: TaskContract) => {
     if (!file) return;
 
-    setIsUploading(true);
+    setStage("processing");
     try {
-      // Use defaults if fields are empty
-      const finalTaskIntent = {
-        primaryQuestion: taskIntent.primaryQuestion.trim() || "Analyze dataset for key insights, anomalies, and trends.",
-        decisionContext: taskIntent.decisionContext.trim() || "General exploratory analysis to understand data distribution and quality.",
-        requiredOutputType: taskIntent.requiredOutputType,
-        successCriteria: taskIntent.successCriteria.trim() || "Clear report identifying main drivers, clusters, and outliers.",
-        constraints: taskIntent.constraints.trim() || "None specific.",
-        confidenceThreshold: taskIntent.confidenceThreshold,
-        confidenceAcknowledged: true, // Auto-acknowledge for frictionless experience
+      // Map TaskContract to TaskIntentPayload expected by API
+      // Note: API expects specific fields. We'll map broadly here.
+      // In a real app we'd strict type this mapping.
+      const taskIntent = {
+        primaryQuestion: contract.primaryQuestion,
+        decisionContext: contract.decisionContext,
+        requiredOutputType: "diagnostic" as const, // Default to diagnostic for now
+        successCriteria: "Derived from user intent",
+        constraints: contract.forbiddenClaims.join(", "),
+        confidenceThreshold: 80,
+        confidenceAcknowledged: true,
       };
 
-      const result = await submitRun(file, finalTaskIntent);
+      const result = await submitRun(file, taskIntent);
 
-      // Save to recent reports with filename for better naming
+      // Save to recent reports
       const { saveRecentReport } = await import("@/lib/localStorage");
       saveRecentReport(result.run_id, undefined, file.name);
 
-      toast.success("Analysis started", {
-        description: "Your document is being analyzed.",
+      toast.success("Mission Started", {
+        description: "The Overseer has authorized this analysis run.",
       });
       navigate(`/pipeline/${result.run_id}`);
     } catch (error) {
-      toast.error("Analysis failed", {
-        description: "There was an error starting the analysis.",
+      toast.error("Mission Aborted", {
+        description: "Failed to submit analysis contract.",
       });
-    } finally {
-      setIsUploading(false);
+      setStage("contract");
     }
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
       <Navbar />
 
       <main className="relative pt-24 pb-16 min-h-screen flex flex-col items-center justify-center">
-        <div className="container px-4 max-w-4xl">
-          {/* Hero */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-12"
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-primary">AI-Powered Data Analysis</span>
-            </div>
-
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4">
-              Discover insights with
-              <span className="text-gradient block mt-2">Meridian Intelligence</span>
-            </h1>
-
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Upload your data files and let our autonomous engine detect anomalies,
-              validate quality, and generate comprehensive intelligence reports.
-            </p>
-          </motion.div>
-
-          {/* Upload Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="glass-card rounded-2xl p-8"
-          >
-            {/* Drop Zone */}
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={cn(
-                "relative border-2 border-dashed rounded-xl p-12 text-center transition-all duration-300",
-                isDragging
-                  ? "border-primary bg-primary/5 scale-[1.02]"
-                  : "border-border/50 hover:border-primary/50 hover:bg-muted/30",
-                file && "border-success bg-success/5",
-              )}
+        <div className="container px-4 max-w-5xl">
+          {/* Hero - Only show in upload stage */}
+          {stage === "upload" && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="text-center mb-12"
             >
-              <input
-                type="file"
-                onChange={handleFileSelect}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                accept=".csv,.json,.xlsx,.xls,.parquet"
-              />
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-teal-500/10 border border-teal-500/20 mb-6">
+                <Sparkles className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                <span className="text-sm font-medium text-teal-700 dark:text-teal-300">Meridian Intelligence Engine</span>
+              </div>
 
-              {file ? (
-                <div className="flex flex-col items-center gap-4">
-                  <div className="w-16 h-16 rounded-2xl bg-success/10 flex items-center justify-center">
-                    <CheckCircle2 className="w-8 h-8 text-success" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">{file.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {(file.size / 1024 / 1024).toFixed(2)} MB · Ready to analyze
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-4">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4 text-slate-900 dark:text-slate-50">
+                Data Intelligence,
+                <span className="block mt-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent">
+                  Autonomously Verified
+                </span>
+              </h1>
+
+              <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+                Upload your data. The Sentry will verify its integrity, and the Overseer will ensure analytical rigor before any code runs.
+              </p>
+            </motion.div>
+          )}
+
+          {/* Main Content Area */}
+          <div className="relative min-h-[400px]">
+            <AnimatePresence mode="wait">
+
+              {/* STAGE 1: UPLOAD */}
+              {stage === "upload" && (
+                <motion.div
+                  key="upload"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="max-w-3xl mx-auto"
+                >
                   <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
                     className={cn(
-                      "w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300",
-                      isDragging ? "gradient-meridian glow-primary" : "bg-muted",
+                      "relative border-2 border-dashed rounded-2xl p-16 text-center transition-all duration-300 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm",
+                      isDragging
+                        ? "border-teal-500 bg-teal-50/50 dark:bg-teal-900/20 scale-[1.02]"
+                        : "border-slate-200 dark:border-slate-800 hover:border-teal-500/30 hover:bg-slate-50/50",
                     )}
                   >
-                    <Upload
-                      className={cn("w-8 h-8 transition-colors", isDragging ? "text-white" : "text-muted-foreground")}
+                    <input
+                      type="file"
+                      onChange={handleFileInput}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      accept=".csv,.json,.xlsx,.xls,.parquet"
                     />
+                    <div className="flex flex-col items-center gap-6">
+                      <div
+                        className={cn(
+                          "w-20 h-20 rounded-3xl flex items-center justify-center transition-all duration-300 shadow-xl shadow-teal-900/5",
+                          isDragging ? "bg-teal-500 text-white" : "bg-white dark:bg-slate-800 text-slate-400"
+                        )}
+                      >
+                        <Upload className="w-8 h-8" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                          Drop your dataset here
+                        </h3>
+                        <p className="text-slate-500">
+                          CSV, Excel, or Parquet supported
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-foreground">Drop your data file here</p>
-                    <p className="text-sm text-muted-foreground">or click to browse · CSV, JSON, Excel, Parquet</p>
-                  </div>
-                </div>
+                </motion.div>
               )}
-            </div>
 
-            {/* Advanced Options Toggle */}
-            <div className="mt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-                className="w-full flex items-center justify-between"
-              >
-                <span className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" />
-                  Advanced Analysis Options
-                  <span className="text-xs text-muted-foreground">(Optional)</span>
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {showAdvancedOptions ? "Hide" : "Show"}
-                </span>
-              </Button>
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                Skip this to run a quick exploratory analysis with smart defaults
-              </p>
-            </div>
-
-            {showAdvancedOptions && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-                className="mt-6 space-y-4"
-              >
-                <div>
-                  <div className="text-sm font-semibold mb-1">
-                    Primary decision question <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
-                  </div>
-                  <Textarea
-                    value={taskIntent.primaryQuestion}
-                    onChange={(e) => setTaskIntent((prev) => ({ ...prev, primaryQuestion: e.target.value }))}
-                    placeholder="Example: Should we expand to the Asian market in Q4?"
-                  />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold mb-1">
-                    Decision context <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
-                  </div>
-                  <Textarea
-                    value={taskIntent.decisionContext}
-                    onChange={(e) => setTaskIntent((prev) => ({ ...prev, decisionContext: e.target.value }))}
-                    placeholder="Describe the business situation, stakeholders, and why the decision matters."
-                  />
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <div className="text-sm font-semibold mb-1">Required output type</div>
-                    <select
-                      value={taskIntent.requiredOutputType}
-                      onChange={(e) => setTaskIntent((prev) => ({ ...prev, requiredOutputType: e.target.value as typeof prev.requiredOutputType }))}
-                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    >
-                      <option value="diagnostic">Diagnostic (root-cause)</option>
-                      <option value="descriptive">Descriptive (data health)</option>
-                      <option value="predictive">Predictive (forward-looking)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold mb-1">Confidence floor (%)</div>
-                    <Input
-                      type="number"
-                      min={60}
-                      max={95}
-                      value={taskIntent.confidenceThreshold}
-                      onChange={(e) =>
-                        setTaskIntent((prev) => ({ ...prev, confidenceThreshold: Number(e.target.value) || prev.confidenceThreshold }))
-                      }
-                    />
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm font-semibold mb-1">
-                    Success criteria <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
-                  </div>
-                  <Textarea
-                    value={taskIntent.successCriteria}
-                    onChange={(e) => setTaskIntent((prev) => ({ ...prev, successCriteria: e.target.value }))}
-                    placeholder="Example: Win = 20% lift in CLV while keeping CAC below $200."
-                  />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold mb-1">
-                    Constraints & out-of-scope dimensions <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
-                  </div>
-                  <Textarea
-                    value={taskIntent.constraints}
-                    onChange={(e) => setTaskIntent((prev) => ({ ...prev, constraints: e.target.value }))}
-                    placeholder="Budgets, markets, timelines, banned metrics, or excluded cohorts."
-                  />
-                </div>
-                <label className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    className="mt-1"
-                    checked={taskIntent.confidenceAcknowledged}
-                    onChange={(e) => setTaskIntent((prev) => ({ ...prev, confidenceAcknowledged: e.target.checked }))}
-                  />
-                  <span>I understand that insights with confidence below the selected threshold will be suppressed.</span>
-                </label>
-                {!contractAssessment.valid && (
-                  <div className="text-xs text-red-600">{contractAssessment.message}</div>
-                )}
-              </motion.div>
-            )}
-
-            {/* Action Button */}
-            {file && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-6 flex justify-center"
-              >
-                <Button
-                  size="lg"
-                  onClick={handleAnalyze}
-                  disabled={isUploading || !contractAssessment.valid}
-                  className="gradient-meridian text-white px-8 h-12 text-base font-medium glow-primary hover:opacity-90 transition-opacity"
+              {/* STAGE 2: SCANNING */}
+              {stage === "scanning" && (
+                <motion.div
+                  key="scanning"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex flex-col items-center justify-center pt-20"
                 >
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      Start Analysis
-                      <ArrowRight className="w-5 h-5 ml-2" />
-                    </>
-                  )}
-                </Button>
-              </motion.div>
-            )}
+                  <Loader2 className="w-16 h-16 text-teal-500 animate-spin mb-8" />
+                  <h2 className="text-2xl font-mono font-bold text-slate-900 dark:text-slate-100 mb-2">
+                    SENTRY SCAN INITIATED
+                  </h2>
+                  <p className="text-slate-500 font-mono text-sm animate-pulse">
+                    Verifying schema integrity...
+                  </p>
+                </motion.div>
+              )}
 
-            {/* Features */}
-            <div className="mt-8 pt-8 border-t border-border/50 grid grid-cols-1 sm:grid-cols-3 gap-6">
-              {[
-                { icon: FileText, title: "Multi-format", desc: "CSV, JSON, Excel & more" },
-                { icon: Sparkles, title: "AI Analysis", desc: "Anomaly & pattern detection" },
-                { icon: CheckCircle2, title: "Quality Reports", desc: "Comprehensive insights" },
-              ].map((feature, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                    <feature.icon className="w-5 h-5 text-primary" />
+              {/* STAGE 3: IDENTITY CARD */}
+              {stage === "identity" && identity && (
+                <motion.div
+                  key="identity"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="max-w-2xl mx-auto"
+                >
+                  <div className="mb-8">
+                    <Button
+                      variant="ghost"
+                      onClick={() => { setStage("upload"); setFile(null); }}
+                      className="mb-4 text-slate-500 hover:text-slate-900"
+                    >
+                      ← Cancel & Re-upload
+                    </Button>
+                    <DatasetIdentityCard identity={identity} />
                   </div>
-                  <div>
-                    <p className="font-medium text-sm">{feature.title}</p>
-                    <p className="text-xs text-muted-foreground">{feature.desc}</p>
+
+                  <div className="flex flex-col gap-4">
+                    {identity.quality_score < 0.5 ? (
+                      <SafeModeWarning
+                        qualityScore={identity.quality_score}
+                        onAccept={() => setStage("contract")}
+                        onCancel={() => { setStage("upload"); setFile(null); }}
+                      />
+                    ) : (
+                      <div className="flex justify-end">
+                        <Button
+                          size="lg"
+                          onClick={handleProceedToContract}
+                          className="bg-slate-900 hover:bg-slate-800 text-white px-8 font-mono"
+                        >
+                          PROCEED TO CONTRACT <ArrowRight className="ml-2 w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
+                </motion.div>
+              )}
+
+              {/* STAGE 4: OVERSEER CONTRACT */}
+              {stage === "contract" && identity && (
+                <motion.div
+                  key="contract"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                >
+                  <OverseerInterview
+                    identity={identity}
+                    onSubmit={handleContractSubmit}
+                    onBack={() => setStage("identity")}
+                  />
+                </motion.div>
+              )}
+
+              {/* STAGE 5: PROCESSING */}
+              {stage === "processing" && (
+                <motion.div
+                  key="processing"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex flex-col items-center justify-center pt-20"
+                >
+                  <div className="relative w-24 h-24 mb-8">
+                    <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800"></div>
+                    <div className="absolute inset-0 rounded-full border-4 border-teal-500 border-t-transparent animate-spin"></div>
+                    <CheckCircle2 className="absolute inset-0 m-auto w-8 h-8 text-teal-500" />
+                  </div>
+                  <h2 className="text-2xl font-serif font-bold text-slate-900 dark:text-slate-100 mb-2">
+                    Contract Approved
+                  </h2>
+                  <p className="text-slate-500">
+                    Meridian is initializing the analysis pipeline...
+                  </p>
+                </motion.div>
+              )}
+
+            </AnimatePresence>
+          </div>
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 };
