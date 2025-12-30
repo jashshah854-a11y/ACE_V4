@@ -27,8 +27,13 @@ export function useDiagnostics(runId?: string) {
         if (!res.ok) {
           throw new Error(`Failed to fetch diagnostics: ${res.statusText}`);
         }
-        const json = await res.json();
-        setData(json);
+        try {
+          const json = await res.json();
+          setData(json);
+        } catch (parseError) {
+          console.error('Failed to parse diagnostics JSON:', parseError);
+          setData(null);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
         setData(null);
