@@ -23,9 +23,10 @@ import { getRecentReports } from "@/lib/localStorage";
 import { useReportData } from "@/hooks/useReportData";
 import { useGovernedReport } from "@/hooks/useGovernedReport";
 import { InsightBlock } from "@/components/report/InsightBlock";
-import { ConfidenceBadge } from "@/components/report/ConfidenceBadge";
+import { SignalWidget } from "@/components/trust/SignalWidget";
 import { LimitationBanner } from "@/components/report/LimitationBanner";
 import { SafeIcon } from "@/components/ui/SafeIcon";
+import { useSimulation } from "@/context/SimulationContext";
 
 const ExecutivePulse = () => {
   const [searchParams] = useSearchParams();
@@ -44,6 +45,12 @@ const ExecutivePulse = () => {
 
   const { data: governedReport } = useGovernedReport(activeRun);
   const reportData = useReportData(reportQuery.data || "", activeRun, "strict", governedReport);
+  const { setSafeMode } = useSimulation();
+
+  // Sync Safe Mode state
+  useMemo(() => {
+    setSafeMode(reportData.safeMode);
+  }, [reportData.safeMode, setSafeMode]);
 
   const prioritizedSections = useMemo(() => {
     const ranked = [...(reportData.scoredSections || [])].sort((a, b) => b.importance - a.importance);
@@ -239,8 +246,14 @@ const ExecutivePulse = () => {
                   <span>Run:</span>
                   <code className="font-mono text-xs bg-muted px-2 py-1 rounded">{activeRun.slice(0, 8)}</code>
                 </div>
-                <ConfidenceBadge value={reportData.confidenceValue} label="Report" />
-                <ConfidenceBadge value={reportData.dataQualityValue} label="Quality" />
+                <div className="flex items-center gap-2">
+                  <span className="text-xs uppercase text-muted-foreground">Report Trust:</span>
+                  <SignalWidget score={(reportData.confidenceValue || 0) / 100} compact={true} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs uppercase text-muted-foreground">Quality:</span>
+                  <SignalWidget score={(reportData.dataQualityValue || 0) / 100} compact={true} />
+                </div>
               </div>
 
               {missingFields?.length ? (

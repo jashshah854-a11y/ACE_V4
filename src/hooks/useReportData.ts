@@ -28,7 +28,7 @@ export interface ReportDataResult {
   personas: ReturnType<typeof extractPersonas>;
   outcomeModel: ReturnType<typeof extractOutcomeModel>;
   anomalies: ReturnType<typeof extractAnomalies>;
-  
+
   // Narrative components
   executiveBrief: ReturnType<typeof extractExecutiveBrief>;
   conclusion: ReturnType<typeof extractConclusion>;
@@ -36,7 +36,7 @@ export interface ReportDataResult {
   mondayActions: ReturnType<typeof generateMondayActions>;
   segmentComparisonData: ReturnType<typeof extractSegmentData>;
   keyTakeaways: string[];
-  
+
   // Computed values
   confidenceValue: number | undefined;
   dataQualityValue: number | undefined;
@@ -45,7 +45,7 @@ export interface ReportDataResult {
   hideActions: boolean;
   shouldEmitInsights: boolean;
   hasTimeField: boolean;
-  
+
   // Sections
   taskContractSection: any;
   decisionSection: any;
@@ -61,7 +61,7 @@ export interface ReportDataResult {
   primaryQuestion?: string;
   outOfScopeDimensions: string[];
   scoredSections: Array<ReturnType<typeof extractSections>[number] & { importance: number }>;
-  
+
   // External data
   enhancedAnalytics: any;
   analyticsLoading: boolean;
@@ -174,7 +174,7 @@ export function useReportData(
     [sections]
   );
   const { segmentData, compositionData } = useMemo(() => extractChartData(content), [content]);
-  
+
   const measurableSegments = useMemo(
     () =>
       (segmentData || []).map((seg: any) => ({
@@ -241,8 +241,9 @@ export function useReportData(
   const safeMode = useMemo(
     () =>
       limitationsMode ||
-      (typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel < confidenceThreshold),
-    [limitationsMode, metrics.confidenceLevel, confidenceThreshold]
+      (typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel < confidenceThreshold) ||
+      (diagnostics?.dataset_identity?.is_safe_mode === true),
+    [limitationsMode, metrics.confidenceLevel, confidenceThreshold, diagnostics?.dataset_identity?.is_safe_mode]
   );
 
   const hideActions = useMemo(
