@@ -156,6 +156,157 @@ def _safe_upload_path(original_name: str) -> Path:
     return DATA_DIR / safe_name
 
 
+
+class DatasetIdentity(BaseModel):
+    row_count: int
+    column_count: int
+    file_type: str
+    schema_map: list[Dict[str, Any]]
+    quality_score: float
+    critical_gaps: list[str]
+    detected_capabilities: Dict[str, bool]
+    warnings: list[str]
+
+
+def _infer_type(series):
+    """Simple type inference for schema map"""
+    try:
+        if pd.api.types.is_numeric_dtype(series):
+            return "Numeric"
+        if pd.api.types.is_datetime64_any_dtype(series):
+            return "DateTime"
+        return "String"
+    except:
+        return "String"
+
+def _build_schema_map(df):
+    """Extract top 5 columns with types and samples"""
+    schema = []
+    try:
+        for col in df.columns[:5]:
+            schema.append({
+                "name": str(col),
+                "type": _infer_type(df[col]),
+                "sample": str(df[col].dropna().iloc[0]) if not df[col].dropna().empty else "N/A"
+            })
+    except:
+        pass
+    return schema
+
+def _calculate_quality_score(df):
+    """Calculate data quality (0.0 - 1.0)"""
+    if df.empty:
+        return 0.0
+    try:
+        completeness = 1 - df.isnull().sum().sum() / (len(df) * len(df.columns))
+        return round(float(completeness), 2)
+    except:
+        return 0.0
+
+def _detect_gaps(df):
+    """Detect critical data gaps"""
+    gaps = []
+    if df.empty:
+        gaps.append("EMPTY_DATASET")
+        return gaps
+        
+    try:
+        null_rate = df.isnull().sum().sum() / (len(df) * len(df.columns))
+        if null_rate > 0.5:
+            gaps.append("HIGH_NULL_RATE")
+    except:
+        pass
+        
+    return gaps
+
+def _detect_capabilities(df):
+    """Detect what analysis types the data supports"""
+    try:
+        cols_lower = [str(c).lower() for c in df.columns]
+        
+        has_financial = any(x in c for c in cols_lower for x in ['revenue', 'price', 'cost', 'sales', 'budget', 'amount', 'profit'])
+        has_time = any(x in c for c in cols_lower for x in ['date', 'time', 'year', 'month', 'day', 'timestamp'])
+        has_numeric = any(pd.api.types.is_numeric_dtype(df[c]) for c in df.columns)
+        has_categorical = any(df[c].dtype == 'object' or pd.api.types.is_categorical_dtype(df[c]) for c in df.columns)
+        
+        return {
+            "has_financial_columns": has_financial,
+            "has_time_series": has_time,
+            "has_categorical": has_categorical,
+            "has_numeric": has_numeric
+        }
+    except:
+        return {
+            "has_financial_columns": False,
+            "has_time_series": False,
+            "has_categorical": False,
+            "has_numeric": False
+        }
+
+def _generate_warnings(df):
+    """Generate warnings for data issues"""
+    warnings = []
+    try:
+        for col in df.columns:
+            if df[col].count() == 0:
+                 warnings.append(f"Column {col} is empty")
+                 continue
+                 
+            null_rate = df[col].isnull().mean()
+            if null_rate > 0.2:
+                warnings.append(f"{int(null_rate*100)}% missing values in {col} column")
+    except:
+        pass
+    return warnings
+
+@app.post("/runs/preview", response_model=DatasetIdentity, tags=["Execution"])
+async def preview_dataset(file: UploadFile = File(...)):
+    """
+    Sentry scan: Analyze dataset without running full pipeline.
+    Returns Dataset Identity Card for user review.
+    """
+    file_ext = Path(file.filename).suffix.lower()
+    if file_ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(400, f"File type not allowed. Allowed: {ALLOWED_EXTENSIONS}")
+
+    temp_path = DATA_DIR / f"preview_{uuid.uuid4().hex}{file_ext}"
+    try:
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        if file_ext == '.csv':
+            df = pd.read_csv(temp_path)
+        elif file_ext in {'.xls', '.xlsx'}:
+            df = pd.read_excel(temp_path)
+        elif file_ext == '.parquet':
+            df = pd.read_parquet(temp_path)
+        else:
+             df = pd.DataFrame()
+
+        identity = {
+            "row_count": len(df),
+            "column_count": len(df.columns),
+            "file_type": file_ext.replace('.', '').upper(),
+            "schema_map": _build_schema_map(df),
+            "quality_score": _calculate_quality_score(df),
+            "critical_gaps": _detect_gaps(df),
+            "detected_capabilities": _detect_capabilities(df),
+            "warnings": _generate_warnings(df)
+        }
+        
+        return identity
+        
+    except Exception as e:
+        logger.error(f"Preview failed: {str(e)}")
+        raise HTTPException(500, f"Failed to analyze dataset: {str(e)}")
+    finally:
+        if temp_path.exists():
+            try:
+                temp_path.unlink()
+            except:
+                pass
+
+
 def _parse_bool(value: Any) -> Optional[bool]:
     if value is None:
         return None
