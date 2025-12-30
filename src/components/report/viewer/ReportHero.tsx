@@ -40,6 +40,7 @@ export function ReportHero({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <h1 className="text-3xl font-serif font-bold text-deep-charcoal tracking-tight">{title}</h1>
+          {runId && <Badge variant="outline" className="font-mono text-xs text-muted-foreground">{runId.slice(0, 8)}</Badge>}
           <ConfidenceSignal signal={signal} limitationsReason={limitationsReason} />
         </div>
         <div className="flex items-center gap-2">
