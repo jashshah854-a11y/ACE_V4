@@ -812,10 +812,24 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
         />
 
       </ReportDataValidator>
+
+      {/* Scope Lock Modal */}
       <ScopeLockModal
         open={Boolean(scopeLockDimension)}
         dimension={scopeLockDimension || undefined}
         onAcknowledge={() => setScopeLockDimension(null)}
+      />
+
+      {/* Guidance Modal for error remediation */}
+      <GuidanceModal
+        isOpen={isGuidanceModalOpen}
+        onClose={() => setIsGuidanceModalOpen(false)}
+        guidanceEntries={reportData.viewModel.validationErrors.guidanceEntries}
+        onUploadNewDataset={() => {
+          setIsGuidanceModalOpen(false);
+          // TODO: Implement navigation to upload page
+          window.location.href = '/';
+        }}
       />
     </motion.div>
   );
