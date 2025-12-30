@@ -1,0 +1,12 @@
+# Railway Configuration for ACE V4
+# This file configures volume mounts for both web and worker services
+
+# Volume mount for ACE-V4 (web service)
+[[volumes]]
+name = "ace-v4-volume"
+mountPath = "/data"
+
+# Note: Railway will automatically apply this volume configuration
+# to services based on their service names or deployment context.
+# Both the web service and worker service need access to the same
+# shared volume at /data to enable file sharing between them.
