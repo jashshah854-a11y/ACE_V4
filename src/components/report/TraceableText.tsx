@@ -45,7 +45,7 @@ export function TraceableText({ content, segments, onReferenceClick, className }
                             return (
                                 <button
                                     onClick={() => onReferenceClick?.(refId)}
-                                    className="cursor-pointer border-b-2 border-dashed border-amber-500 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors mx-0.5 px-0.5 rounded-sm"
+                                    className="cursor-pointer font-medium text-amber-700 dark:text-amber-400 border-b-2 border-dashed border-amber-500/50 hover:border-amber-500 hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-all duration-200 mx-0.5 px-1 rounded-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-1"
                                     title="View Evidence"
                                 >
                                     {children}
