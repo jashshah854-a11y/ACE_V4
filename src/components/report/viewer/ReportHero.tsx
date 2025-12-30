@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ConfidenceSignal } from "../../ConfidenceSignal";
+import { ConfidenceSignal } from "@/components/report/ConfidenceSignal";
 import { ReportViewModel } from "@/lib/reportViewModel";
 
 interface ReportHeroProps {
