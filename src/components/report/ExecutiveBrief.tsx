@@ -1,116 +1,145 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { AlertCircle, CheckCircle2, TrendingUp, Target } from "lucide-react";
+/**
+ * ExecutiveBrief Component
+ * 
+ * High-density TL;DR card that answers "What? So What? Now What?" at the top of reports.
+ * Provides instant value with headline, key finding, and actionable decision.
+ */
+
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Search, Zap, Copy, AlertTriangle } from "lucide-react";
+import { ConfidenceSignal } from "./ConfidenceSignal";
 import { cn } from "@/lib/utils";
 
-export interface ExecutiveBriefProps {
-    purpose: string;
-    keyFindings: string[];
-    confidenceVerdict: string;
-    recommendedAction: string;
-    className?: string;
+interface ExecutiveBriefProps {
+    headline: string;
+    keyFinding: string;
+    decision: string;
+    status: "success" | "limited" | "error";
+    accentColor: "teal" | "amber" | "red";
+    confidenceSignal: {
+        strength: "high" | "moderate" | "low";
+        bars: 1 | 2 | 3;
+        color: string;
+        label: string;
+        confidenceScore: number;
+    };
+    onCopy?: () => void;
+    onFindingClick?: () => void;
+    onDecisionClick?: () => void;
 }
 
-/**
- * ExecutiveBrief - Consultant-style report summary
- * 
- * Replaces technical metrics at top with narrative that answers:
- * - What was analyzed
- * - What was found
- * - What to do next
- * 
- * Designed for non-technical stakeholders to quickly grasp insights
- */
 export function ExecutiveBrief({
-    purpose,
-    keyFindings,
-    confidenceVerdict,
-    recommendedAction,
-    className,
+    headline,
+    keyFinding,
+    decision,
+    status,
+    accentColor,
+    confidenceSignal,
+    onCopy,
+    onFindingClick,
+    onDecisionClick,
 }: ExecutiveBriefProps) {
-    // Safe defaults
-    const safePurpose = purpose || "Analysis pending";
-    const safeKeyFindings = Array.isArray(keyFindings) && keyFindings.length > 0 
-        ? keyFindings.filter(f => f && typeof f === 'string')
-        : ["No key findings available"];
-    const safeConfidenceVerdict = confidenceVerdict || "Confidence assessment pending";
-    const safeRecommendedAction = recommendedAction || "Review the analysis for next steps";
 
-    // Determine confidence level for styling
-    const isHighConfidence = safeConfidenceVerdict.toLowerCase().includes("high");
-    const isLowConfidence = safeConfidenceVerdict.toLowerCase().includes("low") ||
-        safeConfidenceVerdict.toLowerCase().includes("insufficient");
+    // Determine accent color classes
+    const accentClasses = {
+        teal: "border-teal-500",
+        amber: "border-amber-500",
+        red: "border-red-500"
+    };
+
+    const accentBorderClass = accentClasses[accentColor];
 
     return (
-        <Card className={cn("border-2 border-primary/20 bg-gradient-to-br from-background to-muted/20", className)}>
-            <CardHeader className="pb-4">
-                <div className="flex items-start gap-3">
-                    <Target className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
-                    <div>
-                        <h2 className="text-2xl font-bold tracking-tight mb-2">Executive Summary</h2>
-                        <p className="text-base text-muted-foreground leading-relaxed">
-                            {safePurpose}
-                        </p>
+        <Card
+            className={cn(
+                "sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50",
+                "border-l-4 shadow-md mb-6",
+                accentBorderClass
+            )}
+        >
+            <div className="p-6 space-y-4">
+                {/* Headline Row */}
+                <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                            <h2 className="text-2xl font-serif font-bold text-gray-900 dark:text-gray-100">
+                                {headline}
+                            </h2>
+                            {status === "limited" && (
+                                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+                            )}
+                        </div>
                     </div>
-                </div>
-            </CardHeader>
 
-            <CardContent className="space-y-6">
-                {/* Key Findings */}
-                <div>
-                    <div className="flex items-center gap-2 mb-3">
-                        <TrendingUp className="h-5 w-5 text-blue-600" />
-                        <h3 className="font-semibold text-lg">Key Findings</h3>
-                    </div>
-                    <ul className="space-y-2">
-                        {safeKeyFindings.map((finding, index) => (
-                            <li key={index} className="flex items-start gap-3">
-                                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-sm font-medium">
-                                    {index + 1}
-                                </span>
-                                <span className="text-base leading-relaxed pt-0.5">{finding}</span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-
-                {/* Confidence Verdict */}
-                <div>
-                    <div className="flex items-center gap-2 mb-2">
-                        {isHighConfidence ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-600" />
-                        ) : isLowConfidence ? (
-                            <AlertCircle className="h-5 w-5 text-amber-600" />
-                        ) : (
-                            <AlertCircle className="h-5 w-5 text-blue-600" />
+                    <div className="flex items-center gap-3 shrink-0">
+                        <ConfidenceSignal
+                            signal={confidenceSignal}
+                            limitationsReason={null}
+                        />
+                        {onCopy && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={onCopy}
+                                className="h-8 w-8 p-0"
+                                title="Copy brief to clipboard"
+                            >
+                                <Copy className="h-4 w-4" />
+                            </Button>
                         )}
-                        <h3 className="font-semibold text-lg">Analysis Confidence</h3>
                     </div>
-                    <p
+                </div>
+
+                {/* Finding & Decision Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Finding Card */}
+                    <button
+                        onClick={onFindingClick}
                         className={cn(
-                            "text-base px-4 py-3 rounded-md border-l-4",
-                            isHighConfidence && "bg-green-50 dark:bg-green-950/20 border-green-600 text-green-900 dark:text-green-100",
-                            isLowConfidence && "bg-amber-50 dark:bg-amber-950/20 border-amber-600 text-amber-900 dark:text-amber-100",
-                            !isHighConfidence && !isLowConfidence && "bg-blue-50 dark:bg-blue-950/20 border-blue-600 text-blue-900 dark:text-blue-100"
+                            "text-left p-4 rounded-lg border-2 transition-all",
+                            "bg-white dark:bg-gray-800",
+                            "hover:border-primary hover:shadow-md",
+                            "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                         )}
                     >
-                        {safeConfidenceVerdict}
-                    </p>
-                </div>
-
-                {/* Recommended Action */}
-                <div className="pt-2">
-                    <div className="flex items-center gap-2 mb-3">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">              <span className="text-lg">➡️</span>
+                        <div className="flex items-start gap-3">
+                            <Search className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                                    Key Finding
+                                </div>
+                                <p className="text-sm leading-relaxed text-gray-900 dark:text-gray-100">
+                                    {keyFinding}
+                                </p>
+                            </div>
                         </div>
-                        <h3 className="font-semibold text-lg">Recommended Next Step</h3>
-                    </div>
-                    <div className="bg-primary/5 border border-primary/20 rounded-md p-4">
-                        <p className="text-base font-medium leading-relaxed text-foreground">
-                            {safeRecommendedAction}
-                        </p>
-                    </div>
+                    </button>
+
+                    {/* Decision Card */}
+                    <button
+                        onClick={onDecisionClick}
+                        className={cn(
+                            "text-left p-4 rounded-lg border-2 transition-all",
+                            "bg-white dark:bg-gray-800",
+                            "hover:border-primary hover:shadow-md",
+                            "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                        )}
+                    >
+                        <div className="flex items-start gap-3">
+                            <Zap className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                                    Recommended Action
+                                </div>
+                                <p className="text-sm leading-relaxed font-medium text-gray-900 dark:text-gray-100">
+                                    {decision}
+                                </p>
+                            </div>
+                        </div>
+                    </button>
                 </div>
-            </CardContent>
+            </div>
         </Card>
     );
 }
