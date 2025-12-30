@@ -29,8 +29,13 @@ export function useModelArtifacts(runId?: string) {
           }
           throw new Error(`Failed to fetch model artifacts: ${res.statusText}`);
         }
-        const json = await res.json();
-        setData(json);
+        try {
+          const json = await res.json();
+          setData(json);
+        } catch (parseError) {
+          console.error('Failed to parse model artifacts JSON:', parseError);
+          setData(null);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
         setData(null);
