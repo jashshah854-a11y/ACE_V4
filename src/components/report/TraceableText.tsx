@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
-import { cn } from "@/lib/utils";
+import { cn, escapeRegExp } from "@/lib/utils";
 
 interface TraceableTextProps {
     content: string;
@@ -14,7 +14,7 @@ interface TraceableTextProps {
  * Detects patterns like `[ref:123]` and converts them into clickable indicators.
  * Uses a serif font for reading comfort (handled by .prose-narrative class).
  */
-export function TraceableText({ content, segments, onReferenceClick, className }: TraceableTextProps & { segments?: { text: string; evidenceId: string }[] }) {
+export function TraceableText({ content, segments, onReferenceClick, className }: TraceableTextProps) {
 
     // Inject links for segments
     // We escape special regex characters in segment text to be safe
@@ -25,7 +25,7 @@ export function TraceableText({ content, segments, onReferenceClick, className }
                 // strict replacement to avoid replacing inside existing links if possible, 
                 // but for now simple global replace of the phrase
                 // Use a regex boundary or just the phrase
-                const regex = new RegExp(`(${seg.text})`, 'gi');
+                const regex = new RegExp(`(${escapeRegExp(seg.text)})`, 'gi');
                 // Replace with markdown link format: [text](ref:id)
                 // We assume content doesn't already have this link
                 processedContent = processedContent.replace(regex, `[$1](ref:${seg.evidenceId})`);
