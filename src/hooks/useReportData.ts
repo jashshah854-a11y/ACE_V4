@@ -15,6 +15,7 @@ import { useEnhancedAnalytics } from "@/hooks/useEnhancedAnalytics";
 import { useDiagnostics } from "@/hooks/useDiagnostics";
 import { useModelArtifacts } from "@/hooks/useModelArtifacts";
 import type { GovernedReport, TaskContractSnapshot } from "@/hooks/useGovernedReport";
+import { transformAPIResponse, ReportViewModel, filterSuppressedSections } from "@/lib/reportViewModel";
 
 export interface ReportDataResult {
   // Core extracted data
@@ -67,6 +68,7 @@ export interface ReportDataResult {
   analyticsLoading: boolean;
   diagnostics: any;
   modelArtifacts: any;
+  viewModel: ReportViewModel;
 }
 
 const MIN_IMPORTANCE = 0.05;
@@ -293,8 +295,8 @@ export function useReportData(
   }, [contractSnapshot?.out_of_scope_dimensions, contractSnapshot?.scope_exclusions, taskContractSection?.content]) || [];
 
   const filteredSections = useMemo(
-    () =>
-      sections.filter((s) => {
+    () => {
+      const basicFilter = sections.filter((s) => {
         const lowerTitle = s.title.toLowerCase();
         const lowerContent = s.content.toLowerCase();
         if (
@@ -307,7 +309,9 @@ export function useReportData(
           return false;
         }
         return true;
-      }),
+      });
+      return filterSuppressedSections(basicFilter);
+    },
     [sections, hasTimeField]
   );
 
@@ -395,6 +399,26 @@ export function useReportData(
     return chips.slice(0, 5);
   }, [heroInsight?.title, mondayActions, personas, anomalies?.count, confidenceValue, confidenceThreshold, safeMode, identityStats.rows]);
 
+  // Compute View Model
+  const viewModel = useMemo(() => {
+    // We construct a temporary result object to pass to the transformer
+    // This avoids circular dependency or complex refactoring for now
+    // In a real refactor, we would compute this *after* all hooks, but inside useReportData
+    const tempResult = {
+      metrics,
+      confidenceValue,
+      safeMode,
+      limitationsMode,
+      primaryQuestion,
+      decisionSummary,
+      evidenceSections: evidenceSections || [],
+      sections,
+    };
+    return transformAPIResponse(tempResult);
+  }, [metrics, confidenceValue, safeMode, limitationsMode, primaryQuestion, decisionSummary, evidenceSections, sections]);
+
+
+
   // Return with safe defaults for all values
   return {
     metrics: metrics || {},
@@ -438,5 +462,6 @@ export function useReportData(
     analyticsLoading,
     diagnostics,
     modelArtifacts,
+    viewModel,
   };
 }

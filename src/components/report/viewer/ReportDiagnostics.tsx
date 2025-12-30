@@ -4,23 +4,21 @@ import { ShieldAlert } from "lucide-react";
 
 interface SafeModeBannerProps {
   safeMode: boolean;
+  limitationsReason?: string | null;
 }
 
-export function SafeModeBanner({ safeMode }: SafeModeBannerProps) {
+export function SafeModeBanner({ safeMode, limitationsReason }: SafeModeBannerProps) {
   if (!safeMode) return null;
-  
+
   return (
-    <Card className="mb-4 border-amber-400 bg-amber-50 text-amber-900">
-      <div className="flex items-start gap-3 p-4">
-        <ShieldAlert className="h-5 w-5 text-amber-600 mt-0.5" />
-        <div>
-          <div className="font-semibold">Safe Mode (Descriptive Only)</div>
-          <p className="text-sm text-amber-800">
-            Validation or confidence gates are active. Insights are limited; recommendations may be hidden.
-          </p>
+    <div className="w-full bg-[#FFF4E5] text-[#333333] border-b border-amber-200 px-8 py-3 flex items-center gap-3">
+      <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0" />
+      <div className="flex-1">
+        <div className="font-medium text-sm">
+          Safe Mode Active: {limitationsReason || "Validation or confidence gates are active. Insights are limited; recommendations may be hidden."}
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
 

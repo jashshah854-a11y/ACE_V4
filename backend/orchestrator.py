@@ -567,7 +567,8 @@ def main_loop(run_path):
                 state["status"] = "complete_with_errors"
                 state["next_step"] = "blocked"
                 update_history(state, f"Agent '{current}' blocked: {reason}", returncode=1)
-                from core.data_guardrails import append_limitation
+                # Used global import
+
                 append_limitation(state_mgr, f"Cannot run {current}: {reason}", agent=current, severity="error")
                 save_state(state_path, state)
                 continue
@@ -590,7 +591,8 @@ def main_loop(run_path):
                 state["steps"][current] = step_state
                 state["steps_completed"].append(current)
                 update_history(state, f"Agent '{current}' not allowed for data type '{data_type}': {reason}", returncode=0)
-                from core.data_guardrails import append_limitation
+                # Used global import
+
                 append_limitation(state_mgr, reason, agent=current, severity="warning")
                 
                 # Advance to next step
