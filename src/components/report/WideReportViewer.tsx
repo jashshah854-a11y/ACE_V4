@@ -22,6 +22,7 @@ import { API_BASE } from "@/lib/api-client";
 import { SplitReportViewer } from "./simulation/SplitReportViewer";
 import { SimulationControls } from "./simulation/SimulationControls";
 import { useSimulation } from "@/context/SimulationContext";
+import { GuidanceModal } from "./GuidanceModal";
 
 // Refactored viewer components
 import {
@@ -65,7 +66,6 @@ import { TechnicalDetailsSection } from "./TechnicalDetailsSection";
 import { ReportConclusion } from "./ReportConclusion";
 import { TableOfContents } from "./TableOfContents";
 import { IntelligenceRail } from "./IntelligenceRail";
-import { IntelligenceRail } from "./IntelligenceRail";
 import { EvidencePanel } from "./EvidencePanel";
 import { QueryRail } from "./query/QueryRail";
 import { DataInterrogator } from "./query/DataInterrogator";
@@ -103,6 +103,9 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
   // PPTX state
   const [pptxLoading, setPptxLoading] = useState(false);
   const [pptxError, setPptxError] = useState<string | null>(null);
+
+  // Guidance Modal state
+  const [isGuidanceModalOpen, setIsGuidanceModalOpen] = useState(false);
 
   const { toast } = useToast();
   const { updateTaskContract } = useTaskContext();
@@ -678,6 +681,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
               <SafeModeBanner
                 safeMode={reportData.safeMode}
                 limitationsReason={reportData.viewModel.header.limitationsReason}
+                onHelpClick={() => setIsGuidanceModalOpen(true)}
               />
               <ReportHero
                 title={reportData.viewModel.meta?.title || reportData.viewModel.header.title}
@@ -808,10 +812,24 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
         />
 
       </ReportDataValidator>
+
+      {/* Scope Lock Modal */}
       <ScopeLockModal
         open={Boolean(scopeLockDimension)}
         dimension={scopeLockDimension || undefined}
         onAcknowledge={() => setScopeLockDimension(null)}
+      />
+
+      {/* Guidance Modal for error remediation */}
+      <GuidanceModal
+        isOpen={isGuidanceModalOpen}
+        onClose={() => setIsGuidanceModalOpen(false)}
+        guidanceEntries={reportData.viewModel.validationErrors.guidanceEntries}
+        onUploadNewDataset={() => {
+          setIsGuidanceModalOpen(false);
+          // TODO: Implement navigation to upload page
+          window.location.href = '/';
+        }}
       />
     </motion.div>
   );

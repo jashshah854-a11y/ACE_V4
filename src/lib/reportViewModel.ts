@@ -9,6 +9,8 @@ export interface ReportInputData {
     evidenceSections?: { id: string; title: string }[];
 }
 
+import { getGuidance, parseDiagnostics, parseGuardrailsText } from './getGuidance';
+
 export interface ReportViewModel {
     header: {
         title: string;
@@ -37,6 +39,10 @@ export interface ReportViewModel {
     }[];
     traceability: {
         textSegments: { text: string; evidenceId: string }[];
+    };
+    validationErrors: {
+        rawErrors: string[];
+        guidanceEntries: import('./guidanceMap').GuidanceEntry[];
     };
 }
 
@@ -166,6 +172,24 @@ export function transformAPIResponse(data: ReportInputData): ReportViewModel {
         // The spec asks for "Marketing Performance Analysis" explicitly.
     }
 
+    // 5. Extract Validation Errors
+    const rawErrors: string[] = [];
+
+    // Check limitations-diagnostics section
+    const limitationsSection = data.sections?.find(s => s.id.includes("limitations-diagnostics"));
+    if (limitationsSection) {
+        const diagnosticErrors = parseDiagnostics(JSON.parse(limitationsSection.content || '{}'));
+        rawErrors.push(...diagnosticErrors);
+    }
+
+    // Check validation-guardrails section
+    if (validationSection) {
+        const guardrailErrors = parseGuardrailsText(validationSection.content);
+        rawErrors.push(...guardrailErrors);
+    }
+
+    // Parse errors into guidance entries
+    const guidanceEntries = getGuidance(rawErrors);
 
     return {
         header: {
@@ -192,6 +216,10 @@ export function transformAPIResponse(data: ReportInputData): ReportViewModel {
         navigation,
         traceability: {
             textSegments
+        },
+        validationErrors: {
+            rawErrors,
+            guidanceEntries
         }
     };
 }
