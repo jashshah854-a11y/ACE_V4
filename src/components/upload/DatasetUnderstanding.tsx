@@ -17,7 +17,7 @@ interface DatasetUnderstandingProps {
  * Shows what the system "sees" in the uploaded data
  * Implements the "Dossier" UI with understanding statement and quality check
  */
-export function DatasetUnderstanding({ profile, onProceed, className }: DatasetUnderstandingProps) {
+export function DatasetUnderstanding({ profile, onProceed, onCustomize, className }: DatasetUnderstandingProps) {
     const friendlyName = getFriendlyName(profile.primary_type);
     const focusArea = getFocusArea(profile.key_columns);
 
@@ -136,9 +136,13 @@ export function DatasetUnderstanding({ profile, onProceed, className }: DatasetU
             </div>
 
             {/* Proceed Button */}
-            <div className="flex justify-end pt-4">
-                <Button onClick={onProceed} size="lg" className="px-8">
-                    Continue to Task Contract →
+            <div className="flex justify-between pt-4 items-center">
+                <Button variant="ghost" onClick={onCustomize} className="text-muted-foreground">
+                    Customize Analysis Goal
+                </Button>
+                <Button onClick={onProceed} size="lg" className="px-8 bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-900/10">
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Start Analysis
                 </Button>
             </div>
         </div>
