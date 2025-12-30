@@ -133,6 +133,41 @@ export function getStarterChips(primaryType: string, keyColumns: string[]): stri
 }
 
 /**
+ * Translate technical jargon to friendly terms
+ */
+export function translateTechnicalTerm(term: string): string {
+    const t = term.toLowerCase();
+
+    // Confidence Levels
+    if (t === 'exploratory') return 'Preliminary Scan';
+    if (t === 'high') return 'Verified';
+    if (t === 'moderate') return 'Standard';
+
+    // Data Types
+    if (t === 'correlation_outputs') return 'Relationship Analysis';
+
+    // Warnings / Errors
+    if (t.includes('target variance insufficient')) return 'Data is too uniform to find drivers';
+    if (t.includes('insufficient evidence')) return 'Not enough data points';
+    if (t.includes('validation mode: limitations')) return 'Standard safety checks active';
+
+    // Fallback: Capitalize first letter
+    return term.charAt(0).toUpperCase() + term.slice(1);
+}
+
+// Add to map for robust lookup
+PRIMARY_TYPE_MAP['correlation_outputs'] = {
+    friendlyName: "Relationship Analysis",
+    focusArea: "hidden connections and drivers",
+    starterChips: [
+        "Find hidden drivers",
+        "Identify strongly related factors",
+        "Detect spurious correlations"
+    ],
+    requiredColumns: []
+};
+
+/**
  * Detect gaps between user intent and data reality
  */
 export interface GapDetection {
