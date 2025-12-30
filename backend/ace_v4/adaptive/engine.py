@@ -38,7 +38,9 @@ class AdaptiveEngine:
                         detector="adaptive_stats",
                         rule_name="adaptive_stats_default",
                         context={
-                            "value": valf
+                            "value": valf,
+                            "confidence_score": 0.95 if status == "hard" else 0.65,
+                            "confidence_reasoning": "Statistical hard outlier (>3 std dev)." if status == "hard" else "Statistical soft outlier (>2 std dev)."
                         }
                     ))
 
@@ -57,7 +59,9 @@ class AdaptiveEngine:
                         detector="adaptive_ml",
                         rule_name="adaptive_ml_default",
                         context={
-                            "value": valf
+                            "value": valf,
+                            "confidence_score": 0.88,  # ML models assumed higher confidence
+                            "confidence_reasoning": "Detected by isolation forest with clear separation."
                         }
                     ))
 

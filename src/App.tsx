@@ -12,6 +12,8 @@ import Pipeline from "./pages/Pipeline";
 import DemoPipelineStatus from "./pages/DemoPipelineStatus";
 import NotFound from "./pages/NotFound";
 import { WideReportViewer } from "@/components/report/WideReportViewer";
+import { SafeModeBanner } from "@/components/trust/SafeModeBanner";
+import { SafeModeBanner } from "@/components/trust/SafeModeBanner";
 
 import { SimulationProvider } from "./context/SimulationContext";
 
@@ -25,6 +27,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <SafeModeBanner />
             <Routes>
               <Route path="/" element={<ExecutivePulse />} />
               <Route path="/report/summary" element={<ExecutivePulse />} />
