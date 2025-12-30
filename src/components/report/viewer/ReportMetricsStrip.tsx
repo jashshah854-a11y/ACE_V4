@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ConfidenceBadge } from "../ConfidenceBadge";
+import { SignalWidget } from "@/components/trust/SignalWidget";
 
 interface ReportMetricsStripProps {
   confidenceValue: number | undefined;
@@ -18,7 +18,7 @@ export function ReportMetricsStrip({ confidenceValue, dataQualityValue, clusterM
             <div className="text-xs uppercase text-muted-foreground">Confidence</div>
             <div className="text-lg font-semibold">{confidenceValue ?? "n/a"}%</div>
           </div>
-          <ConfidenceBadge value={confidenceValue} />
+          <SignalWidget score={(confidenceValue || 0) / 100} compact={true} />
         </div>
         <div className="mt-2 h-2 w-full rounded-full bg-muted">
           <div
@@ -35,7 +35,7 @@ export function ReportMetricsStrip({ confidenceValue, dataQualityValue, clusterM
             <div className="text-xs uppercase text-muted-foreground">Data Quality</div>
             <div className="text-lg font-semibold">{dataQualityValue ?? "n/a"}%</div>
           </div>
-          <ConfidenceBadge value={dataQualityValue} label="Quality" />
+          <SignalWidget score={(dataQualityValue || 0) / 100} compact={true} />
         </div>
         <div className="mt-2 h-2 w-full rounded-full bg-muted">
           <div

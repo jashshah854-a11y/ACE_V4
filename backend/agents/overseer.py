@@ -159,6 +159,9 @@ class Overseer:
                 "sizes": clustering_results.get("sizes", []),
                 "feature_importance": clustering_results.get("feature_importance", []),
                 "confidence_interval": clustering_results.get("confidence_interval"),
+                # Analyst Core: Confidence Scoring
+                "confidence_score": round((stats.get("silhouette", 0) + 1) / 2 * 0.8 + (stats.get("data_quality", 0) * 0.2), 2),
+                "confidence_reasoning": f"Silhouette score {stats.get('silhouette', 0):.2f} indicates cluster separation.",
                 # Add metadata for cache validation
                 "_metadata": {
                     "row_count": len(df),

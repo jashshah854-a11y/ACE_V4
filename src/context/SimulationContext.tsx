@@ -14,6 +14,7 @@ export interface SimulationState {
     base_run_id: string; // ID of the original report
     active_modifiers: SimulationModifiers;
     comparison_mode: boolean; // Triggers Split-View UI
+    safe_mode: boolean; // Trust Schema: Restricts features if data is poor
     simulated_run_id?: string; // If null, we are in "Draft" simulation
     feedback_history: Feedback[];
 }
@@ -51,6 +52,7 @@ interface SimulationContextType {
     initializeSimulation: (baseRunId: string) => void;
     updateModifiers: (modifiers: Partial<SimulationModifiers>) => void;
     toggleComparisonMode: (enabled: boolean) => void;
+    setSafeMode: (enabled: boolean) => void;
     submitFeedback: (feedback: Omit<Feedback, 'timestamp'>) => void;
 
     // Query Logic
@@ -71,6 +73,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         base_run_id: "",
         active_modifiers: {},
         comparison_mode: false,
+        safe_mode: false,
         feedback_history: [],
     } as SimulationState);
 
@@ -81,6 +84,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
             base_run_id: baseRunId,
             active_modifiers: {},
             comparison_mode: false,
+            safe_mode: false,
             feedback_history: [],
         });
         setQueryThreads([]);
@@ -108,6 +112,13 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
 
     const toggleComparisonMode = useCallback((enabled: boolean) => {
         setSimulationState(prev => ({ ...prev, comparison_mode: enabled }));
+    }, []);
+
+    const setSafeMode = useCallback((enabled: boolean) => {
+        setSimulationState(prev => {
+            if (prev.safe_mode === enabled) return prev;
+            return { ...prev, safe_mode: enabled };
+        });
     }, []);
 
     const startQuery = useCallback(async (targetDataPoint: string, userIntent: string) => {
@@ -159,6 +170,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
             initializeSimulation,
             updateModifiers,
             toggleComparisonMode,
+            setSafeMode,
             submitFeedback,
             startQuery,
             isSimulating

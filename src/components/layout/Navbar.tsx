@@ -3,10 +3,13 @@ import { BarChart3, FileText, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getRecentReports } from "@/lib/localStorage";
 import { useTaskContext } from "@/context/TaskContext";
+import { useSimulation } from "@/context/SimulationContext";
 
 export const Navbar = () => {
   const location = useLocation();
-  
+  const { simulationState } = useSimulation();
+  const isSafeMode = simulationState.safe_mode;
+
   // Safely access TaskContext with fallback
   let primaryQuestion: string | undefined;
   try {
@@ -54,7 +57,8 @@ export const Navbar = () => {
                 "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2",
                 isPulse
                   ? "bg-navy-900 text-white shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                isSafeMode && !isPulse && "opacity-50 pointer-events-none" // Lock navigation if in safe mode?
               )}
             >
               <Sparkles className="w-4 h-4" />
