@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { transformToStory } from "@/lib/ReportViewModel";
+import { transformToStory } from "@/lib/reportViewModel";
 import { StoryHeadline } from "@/components/report/story/StoryHeadline";
 import { MetricCardGrid } from "@/components/report/story/MetricCardGrid";
 import { SentimentBlock } from "@/components/report/story/SentimentBlock";
