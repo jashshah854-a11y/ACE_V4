@@ -23,6 +23,8 @@ import { SplitReportViewer } from "./simulation/SplitReportViewer";
 import { SimulationControls } from "./simulation/SimulationControls";
 import { useSimulation } from "@/context/SimulationContext";
 import { GuidanceModal } from "./GuidanceModal";
+import { ExecutiveBrief } from "./ExecutiveBrief";
+import { useSmoothScroll, formatBriefText } from "@/hooks/useSmoothScroll";
 
 // Refactored viewer components
 import {
@@ -52,7 +54,6 @@ import { MondayMorningActions } from "./MondayMorningActions";
 import { SECTION_ICONS, ReportAccordion } from "./ReportAccordion";
 import { PersonaSection } from "./PersonaSection";
 import { OutcomeModelSection } from "./OutcomeModelSection";
-import { ExecutiveBrief } from "./ExecutiveBrief";
 import { AnomalyBanner } from "./AnomalyBanner";
 import { SegmentOverviewTable } from "./SegmentOverviewTable";
 import { SegmentComparison } from "./SegmentComparison";
@@ -106,6 +107,9 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
 
   // Guidance Modal state
   const [isGuidanceModalOpen, setIsGuidanceModalOpen] = useState(false);
+
+  // Smooth scroll hook
+  const { scrollToSection } = useSmoothScroll();
 
   const { toast } = useToast();
   const { updateTaskContract } = useTaskContext();
@@ -678,6 +682,35 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
                   className="mb-4"
                 />
               ) : null}
+
+              {/* Executive TL;DR Brief */}
+              <ExecutiveBrief
+                headline={reportData.viewModel.brief.headline}
+                keyFinding={reportData.viewModel.brief.keyFinding}
+                decision={reportData.viewModel.brief.decision}
+                status={reportData.viewModel.brief.status}
+                accentColor={reportData.viewModel.brief.accentColor}
+                confidenceSignal={reportData.viewModel.header.signal}
+                onCopy={() => {
+                  const briefText = formatBriefText({
+                    headline: reportData.viewModel.brief.headline,
+                    keyFinding: reportData.viewModel.brief.keyFinding,
+                    decision: reportData.viewModel.brief.decision,
+                    confidenceScore: reportData.viewModel.header.signal.confidenceScore,
+                  });
+                  navigator.clipboard.writeText(briefText);
+                  toast({ title: "Brief copied to clipboard" });
+                }}
+                onFindingClick={() => scrollToSection('executive-summary')}
+                onDecisionClick={() => {
+                  if (reportData.safeMode) {
+                    setIsGuidanceModalOpen(true);
+                  } else {
+                    scrollToSection('recommendations');
+                  }
+                }}
+              />
+
               <SafeModeBanner
                 safeMode={reportData.safeMode}
                 limitationsReason={reportData.viewModel.header.limitationsReason}
@@ -787,12 +820,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
               )}
 
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                <ExecutiveBrief
-                  purpose={reportData.executiveBrief.purpose}
-                  keyFindings={reportData.executiveBrief.keyFindings}
-                  confidenceVerdict={reportData.executiveBrief.confidenceVerdict}
-                  recommendedAction={reportData.executiveBrief.recommendedAction}
-                />
+                {/* Old ExecutiveBrief removed - replaced with new TL;DR design at top */}
               </motion.div>
 
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
