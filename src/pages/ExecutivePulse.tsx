@@ -1,6 +1,13 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { transformToStory } from "@/lib/ReportViewModel";
+import { StoryHeadline } from "@/components/report/story/StoryHeadline";
+import { MetricCardGrid } from "@/components/report/story/MetricCardGrid";
+import { SentimentBlock } from "@/components/report/story/SentimentBlock";
+import { ActionChecklist } from "@/components/report/story/ActionChecklist";
+import { StorySkeleton } from "@/components/report/story/StorySkeleton";
+import { StoryControlBar } from "@/components/report/story/StoryControlBar";
 import ReactMarkdown from "react-markdown";
 import { motion } from "framer-motion";
 import {
@@ -317,60 +324,106 @@ const ExecutivePulse = () => {
                     )}
                   </header>
 
-                  {prioritizedSections.primary.map((section, idx) => (
-                    <InsightBlock
-                      key={section.id || `primary-${idx}`}
-                      narrativeText={section.content.split("\n").slice(0, 3).join(" ")}
-                      evidenceObject={{
-                        id: section.id || `section-${idx}`,
-                        summary: section.title,
-                      }}
-                      viewMode={viewMode}
-                      visualConfig={{
-                        type: idx === 0 ? "spark" : "table",
-                        title: viewMode === "story" ? translateTechnicalTerm(section.title) : section.title,
-                        description: viewMode === "story" ? undefined : `Importance ${(section.importance * 100).toFixed(0)}%`,
-                        confidence: reportData.confidenceValue,
-                        render: () => (
-                          <div className="text-sm text-muted-foreground line-clamp-6">
-                            <ReactMarkdown>
-                              {section.content}
-                            </ReactMarkdown>
-                          </div>
-                        ),
-                      }}
-                    />
-                  ))}
+                  {viewMode === "story" ? (
+                    reportQuery.isLoading ? (
+                      <StorySkeleton />
+                    ) : (
+                      <div className="max-w-3xl mx-auto animate-fade-in-up">
+                        {/* NEW: Story Header & Metrics */}
+                        <StoryHeadline data={transformToStory(reportData)} />
 
-                  {prioritizedSections.appendix.length > 0 && (
-                    <Accordion type="single" collapsible>
-                      <AccordionItem value="appendix">
-                        <AccordionTrigger className="text-left">Appendices</AccordionTrigger>
-                        <AccordionContent className="space-y-3">
-                          {prioritizedSections.appendix.map((section, idx) => (
-                            <InsightBlock
-                              key={section.id || `appendix-${idx}`}
-                              narrativeText={section.content.split("\n").slice(0, 2).join(" ")}
-                              evidenceObject={{ id: section.id || `appendix-${idx}`, summary: section.title }}
-                              viewMode={viewMode}
-                              visualConfig={{
-                                type: "table",
-                                title: viewMode === "story" ? translateTechnicalTerm(section.title) : section.title,
-                                description: "Auto-collapsed",
-                                confidence: reportData.confidenceValue,
-                                render: () => (
-                                  <div className="text-xs text-muted-foreground line-clamp-4">
-                                    <ReactMarkdown>
-                                      {section.content}
-                                    </ReactMarkdown>
-                                  </div>
-                                ),
-                              }}
-                            />
-                          ))}
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
+                        {/* New: Advanced Controls */}
+                        <div className="flex justify-center mb-8">
+                          <StoryControlBar data={transformToStory(reportData)} />
+                        </div>
+
+                        <MetricCardGrid metrics={transformToStory(reportData).metricCards} />
+
+                        {/* NEW: Editorial Section Loop */}
+                        <div className="space-y-12">
+                          {transformToStory(reportData).sections.map((section, idx) => {
+                            if (section.type === "recommendation" && section.listItems && section.listItems.length > 0) {
+                              return (
+                                <ActionChecklist
+                                  key={idx}
+                                  title={section.title}
+                                  items={section.listItems}
+                                />
+                              );
+                            }
+
+                            return (
+                              <SentimentBlock
+                                key={idx}
+                                title={section.title}
+                                sentiment={section.sentiment}
+                                impact={section.impact}
+                              >
+                                <ReactMarkdown>{section.content}</ReactMarkdown>
+                              </SentimentBlock>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )) : (
+                    // Technical View (Original)
+                    <div className="space-y-4">
+                      {prioritizedSections.primary.map((section, idx) => (
+                        <InsightBlock
+                          key={section.id || `primary-${idx}`}
+                          narrativeText={section.content.split("\n").slice(0, 3).join(" ")}
+                          evidenceObject={{
+                            id: section.id || `section-${idx}`,
+                            summary: section.title,
+                          }}
+                          viewMode={viewMode}
+                          visualConfig={{
+                            type: idx === 0 ? "spark" : "table",
+                            title: viewMode === "story" ? translateTechnicalTerm(section.title) : section.title,
+                            description: viewMode === "story" ? undefined : `Importance ${(section.importance * 100).toFixed(0)}%`,
+                            confidence: reportData.confidenceValue,
+                            render: () => (
+                              <div className="text-sm text-muted-foreground line-clamp-6">
+                                <ReactMarkdown>
+                                  {section.content}
+                                </ReactMarkdown>
+                              </div>
+                            ),
+                          }}
+                        />
+                      ))}
+
+                      {prioritizedSections.appendix.length > 0 && (
+                        <Accordion type="single" collapsible>
+                          <AccordionItem value="appendix">
+                            <AccordionTrigger className="text-left">Appendices</AccordionTrigger>
+                            <AccordionContent className="space-y-3">
+                              {prioritizedSections.appendix.map((section, idx) => (
+                                <InsightBlock
+                                  key={section.id || `appendix-${idx}`}
+                                  narrativeText={section.content.split("\n").slice(0, 2).join(" ")}
+                                  evidenceObject={{ id: section.id || `appendix-${idx}`, summary: section.title }}
+                                  viewMode={viewMode}
+                                  visualConfig={{
+                                    type: "table",
+                                    title: viewMode === "story" ? translateTechnicalTerm(section.title) : section.title,
+                                    description: "Auto-collapsed",
+                                    confidence: reportData.confidenceValue,
+                                    render: () => (
+                                      <div className="text-xs text-muted-foreground line-clamp-4">
+                                        <ReactMarkdown>
+                                          {section.content}
+                                        </ReactMarkdown>
+                                      </div>
+                                    ),
+                                  }}
+                                />
+                              ))}
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
+                      )}
+                    </div>
                   )}
                 </div>
               </section>
