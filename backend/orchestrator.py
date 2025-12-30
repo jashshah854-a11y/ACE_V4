@@ -576,12 +576,13 @@ def main_loop(run_path):
             # Allow exploratory mode to continue with limitations
             run_mode = state_mgr.read("run_mode") or "strict"
             if not can_proceed and run_mode != "exploratory":
-                state["status"] = "complete_with_errors"
-                state["next_step"] = "blocked"
-                update_history(state, f"Agent '{current}' blocked: {reason}", returncode=1)
-                # Used global import
-
-                append_limitation(state_mgr, f"Cannot run {current}: {reason}", agent=current, severity="error")
+                update_history(state, f"Agent '{current}' blocked by validation. Jumping to report generation.", returncode=1)
+                
+                append_limitation(state_mgr, f"Cannot run {current}. Skipping to final report.", agent=current, severity="error")
+                
+                # Jump to expositor to ensure report is generated
+                state["current_step"] = "expositor"
+                state["next_step"] = "expositor"
                 save_state(state_path, state)
                 continue
             elif not can_proceed and run_mode == "exploratory":
