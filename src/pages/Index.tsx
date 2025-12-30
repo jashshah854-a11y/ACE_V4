@@ -138,168 +138,200 @@ const Index = () => {
         <div className="container px-4 max-w-5xl">
           {/* Hero - Only show in upload stage */}
           {stage === "upload" && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="text-center mb-12"
-            >
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-teal-500/10 border border-teal-500/20 mb-6">
-                <Sparkles className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                <span className="text-sm font-medium text-teal-700 dark:text-teal-300">Meridian Intelligence Engine</span>
+import {AceLogo} from "@/components/ui/AceLogo";
+
+// ... existing imports
+
+const Index = () => {
+  // ... existing code
+
+  return (
+          <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors selection:bg-teal-500/30">
+            <Navbar />
+
+            <main className="relative pt-24 pb-16 min-h-screen flex flex-col items-center justify-center overflow-hidden">
+              {/* Ambient Background */}
+              <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-teal-500/10 blur-[120px]" />
+                <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-emerald-500/10 blur-[120px]" />
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4 text-slate-900 dark:text-slate-50">
-                Data Intelligence,
-                <span className="block mt-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent">
-                  Autonomously Verified
-                </span>
-              </h1>
-
-              <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-                Upload your data. The Sentry will verify its integrity, and the Overseer will ensure analytical rigor before any code runs.
-              </p>
-            </motion.div>
-          )}
-
-          {/* Main Content Area */}
-          <div className="relative min-h-[400px]">
-            <AnimatePresence mode="wait">
-
-              {/* STAGE 1: UPLOAD */}
-              {stage === "upload" && (
-                <motion.div
-                  key="upload"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="max-w-3xl mx-auto"
-                >
-                  <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    className={cn(
-                      "relative border-2 border-dashed rounded-2xl p-16 text-center transition-all duration-300 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm",
-                      isDragging
-                        ? "border-teal-500 bg-teal-50/50 dark:bg-teal-900/20 scale-[1.02]"
-                        : "border-slate-200 dark:border-slate-800 hover:border-teal-500/30 hover:bg-slate-50/50",
-                    )}
+              <div className="container px-4 max-w-5xl relative z-10">
+                {/* Hero - Only show in upload stage */}
+                {stage === "upload" && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                    className="text-center mb-16 flex flex-col items-center"
                   >
-                    <input
-                      type="file"
-                      onChange={handleFileInput}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      accept=".csv,.json,.xlsx,.xls,.parquet"
-                    />
-                    <div className="flex flex-col items-center gap-6">
-                      <div
-                        className={cn(
-                          "w-20 h-20 rounded-3xl flex items-center justify-center transition-all duration-300 shadow-xl shadow-teal-900/5",
-                          isDragging ? "bg-teal-500 text-white" : "bg-white dark:bg-slate-800 text-slate-400"
-                        )}
-                      >
-                        <Upload className="w-8 h-8" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                          Drop your dataset here
-                        </h3>
-                        <p className="text-slate-500">
-                          CSV, Excel, or Parquet supported
-                        </p>
-                      </div>
+                    <div className="mb-8 scale-150 transform transition-transform duration-700 hover:scale-[1.6]">
+                      <AceLogo size="xl" mode="icon" />
                     </div>
-                  </div>
-                </motion.div>
-              )}
 
-              {/* STAGE 2: SCANNING */}
-              {stage === "scanning" && (
-                <motion.div
-                  key="scanning"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex flex-col items-center justify-center pt-20"
-                >
-                  <Loader2 className="w-16 h-16 text-teal-500 animate-spin mb-8" />
-                  <h2 className="text-2xl font-mono font-bold text-slate-900 dark:text-slate-100 mb-2">
-                    SENTRY SCAN INITIATED
-                  </h2>
-                  <p className="text-slate-500 font-mono text-sm animate-pulse">
-                    Verifying schema integrity...
-                  </p>
-                </motion.div>
-              )}
+                    <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 text-slate-900 dark:text-slate-50 font-serif">
+                      ACE
+                      <span className="block text-2xl sm:text-3xl font-sans font-light tracking-widest text-slate-500 mt-2 uppercase">
+                        Autonomous Cognitive Engine
+                      </span>
+                    </h1>
 
-              {/* STAGE 3: IDENTITY HANDSHAKE (PREMIUM UI) */}
-              {stage === "identity" && profile && (
-                <motion.div
-                  key="identity"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                >
-                  <Button
-                    variant="ghost"
-                    onClick={() => { setStage("upload"); setFile(null); }}
-                    className="mb-6 text-slate-500 hover:text-slate-900"
-                  >
-                    ← Cancel & Re-upload
-                  </Button>
+                    <p className="text-lg md:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
+                      Upload your data. The <span className="text-teal-600 dark:text-teal-400 font-medium">Sentry</span> verifies integrity, and the <span className="text-teal-600 dark:text-teal-400 font-medium">Overseer</span> orchestrates the analysis.
+                    </p>
+                  </motion.div>
+                )}
 
-                  <DatasetUnderstanding
-                    profile={profile}
-                    onProceed={() => setStage("contract")}
-                  />
-                </motion.div>
-              )}
+                {/* Main Content Area */}
+                <div className="relative min-h-[400px]">
+                  <AnimatePresence mode="wait">
 
-              {/* STAGE 4: OVERSEER CONTRACT (PREMIUM UI) */}
-              {stage === "contract" && profile && (
-                <motion.div
-                  key="contract"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                >
-                  <TaskContractInput
-                    profile={profile}
-                    onSubmit={handleContractSubmit}
-                    onBack={() => setStage("identity")}
-                  />
-                </motion.div>
-              )}
+                    {/* STAGE 1: UPLOAD */}
+                    {stage === "upload" && (
+                      <motion.div
+                        key="upload"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="max-w-3xl mx-auto"
+                      >
+                        <div
+                          onDragOver={handleDragOver}
+                          onDragLeave={handleDragLeave}
+                          onDrop={handleDrop}
+                          className={cn(
+                            "group relative rounded-3xl p-16 text-center transition-all duration-500",
+                            "border border-slate-200 dark:border-slate-800",
+                            "bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl shadow-2xl shadow-slate-200/50 dark:shadow-slate-900/50",
+                            isDragging
+                              ? "border-teal-500/50 bg-teal-50/50 dark:bg-teal-900/10 scale-[1.02] ring-2 ring-teal-500/20"
+                              : "hover:border-teal-500/30 hover:shadow-teal-500/5"
+                          )}
+                        >
+                          {/* Animated Border Gradient Helper */}
+                          <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none"
+                            style={{ background: 'radial-gradient(circle at center, rgba(20,184,166,0.05) 0%, transparent 70%)' }}
+                          />
 
-              {/* STAGE 5: PROCESSING */}
-              {stage === "processing" && (
-                <motion.div
-                  key="processing"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex flex-col items-center justify-center pt-20"
-                >
-                  <div className="relative w-24 h-24 mb-8">
-                    <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800"></div>
-                    <div className="absolute inset-0 rounded-full border-4 border-teal-500 border-t-transparent animate-spin"></div>
-                    <CheckCircle2 className="absolute inset-0 m-auto w-8 h-8 text-teal-500" />
-                  </div>
-                  <h2 className="text-2xl font-serif font-bold text-slate-900 dark:text-slate-100 mb-2">
-                    Contract Approved
-                  </h2>
-                  <p className="text-slate-500">
-                    Meridian is initializing the analysis pipeline...
-                  </p>
-                </motion.div>
-              )}
+                          <input
+                            type="file"
+                            onChange={handleFileInput}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            accept=".csv,.json,.xlsx,.xls,.parquet"
+                          />
+                          <div className="flex flex-col items-center gap-8 relative z-0">
+                            <div
+                              className={cn(
+                                "w-24 h-24 rounded-3xl flex items-center justify-center transition-all duration-500",
+                                "bg-white dark:bg-slate-950 shadow-xl ring-1 ring-slate-900/5 dark:ring-slate-100/10",
+                                isDragging ? "text-teal-500 scale-110 rotate-3" : "text-slate-400 group-hover:text-teal-500 group-hover:scale-105"
+                              )}
+                            >
+                              <Upload className="w-10 h-10" />
+                            </div>
+                            <div className="space-y-3">
+                              <h3 className="text-2xl font-serif font-medium text-slate-900 dark:text-slate-100">
+                                {isDragging ? "Drop to Initialize" : "Drop your dataset here"}
+                              </h3>
+                              <p className="text-slate-500 font-sans tracking-wide text-sm uppercase">
+                                CSV • Excel • Parquet
+                              </p>
+                            </div>
 
-            </AnimatePresence>
+                            <Button variant="outline" className="mt-4 pointer-events-none opacity-50 font-mono text-xs tracking-wider">
+                              CLICK TO BROWSE
+                            </Button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* STAGE 2: SCANNING */}
+                    {stage === "scanning" && (
+                      <motion.div
+                        key="scanning"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex flex-col items-center justify-center pt-20"
+                      >
+                        <Loader2 className="w-16 h-16 text-teal-500 animate-spin mb-8" />
+                        <h2 className="text-2xl font-mono font-bold text-slate-900 dark:text-slate-100 mb-2">
+                          SENTRY SCAN INITIATED
+                        </h2>
+                        <p className="text-slate-500 font-mono text-sm animate-pulse">
+                          Verifying schema integrity...
+                        </p>
+                      </motion.div>
+                    )}
+
+                    {/* STAGE 3: IDENTITY HANDSHAKE (PREMIUM UI) */}
+                    {stage === "identity" && profile && (
+                      <motion.div
+                        key="identity"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                      >
+                        <Button
+                          variant="ghost"
+                          onClick={() => { setStage("upload"); setFile(null); }}
+                          className="mb-6 text-slate-500 hover:text-slate-900"
+                        >
+                          ← Cancel & Re-upload
+                        </Button>
+
+                        <DatasetUnderstanding
+                          profile={profile}
+                          onProceed={() => setStage("contract")}
+                        />
+                      </motion.div>
+                    )}
+
+                    {/* STAGE 4: OVERSEER CONTRACT (PREMIUM UI) */}
+                    {stage === "contract" && profile && (
+                      <motion.div
+                        key="contract"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                      >
+                        <TaskContractInput
+                          profile={profile}
+                          onSubmit={handleContractSubmit}
+                          onBack={() => setStage("identity")}
+                        />
+                      </motion.div>
+                    )}
+
+                    {/* STAGE 5: PROCESSING */}
+                    {stage === "processing" && (
+                      <motion.div
+                        key="processing"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex flex-col items-center justify-center pt-20"
+                      >
+                        <div className="relative w-24 h-24 mb-8">
+                          <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800"></div>
+                          <div className="absolute inset-0 rounded-full border-4 border-teal-500 border-t-transparent animate-spin"></div>
+                          <CheckCircle2 className="absolute inset-0 m-auto w-8 h-8 text-teal-500" />
+                        </div>
+                        <h2 className="text-2xl font-serif font-bold text-slate-900 dark:text-slate-100 mb-2">
+                          Contract Approved
+                        </h2>
+                        <p className="text-slate-500">
+                          Meridian is initializing the analysis pipeline...
+                        </p>
+                      </motion.div>
+                    )}
+
+                  </AnimatePresence>
+                </div>
+              </div>
+            </main>
           </div>
-        </div>
-      </main>
-    </div>
-  );
+          );
 };
 
-export default Index;
+          export default Index;

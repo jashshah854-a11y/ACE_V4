@@ -1,31 +1,9 @@
-import { Link, useLocation } from "react-router-dom";
-import { BarChart3, FileText, Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { getRecentReports } from "@/lib/localStorage";
-import { useTaskContext } from "@/context/TaskContext";
-import { useSimulation } from "@/context/SimulationContext";
+import { AceLogo } from "@/components/ui/AceLogo";
+
+// ... imports
 
 export const Navbar = () => {
-  const location = useLocation();
-  const { simulationState } = useSimulation();
-  const isSafeMode = simulationState.safe_mode;
-
-  // Safely access TaskContext with fallback
-  let primaryQuestion: string | undefined;
-  try {
-    const context = useTaskContext();
-    primaryQuestion = context.primaryQuestion;
-  } catch (error) {
-    console.warn("TaskContext not available in Navbar", error);
-    primaryQuestion = undefined;
-  }
-
-  const isPulse = location.pathname === "/" || location.pathname.startsWith("/report/summary");
-  const isUpload = location.pathname.startsWith("/upload");
-  const isReports = location.pathname.startsWith("/reports");
-
-  const lastRunId = getRecentReports()[0]?.runId;
-  const reportsHref = lastRunId ? `/reports?run=${lastRunId}` : "/reports";
+  // ... hook logic
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
@@ -33,20 +11,7 @@ export const Navbar = () => {
         <div className="flex h-12 items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="relative">
-              {/* Logo mark with gradient */}
-              <div className="w-10 h-10 rounded-xl gradient-meridian flex items-center justify-center shadow-lg glow-primary transition-transform duration-300 group-hover:scale-105">
-                <BarChart3 className="w-5 h-5 text-white" strokeWidth={2.5} />
-              </div>
-              {/* Subtle accent dot */}
-              <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-teal-400 border-2 border-card" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-lg font-bold tracking-tight text-navy-900">Meridian</span>
-              <span className="text-[9px] text-muted-foreground uppercase tracking-[0.15em] font-medium hidden sm:block">
-                Data Intelligence
-              </span>
-            </div>
+            <AceLogo size="sm" mode="full" className="text-teal-600 dark:text-teal-400" />
           </Link>
 
           {/* Navigation */}
