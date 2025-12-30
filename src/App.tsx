@@ -11,29 +11,36 @@ import ExecutivePulse from "./pages/ExecutivePulse";
 import Pipeline from "./pages/Pipeline";
 import DemoPipelineStatus from "./pages/DemoPipelineStatus";
 import NotFound from "./pages/NotFound";
+import { WideReportViewer } from "@/components/report/WideReportViewer";
+
+import { SimulationProvider } from "./context/SimulationContext";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<ExecutivePulse />} />
-            <Route path="/report/summary" element={<ExecutivePulse />} />
-            <Route path="/upload" element={<Index />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/pipeline/:runId" element={<Pipeline />} />
-            <Route path="/pipeline" element={<Pipeline />} />
-            <Route path="/demo/pipeline-status" element={<DemoPipelineStatus />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-        <GlobalErrorOverlay />
-      </TooltipProvider>
+      <SimulationProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<ExecutivePulse />} />
+              <Route path="/report/summary" element={<ExecutivePulse />} />
+              {/* ADDED: Route for the new wide report viewer */}
+              <Route path="/report/:runId" element={<WideReportViewer />} />
+              <Route path="/upload" element={<Index />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/pipeline/:runId" element={<Pipeline />} />
+              <Route path="/pipeline" element={<Pipeline />} />
+              <Route path="/demo/pipeline-status" element={<DemoPipelineStatus />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+          <GlobalErrorOverlay />
+        </TooltipProvider>
+      </SimulationProvider>
     </QueryClientProvider>
   </ErrorBoundary>
 );
