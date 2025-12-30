@@ -24,13 +24,28 @@ def build_identity_card(
 
     # Quality: missing and distinct stats
     cols = schema_profile.get("columns", {})
+    critical_gap_score = 0.0
+    is_safe_mode = False
+    
     if cols:
         null_pcts = [c.get("null_pct", 0) or 0 for c in cols.values()]
         card["quality"]["avg_null_pct"] = round(sum(null_pcts) / max(len(null_pcts), 1), 4)
         card["quality"]["max_null_pct"] = round(max(null_pcts), 4)
+        critical_gap_score = round(max(null_pcts), 4)
 
         distinct_pcts = [c.get("distinct_pct", 0) or 0 for c in cols.values()]
         card["quality"]["avg_distinct_pct"] = round(sum(distinct_pcts) / max(len(distinct_pcts), 1), 4)
+
+    # Trust Schema / Safe Mode Triggers
+    row_count = schema_profile.get("row_count", 0) or 0
+    if critical_gap_score > 0.40:
+        is_safe_mode = True
+    if row_count < 50:
+        is_safe_mode = True
+        
+    card["critical_gap_score"] = critical_gap_score
+    card["is_safe_mode"] = is_safe_mode
+    
     return card
 
 

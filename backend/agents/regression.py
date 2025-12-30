@@ -62,6 +62,16 @@ class RegressionAgent:
         )
         if run_config:
             insights.setdefault("applied_config", run_config)
+        
+        # Analyst Core: Confidence Scoring
+        r2 = insights.get("metrics", {}).get("r2")
+        if r2 is not None:
+            insights["confidence_score"] = max(0.1, min(1.0, float(r2)))
+            insights["confidence_reasoning"] = f"Regression model fit (R2={r2:.2f})."
+        else:
+             insights["confidence_score"] = 0.5
+             insights["confidence_reasoning"] = "No R2 score available for regression."
+             
         self.state.write("regression_insights", insights)
 
         if insights.get("status") == "ok":

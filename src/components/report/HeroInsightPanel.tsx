@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, Minus, Lightbulb, ArrowRight, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SignalWidget } from "../trust/SignalWidget";
 import { ConfidenceBadge } from "./ConfidenceBadge";
 import { TruthCheck } from "./feedback/TruthCheck";
 
@@ -133,7 +134,7 @@ export function HeroInsightPanel({
                                 <div className="text-right">
                                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-2 justify-end">
                                         <span>Confidence</span>
-                                        <ConfidenceBadge value={safeConfidence} className="px-2 py-0" />
+                                        <SignalWidget score={safeConfidence / 100} compact={true} />
                                     </div>
                                     <div className="flex items-center gap-2 mt-1">
                                         <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
