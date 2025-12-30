@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { StreamingText } from "@/components/ui/StreamingText";
 import { Download, FileText } from "lucide-react";
 import { ConfidenceSignal } from "@/components/report/ConfidenceSignal";
 import { ReportViewModel } from "@/lib/reportViewModel";
@@ -66,7 +67,11 @@ export function ReportHero({
         </Card>
         <Card className="p-3 bg-muted/50">
           <div className="text-xs uppercase text-muted-foreground">Scope / Decision</div>
-          <div className="text-sm whitespace-pre-line">{decisionSummary || "Scope not provided."}</div>
+          <div className="text-sm whitespace-pre-line text-slate-700 dark:text-slate-300">
+            {decisionSummary ? (
+              <StreamingText text={decisionSummary} speed={20} />
+            ) : "Scope not provided."}
+          </div>
         </Card>
       </div>
 

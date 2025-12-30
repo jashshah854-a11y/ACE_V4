@@ -69,9 +69,16 @@ export function useGovernedReport(runId?: string) {
           }
           throw new Error(`Failed to fetch governed report: ${response.statusText}`);
         }
-        const payload: GovernedReport = await response.json();
-        if (!cancelled) {
-          setData(payload);
+        try {
+          const payload: GovernedReport = await response.json();
+          if (!cancelled) {
+            setData(payload);
+          }
+        } catch (parseError) {
+          if (!cancelled) {
+            console.error('Failed to parse governed report JSON:', parseError);
+            setData(null);
+          }
         }
       } catch (err) {
         if (!cancelled) {

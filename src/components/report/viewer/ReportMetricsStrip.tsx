@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SignalWidget } from "@/components/trust/SignalWidget";
+import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
 
 interface ReportMetricsStripProps {
   confidenceValue: number | undefined;
@@ -16,7 +17,9 @@ export function ReportMetricsStrip({ confidenceValue, dataQualityValue, clusterM
         <div className="flex items-center justify-between">
           <div>
             <div className="text-xs uppercase text-muted-foreground">Confidence</div>
-            <div className="text-lg font-semibold">{confidenceValue ?? "n/a"}%</div>
+            <div className="text-lg font-semibold text-teal-600 dark:text-teal-400">
+              <AnimatedCounter value={confidenceValue || 0} suffix="%" />
+            </div>
           </div>
           <SignalWidget score={(confidenceValue || 0) / 100} compact={true} />
         </div>
@@ -33,7 +36,9 @@ export function ReportMetricsStrip({ confidenceValue, dataQualityValue, clusterM
         <div className="flex items-center justify-between">
           <div>
             <div className="text-xs uppercase text-muted-foreground">Data Quality</div>
-            <div className="text-lg font-semibold">{dataQualityValue ?? "n/a"}%</div>
+            <div className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
+              <AnimatedCounter value={dataQualityValue || 0} suffix="%" />
+            </div>
           </div>
           <SignalWidget score={(dataQualityValue || 0) / 100} compact={true} />
         </div>

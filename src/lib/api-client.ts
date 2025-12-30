@@ -89,8 +89,9 @@ export async function previewDataset(file: File): Promise<DatasetIdentity> {
     try {
       const errorData: ApiError = await response.json();
       errorMessage = errorData.detail || errorMessage;
-    } catch {
-      // ignore
+    } catch (parseError) {
+      console.error("Failed to parse error response:", parseError);
+      // Use default error message if JSON parsing fails
     }
     throw new Error(errorMessage);
   }
@@ -124,7 +125,8 @@ export async function submitRun(file: File, taskIntent: TaskIntentPayload): Prom
     try {
       const errorData: ApiError = await response.json();
       errorMessage = errorData.detail || errorMessage;
-    } catch {
+    } catch (parseError) {
+      console.error("Failed to parse error response:", parseError);
       // Use default error message if JSON parsing fails
     }
     throw new Error(errorMessage);
@@ -140,7 +142,8 @@ export async function getRunState(runId: string): Promise<RunState> {
     try {
       const errorData: ApiError = await response.json();
       errorMessage = `${errorData.detail || errorMessage} (${response.status})`;
-    } catch {
+    } catch (parseError) {
+      console.error("Failed to parse error response:", parseError);
       // Use default error message if JSON parsing fails
     }
     throw new Error(errorMessage);
@@ -157,7 +160,8 @@ export async function getReport(runId: string): Promise<string> {
     try {
       const errorData: ApiError = await response.json();
       errorMessage = `${errorData.detail || errorMessage} (${response.status})`;
-    } catch {
+    } catch (parseError) {
+      console.error("Failed to parse error response:", parseError);
       // Use default error message if JSON parsing fails
     }
     throw new Error(errorMessage);
@@ -174,7 +178,8 @@ export async function getInsights(runId: string): Promise<InsightsResponse> {
     try {
       const errorData: ApiError = await response.json();
       errorMessage = `${errorData.detail || errorMessage} (${response.status})`;
-    } catch {
+    } catch (parseError) {
+      console.error("Failed to parse error response:", parseError);
       // Use default error message if JSON parsing fails
     }
     throw new Error(errorMessage);
