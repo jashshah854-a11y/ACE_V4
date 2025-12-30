@@ -58,6 +58,46 @@ export interface InsightsResponse {
   };
 }
 
+
+export interface DatasetIdentity {
+  row_count: number;
+  column_count: number;
+  file_type: string;
+  schema_map: Array<{ name: string; type: string; sample: string }>;
+  quality_score: number;
+  critical_gaps: string[];
+  detected_capabilities: {
+    has_financial_columns: boolean;
+    has_time_series: boolean;
+    has_categorical: boolean;
+    has_numeric: boolean;
+  };
+  warnings: string[];
+}
+
+export async function previewDataset(file: File): Promise<DatasetIdentity> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_BASE}/runs/preview`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let errorMessage = `Failed to analyze dataset: ${response.statusText}`;
+    try {
+      const errorData: ApiError = await response.json();
+      errorMessage = errorData.detail || errorMessage;
+    } catch {
+      // ignore
+    }
+    throw new Error(errorMessage);
+  }
+
+  return response.json();
+}
+
 export async function submitRun(file: File, taskIntent: TaskIntentPayload): Promise<RunResponse> {
   const formData = new FormData();
   formData.append("file", file);
