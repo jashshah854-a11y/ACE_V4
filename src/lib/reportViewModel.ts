@@ -76,18 +76,48 @@ export function transformToStory(runData: BackendRunData | null | undefined): St
     const summaryText = execSummarySection ? execSummarySection.content : "No executive summary available.";
 
     // Naive headline extraction: First sentence or split by newline
+    // Naive headline extraction: First sentence or split by newline
     const cleanSummary = summaryText.replace(/#{1,3}\s/g, "").replace(/\*\*/g, ""); // Remove md headers/bold
     const sentences = cleanSummary.split(". ").filter(s => s.trim().length > 0);
-    const headline = sentences[0]?.length < 100 ? sentences[0] : "Analysis Complete: Key Strategic Insights Identified";
+
+    let headline = sentences[0]?.length < 100 ? sentences[0] : "Analysis Complete: Key Strategic Insights Identified";
+
+    // UI Audit Fix: Prevent "Validation mode" system messages from becoming giant headlines
+    if (headline.toLowerCase().includes("validation mode") || headline.toLowerCase().includes("limitations")) {
+        headline = "Data Analysis Report";
+    }
+
     const subheadline = sentences.length > 1 ? sentences[1] : "Review the full report for details.";
+
+    // Data Date Fix
+    let dateStr = "Recent";
+    try {
+        if (runData.created_at) {
+            const d = new Date(runData.created_at);
+            if (!isNaN(d.getTime())) {
+                dateStr = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+            }
+        }
+    } catch (e) { console.warn("Date parse error", e); }
 
     // Extract brief (3 bullets) logic - Mocking or parsing lists if available
     const dataQualityScore = runData.diagnostics?.data_quality?.score ?? 0;
+
+    // Filter out system validation messages from the brief to reduce redundancy
+    const contentBullets = sentences.slice(2, 5).filter(s =>
+        !s.toLowerCase().includes("validation mode") &&
+        !s.toLowerCase().includes("limitations")
+    );
+
     const executiveBrief = [
-        "Analysis complete with high confidence.",
-        `Data quality score of ${(dataQualityScore * 100).toFixed(0)}%.`,
-        sentences.length > 2 ? sentences[2] : "Critical trends identified in performance metrics."
-    ];
+        `Analysis Status: ${dataQualityScore > 0.5 ? "Complete" : "Limitations Applied"}`,
+        `Data Quality Score: ${(dataQualityScore * 100).toFixed(0)}%`,
+        ...contentBullets
+    ].slice(0, 3);
+
+    if (executiveBrief.length < 3) {
+        executiveBrief.push("Explore the full report below for detailed metrics.");
+    }
 
     // 2. Build Metric Cards
     const metrics: MetricCardData[] = [];
@@ -198,7 +228,7 @@ export function transformToStory(runData: BackendRunData | null | undefined): St
             dataQuality: dataQualityScore,
             confidence: confidence,
             runId: runData.run_id,
-            date: new Date(runData.created_at).toLocaleDateString()
+            date: dateStr
         }
     };
 }
