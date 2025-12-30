@@ -283,7 +283,8 @@ const Index = () => {
 
                         <DatasetUnderstanding
                           profile={profile}
-                          onProceed={() => setStage("contract")}
+                          onProceed={() => handleContractSubmit("Run a comprehensive analysis of this dataset, identifying key drivers, anomalies, and segments.")}
+                          onCustomize={() => setStage("contract")}
                         />
                       </motion.div>
                     )}

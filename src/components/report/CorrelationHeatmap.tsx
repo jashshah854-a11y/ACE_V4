@@ -69,7 +69,7 @@ export function CorrelationHeatmap({ correlations, insights }: CorrelationHeatma
         )}
 
         <div className="space-y-3">
-          {correlations.slice(0, 10).map((corr, idx) => (
+          {(Array.isArray(correlations) ? correlations : []).slice(0, 10).map((corr, idx) => (
             <div
               key={idx}
               className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
