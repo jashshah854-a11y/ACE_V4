@@ -416,7 +416,7 @@ def main_loop(run_path):
 
         # Emergency Report Generation: If completely finished/failed but no report, try one last time
         if state.get("status") in {"complete", "complete_with_errors", "failed"}:
-            if "expositor" not in state.get("steps_completed", []) and "final_report" not in state_manager.read("artifacts") and current != "expositor":
+            if "expositor" not in state.get("steps_completed", []) and "final_report" not in state.get("artifacts", {}) and current != "expositor":
                 print("[ORCHESTRATOR] Pipeline ending without report. Forcing expositor run...")
                 run_agent("expositor", run_path)
                 state = load_state(state_path) # Reload state after agent run
