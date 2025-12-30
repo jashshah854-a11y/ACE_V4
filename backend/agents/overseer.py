@@ -26,54 +26,22 @@ from core.explainability import persist_evidence
 from core.scope_enforcer import ScopeEnforcer, ScopeViolationError
 from core.cache import RailwayClusteringCache
 
-def build_feature_matrix(df, schema_map):
-    # UNIVERSAL NORMALIZATION PATCH
-    if schema_map is None:
-        schema_map = {
-            "columns": df.columns.tolist(),
-            "column_types": {col: "numeric" for col in df.columns},
-            "groups": {}
-        }
+def build_feature_matrix(df, schema_map: SchemaMap):
+    # Use robust SchemaMap from core/schema
+    # Flatten numeric features
+    cols = schema_map.basic_types.numeric
+    if not cols:
+        # Fallback to all columns if no numeric types defined
+        cols = df.columns.tolist()
+    
+    # Filter for columns that actually exist in the DF
+    valid_cols = [c for c in cols if c in df.columns]
+    
+    matrix = df[valid_cols].copy()
 
-    if isinstance(schema_map, list):
-        schema_map = {
-            "columns": schema_map,
-            "column_types": {col: "numeric" for col in schema_map},
-            "groups": {}
-        }
-
-    if not isinstance(schema_map, dict):
-        cols = getattr(schema_map, "columns", df.columns.tolist())
-        types = getattr(schema_map, "column_types", {c: "numeric" for c in cols})
-        groups = getattr(schema_map, "groups", {})
-        schema_map = {
-            "columns": list(cols),
-            "column_types": dict(types),
-            "groups": dict(groups),
-        }
-
-    schema_map.setdefault("columns", df.columns.tolist())
-    schema_map.setdefault(
-        "column_types",
-        {col: "numeric" for col in schema_map["columns"]}
-    )
-    schema_map.setdefault("groups", {})
-
-    schema_map["columns"] = [
-        col for col in schema_map["columns"] if col in df.columns
-    ]
-    # END PATCH
-
-    cols = schema_map["columns"]
-    matrix = df[cols].copy()
-
-    for col in cols:
-        try:
-            matrix[col] = pd.to_numeric(matrix[col], errors="coerce")
-        except:
-            matrix[col] = matrix[col].astype("category").cat.codes
-
-    matrix = matrix.fillna(0)
+    for col in valid_cols:
+         # Force numeric conversion
+        matrix[col] = pd.to_numeric(matrix[col], errors="coerce").fillna(0)
 
     return matrix
 

@@ -56,26 +56,36 @@ function extractListItems(markdown: string): string[] {
 }
 
 // --- Transformer ---
+import { BackendRunData, BackendReportSection } from "@/types/backend-schema";
+import { z } from "zod";
 
-export function transformToStory(runData: any): StoryViewData {
+const MetadataSchema = z.object({
+    row_count: z.number().optional(),
+    column_count: z.number().optional(),
+});
+
+export function transformToStory(runData: BackendRunData | null | undefined): StoryViewData {
     if (!runData) {
         return createEmptyStory();
     }
 
     // 1. Extract Headline & Brief
-    const execSummarySection = runData.sections?.find((s: any) => s.id === "executive-summary" || s.title?.toLowerCase().includes("executive"));
+    const execSummarySection = runData.sections?.find(
+        (s: BackendReportSection) => s.id === "executive-summary" || s.title?.toLowerCase().includes("executive")
+    );
     const summaryText = execSummarySection ? execSummarySection.content : "No executive summary available.";
 
     // Naive headline extraction: First sentence or split by newline
     const cleanSummary = summaryText.replace(/#{1,3}\s/g, "").replace(/\*\*/g, ""); // Remove md headers/bold
-    const sentences = cleanSummary.split(". ");
-    const headline = sentences[0].length < 100 ? sentences[0] : "Analysis Complete: Key Strategic Insights Identified";
+    const sentences = cleanSummary.split(". ").filter(s => s.trim().length > 0);
+    const headline = sentences[0]?.length < 100 ? sentences[0] : "Analysis Complete: Key Strategic Insights Identified";
     const subheadline = sentences.length > 1 ? sentences[1] : "Review the full report for details.";
 
     // Extract brief (3 bullets) logic - Mocking or parsing lists if available
+    const dataQualityScore = runData.diagnostics?.data_quality?.score ?? 0;
     const executiveBrief = [
         "Analysis complete with high confidence.",
-        `Data quality score of ${(runData.diagnostics?.data_quality?.score * 100).toFixed(0)}%.`,
+        `Data quality score of ${(dataQualityScore * 100).toFixed(0)}%.`,
         sentences.length > 2 ? sentences[2] : "Critical trends identified in performance metrics."
     ];
 
@@ -85,26 +95,31 @@ export function transformToStory(runData: any): StoryViewData {
     // Rows/Columns (Safe parse)
     let rowCount = 0;
     try {
-        const metadata = runData.sections?.find((s: any) => s.id === "run-metadata")?.content;
-        if (metadata && typeof metadata === 'string' && metadata.startsWith('{')) {
-            const parsed = JSON.parse(metadata);
-            rowCount = parsed.row_count || 0;
-            metrics.push({
-                label: "Total Records",
-                value: rowCount.toLocaleString(),
-                status: "neutral",
-                icon: Activity
-            });
+        const metadataSection = runData.sections?.find((s: BackendReportSection) => s.id === "run-metadata");
+        if (metadataSection?.content) {
+            // Attempt to parse JSON content from the metadata section
+            const parsed = JSON.parse(metadataSection.content);
+            const result = MetadataSchema.safeParse(parsed);
+            if (result.success) {
+                rowCount = result.data.row_count || 0;
+                metrics.push({
+                    label: "Total Records",
+                    value: rowCount.toLocaleString(),
+                    status: "neutral",
+                    icon: Activity
+                });
+            }
         }
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+        console.warn("[ReportViewModel] Failed to parse metadata section", e);
+    }
 
     // Quality Score
-    const quality = runData.diagnostics?.data_quality?.score || 0;
     metrics.push({
         label: "Data Clarity",
-        value: `${(quality * 100).toFixed(0)}%`,
-        status: quality > 0.8 ? "success" : (quality > 0.5 ? "warning" : "risk"),
-        trend: quality > 0.8 ? "up" : "neutral",
+        value: `${(dataQualityScore * 100).toFixed(0)}%`,
+        status: dataQualityScore > 0.8 ? "success" : (dataQualityScore > 0.5 ? "warning" : "risk"),
+        trend: dataQualityScore > 0.8 ? "up" : "neutral",
         icon: Shield
     });
 
@@ -119,8 +134,8 @@ export function transformToStory(runData: any): StoryViewData {
 
     // 3. Transform Sections
     const storySections: StorySection[] = runData.sections
-        .filter((s: any) => s.type !== "metadata" && s.type !== "diagnostics" && s.id !== "executive-summary") // We used executive summary for headline
-        .map((s: any) => {
+        .filter((s: BackendReportSection) => s.type !== "metadata" && s.type !== "diagnostics" && s.id !== "executive-summary") // We used executive summary for headline
+        .map((s: BackendReportSection) => {
             let title = s.title;
             let content = s.content;
 
@@ -180,7 +195,7 @@ export function transformToStory(runData: any): StoryViewData {
         sections: storySections,
         executiveBrief,
         meta: {
-            dataQuality: quality,
+            dataQuality: dataQualityScore,
             confidence: confidence,
             runId: runData.run_id,
             date: new Date(runData.created_at).toLocaleDateString()
@@ -196,5 +211,41 @@ function createEmptyStory(): StoryViewData {
         sections: [],
         executiveBrief: [],
         meta: { dataQuality: 0, confidence: 0, runId: "---", date: "---" }
+    };
+}
+// --- Legacy / Adapter Exports for useReportData ---
+
+export interface ReportViewModel extends StoryViewData { }
+
+export function filterSuppressedSections(sections: any[]) {
+    return sections.filter(s => {
+        const title = s.title?.toLowerCase() || "";
+        const type = s.type?.toLowerCase() || "";
+        return !title.includes("metadata") && !type.includes("diagnostic");
+    });
+}
+
+export function transformAPIResponse(data: any): ReportViewModel {
+    // Adapter to convert useReportData's internal format to StoryViewData
+    // This is a simplified mapping to satisfy the build and provide basic legacy support
+
+    return {
+        headline: data.decisionSummary || "Report Analysis",
+        subheadline: data.primaryQuestion || "Key insights from your data.",
+        metricCards: [], // data.metrics could be mapped here if needed
+        sections: (data.sections || []).map((s: any) => ({
+            id: s.id || "section",
+            title: s.title || "Section",
+            content: s.content || "",
+            sentiment: "neutral",
+            type: "narrative"
+        })),
+        executiveBrief: [],
+        meta: {
+            dataQuality: 0,
+            confidence: data.confidenceValue || 0,
+            runId: "legacy",
+            date: new Date().toLocaleDateString()
+        }
     };
 }
