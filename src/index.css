@@ -143,7 +143,8 @@
     --space-library-xl: 6rem;
   }
 
-  .dark {
+  /* Increase specificity to ensure these override :root */
+  :root.dark {
     /* Atlas Financial Dark Theme */
     --background: 215 35% 8%;
     --foreground: 40 15% 95%;
@@ -212,6 +213,61 @@
     --sidebar-accent-foreground: 40 15% 95%;
     --sidebar-border: 215 25% 20%;
     --sidebar-ring: 168 65% 50%;
+  }
+
+  /* Fallback for system preference if class is missing */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: 215 35% 8%;
+      --foreground: 40 15% 95%;
+      --card: 215 35% 11%;
+      --card-foreground: 40 15% 95%;
+      --popover: 215 35% 11%;
+      --popover-foreground: 40 15% 95%;
+      --primary: 215 40% 80%;
+      --primary-foreground: 215 35% 8%;
+      --accent: 168 65% 50%;
+      --accent-foreground: 215 35% 8%;
+      --secondary: 215 25% 16%;
+      --secondary-foreground: 40 15% 95%;
+      --muted: 215 25% 14%;
+      --muted-foreground: 215 15% 55%;
+      --destructive: 0 55% 50%;
+      --destructive-foreground: 0 0% 100%;
+      --border: 215 25% 20%;
+      --input: 215 25% 20%;
+      --ring: 168 65% 50%;
+      --warning: 20 55% 55%;
+      --warning-foreground: 0 0% 100%;
+      --info: 200 70% 55%;
+      --info-foreground: 0 0% 100%;
+      --success: 168 65% 50%;
+      --success-foreground: 215 35% 8%;
+
+      --navy-50: 215 25% 16%;
+      --navy-100: 215 25% 20%;
+      --navy-200: 215 30% 28%;
+      --navy-800: 215 40% 70%;
+      --navy-900: 215 40% 80%;
+      --teal-50: 168 30% 16%;
+      --teal-100: 168 30% 20%;
+      --teal-400: 168 60% 55%;
+      --teal-500: 168 65% 50%;
+      --teal-600: 168 60% 60%;
+      --copper-50: 20 25% 16%;
+      --copper-100: 20 25% 20%;
+      --copper-400: 20 55% 58%;
+      --copper-600: 20 50% 65%;
+
+      --sidebar-background: 215 35% 8%;
+      --sidebar-foreground: 40 15% 95%;
+      --sidebar-primary: 215 40% 80%;
+      --sidebar-primary-foreground: 215 35% 8%;
+      --sidebar-accent: 215 25% 16%;
+      --sidebar-accent-foreground: 40 15% 95%;
+      --sidebar-border: 215 25% 20%;
+      --sidebar-ring: 168 65% 50%;
+    }
   }
 }
 
