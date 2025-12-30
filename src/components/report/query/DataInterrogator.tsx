@@ -29,7 +29,7 @@ export function DataInterrogator({
     label,
     contextData
 }: DataInterrogatorProps) {
-    const { startQuery } = useSimulation();
+    const { startQuery, simulationState } = useSimulation();
 
     const handleQuery = (intent: string) => {
         startQuery(dataPointId, intent);
@@ -38,6 +38,8 @@ export function DataInterrogator({
             icon: <Sparkles className="w-4 h-4 text-teal-500" />
         });
     };
+
+    const isSafeMode = simulationState.safe_mode;
 
     const getPrompts = () => {
         switch (type) {
@@ -85,16 +87,29 @@ export function DataInterrogator({
                     Ask about <strong>{label || dataPointId}</strong>
                 </div>
 
-                {getPrompts().map((prompt, idx) => (
-                    <ContextMenuItem
-                        key={idx}
-                        onClick={() => handleQuery(prompt.intent)}
-                        className="gap-2 cursor-pointer focus:bg-teal-50 dark:focus:bg-teal-900/20 focus:text-teal-700 dark:focus:text-teal-300"
-                    >
-                        {prompt.icon}
-                        <span>{prompt.intent}</span>
+                {isSafeMode ? (
+                    <ContextMenuItem disabled className="gap-2 text-amber-600 dark:text-amber-500 font-medium">
+                        <AlertTriangle className="w-4 h-4" />
+                        <span>Exploration Disabled</span>
                     </ContextMenuItem>
-                ))}
+                ) : (
+                    getPrompts().map((prompt, idx) => (
+                        <ContextMenuItem
+                            key={idx}
+                            onClick={() => handleQuery(prompt.intent)}
+                            className="gap-2 cursor-pointer focus:bg-teal-50 dark:focus:bg-teal-900/20 focus:text-teal-700 dark:focus:text-teal-300"
+                        >
+                            {prompt.icon}
+                            <span>{prompt.intent}</span>
+                        </ContextMenuItem>
+                    ))
+                )}
+
+                {isSafeMode && (
+                    <div className="px-2 py-2 text-[10px] text-muted-foreground leading-snug border-t border-slate-100 mt-1">
+                        High-trust data required for automated analysis. <button className="underline text-slate-900 hover:text-teal-600" onClick={() => console.log('View Audit')}>View Audit</button>
+                    </div>
+                )}
             </ContextMenuContent>
         </ContextMenu>
     );

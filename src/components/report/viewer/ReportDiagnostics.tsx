@@ -42,7 +42,7 @@ export function DiagnosticsCard({
   onConfidenceModeChange,
 }: DiagnosticsCardProps) {
   return (
-    <Card className="mb-4 p-4 space-y-3">
+    <Card id="identity-audit" className="mb-4 p-4 space-y-3">
       <div className="flex flex-wrap items-center gap-3 justify-between">
         <div>
           <div className="text-xs uppercase text-muted-foreground">Diagnostics</div>
