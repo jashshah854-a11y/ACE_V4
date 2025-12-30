@@ -2,7 +2,7 @@ import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { useSimulation } from "@/context/SimulationContext";
 import { Button } from "@/components/ui/button";
 
-export function SafeModeBanner() {
+export function SimulationSafeModeBanner() {
     const { simulationState } = useSimulation();
 
     if (!simulationState.safe_mode) return null;
