@@ -1,9 +1,12 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Download, FileText } from "lucide-react";
 import { ConfidenceSignal } from "@/components/report/ConfidenceSignal";
 import { ReportViewModel } from "@/lib/reportViewModel";
 
 interface ReportHeroProps {
+  title: string;
   runId?: string;
   safeMode: boolean;
   confidenceLevel: number | undefined;
@@ -14,9 +17,11 @@ interface ReportHeroProps {
   runContext: { mode: string; freshness: string; scopeLimits: string[] };
   narrativeSummary: { wins: string[]; risks: string[]; meaning: string[] };
   primaryQuestion?: string;
+  onPdfExport?: () => void;
 }
 
 export function ReportHero({
+  title,
   runId,
   safeMode,
   confidenceLevel,
@@ -27,20 +32,22 @@ export function ReportHero({
   runContext,
   narrativeSummary,
   primaryQuestion,
+  onPdfExport,
 }: ReportHeroProps) {
   return (
-    <Card className="mb-4 p-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="text-xs uppercase text-muted-foreground">Report</div>
-          <div className="flex items-center gap-3">
-            <div className="text-xl font-semibold">Executive Pulse</div>
-            <ConfidenceSignal signal={signal} limitationsReason={limitationsReason} />
-          </div>
-          {runId && <div className="text-xs text-muted-foreground">Run ID: {runId}</div>}
+    <Card className="mb-8 p-6 border-0 shadow-sm bg-transparent">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-4">
+          <h1 className="text-3xl font-serif font-bold text-deep-charcoal tracking-tight">{title}</h1>
+          <ConfidenceSignal signal={signal} limitationsReason={limitationsReason} />
         </div>
-        <div className="flex flex-wrap gap-2">
-          {/* Removed old badges as requested */}
+        <div className="flex items-center gap-2">
+          {onPdfExport && (
+            <Button variant="ghost" size="sm" onClick={onPdfExport} className="text-muted-foreground hover:text-foreground">
+              <FileText className="mr-2 h-4 w-4" />
+              Export PDF
+            </Button>
+          )}
         </div>
       </div>
       {primaryQuestion && (

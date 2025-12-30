@@ -555,13 +555,18 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
         safeMode={reportData.safeMode}
         hideActions={reportData.hideActions}
         getSectionLimitations={getSectionLimitations}
-        onInspectEvidence={handleFetchEvidenceSample}
+        onInspectEvidence={(payload) => handleFetchEvidenceSample({
+          contentSnippet: payload.content,
+          evidenceId: payload.id,
+          sectionTitle: payload.title
+        })}
       />
 
       <ReportAccordion sections={accordionSections} />
 
       <ReportEvidenceInspector
         evidenceSections={reportData.evidenceSections}
+        evidenceId={activeEvidenceId}
         evidencePreview={evidencePreview}
         evidenceSample={evidenceSample}
         evidenceLoading={evidenceLoading}
@@ -675,6 +680,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
                 limitationsReason={reportData.viewModel.header.limitationsReason}
               />
               <ReportHero
+                title={reportData.viewModel.meta?.title || reportData.viewModel.header.title}
                 runId={runId}
                 safeMode={reportData.safeMode}
                 confidenceLevel={reportData.confidenceValue}
@@ -685,6 +691,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
                 primaryQuestion={reportData.primaryQuestion}
                 runContext={reportData.runContext}
                 narrativeSummary={reportData.narrativeSummary}
+                onPdfExport={handlePptxExport}
               />
               <ReportMetricsStrip
                 confidenceValue={reportData.confidenceValue}

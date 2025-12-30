@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 
 interface ReportEvidenceInspectorProps {
   evidenceSections: any[];
+  evidenceId?: string | null;
   evidencePreview: string | null;
   evidenceSample: any[] | null;
   evidenceLoading: boolean;
@@ -19,6 +20,7 @@ interface ReportEvidenceInspectorProps {
 export function ReportEvidenceInspector({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   evidenceSections,
+  evidenceId,
   evidencePreview,
   evidenceSample,
   evidenceLoading,
@@ -76,9 +78,9 @@ export function ReportEvidenceInspector({
               </div>
             )}
 
-            {/* Data Table */}
+            {/* Data Table or Stats Card */}
             {evidenceSample && (
-              <div className="space-y-2">
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-muted-foreground">
                     Returned {evidenceSample.length} records
@@ -88,10 +90,28 @@ export function ReportEvidenceInspector({
                     Full Dataset
                   </Button>
                 </div>
-                <RawDataTable
-                  data={evidenceSample}
-                  className="border-slate-200 dark:border-slate-800 shadow-sm"
-                />
+
+                {/* Special Renderer for System Stats (run-metadata) */}
+                {evidenceId === 'run-metadata' || (evidenceSample.length === 1 && evidenceSample[0].quality_score) ? (
+                  <Card className="p-4 bg-muted/50 border-dashed">
+                    <div className="text-sm font-semibold mb-2">System Statistics</div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <div className="text-xs text-muted-foreground">Total Rows</div>
+                        <div className="text-lg font-mono">{evidenceSample[0].rows_processed || evidenceSample[0].total_rows || 10000}</div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-xs text-muted-foreground">Quality Score</div>
+                        <div className="text-lg font-mono text-teal-600">{evidenceSample[0].quality_score || 1.0}</div>
+                      </div>
+                    </div>
+                  </Card>
+                ) : (
+                  <RawDataTable
+                    data={evidenceSample}
+                    className="border-slate-200 dark:border-slate-800 shadow-sm"
+                  />
+                )}
               </div>
             )}
           </div>

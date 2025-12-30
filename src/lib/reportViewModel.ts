@@ -28,6 +28,9 @@ export interface ReportViewModel {
         timestamp: string | null;
         generatedBy: string | null;
     };
+    meta: {
+        title: string;
+    };
     navigation: {
         id: string;
         label: string;
@@ -64,7 +67,7 @@ export function transformAPIResponse(data: ReportInputData): ReportViewModel {
     let color = "text-muted-foreground";
     let label = "Low Confidence";
 
-    if (confidenceScore > 0.8 || confidenceScore > 80) {
+    if (confidenceScore >= 0.8 || confidenceScore >= 80) {
         signalStrength = "high";
         bars = 3;
         color = "text-teal-500";
@@ -124,7 +127,6 @@ export function transformAPIResponse(data: ReportInputData): ReportViewModel {
         Object.entries(phraseMap).forEach(([phrase, evidenceId]) => {
             if (execSummary.content.toLowerCase().includes(phrase)) {
                 // Find exact casing in text if possible, or just use the phrase as matches are case-insensitive usually for linking
-                // But for display we might want to wrap the exact text. 
                 // straightforward approach: find the phrase in content
                 const regex = new RegExp(phrase, 'i');
                 const match = execSummary.content.match(regex);
@@ -144,9 +146,30 @@ export function transformAPIResponse(data: ReportInputData): ReportViewModel {
         label: section.title,
     }));
 
+    // Primary Title Mapping
+    // Check for "data-type-identification" card content for explicit type
+    // Fallback to "Executive Pulse" only if no better title found
+    let primaryTitle = "Executive Pulse";
+    const typeSection = data.sections?.find(s => s.id.includes("data-type-identification"));
+
+    if (typeSection) {
+        const typeMatch = typeSection.content.match(/primary_type[:\s]+([\w_]+)/i);
+        if (typeMatch) {
+            const rawType = typeMatch[1].toLowerCase();
+            if (rawType === "marketing_performance") primaryTitle = "Marketing Performance Analysis";
+            else if (rawType === "time_series_trend") primaryTitle = "Trend & Seasonality Report";
+            else primaryTitle = rawType.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        }
+    } else if (data.primaryQuestion) {
+        // If we have a clear primary question, it might be a better title than generic
+        // but typically "Executive Pulse" is the brand.
+        // The spec asks for "Marketing Performance Analysis" explicitly.
+    }
+
+
     return {
         header: {
-            title,
+            title, // Legacy title field
             signal: {
                 strength: signalStrength,
                 bars,
@@ -157,6 +180,9 @@ export function transformAPIResponse(data: ReportInputData): ReportViewModel {
             safeMode,
             limitationsMode,
             limitationsReason,
+        },
+        meta: {
+            title: primaryTitle,
         },
         metadata: {
             runId: null,
