@@ -60,8 +60,13 @@ export function useEnhancedAnalytics(runId?: string) {
           throw new Error(`Failed to fetch: ${response.statusText}`);
         }
 
-        const analyticsData = await response.json();
-        setData(analyticsData);
+        try {
+          const analyticsData = await response.json();
+          setData(analyticsData);
+        } catch (parseError) {
+          console.error('Failed to parse enhanced analytics JSON:', parseError);
+          setData(null);
+        }
       } catch (err) {
         console.warn('Enhanced analytics not available:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
