@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { API_BASE } from '@/lib/api-client';
+import { useRemoteArtifact } from '@/hooks/useRemoteArtifact';
 
 interface EnhancedAnalytics {
   correlation_analysis?: {
@@ -35,49 +34,7 @@ interface EnhancedAnalytics {
 }
 
 export function useEnhancedAnalytics(runId?: string) {
-  const [data, setData] = useState<EnhancedAnalytics | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!runId) {
-      setData(null);
-      return;
-    }
-
-    const fetchAnalytics = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch(`${API_BASE}/runs/${runId}/enhanced-analytics`);
-
-        if (!response.ok) {
-          if (response.status === 404) {
-            setData(null);
-            return;
-          }
-          throw new Error(`Failed to fetch: ${response.statusText}`);
-        }
-
-        try {
-          const analyticsData = await response.json();
-          setData(analyticsData);
-        } catch (parseError) {
-          console.error('Failed to parse enhanced analytics JSON:', parseError);
-          setData(null);
-        }
-      } catch (err) {
-        console.warn('Enhanced analytics not available:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
-        setData(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAnalytics();
-  }, [runId]);
-
+  // Pass relative path "enhanced-analytics"; useRemoteArtifact prepends /runs/{runId}/
+  const { data, loading, error } = useRemoteArtifact<EnhancedAnalytics>(runId, "enhanced-analytics");
   return { data, loading, error };
 }
