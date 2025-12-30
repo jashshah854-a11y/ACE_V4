@@ -68,9 +68,9 @@ export function InsightBlock({ narrativeText, evidenceObject, visualConfig, clas
                         <Badge variant="outline" className="uppercase tracking-wide text-[10px]">{visualConfig.type}</Badge>
                         <Badge variant="secondary" className="text-[10px]">Evidence {evidenceObject!.id}</Badge>
                     </div>
-                    {/* ... rest of original rendering code ... */
+                    {/* ... rest of original rendering code ... */}
 
-                        <p className="mt-2 text-sm leading-relaxed text-foreground">{narrativeText}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-foreground">{narrativeText}</p>
                     {evidenceObject?.summary && (
                         <p className="mt-1 text-xs text-muted-foreground">{evidenceObject.summary}</p>
                     )}
