@@ -25,6 +25,7 @@ import { useSimulation } from "@/context/SimulationContext";
 import { GuidanceModal } from "./GuidanceModal";
 import { ExecutiveBrief } from "./ExecutiveBrief";
 import { useSmoothScroll, formatBriefText } from "@/hooks/useSmoothScroll";
+import { TechnicalSection } from "@/components/report/technical/TechnicalSection";
 
 // Refactored viewer components
 import {
@@ -456,13 +457,15 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
           )}
 
           {(reportData.enhancedAnalytics?.feature_importance?.feature_importance || reportData.modelArtifacts?.feature_importance) && (
-            <Card className="p-3">
-              <div className="text-sm font-semibold mb-2">Model Drivers</div>
-              <ul className="text-sm space-y-1">
+            <Card className="p-4 border-l-4 border-l-primary/50">
+              <div className="flex items-center justify-between mb-3">
+                <div className="font-semibold text-sm">Top Key Drivers</div>
+                <Badge variant="outline" className="text-[10px] font-normal">Impact Factors</Badge>
+              </div>
+              <div className="space-y-3">
                 {(() => {
                   const rawData = reportData.enhancedAnalytics?.feature_importance?.feature_importance || reportData.modelArtifacts?.feature_importance || [];
                   const items = Array.isArray(rawData) ? rawData : Object.entries(rawData).map(([k, v]) => {
-                    // Safety: If v is an object (e.g. {"importance": 0.5, "feature": "X"}), extract the value
                     let val = v;
                     if (typeof v === 'object' && v !== null && 'importance' in v) {
                       val = (v as any).importance;
@@ -470,18 +473,36 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
                     return { feature: k, importance: val };
                   });
 
-                  return items.slice(0, 5).map((f: any, i: number) => (
-                    <li key={i} className="flex justify-between">
-                      <span>{f.feature || f[0]}</span>
-                      <span className="text-muted-foreground">
-                        {typeof (f.importance || f[1]) === 'number'
-                          ? (f.importance || f[1]).toFixed(3)
-                          : String(f.importance ?? f[1] ?? '')}
-                      </span>
-                    </li>
-                  ));
+                  // Sort by importance descending
+                  const sortedItems = items.sort((a: any, b: any) => {
+                    const valA = typeof a.importance === 'number' ? a.importance : 0;
+                    const valB = typeof b.importance === 'number' ? b.importance : 0;
+                    return valB - valA;
+                  }).slice(0, 5);
+
+                  const maxVal = Math.max(...sortedItems.map((i: any) => typeof i.importance === 'number' ? i.importance : 0), 1);
+
+                  return sortedItems.map((f: any, i: number) => {
+                    const val = typeof (f.importance || f[1]) === 'number' ? (f.importance || f[1]) : 0;
+                    const percent = Math.min((val / maxVal) * 100, 100);
+
+                    return (
+                      <div key={i} className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="font-medium truncate max-w-[70%]">{f.feature || f[0]}</span>
+                          <span className="text-muted-foreground font-mono">{val.toFixed(3)}</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-secondary/30 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary/70 rounded-full transition-all duration-500"
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  });
                 })()}
-              </ul>
+              </div>
             </Card>
           )}
 
@@ -583,7 +604,23 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
         })}
       />
 
-      <ReportAccordion sections={accordionSections} />
+      <div className="space-y-6">
+        {accordionSections.map((section) => (
+          <TechnicalSection
+            key={section.id}
+            title={section.title}
+            icon={section.icon as any}
+            defaultOpen={section.defaultOpen}
+            onInspectEvidence={
+              section.id === "full-report" || section.content?.toString().includes("TraceableText")
+                ? () => { } // No evidence button for full report yet, or handle differently
+                : undefined
+            }
+          >
+            {section.content}
+          </TechnicalSection>
+        ))}
+      </div>
 
       <ReportEvidenceInspector
         evidenceSections={reportData.evidenceSections}
