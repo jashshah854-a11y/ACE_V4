@@ -579,7 +579,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
         <>
           <TraceableText
             content={content || ""}
-            segments={reportData.viewModel.traceability.textSegments}
+            segments={reportData.viewModel.traceability?.textSegments}
             onReferenceClick={(id) => handleFetchEvidenceSample({ contentSnippet: `Reference ${id}`, evidenceId: id })}
           />
           {limitationFootnote && <div className="mt-4 text-xs text-muted-foreground">{limitationFootnote}</div>}
