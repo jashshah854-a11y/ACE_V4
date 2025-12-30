@@ -17,6 +17,9 @@ import { useTaskContext } from "@/context/TaskContext";
 import { LimitationBanner } from "./LimitationBanner";
 import { ScopeLockModal } from "./ScopeLockModal";
 import { API_BASE } from "@/lib/api-client";
+import { SplitReportViewer } from "./simulation/SplitReportViewer";
+import { SimulationControls } from "./simulation/SimulationControls";
+import { useSimulation } from "@/context/SimulationContext";
 
 // Refactored viewer components
 import {
@@ -56,7 +59,10 @@ import { TechnicalDetailsSection } from "./TechnicalDetailsSection";
 import { ReportConclusion } from "./ReportConclusion";
 import { TableOfContents } from "./TableOfContents";
 import { IntelligenceRail } from "./IntelligenceRail";
+import { IntelligenceRail } from "./IntelligenceRail";
 import { EvidencePanel } from "./EvidencePanel";
+import { QueryRail } from "./query/QueryRail";
+import { DataInterrogator } from "./query/DataInterrogator";
 
 interface WideReportViewerProps {
   content?: string;
@@ -93,6 +99,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
   const { toast } = useToast();
   const { updateTaskContract } = useTaskContext();
   const { data: governedReport } = useGovernedReport(runId);
+  const { simulationState } = useSimulation();
 
   // Use refactored data hook
   const reportData = useReportData(content || "", runId, confidenceMode, governedReport);
@@ -411,14 +418,20 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
           />
 
           {reportData.shouldEmitInsights && reportData.enhancedAnalytics?.business_intelligence?.available && (
-            <BusinessIntelligenceDashboard
-              valueMetrics={reportData.enhancedAnalytics.business_intelligence.value_metrics}
-              clvProxy={reportData.enhancedAnalytics.business_intelligence.clv_proxy}
-              segmentValue={reportData.enhancedAnalytics.business_intelligence.segment_value}
-              churnRisk={reportData.enhancedAnalytics.business_intelligence.churn_risk}
-              insights={reportData.enhancedAnalytics.business_intelligence.insights}
-              evidence={reportData.enhancedAnalytics.business_intelligence.evidence}
-            />
+            <DataInterrogator
+              dataPointId="bi_dashboard"
+              label="Business Intelligence"
+              type="general"
+            >
+              <BusinessIntelligenceDashboard
+                valueMetrics={reportData.enhancedAnalytics.business_intelligence.value_metrics}
+                clvProxy={reportData.enhancedAnalytics.business_intelligence.clv_proxy}
+                segmentValue={reportData.enhancedAnalytics.business_intelligence.segment_value}
+                churnRisk={reportData.enhancedAnalytics.business_intelligence.churn_risk}
+                insights={reportData.enhancedAnalytics.business_intelligence.insights}
+                evidence={reportData.enhancedAnalytics.business_intelligence.evidence}
+              />
+            </DataInterrogator>
           )}
 
           {(reportData.enhancedAnalytics?.feature_importance?.feature_importance || reportData.modelArtifacts?.feature_importance) && (
@@ -526,6 +539,59 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
       ),
     },
   ];
+
+  // Helper to render the body content
+  const renderReportBody = (isSimulated = false) => (
+    <div id={isSimulated ? "report-content-simulated" : "report-content"} className={cn("space-y-8", isSimulated && "opacity-90")}>
+      <ReportInsightStoryboard
+        sections={reportData.filteredSections}
+        confidenceLevel={reportData.confidenceValue}
+        safeMode={reportData.safeMode}
+        hideActions={reportData.hideActions}
+        getSectionLimitations={getSectionLimitations}
+        onInspectEvidence={handleFetchEvidenceSample}
+      />
+
+      <ReportAccordion sections={accordionSections} />
+
+      <ReportEvidenceInspector
+        evidenceSections={reportData.evidenceSections}
+        evidencePreview={evidencePreview}
+        evidenceSample={evidenceSample}
+        evidenceLoading={evidenceLoading}
+        evidenceError={evidenceError}
+        onFetchEvidenceSample={handleFetchEvidenceSample}
+        onCloseEvidence={handleCloseEvidence}
+      />
+
+      {/* Only show actions/personas in baseline or if we explicitly want them in sim */}
+      {!isSimulated && (
+        <>
+          <ReportActionsPanel
+            actions={reportData.mondayActions}
+            hideActions={reportData.hideActions}
+            confidenceLevel={reportData.confidenceValue}
+            showAllActions={showAllActions}
+            onToggleShowAll={() => setShowAllActions((v) => !v)}
+          />
+
+          <ReportPersonasPanel
+            segments={reportData.measurableSegments}
+            showAllPersonas={showAllPersonas}
+            onToggleShowAll={() => setShowAllPersonas((v) => !v)}
+          />
+
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+            <ReportConclusion
+              shouldUseFor={reportData.conclusion.shouldUseFor}
+              shouldNotUseFor={reportData.conclusion.shouldNotUseFor}
+              nextStep={reportData.conclusion.nextStep}
+            />
+          </motion.div>
+        </>
+      )}
+    </div>
+  );
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className={cn("w-full", className)}>
@@ -644,53 +710,19 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
             </>
           }
           mainContent={
-            <div id="report-content" className="space-y-8">
-              <ReportInsightStoryboard
-                sections={reportData.filteredSections}
-                confidenceLevel={reportData.confidenceValue}
-                safeMode={reportData.safeMode}
-                hideActions={reportData.hideActions}
-                getSectionLimitations={getSectionLimitations}
-                onInspectEvidence={handleFetchEvidenceSample}
+            simulationState.comparison_mode ? (
+              <SplitReportViewer
+                baselineContent={renderReportBody(false)}
+                simulatedContent={renderReportBody(true)}
               />
-
-              <ReportAccordion sections={accordionSections} />
-
-              <ReportEvidenceInspector
-                evidenceSections={reportData.evidenceSections}
-                evidencePreview={evidencePreview}
-                evidenceSample={evidenceSample}
-                evidenceLoading={evidenceLoading}
-                evidenceError={evidenceError}
-                onFetchEvidenceSample={handleFetchEvidenceSample}
-                onCloseEvidence={handleCloseEvidence}
-              />
-
-              <ReportActionsPanel
-                actions={reportData.mondayActions}
-                hideActions={reportData.hideActions}
-                confidenceLevel={reportData.confidenceValue}
-                showAllActions={showAllActions}
-                onToggleShowAll={() => setShowAllActions((v) => !v)}
-              />
-
-              <ReportPersonasPanel
-                segments={reportData.measurableSegments}
-                showAllPersonas={showAllPersonas}
-                onToggleShowAll={() => setShowAllPersonas((v) => !v)}
-              />
-
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-                <ReportConclusion
-                  shouldUseFor={reportData.conclusion.shouldUseFor}
-                  shouldNotUseFor={reportData.conclusion.shouldNotUseFor}
-                  nextStep={reportData.conclusion.nextStep}
-                />
-              </motion.div>
-            </div>
+            ) : (
+              renderReportBody(false)
+            )
           }
           intelligenceRail={
             <div className="space-y-4">
+              <SimulationControls />
+              <QueryRail />
               <Card className="p-3 space-y-1">
                 <div className="text-xs uppercase text-muted-foreground">Traceability</div>
                 {runId && <div className="text-sm">Run ID: {runId}</div>}

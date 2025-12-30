@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, Minus, Lightbulb, ArrowRight, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfidenceBadge } from "./ConfidenceBadge";
+import { TruthCheck } from "./feedback/TruthCheck";
 
 interface HeroInsightPanelProps {
     keyInsight: string;
@@ -129,7 +130,7 @@ export function HeroInsightPanel({
 
                             {/* Right: Quality metrics */}
                             <div className="flex items-center gap-6">
-                            <div className="text-right">
+                                <div className="text-right">
                                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-2 justify-end">
                                         <span>Confidence</span>
                                         <ConfidenceBadge value={safeConfidence} className="px-2 py-0" />
@@ -175,7 +176,7 @@ export function HeroInsightPanel({
 
                     {/* Key Insight */}
                     <div className="px-6 sm:px-8 py-6 sm:py-8">
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.2, duration: 0.4 }}
@@ -195,7 +196,7 @@ export function HeroInsightPanel({
                     </div>
 
                     {/* Recommendation */}
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3, duration: 0.4 }}
@@ -214,6 +215,9 @@ export function HeroInsightPanel({
                                 </p>
                             </div>
                             <ArrowRight className="h-5 w-5 text-copper-400 shrink-0 hidden sm:block" />
+                        </div>
+                        <div className="mt-4 flex justify-end">
+                            <TruthCheck targetId="hero_insight" targetType="insight" className="scale-90 opacity-70 hover:opacity-100 transition-opacity" />
                         </div>
                     </motion.div>
                 </div>
