@@ -9,7 +9,7 @@ from core.insights import validate_insights, load_insights
 from core.state_manager import StateManager
 from core.sentry import EvidenceSentry
 
-INSIGHT_AGENTS = {"overseer", "regression", "personas", "fabricator", "expositor"}
+INSIGHT_AGENTS = {"overseer", "regression", "personas", "fabricator"}
 
 CONFIDENCE_HARD_CUTOFF = 0.05
 
