@@ -54,6 +54,7 @@ const Index = () => {
   const [stage, setStage] = useState<AnalysisStage>("upload");
   const [identity, setIdentity] = useState<DatasetIdentity | null>(null);
   const [profile, setProfile] = useState<DatasetProfile | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -120,7 +121,7 @@ const Index = () => {
       const { saveRecentReport } = await import("@/lib/localStorage");
       saveRecentReport(result.run_id, undefined, file.name);
 
-      const [showConfetti, setShowConfetti] = useState(false);
+
 
       // ... inside handleContractSubmit success block ...
       toast.success("Mission Started", {

@@ -1,9 +1,20 @@
+import { Link, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { AceLogo } from "@/components/ui/AceLogo";
-
-// ... imports
+import { Sparkles, FileText, Upload } from "lucide-react";
+import { useTaskContext } from "@/context/TaskContext";
 
 export const Navbar = () => {
-  // ... hook logic
+  const location = useLocation();
+  const { taskContract } = useTaskContext();
+
+  const isPulse = location.pathname.includes("/report");
+  const isUpload = location.pathname === "/" || location.pathname === "/upload";
+  const isReports = location.pathname.includes("/reports") || location.pathname.includes("/pipeline");
+  const isSafeMode = false; // logic placeholder
+
+  const reportsHref = "/reports";
+  const primaryQuestion = taskContract?.primaryQuestion;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
@@ -23,21 +34,22 @@ export const Navbar = () => {
                 isPulse
                   ? "bg-navy-900 text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                isSafeMode && !isPulse && "opacity-50 pointer-events-none" // Lock navigation if in safe mode?
+                isSafeMode && !isPulse && "opacity-50 pointer-events-none"
               )}
             >
               <Sparkles className="w-4 h-4" />
               Pulse
             </Link>
             <Link
-              to="/upload"
+              to="/"
               className={cn(
-                "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2",
                 isUpload
                   ? "bg-navy-900 text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
             >
+              <Upload className="w-4 h-4" />
               Upload
             </Link>
             <Link
