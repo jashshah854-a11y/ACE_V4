@@ -1,4 +1,4 @@
-import { Card } from "@/components/ui/card";
+import { StreamingText } from "@/components/ui/StreamingText";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Download, FileText } from "lucide-react";
@@ -65,8 +65,16 @@ export function ReportHero({
           <div className="text-sm whitespace-pre-line">{taskContractSummary || "Contract not provided."}</div>
         </Card>
         <Card className="p-3 bg-muted/50">
+          import {StreamingText} from "@/components/ui/StreamingText";
+
+          // inside ReportHero component...
+
           <div className="text-xs uppercase text-muted-foreground">Scope / Decision</div>
-          <div className="text-sm whitespace-pre-line">{decisionSummary || "Scope not provided."}</div>
+          <div className="text-sm whitespace-pre-line text-slate-700 dark:text-slate-300">
+            {decisionSummary ? (
+              <StreamingText text={decisionSummary} speed={20} />
+            ) : "Scope not provided."}
+          </div>
         </Card>
       </div>
 
