@@ -60,19 +60,19 @@ export function ExecutiveBrief({
         >
             <div className="p-6 space-y-4">
                 {/* Headline Row */}
-                <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                            <h2 className="text-2xl font-serif font-bold text-gray-900 dark:text-gray-100">
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-start gap-2 mb-2">
+                            <h2 className="text-xl md:text-2xl font-serif font-bold text-gray-900 dark:text-gray-100 leading-tight">
                                 {headline}
                             </h2>
                             {status === "limited" && (
-                                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+                                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-1" />
                             )}
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-3 shrink-0 self-start md:self-auto">
                         <ConfidenceSignal
                             signal={confidenceSignal}
                             limitationsReason={null}

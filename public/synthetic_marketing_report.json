@@ -1,0 +1,110 @@
+{
+    "run_id": "sim_market_v4_001",
+    "status": "completed",
+    "created_at": "2025-12-30T10:00:00Z",
+    "primary_type": "marketing_performance",
+    "confidence_score": 0.88,
+    "safe_mode": false,
+    "diagnostics": {
+        "data_quality": {
+            "score": 0.92,
+            "issues": []
+        },
+        "limitations": {
+            "active": false,
+            "reasons": []
+        }
+    },
+    "sections": [
+        {
+            "id": "run-metadata",
+            "type": "metadata",
+            "title": "Run Metadata",
+            "content": "{\"row_count\": 15420, \"column_count\": 18, \"time_range\": \"2024-01-01 to 2024-12-31\"}"
+        },
+        {
+            "id": "data-type-identification",
+            "type": "analysis",
+            "title": "Data Type Identification",
+            "content": "Primary Type: marketing_performance\nConfidence: 0.95\nKey Columns: Date, Channel, Spend, Impressions, Clicks, Conversions, Revenue\n\nThe dataset contains daily performace metrics across 5 major channels."
+        },
+        {
+            "id": "executive-summary",
+            "type": "narrative",
+            "title": "Executive Summary",
+            "content": "## Performance Overview\nMarketing efficiency increased significantly in Q4, with **ROAS improving by 22%** year-over-year. While overall spend remained flat, specific reallocation to [video channels](ref:ev_video_01) drove distinct gains in acquisition.\n\n## Critical Shift\nA noticeable decline in [paid search effectiveness](ref:ev_search_drop) was observed starting in October, likely due to increased CPCs, which rose by 15% on average."
+        },
+        {
+            "id": "strategic-recommendations",
+            "type": "narrative",
+            "title": "Strategic Recommendations",
+            "content": "1. **Shift Budget to Video**: Reallocate 15% of the Search budget to Video/Social channels to capitalize on the lower CPA trend.\n2. **Audit Search Keywords**: Conduct a deep-dive audit of non-branded keywords to identify wasted spend.\n3. **Focus on Retention**: Churn rates in the 'Mid-Market' segment have ticked up; launch a targeted re-engagement campaign."
+        },
+        {
+            "id": "performance-trends",
+            "type": "chart",
+            "title": "Channel Performance Trends",
+            "content": "Time series analysis shows a divergence in October. Video and Social channels show a robust upward trend in conversion volume, while Search flatlines."
+        },
+        {
+            "id": "limitations-diagnostics",
+            "type": "diagnostics",
+            "title": "System Diagnostics",
+            "content": "{\"validation_checks\": [\"Passed: Date Continuity\", \"Passed: Value Range\"], \"warnings\": [\"Minor: Missing UTM tags in 2% of rows\"]}"
+        }
+    ],
+    "evidence": [
+        {
+            "id": "ev_video_01",
+            "type": "table",
+            "title": "Video Channel Metrics Q4",
+            "data": [
+                {
+                    "Channel": "Video",
+                    "Spend": 45000,
+                    "Conversions": 1200,
+                    "CPA": 37.50
+                },
+                {
+                    "Channel": "Social",
+                    "Spend": 32000,
+                    "Conversions": 950,
+                    "CPA": 33.68
+                },
+                {
+                    "Channel": "Search",
+                    "Spend": 85000,
+                    "Conversions": 1500,
+                    "CPA": 56.67
+                }
+            ]
+        },
+        {
+            "id": "ev_search_drop",
+            "type": "chart_data",
+            "title": "Search CPA Trend",
+            "data": [
+                {
+                    "Month": "Aug",
+                    "CPA": 45.00
+                },
+                {
+                    "Month": "Sep",
+                    "CPA": 46.50
+                },
+                {
+                    "Month": "Oct",
+                    "CPA": 52.00
+                },
+                {
+                    "Month": "Nov",
+                    "CPA": 58.00
+                },
+                {
+                    "Month": "Dec",
+                    "CPA": 56.67
+                }
+            ]
+        }
+    ]
+}
