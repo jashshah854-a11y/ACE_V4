@@ -23,22 +23,62 @@ def _json_default(obj: Any):
     except Exception:
         return None
 
+import json
+import os
+from pathlib import Path
+from typing import Any, Optional
+
+
+def _json_default(obj: Any):
+    try:
+        import numpy as np  # type: ignore
+
+        if isinstance(obj, (np.integer, np.floating)):
+            return obj.item()
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+    except Exception:
+        pass
+    if isinstance(obj, set):
+        return list(obj)
+    try:
+        return str(obj)
+    except Exception:
+        return None
+
 class StateManager:
     def __init__(self, run_path: str):
         self.run_path = Path(run_path)
 
     def write(self, name: str, data: Any):
         """
-        Writes data to a JSON file in the run folder.
+        Writes data to a JSON file in the run folder atomically.
         """
-        path = self.run_path / f"{name}.json"
+        filename = f"{name}.json"
+        path = self.run_path / filename
+        tmp_path = self.run_path / f"{filename}.tmp"
         
         # Handle Pydantic models
         if hasattr(data, "model_dump"):
             data = data.model_dump()
         
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, default=_json_default)
+        try:
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, default=_json_default)
+                f.flush()
+                os.fsync(f.fileno())
+            
+            # Atomic replace
+            os.replace(tmp_path, path)
+        except Exception as e:
+            if tmp_path.exists():
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    pass
+            raise e
 
     def read(self, name: str) -> Optional[Any]:
         """
