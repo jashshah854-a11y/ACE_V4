@@ -14,6 +14,9 @@ export interface StoryViewData {
         runId: string;
         date: string;
     };
+    traceability?: {
+        textSegments: Array<{ text: string; evidenceId: string }>;
+    };
 }
 
 export interface MetricCardData {
@@ -276,6 +279,9 @@ export function transformAPIResponse(data: any): ReportViewModel {
             confidence: data.confidenceValue || 0,
             runId: "legacy",
             date: new Date().toLocaleDateString()
+        },
+        traceability: {
+            textSegments: []
         }
     };
 }
