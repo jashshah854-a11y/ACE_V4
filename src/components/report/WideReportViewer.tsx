@@ -459,14 +459,17 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
             <Card className="p-3">
               <div className="text-sm font-semibold mb-2">Model Drivers</div>
               <ul className="text-sm space-y-1">
-                {(reportData.enhancedAnalytics?.feature_importance?.feature_importance || reportData.modelArtifacts?.feature_importance || [])
-                  .slice(0, 5)
-                  .map((f: any, i: number) => (
+                {(() => {
+                  const rawData = reportData.enhancedAnalytics?.feature_importance?.feature_importance || reportData.modelArtifacts?.feature_importance || [];
+                  const items = Array.isArray(rawData) ? rawData : Object.entries(rawData).map(([k, v]) => ({ feature: k, importance: v }));
+
+                  return items.slice(0, 5).map((f: any, i: number) => (
                     <li key={i} className="flex justify-between">
                       <span>{f.feature || f[0]}</span>
                       <span className="text-muted-foreground">{(f.importance || f[1])?.toFixed?.(3) ?? f.importance ?? f[1]}</span>
                     </li>
-                  ))}
+                  ));
+                })()}
               </ul>
             </Card>
           )}
