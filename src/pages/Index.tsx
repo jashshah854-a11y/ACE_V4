@@ -5,15 +5,45 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Upload, Sparkles, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
 import { submitRun, previewDataset, DatasetIdentity } from "@/lib/api-client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { DatasetIdentityCard } from "@/components/upload/DatasetIdentityCard";
-import { OverseerInterview, TaskContract } from "@/components/upload/OverseerInterview";
-import { SafeModeWarning } from "@/components/upload/SafeModeWarning";
+import { DatasetUnderstanding } from "@/components/upload/DatasetUnderstanding";
+import { TaskContractInput } from "@/components/upload/TaskContractInput";
+import { DatasetProfile } from "@/hooks/useDatasetProfile";
 
 type AnalysisStage = "upload" | "scanning" | "identity" | "contract" | "processing";
+
+/**
+ * Adapter to convert API Identity to UI Profile
+ */
+function adaptIdentityToProfile(identity: DatasetIdentity): DatasetProfile {
+  // Simple heuristic to guess primary type if not provided
+  const columnNames = identity.schema_map.map(c => c.name.toLowerCase());
+  let primaryType = "general_analysis";
+
+  if (columnNames.some(c => c.includes("spend") || c.includes("cost") || c.includes("campaign"))) {
+    primaryType = "marketing_performance";
+  } else if (columnNames.some(c => c.includes("churn") || c.includes("retention"))) {
+    primaryType = "customer_churn";
+  } else if (columnNames.some(c => c.includes("revenue") || c.includes("sales"))) {
+    primaryType = "sales_pipeline";
+  }
+
+  return {
+    profile_id: "temp_id_" + Date.now(),
+    primary_type: primaryType,
+    friendly_name: primaryType.replace("_", " "),
+    rows: identity.row_count,
+    columns: identity.column_count,
+    quality_score: identity.quality_score,
+    key_columns: identity.schema_map.slice(0, 5).map(c => c.name),
+    detected_focus: "automated insights",
+    time_coverage: identity.detected_capabilities.has_time_series ? "valid" : "issue",
+    validation_mode: identity.quality_score > 0.6 ? "full" : "limitations",
+    schema_preview: identity.schema_map.map(s => ({ name: s.name, type: s.type }))
+  };
+}
 
 const Index = () => {
   const navigate = useNavigate();
@@ -21,6 +51,7 @@ const Index = () => {
   const [file, setFile] = useState<File | null>(null);
   const [stage, setStage] = useState<AnalysisStage>("upload");
   const [identity, setIdentity] = useState<DatasetIdentity | null>(null);
+  const [profile, setProfile] = useState<DatasetProfile | null>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -55,10 +86,8 @@ const Index = () => {
     try {
       const result = await previewDataset(selectedFile);
       setIdentity(result);
+      setProfile(adaptIdentityToProfile(result));
       setStage("identity");
-      toast.success("Dataset Verified", {
-        description: `Sentry scan complete. Verified ${result.row_count} rows.`
-      });
     } catch (error) {
       console.error(error);
       toast.error("Scan Failed", {
@@ -69,34 +98,23 @@ const Index = () => {
     }
   };
 
-  const handleProceedToContract = () => {
-    if (!identity) return;
-    // Check quality score for Safe Mode
-    // If quality is VERY low (< 0.3), maybe reject? For now just warn.
-    setStage("contract");
-  };
-
-  const handleContractSubmit = async (contract: TaskContract) => {
+  const handleContractSubmit = async (userIntent: string) => {
     if (!file) return;
 
     setStage("processing");
     try {
-      // Map TaskContract to TaskIntentPayload expected by API
-      // Note: API expects specific fields. We'll map broadly here.
-      // In a real app we'd strict type this mapping.
       const taskIntent = {
-        primaryQuestion: contract.primaryQuestion,
-        decisionContext: contract.decisionContext,
-        requiredOutputType: "diagnostic" as const, // Default to diagnostic for now
+        primaryQuestion: userIntent,
+        decisionContext: userIntent, // Mapping full intent to context as well
+        requiredOutputType: "diagnostic" as const,
         successCriteria: "Derived from user intent",
-        constraints: contract.forbiddenClaims.join(", "),
+        constraints: "", // Clean slate
         confidenceThreshold: 80,
         confidenceAcknowledged: true,
       };
 
       const result = await submitRun(file, taskIntent);
 
-      // Save to recent reports
       const { saveRecentReport } = await import("@/lib/localStorage");
       saveRecentReport(result.run_id, undefined, file.name);
 
@@ -215,58 +233,39 @@ const Index = () => {
                 </motion.div>
               )}
 
-              {/* STAGE 3: IDENTITY CARD */}
-              {stage === "identity" && identity && (
+              {/* STAGE 3: IDENTITY HANDSHAKE (PREMIUM UI) */}
+              {stage === "identity" && profile && (
                 <motion.div
                   key="identity"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  className="max-w-2xl mx-auto"
                 >
-                  <div className="mb-8">
-                    <Button
-                      variant="ghost"
-                      onClick={() => { setStage("upload"); setFile(null); }}
-                      className="mb-4 text-slate-500 hover:text-slate-900"
-                    >
-                      ← Cancel & Re-upload
-                    </Button>
-                    <DatasetIdentityCard identity={identity} />
-                  </div>
+                  <Button
+                    variant="ghost"
+                    onClick={() => { setStage("upload"); setFile(null); }}
+                    className="mb-6 text-slate-500 hover:text-slate-900"
+                  >
+                    ← Cancel & Re-upload
+                  </Button>
 
-                  <div className="flex flex-col gap-4">
-                    {identity.quality_score < 0.5 ? (
-                      <SafeModeWarning
-                        qualityScore={identity.quality_score}
-                        onAccept={() => setStage("contract")}
-                        onCancel={() => { setStage("upload"); setFile(null); }}
-                      />
-                    ) : (
-                      <div className="flex justify-end">
-                        <Button
-                          size="lg"
-                          onClick={handleProceedToContract}
-                          className="bg-slate-900 hover:bg-slate-800 text-white px-8 font-mono"
-                        >
-                          PROCEED TO CONTRACT <ArrowRight className="ml-2 w-4 h-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                  <DatasetUnderstanding
+                    profile={profile}
+                    onProceed={() => setStage("contract")}
+                  />
                 </motion.div>
               )}
 
-              {/* STAGE 4: OVERSEER CONTRACT */}
-              {stage === "contract" && identity && (
+              {/* STAGE 4: OVERSEER CONTRACT (PREMIUM UI) */}
+              {stage === "contract" && profile && (
                 <motion.div
                   key="contract"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                 >
-                  <OverseerInterview
-                    identity={identity}
+                  <TaskContractInput
+                    profile={profile}
                     onSubmit={handleContractSubmit}
                     onBack={() => setStage("identity")}
                   />
