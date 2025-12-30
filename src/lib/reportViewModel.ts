@@ -184,9 +184,16 @@ export function transformAPIResponse(data: ReportInputData): ReportViewModel {
 
     // Check limitations-diagnostics section
     const limitationsSection = data.sections?.find(s => s.id.includes("limitations-diagnostics"));
-    if (limitationsSection) {
-        const diagnosticErrors = parseDiagnostics(JSON.parse(limitationsSection.content || '{}'));
-        rawErrors.push(...diagnosticErrors);
+    if (limitationsSection && limitationsSection.content) {
+        try {
+            const diagnosticsData = JSON.parse(limitationsSection.content);
+            const diagnosticErrors = parseDiagnostics(diagnosticsData);
+            rawErrors.push(...diagnosticErrors);
+        } catch (e) {
+            // If JSON parsing fails, try to extract errors from text content
+            const textErrors = parseGuardrailsText(limitationsSection.content);
+            rawErrors.push(...textErrors);
+        }
     }
 
     // Check validation-guardrails section
