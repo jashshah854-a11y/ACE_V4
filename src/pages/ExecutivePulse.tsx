@@ -332,9 +332,11 @@ const ExecutivePulse = () => {
                         description: viewMode === "story" ? undefined : `Importance ${(section.importance * 100).toFixed(0)}%`,
                         confidence: reportData.confidenceValue,
                         render: () => (
-                          <ReactMarkdown className="text-sm text-muted-foreground line-clamp-6">
-                            {section.content}
-                          </ReactMarkdown>
+                          <div className="text-sm text-muted-foreground line-clamp-6">
+                            <ReactMarkdown>
+                              {section.content}
+                            </ReactMarkdown>
+                          </div>
                         ),
                       }}
                     />
@@ -357,9 +359,11 @@ const ExecutivePulse = () => {
                                 description: "Auto-collapsed",
                                 confidence: reportData.confidenceValue,
                                 render: () => (
-                                  <ReactMarkdown className="text-xs text-muted-foreground line-clamp-4">
-                                    {section.content}
-                                  </ReactMarkdown>
+                                  <div className="text-xs text-muted-foreground line-clamp-4">
+                                    <ReactMarkdown>
+                                      {section.content}
+                                    </ReactMarkdown>
+                                  </div>
                                 ),
                               }}
                             />
