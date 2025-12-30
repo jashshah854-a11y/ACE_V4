@@ -113,7 +113,7 @@ export function OutcomeModelSection({ data }: OutcomeModelSectionProps) {
                                 <div>
                                     <h4 className="text-sm font-semibold mb-2">Top Predictors</h4>
                                     <div className="space-y-1">
-                                        {data.drivers.slice(0, 3).map((driver, idx) => (
+                                        {(Array.isArray(data.drivers) ? data.drivers : []).slice(0, 3).map((driver, idx) => (
                                             <div key={idx} className="flex justify-between items-center text-sm">
                                                 <span className="truncate">{driver.feature}</span>
                                                 <span className="text-muted-foreground ml-2">
