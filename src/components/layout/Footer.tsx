@@ -9,10 +9,10 @@ export const Footer = () => {
             <div className="w-7 h-7 rounded-lg gradient-meridian flex items-center justify-center shadow-sm">
               <BarChart3 className="w-4 h-4 text-white" strokeWidth={2.5} />
             </div>
-            <span className="text-sm font-semibold text-navy-900">Meridian</span>
+            <span className="text-sm font-semibold text-navy-900 dark:text-slate-100">ACE</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Meridian · Intelligent Data Analysis Platform
+            © {new Date().getFullYear()} ACE · Autonomous Cognitive Engine
           </p>
         </div>
       </div>

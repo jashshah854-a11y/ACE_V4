@@ -314,7 +314,7 @@ const Index = () => {
                     Contract Approved
                   </h2>
                   <p className="text-slate-500">
-                    Meridian is initializing the analysis pipeline...
+                    ACE is initializing the analysis pipeline...
                   </p>
                 </motion.div>
               )}
