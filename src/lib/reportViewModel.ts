@@ -44,6 +44,13 @@ export interface ReportViewModel {
         rawErrors: string[];
         guidanceEntries: import('./guidanceMap').GuidanceEntry[];
     };
+    brief: {
+        headline: string;
+        keyFinding: string;
+        decision: string;
+        status: "success" | "limited" | "error";
+        accentColor: "teal" | "amber" | "red";
+    };
 }
 
 export function transformAPIResponse(data: ReportInputData): ReportViewModel {
@@ -191,6 +198,117 @@ export function transformAPIResponse(data: ReportInputData): ReportViewModel {
     // Parse errors into guidance entries
     const guidanceEntries = getGuidance(rawErrors);
 
+    // 6. Extract Brief Data (TL;DR)
+    // Headline ("What")
+    let briefHeadline = primaryTitle;
+    const briefTypeSection = data.sections?.find(s => s.id.includes("data-type-identification"));
+    if (briefTypeSection) {
+        const trendSection = data.sections?.find(s => s.id.includes("trend") || s.title.toLowerCase().includes("trend"));
+        let trend: string | null = null;
+
+        if (trendSection) {
+            const content = trendSection.content.toLowerCase();
+            if (content.includes("growing") || content.includes("increase")) trend = "growing";
+            else if (content.includes("stable") || content.includes("steady")) trend = "stable";
+            else if (content.includes("declining") || content.includes("decrease")) trend = "declining";
+        }
+
+        const typeMatch = briefTypeSection.content.match(/primary_type[:\s]+([\w_]+)/i);
+        if (typeMatch) {
+            const rawType = typeMatch[1].toLowerCase();
+            if (rawType === "marketing_performance") {
+                briefHeadline = trend ? `Marketing Performance is ${trend.charAt(0).toUpperCase() + trend.slice(1)}` : "Marketing Performance Snapshot";
+            } else if (rawType === "time_series_trend") {
+                briefHeadline = trend ? `${trend.charAt(0).toUpperCase() + trend.slice(1)} Trend Detected` : "Time Series Analysis";
+            }
+        }
+    }
+
+    // Override headline in Safe Mode
+    if (safeMode) {
+        briefHeadline = "Analysis Limited: Data Constraints Detected";
+    }
+
+    // Key Finding ("So What")
+    let briefKeyFinding = "Analysis complete. Review full report for insights.";
+    const briefExecSummary = data.sections?.find(s => s.id.includes("executive-summary"));
+
+    if (safeMode && guidanceEntries.length > 0) {
+        // In Safe Mode, show the technical blocker
+        briefKeyFinding = guidanceEntries[0].explanation;
+    } else if (briefExecSummary) {
+        // Extract first quantitative statement
+        const quantPattern = /[^.!?]*\d+[%\d\s]*[^.!?]*[.!?]/g;
+        const matches = briefExecSummary.content.match(quantPattern);
+        if (matches && matches.length > 0) {
+            briefKeyFinding = matches[0].trim();
+        } else {
+            // Fallback to first sentence
+            const firstSentence = execSummary.content.split(/[.!?]/)[0];
+            if (firstSentence && firstSentence.length > 10) {
+                briefKeyFinding = firstSentence.trim() + ".";
+            }
+        }
+    }
+
+    // Truncate if too long
+    if (briefKeyFinding.length > 150) {
+        briefKeyFinding = briefKeyFinding.substring(0, 147) + "...";
+    }
+
+    // Decision ("Now What")
+    let briefDecision = "Review full report for recommendations.";
+
+    if (safeMode && guidanceEntries.length > 0) {
+        // In Safe Mode, link to remediation
+        briefDecision = "Click to view data requirements →";
+    } else {
+        // Extract from strategies or recommendations
+        const strategiesSection = data.sections?.find(s =>
+            s.id.includes("strategies") ||
+            s.id.includes("recommendations") ||
+            s.id.includes("personas")
+        );
+
+        if (strategiesSection) {
+            const lines = strategiesSection.content.split('\n');
+            const firstRec = lines.find(line =>
+                line.toLowerCase().includes("recommend") ||
+                line.toLowerCase().includes("focus") ||
+                line.toLowerCase().includes("prioritize") ||
+                line.toLowerCase().includes("target")
+            );
+
+            if (firstRec && firstRec.length > 10) {
+                // Clean up markdown/bullet points
+                briefDecision = firstRec.replace(/^[-*•]\s*/, '').trim();
+            }
+        }
+    }
+
+    // Truncate decision if too long
+    if (briefDecision.length > 120) {
+        briefDecision = briefDecision.substring(0, 117) + "...";
+    }
+
+    // Status and Accent Color
+    let briefStatus: "success" | "limited" | "error" = "success";
+    let briefAccentColor: "teal" | "amber" | "red" = "teal";
+
+    if (safeMode && guidanceEntries.length > 0) {
+        briefStatus = "limited";
+        briefAccentColor = "amber";
+    } else if (confidenceScore >= 0.8 || confidenceScore >= 80) {
+        briefStatus = "success";
+        briefAccentColor = "teal";
+    } else if (confidenceScore >= 0.5 || confidenceScore >= 50) {
+        briefStatus = "limited";
+        briefAccentColor = "amber";
+    } else {
+        briefStatus = "error";
+        briefAccentColor = "red";
+    }
+
     return {
         header: {
             title, // Legacy title field
@@ -220,6 +338,13 @@ export function transformAPIResponse(data: ReportInputData): ReportViewModel {
         validationErrors: {
             rawErrors,
             guidanceEntries
+        },
+        brief: {
+            headline: briefHeadline,
+            keyFinding: briefKeyFinding,
+            decision: briefDecision,
+            status: briefStatus,
+            accentColor: briefAccentColor
         }
     };
 }
