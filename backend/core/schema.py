@@ -92,14 +92,41 @@ class SchemaMap(BaseModel):
     warnings: Warnings = Field(default_factory=Warnings)
 
 
-def ensure_schema_map(data: Optional[Union["SchemaMap", Dict[str, Any]]]) -> SchemaMap:
+def ensure_schema_map(data: Optional[Union["SchemaMap", Dict[str, Any], List[str]]]) -> SchemaMap:
     """Coerce persisted schema payloads into a SchemaMap instance."""
     if isinstance(data, SchemaMap):
         return data
+    
+    if data is None:
+        return SchemaMap()
+
+    # Handle legacy list-of-columns input
+    if isinstance(data, list):
+        # Assume these are just column names
+        return SchemaMap(
+            dataset_info=DatasetInfo(column_count=len(data)),
+            basic_types=BasicTypes(numeric=data) # Default fallback
+        )
+
     if isinstance(data, dict):
+        # Handle "simplified" schema map (just columns/types keys)
+        if "columns" in data and "column_types" in data and "dataset_info" not in data:
+            # Map legacy format to new format
+            cols = data.get("columns", [])
+            types = data.get("column_types", {})
+            
+            numeric = [c for c, t in types.items() if t == "numeric"]
+            categorical = [c for c, t in types.items() if t == "categorical"]
+            
+            return SchemaMap(
+                dataset_info=DatasetInfo(column_count=len(cols)),
+                basic_types=BasicTypes(numeric=numeric, categorical=categorical)
+            )
+
         try:
             return SchemaMap(**data)
         except Exception:
             return SchemaMap()
+    
     return SchemaMap()
 
