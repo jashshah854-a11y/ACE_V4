@@ -53,7 +53,7 @@ export function ExecutiveBrief({
     return (
         <Card
             className={cn(
-                "sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50",
+                "bg-gray-50 dark:bg-gray-900/50",
                 "border-l-4 shadow-md mb-6",
                 accentBorderClass
             )}
