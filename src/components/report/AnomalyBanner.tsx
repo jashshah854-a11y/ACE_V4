@@ -80,7 +80,7 @@ export function AnomalyBanner({
                                     Top Drivers:
                                 </p>
                                 <ul className="space-y-1">
-                                    {topDrivers.slice(0, 3).map((driver, idx) => (
+                                    {(Array.isArray(topDrivers) ? topDrivers : []).slice(0, 3).map((driver, idx) => (
                                         <li
                                             key={idx}
                                             className="text-sm text-orange-700 dark:text-orange-300 flex items-center gap-2"
