@@ -7,12 +7,14 @@ import { useEvidenceRegistry } from "@/hooks/useEvidenceRegistry";
 import { copyToClipboard, downloadMarkdown } from "./PDFExporter";
 import { useGovernedReport } from "@/hooks/useGovernedReport";
 import { ReportSkeleton } from "./ReportSkeleton";
-import { WideReportLayout } from "./WideReportLayout";
+import { InsightCanvasLayout } from "./InsightCanvasLayout";
+import { NavigationRail } from "./NavigationRail";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
+import { TraceableText } from "./TraceableText";
 import { useTaskContext } from "@/context/TaskContext";
 import { LimitationBanner } from "./LimitationBanner";
 import { ScopeLockModal } from "./ScopeLockModal";
@@ -35,6 +37,10 @@ import {
   ReportPersonasPanel,
   ReportInsightStoryboard,
 } from "./viewer";
+
+import { GlobalAlert } from "./GlobalAlert";
+import { SignalStrength } from "./SignalStrength";
+import { WhyExplainer } from "./WhyExplainer";
 
 // Validation component
 import { ReportDataValidator } from "./ReportDataValidator";
@@ -81,6 +87,8 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
   const [showAllPersonas, setShowAllPersonas] = useState(false);
 
   // Evidence state
+  const [activeEvidenceId, setActiveEvidenceId] = useState<string | null>(null);
+  const isRightRailOpen = Boolean(activeEvidenceId); // Derived state for now
   const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
   const [evidenceSample, setEvidenceSample] = useState<any[] | null>(null);
   const [evidenceLoading, setEvidenceLoading] = useState(false);
@@ -201,6 +209,10 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
 
   const handleSectionClick = (sectionId: string) => {
     setCurrentSection(sectionId);
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   const handleRunDiff = async () => {
@@ -269,6 +281,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
       return;
     }
     setEvidencePreview(contentSnippet);
+    if (evidenceId) setActiveEvidenceId(evidenceId);
     setEvidenceLoading(true);
     setEvidenceError(null);
     setEvidenceSample(null);
@@ -286,6 +299,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
   };
 
   const handleCloseEvidence = () => {
+    setActiveEvidenceId(null);
     setEvidencePreview(null);
     setEvidenceSample(null);
     setEvidenceError(null);
@@ -520,22 +534,14 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
       icon: SECTION_ICONS.insights,
       defaultOpen: false,
       content: (
-        <article className="prose prose-slate dark:prose-invert max-w-none">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeHighlight]}
-            components={{
-              table: ({ node, ...props }) => (
-                <div className="overflow-x-auto my-6 rounded-lg border">
-                  <table className="w-full" {...props} />
-                </div>
-              ),
-            }}
-          >
-            {content}
-          </ReactMarkdown>
+        <>
+          <TraceableText
+            content={content || ""}
+            segments={reportData.viewModel.traceability.textSegments}
+            onReferenceClick={(id) => handleFetchEvidenceSample({ contentSnippet: `Reference ${id}`, evidenceId: id })}
+          />
           {limitationFootnote && <div className="mt-4 text-xs text-muted-foreground">{limitationFootnote}</div>}
-        </article>
+        </>
       ),
     },
   ];
@@ -596,8 +602,65 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className={cn("w-full", className)}>
       <ReportDataValidator data={reportData} content={content || ""}>
-        <WideReportLayout
-          hero={
+
+        <InsightCanvasLayout
+          navigation={
+            <NavigationRail
+              items={reportData.viewModel?.navigation || []}
+              activeSection={currentSection}
+              onNavigate={handleSectionClick}
+            />
+          }
+          rightRail={
+            <div className="space-y-4">
+              {/* Evidence Panel Content */}
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm font-semibold">Evidence Lab</span>
+                <button onClick={handleCloseEvidence} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
+              </div>
+
+              {reportData.safeMode && (
+                <WhyExplainer
+                  reasons={safeModeReasons}
+                  className="mb-4 bg-amber-50/50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800"
+                />
+              )}
+
+
+              <TableOfContents sections={reportData.evidenceSections} />
+              <EvidencePanel records={evidenceRegistry} />
+
+              {/* Reuse existing Evidence Inspector */}
+              <ReportEvidenceInspector
+                evidenceSections={reportData.evidenceSections}
+                evidencePreview={evidencePreview}
+                evidenceSample={evidenceSample}
+                evidenceLoading={evidenceLoading}
+                evidenceError={evidenceError}
+                onFetchEvidenceSample={handleFetchEvidenceSample}
+                onCloseEvidence={handleCloseEvidence}
+              />
+
+              <IntelligenceRail
+                keyTakeaways={reportData.keyTakeaways}
+                criticalIssues={{
+                  count: reportData.metrics.anomalyCount || 0,
+                  items: reportData.metrics.anomalyCount ? [`${reportData.metrics.anomalyCount} anomalies detected`] : [],
+                }}
+                quickStats={{
+                  dataQuality: reportData.metrics.dataQualityScore,
+                  confidence: reportData.metrics.confidenceLevel,
+                  anomalies: reportData.metrics.anomalyCount,
+                }}
+                sections={reportData.evidenceSections.map((s) => ({ id: s.id, title: s.title }))}
+                currentSection={currentSection}
+                readingProgress={readingProgress}
+                onSectionClick={handleSectionClick}
+              />
+            </div>
+          }
+          isRightRailOpen={isRightRailOpen}
+          mainContent={
             <>
               {missingIdentityFields?.length ? (
                 <LimitationBanner
@@ -607,11 +670,16 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
                   className="mb-4"
                 />
               ) : null}
-              <SafeModeBanner safeMode={reportData.safeMode} />
+              <SafeModeBanner
+                safeMode={reportData.safeMode}
+                limitationsReason={reportData.viewModel.header.limitationsReason}
+              />
               <ReportHero
                 runId={runId}
                 safeMode={reportData.safeMode}
                 confidenceLevel={reportData.confidenceValue}
+                signal={reportData.viewModel.header.signal}
+                limitationsReason={reportData.viewModel.header.limitationsReason}
                 taskContractSummary={reportData.taskContractSummary}
                 decisionSummary={reportData.decisionSummary}
                 primaryQuestion={reportData.primaryQuestion}
@@ -623,6 +691,18 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
                 dataQualityValue={reportData.dataQualityValue}
                 clusterMetrics={reportData.clusterMetrics}
               />
+              <div className="flex justify-end mb-4 px-2">
+                <SignalStrength
+                  strength={reportData.confidenceValue >= 80 ? "high" : reportData.confidenceValue >= 50 ? "moderate" : "low"}
+                  score={reportData.confidenceValue}
+                />
+              </div>
+              <div className="flex justify-end mb-4 px-2">
+                <SignalStrength
+                  strength={reportData.confidenceValue >= 80 ? "high" : reportData.confidenceValue >= 50 ? "moderate" : "low"}
+                  score={reportData.confidenceValue}
+                />
+              </div>
               <HighlightsRibbon highlights={reportData.highlights} />
               <IdentityTrustStrip
                 identityStats={reportData.identityStats}
@@ -707,49 +787,19 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
                 <TechnicalDetailsSection metrics={reportData.metrics} runId={runId} />
               </motion.div>
+
+              {simulationState.comparison_mode ? (
+                <SplitReportViewer
+                  baselineContent={renderReportBody(false)}
+                  simulatedContent={renderReportBody(true)}
+                />
+              ) : (
+                renderReportBody(false)
+              )}
             </>
           }
-          mainContent={
-            simulationState.comparison_mode ? (
-              <SplitReportViewer
-                baselineContent={renderReportBody(false)}
-                simulatedContent={renderReportBody(true)}
-              />
-            ) : (
-              renderReportBody(false)
-            )
-          }
-          intelligenceRail={
-            <div className="space-y-4">
-              <SimulationControls />
-              <QueryRail />
-              <Card className="p-3 space-y-1">
-                <div className="text-xs uppercase text-muted-foreground">Traceability</div>
-                {runId && <div className="text-sm">Run ID: {runId}</div>}
-                <div className="text-sm">Safe Mode: {reportData.safeMode ? "Yes" : "No"}</div>
-                <div className="text-xs text-muted-foreground">Engine: ACE Viewer</div>
-              </Card>
-              <TableOfContents sections={reportData.evidenceSections} />
-              <EvidencePanel records={evidenceRegistry} />
-              <IntelligenceRail
-                keyTakeaways={reportData.keyTakeaways}
-                criticalIssues={{
-                  count: reportData.metrics.anomalyCount || 0,
-                  items: reportData.metrics.anomalyCount ? [`${reportData.metrics.anomalyCount} anomalies detected`] : [],
-                }}
-                quickStats={{
-                  dataQuality: reportData.metrics.dataQualityScore,
-                  confidence: reportData.metrics.confidenceLevel,
-                  anomalies: reportData.metrics.anomalyCount,
-                }}
-                sections={reportData.evidenceSections.map((s) => ({ id: s.id, title: s.title }))}
-                currentSection={currentSection}
-                readingProgress={readingProgress}
-                onSectionClick={handleSectionClick}
-              />
-            </div>
-          }
         />
+
       </ReportDataValidator>
       <ScopeLockModal
         open={Boolean(scopeLockDimension)}

@@ -1,0 +1,64 @@
+import { ReactNode } from "react";
+import ReactMarkdown from "react-markdown";
+import { cn } from "@/lib/utils";
+
+interface TraceableTextProps {
+    content: string;
+    segments?: { text: string; evidenceId: string }[];
+    onReferenceClick?: (id: string) => void;
+    className?: string;
+}
+
+/**
+ * Renders narrative text with interactive evidence references.
+ * Detects patterns like `[ref:123]` and converts them into clickable indicators.
+ * Uses a serif font for reading comfort (handled by .prose-narrative class).
+ */
+export function TraceableText({ content, segments, onReferenceClick, className }: TraceableTextProps & { segments?: { text: string; evidenceId: string }[] }) {
+
+    // Inject links for segments
+    // We escape special regex characters in segment text to be safe
+    let processedContent = content;
+    if (segments) {
+        segments.forEach(seg => {
+            if (seg.text && seg.evidenceId) {
+                // strict replacement to avoid replacing inside existing links if possible, 
+                // but for now simple global replace of the phrase
+                // Use a regex boundary or just the phrase
+                const regex = new RegExp(`(${seg.text})`, 'gi');
+                // Replace with markdown link format: [text](ref:id)
+                // We assume content doesn't already have this link
+                processedContent = processedContent.replace(regex, `[$1](ref:${seg.evidenceId})`);
+            }
+        });
+    }
+
+    return (
+        <article className={cn("prose-narrative prose prose-slate dark:prose-invert max-w-none", className)}>
+            <ReactMarkdown
+                components={{
+                    a: ({ node, href, children, ...props }) => {
+                        const isReference = href?.startsWith("ref:");
+                        const refId = href?.replace("ref:", "");
+
+                        if (isReference && refId) {
+                            return (
+                                <button
+                                    onClick={() => onReferenceClick?.(refId)}
+                                    className="cursor-pointer border-b-2 border-dashed border-amber-500 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors mx-0.5 px-0.5 rounded-sm"
+                                    title="View Evidence"
+                                >
+                                    {children}
+                                </button>
+                            );
+                        }
+
+                        return <a href={href} {...props}>{children}</a>;
+                    }
+                }}
+            >
+                {processedContent}
+            </ReactMarkdown>
+        </article>
+    );
+}

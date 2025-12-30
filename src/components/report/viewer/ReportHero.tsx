@@ -1,10 +1,14 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ConfidenceSignal } from "../../ConfidenceSignal";
+import { ReportViewModel } from "@/lib/reportViewModel";
 
 interface ReportHeroProps {
   runId?: string;
   safeMode: boolean;
   confidenceLevel: number | undefined;
+  signal: ReportViewModel['header']['signal'];
+  limitationsReason?: string | null;
   taskContractSummary?: string;
   decisionSummary?: string;
   runContext: { mode: string; freshness: string; scopeLimits: string[] };
@@ -16,6 +20,8 @@ export function ReportHero({
   runId,
   safeMode,
   confidenceLevel,
+  signal,
+  limitationsReason,
   taskContractSummary,
   decisionSummary,
   runContext,
@@ -27,16 +33,14 @@ export function ReportHero({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="text-xs uppercase text-muted-foreground">Report</div>
-          <div className="text-xl font-semibold">ACE Report Viewer</div>
+          <div className="flex items-center gap-3">
+            <div className="text-xl font-semibold">Executive Pulse</div>
+            <ConfidenceSignal signal={signal} limitationsReason={limitationsReason} />
+          </div>
           {runId && <div className="text-xs text-muted-foreground">Run ID: {runId}</div>}
         </div>
         <div className="flex flex-wrap gap-2">
-          {safeMode && (
-            <Badge variant="outline" className="border-amber-500 text-amber-700">
-              Safe Mode
-            </Badge>
-          )}
-          <Badge variant="outline">Confidence: {confidenceLevel ?? "n/a"}%</Badge>
+          {/* Removed old badges as requested */}
         </div>
       </div>
       {primaryQuestion && (
