@@ -428,7 +428,7 @@ export function useReportData(
     compositionData: compositionData || [],
     measurableSegments: measurableSegments || [],
     clusterMetrics,
-    personas: personas || [],
+    personas: Array.isArray(personas) ? personas : [],
     outcomeModel,
     anomalies: anomalies || { count: 0, drivers: [] },
     executiveBrief: executiveBrief || { purpose: "", keyFindings: [], confidenceVerdict: "", recommendedAction: "" },
