@@ -10,12 +10,12 @@ export function MetricCardGrid({ metrics }: MetricCardGridProps) {
     if (!metrics || metrics.length === 0) return null;
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
             {metrics.map((metric, idx) => (
                 <div
                     key={idx}
                     className={cn(
-                        "p-5 rounded-2xl border bg-card/50 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1",
+                        "p-4 rounded-xl border bg-card/50 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1",
                         metric.status === "success" && "border-teal-200 dark:border-teal-900",
                         metric.status === "warning" && "border-amber-200 dark:border-amber-900",
                         metric.status === "risk" && "border-rose-200 dark:border-rose-900",
