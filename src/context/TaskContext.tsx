@@ -27,15 +27,26 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<TaskContractState>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return {
-          primaryQuestion: typeof parsed?.primaryQuestion === "string" ? parsed.primaryQuestion : undefined,
-          outOfScopeDimensions: Array.isArray(parsed?.outOfScopeDimensions)
-            ? parsed.outOfScopeDimensions.filter((entry: unknown): entry is string => typeof entry === "string")
-            : [],
-        };
+      if (!stored) {
+        return DEFAULT_STATE; // If nothing stored, return default
       }
+
+      let parsed: any;
+      try {
+        parsed = JSON.parse(stored);
+      } catch (e) {
+        console.error('Failed to parse task contract from localStorage:', e);
+        localStorage.removeItem(STORAGE_KEY); // Clear corrupted data
+        return DEFAULT_STATE; // Return default if parsing fails
+      }
+
+      // Original validation logic, applied to the parsed object
+      return {
+        primaryQuestion: typeof parsed?.primaryQuestion === "string" ? parsed.primaryQuestion : undefined,
+        outOfScopeDimensions: Array.isArray(parsed?.outOfScopeDimensions)
+          ? parsed.outOfScopeDimensions.filter((entry: unknown): entry is string => typeof entry === "string")
+          : [],
+      };
     } catch (error) {
       console.warn("Failed to restore task contract context", error);
     }
