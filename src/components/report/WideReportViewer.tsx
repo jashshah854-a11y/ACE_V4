@@ -461,12 +461,23 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
               <ul className="text-sm space-y-1">
                 {(() => {
                   const rawData = reportData.enhancedAnalytics?.feature_importance?.feature_importance || reportData.modelArtifacts?.feature_importance || [];
-                  const items = Array.isArray(rawData) ? rawData : Object.entries(rawData).map(([k, v]) => ({ feature: k, importance: v }));
+                  const items = Array.isArray(rawData) ? rawData : Object.entries(rawData).map(([k, v]) => {
+                    // Safety: If v is an object (e.g. {"importance": 0.5, "feature": "X"}), extract the value
+                    let val = v;
+                    if (typeof v === 'object' && v !== null && 'importance' in v) {
+                      val = (v as any).importance;
+                    }
+                    return { feature: k, importance: val };
+                  });
 
                   return items.slice(0, 5).map((f: any, i: number) => (
                     <li key={i} className="flex justify-between">
                       <span>{f.feature || f[0]}</span>
-                      <span className="text-muted-foreground">{(f.importance || f[1])?.toFixed?.(3) ?? f.importance ?? f[1]}</span>
+                      <span className="text-muted-foreground">
+                        {typeof (f.importance || f[1]) === 'number'
+                          ? (f.importance || f[1]).toFixed(3)
+                          : String(f.importance ?? f[1] ?? '')}
+                      </span>
                     </li>
                   ));
                 })()}
