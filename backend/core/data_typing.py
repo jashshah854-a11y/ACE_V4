@@ -100,7 +100,7 @@ DATA_TYPE_CATALOG: Dict[str, Dict[str, List[str]]] = {
         ],
         "values": ["usd", "eur", "$", "balance sheet"],
     },
-    "customer_behavior_logs": {
+    "customer_behavior": {
         "columns": ["event", "action", "session", "user_id", "device", "page", "ip"],
         "values": ["click", "view", "purchase", "login", "signup"],
     },
@@ -112,7 +112,7 @@ DATA_TYPE_CATALOG: Dict[str, Dict[str, List[str]]] = {
         "columns": ["response", "question", "rating", "survey", "likert", "comment", "sentiment"],
         "values": ["strongly agree", "strongly disagree", "nps"],
     },
-    "geospatial_location": {
+    "geospatial": {
         "columns": ["latitude", "longitude", "lat", "lon", "geo", "city", "state", "country", "zip"],
         "values": [],
     },
@@ -128,12 +128,11 @@ DATA_TYPE_CATALOG: Dict[str, Dict[str, List[str]]] = {
         "columns": ["text", "description", "summary", "content", "body"],
         "values": [],
     },
-    "mixed_structured_unstructured": {
+    "mixed": {
         "columns": [],
         "values": ["json", "{", "}"],
     },
 }
-
 
 def _match_signals(df: pd.DataFrame, category: str) -> Tuple[int, List[str]]:
     meta = DATA_TYPE_CATALOG[category]
@@ -197,7 +196,7 @@ def classify_dataset(df: pd.DataFrame) -> DataTypeResult:
 
     # Mixed structure detection
     if df.select_dtypes(include=["object"]).shape[1] > 0 and df.select_dtypes(exclude=["object"]).shape[1] > 0:
-        scores["mixed_structured_unstructured"] = scores.get("mixed_structured_unstructured", 0) + 1
+        scores["mixed"] = scores.get("mixed", 0) + 1
 
     # Pick primary and secondary
     ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
