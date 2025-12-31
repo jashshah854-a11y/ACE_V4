@@ -754,14 +754,33 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
                 </span>
               </div>
 
+              import {DistributionCharts} from "./DistributionCharts";
+              import {ReportCharts} from "./ReportCharts";
+
+              // ... existing imports
+
+              // ... existing code
+
               {/* Dynamic Content Rendering based on ID */}
               {section.id === 'visualizations' && (
-                <TechnicalSection
-                  title="Visual Analysis"
-                  content={reportData.enhancedAnalytics?.distribution_analysis?.insights?.[0] || "No visual insights available."}
-                  metrics={reportData.metrics}
-                  runId={runId || ""}
-                />
+                <TechnicalSection title="Visual Analysis">
+                  <div className="space-y-8">
+                    {/* 1. Distribution Analysis */}
+                    {reportData.enhancedAnalytics?.distribution_analysis && (
+                      <DistributionCharts
+                        distributions={reportData.enhancedAnalytics.distribution_analysis.features}
+                        insights={reportData.enhancedAnalytics.distribution_analysis.insights}
+                      />
+                    )}
+
+                    {/* 2. Standard Report Charts (Segments, Composition) */}
+                    <ReportCharts
+                      qualityScore={Math.round(reportData.metrics.dataQualityScore * 100)}
+                      segmentData={reportData.segmentData}
+                      compositionData={reportData.compositionData}
+                    />
+                  </div>
+                </TechnicalSection>
               )}
 
               {section.id === 'personas' && reportData.personas.length > 0 && (
