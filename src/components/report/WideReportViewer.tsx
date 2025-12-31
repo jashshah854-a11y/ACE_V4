@@ -838,6 +838,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
                   score={reportData.confidenceValue}
                 />
               </div>
+              {/* Hidden for Executive View (Phase 3)
               <HighlightsRibbon highlights={reportData.highlights} />
               <IdentityTrustStrip
                 identityStats={reportData.identityStats}
@@ -852,6 +853,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
                 hasTimeField={reportData.hasTimeField}
                 onConfidenceModeChange={setConfidenceMode}
               />
+              */}
 
               {reportData.shouldEmitInsights ? (
                 <>
