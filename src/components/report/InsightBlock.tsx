@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { SignalWidget } from "../trust/SignalWidget";
+import { StreamingText } from "@/components/ui/StreamingText";
 
 export interface EvidenceObject {
     id: string;
@@ -36,9 +37,9 @@ export function InsightBlock({ narrativeText, evidenceObject, visualConfig, clas
         return (
             <Card className={cn("p-6 space-y-6 border-none shadow-sm bg-card/50", className)}>
                 <div className="prose prose-slate dark:prose-invert max-w-none">
-                    <p className="text-lg leading-relaxed font-serif text-slate-800 dark:text-slate-200">
-                        {narrativeText}
-                    </p>
+                    <div className="text-lg leading-relaxed font-serif text-slate-800 dark:text-slate-200">
+                        <StreamingText text={narrativeText || ""} speed={15} />
+                    </div>
                 </div>
 
                 <div className="rounded-xl border border-border/40 p-1 bg-muted/20">

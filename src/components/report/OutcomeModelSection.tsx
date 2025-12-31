@@ -6,6 +6,7 @@ import { numberFormatter } from "@/lib/numberFormatter";
 import { CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { ActionableEmptyState } from "./shared/ActionableEmptyState";
 import { ModelUseGuidelines } from "./ModelUseGuidelines";
 
 interface OutcomeModelSectionProps {
@@ -15,9 +16,11 @@ interface OutcomeModelSectionProps {
 export function OutcomeModelSection({ data }: OutcomeModelSectionProps) {
     if (!data || data.status === 'skipped') {
         return (
-            <div className="text-center py-8 text-muted-foreground">
-                <p>Outcome modeling was skipped for this dataset</p>
-            </div>
+            <ActionableEmptyState
+                title="Outcome Modeling Suppressed"
+                description="Predictive modeling requires a target variable (e.g., 'Churn', 'Revenue') and sufficient historical data."
+                requirements={["Target variable identified", "Sufficient correlation signals", "Minimum 100 historical records"]}
+            />
         );
     }
 

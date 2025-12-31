@@ -6,6 +6,8 @@ import { StoryHeadline } from "@/components/report/story/StoryHeadline";
 import { MetricCardGrid } from "@/components/report/story/MetricCardGrid";
 import { SentimentBlock } from "@/components/report/story/SentimentBlock";
 import { ActionChecklist } from "@/components/report/story/ActionChecklist";
+import { PersonaDeck } from "@/components/report/story/PersonaDeck";
+import { ConfidenceGauge } from "@/components/report/story/ConfidenceGauge";
 import { StorySkeleton } from "@/components/report/story/StorySkeleton";
 import { StoryControlBar } from "@/components/report/story/StoryControlBar";
 import ReactMarkdown from "react-markdown";
@@ -293,10 +295,10 @@ const ExecutivePulse = () => {
                       </div>
                     </>
                   ) : (
-                    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20">
-                      <Sparkles className="w-3 h-3" />
-                      <span className="text-xs font-medium">
-                        {reportData.confidenceValue && reportData.confidenceValue > 80 ? "Verified Intelligence" : "Preliminary Analysis"}
+                    <div className="flex items-center gap-3">
+                      <ConfidenceGauge value={reportData.confidenceValue || 0} size="sm" />
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        System Confidence
                       </span>
                     </div>
                   )}
@@ -338,6 +340,21 @@ const ExecutivePulse = () => {
                         </div>
 
                         <MetricCardGrid metrics={transformToStory(reportData).metricCards} />
+
+                        {/* NEW: Persona Deck (Horizontal Scroll) */}
+                        {reportData.personas && reportData.personas.length > 0 && (
+                          <div className="animate-fade-in-up delay-200 section-persona">
+                            <PersonaDeck
+                              personas={reportData.personas.map((p: any) => ({
+                                id: p.name,
+                                label: p.name,
+                                description: p.description,
+                                size: `${p.percentage?.toFixed(0) || 0}%`,
+                                value: p.traits?.[0]
+                              }))}
+                            />
+                          </div>
+                        )}
 
                         {/* NEW: Editorial Section Loop */}
                         <div className="space-y-12">

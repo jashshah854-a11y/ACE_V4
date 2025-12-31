@@ -134,6 +134,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
   }, [reportData.primaryQuestion, reportData.outOfScopeDimensions, updateTaskContract]);
 
   // Track reading progress
+  // Track reading progress and active section via IntersectionObserver
   useEffect(() => {
     const handleScroll = () => {
       const windowHeight = window.innerHeight;
@@ -144,8 +145,37 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
     };
 
     window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+
+    // Intersection Observer for Active Section
+    const observerOptions = {
+      root: null,
+      rootMargin: "-20% 0px -60% 0px", // Active when near top of viewport
+      threshold: 0
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          setCurrentSection(entry.target.id);
+        }
+      });
+    }, observerOptions);
+
+    // Observe all possible section IDs from navigation items
+    const navItemIds = reportData.viewModel?.navigation?.map(item => item.id) || [];
+    // Also include hardcoded sections
+    const allSectionIds = [...navItemIds, "executive-summary", "visualizations", "segments", "full-report"];
+
+    allSectionIds.forEach(id => {
+      const element = document.getElementById(id);
+      if (element) observer.observe(element);
+    });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      observer.disconnect();
+    };
+  }, [reportData.viewModel?.navigation]);
 
   // Early returns
   if (isLoading) {
@@ -591,18 +621,25 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
   // Helper to render the body content
   const renderReportBody = (isSimulated = false) => (
     <div id={isSimulated ? "report-content-simulated" : "report-content"} className={cn("space-y-8", isSimulated && "opacity-90")}>
-      <ReportInsightStoryboard
-        sections={reportData.filteredSections}
-        confidenceLevel={reportData.confidenceValue}
-        safeMode={reportData.safeMode}
-        hideActions={reportData.hideActions}
-        getSectionLimitations={getSectionLimitations}
-        onInspectEvidence={(payload) => handleFetchEvidenceSample({
-          contentSnippet: payload.content,
-          evidenceId: payload.id,
-          sectionTitle: payload.title
-        })}
-      />
+      <TechnicalSection
+        title="Narrative Insights"
+        icon={SECTION_ICONS.insights as any}
+        defaultOpen={true}
+        className="mb-6"
+      >
+        <ReportInsightStoryboard
+          sections={reportData.filteredSections}
+          confidenceLevel={reportData.confidenceValue}
+          safeMode={reportData.safeMode}
+          hideActions={reportData.hideActions}
+          getSectionLimitations={getSectionLimitations}
+          onInspectEvidence={(payload) => handleFetchEvidenceSample({
+            contentSnippet: payload.content,
+            evidenceId: payload.id,
+            sectionTitle: payload.title
+          })}
+        />
+      </TechnicalSection>
 
       <div className="space-y-6">
         {accordionSections.map((section) => (
