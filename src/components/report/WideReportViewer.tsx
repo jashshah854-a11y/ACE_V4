@@ -807,7 +807,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
           <SimulationControls />
         </div>
       )}
-      <AskAce />
+      <AskAce reportData={reportData} />
     </div>
   );
 }
