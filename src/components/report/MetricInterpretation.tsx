@@ -1,4 +1,5 @@
 import { Info, HelpCircle } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -29,43 +30,49 @@ export function MetricInterpretation({
     };
 
     return (
-        <div className={cn("space-y-2", className)}>
-            <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm font-medium text-muted-foreground">{metricName}:</span>
-                <span className="text-lg font-bold text-foreground">{value}</span>
-                {confidenceLevel && (
-                    <Badge variant="secondary" className={cn("text-xs", confidenceColors[confidenceLevel])}>
-                        {confidenceLevel} confidence
-                    </Badge>
-                )}
-                {helpText && (
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <button className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors">
-                                    <HelpCircle className="h-4 w-4" />
-                                </button>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                                <p className="text-sm">{helpText}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                )}
-            </div>
-
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/30">
-                <Info className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                <div className="space-y-1">
-                    <p className="text-sm text-foreground leading-relaxed">{interpretation}</p>
-                    {benchmark && (
-                        <p className="text-xs text-muted-foreground">
-                            Benchmark: {benchmark}
-                        </p>
+        <Card className={cn("p-4 transition-all duration-200 hover:shadow-md hover:border-primary/20 group", className)}>
+            <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">{metricName}</span>
+                    {helpText && (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button className="p-1 rounded-full hover:bg-accent text-muted-foreground/70 hover:text-primary transition-colors">
+                                        <HelpCircle className="h-4 w-4" />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs bg-popover text-popover-foreground shadow-xl border">
+                                    <p className="text-sm leading-relaxed">{helpText}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     )}
                 </div>
+
+                <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold tracking-tight text-foreground">{value}</span>
+                    {confidenceLevel && (
+                        <Badge variant="secondary" className={cn("text-[10px] px-1.5 py-0 h-5 my-auto", confidenceColors[confidenceLevel])}>
+                            {confidenceLevel}
+                        </Badge>
+                    )}
+                </div>
+
+                <div className="flex items-start gap-2 p-2.5 rounded bg-muted/30 text-sm group-hover:bg-muted/50 transition-colors">
+                    <Info className="h-4 w-4 text-primary/80 mt-0.5 flex-shrink-0" />
+                    <div className="space-y-1 w-full">
+                        <p className="text-foreground/90 leading-snug">{interpretation}</p>
+                        {benchmark && (
+                            <div className="flex items-center gap-1.5 pt-1 mt-1 border-t border-border/50">
+                                <span className="text-[10px] bg-primary/10 text-primary px-1 rounded uppercase font-semibold tracking-wider">Goal</span>
+                                <span className="text-xs text-muted-foreground">{benchmark}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
-        </div>
+        </Card>
     );
 }
 

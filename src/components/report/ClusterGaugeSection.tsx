@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ActionableEmptyState } from "./shared/ActionableEmptyState";
 import { ProgressRing } from "./ProgressRing";
 import { ClusterMetric } from "@/lib/reportParser";
 import { numberFormatter } from "@/lib/numberFormatter";
@@ -16,9 +17,11 @@ interface ClusterGaugeSectionProps {
 export function ClusterGaugeSection({ data }: ClusterGaugeSectionProps) {
     if (!data) {
         return (
-            <div className="text-center py-8 text-muted-foreground">
-                <p>No cluster data available</p>
-            </div>
+            <ActionableEmptyState
+                title="Behavioral Clustering Suppressed"
+                description="Clustering requires numerical or categorical variance across records. Current dataset may be too small or uniform."
+                requirements={["At least 50 records", "Variance in numeric fields", "Sufficient data quality"]}
+            />
         );
     }
 
