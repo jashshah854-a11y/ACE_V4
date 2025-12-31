@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { getGuidance } from "@/lib/getGuidance";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useReportData } from "@/hooks/useReportData";
@@ -162,7 +163,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
     }, observerOptions);
 
     // Observe all possible section IDs from navigation items
-    const navItemIds = reportData.viewModel?.navigation?.map(item => item.id) || [];
+    const navItemIds = reportData.sections?.map(item => item.id) || [];
     // Also include hardcoded sections
     const allSectionIds = [...navItemIds, "executive-summary", "visualizations", "segments", "full-report"];
 
@@ -175,7 +176,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
       window.removeEventListener("scroll", handleScroll);
       observer.disconnect();
     };
-  }, [reportData.viewModel?.navigation]);
+  }, [reportData.sections]);
 
   // Early returns
   if (isLoading) {
@@ -946,7 +947,7 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
       <GuidanceModal
         isOpen={isGuidanceModalOpen}
         onClose={() => setIsGuidanceModalOpen(false)}
-        guidanceEntries={reportData.viewModel.validationErrors.guidanceEntries}
+        guidanceEntries={getGuidance(safeModeReasons)}
         onUploadNewDataset={() => {
           setIsGuidanceModalOpen(false);
           // TODO: Implement navigation to upload page
