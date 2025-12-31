@@ -28,6 +28,7 @@ import { ExecutiveBrief } from "./ExecutiveBrief";
 import { ExecutiveHero } from "./ExecutiveHero"; // [NEW] visual update
 import { useSmoothScroll, formatBriefText } from "@/hooks/useSmoothScroll";
 import { TechnicalSection } from "@/components/report/technical/TechnicalSection";
+import { KeyPerformanceIndicators } from "./KeyPerformanceIndicators"; // [NEW] visual update
 
 // Refactored viewer components
 import {
@@ -826,17 +827,11 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
                 />
               </div>
 
-              <ReportMetricsStrip
-                confidenceValue={reportData.confidenceValue}
-                dataQualityValue={reportData.dataQualityValue}
-                clusterMetrics={reportData.clusterMetrics}
+              <KeyPerformanceIndicators
+                confidence={reportData.confidenceValue || 0}
+                quality={reportData.dataQualityValue || 0}
+                clusterCount={reportData.clusterMetrics?.clusterCount}
               />
-              <div className="flex justify-end mb-4 px-2">
-                <SignalStrength
-                  strength={reportData.confidenceValue >= 80 ? "high" : reportData.confidenceValue >= 50 ? "moderate" : "low"}
-                  score={reportData.confidenceValue}
-                />
-              </div>
               <div className="flex justify-end mb-4 px-2">
                 <SignalStrength
                   strength={reportData.confidenceValue >= 80 ? "high" : reportData.confidenceValue >= 50 ? "moderate" : "low"}
