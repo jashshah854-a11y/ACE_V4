@@ -773,18 +773,18 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
 
               {/* Executive TL;DR Brief */}
               <ExecutiveBrief
-                headline={reportData.viewModel.brief.headline}
-                keyFinding={reportData.viewModel.brief.keyFinding}
-                decision={reportData.viewModel.brief.decision}
-                status={reportData.viewModel.brief.status}
-                accentColor={reportData.viewModel.brief.accentColor}
-                confidenceSignal={reportData.viewModel.header.signal}
+                headline={reportData.viewModel.headline || "Report Analysis"}
+                keyFinding={reportData.heroInsight?.keyInsight || reportData.viewModel.subheadline || "Key insights extracted."}
+                decision={reportData.executiveBrief?.recommendedAction || reportData.executiveBrief?.purpose || "Review full report for details."}
+                status={reportData.safeMode ? "caution" : "optimal"}
+                accentColor="teal"
+                confidenceSignal={reportData.viewModel.header?.signal || { value: "medium", confidenceScore: 0.8, label: "Medium Confidence" }}
                 onCopy={() => {
                   const briefText = formatBriefText({
-                    headline: reportData.viewModel.brief.headline,
-                    keyFinding: reportData.viewModel.brief.keyFinding,
-                    decision: reportData.viewModel.brief.decision,
-                    confidenceScore: reportData.viewModel.header.signal.confidenceScore,
+                    headline: reportData.viewModel.headline,
+                    keyFinding: reportData.heroInsight?.keyInsight,
+                    decision: reportData.executiveBrief?.recommendedAction,
+                    confidenceScore: reportData.confidenceValue || 0,
                   });
                   navigator.clipboard.writeText(briefText);
                   toast({ title: "Brief copied to clipboard" });
