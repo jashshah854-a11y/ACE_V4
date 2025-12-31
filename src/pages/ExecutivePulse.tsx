@@ -450,7 +450,7 @@ const ExecutivePulse = () => {
         </div>
       </main>
 
-      <AskAce />
+      <AskAce reportData={reportData} />
       <Footer />
     </div>
   );
