@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { ReportDataResult } from "@/types/reportTypes";
 
 interface Message {
     id: string;
@@ -14,7 +15,11 @@ interface Message {
     isThinking?: boolean;
 }
 
-export function AskAce() {
+interface AskAceProps {
+    reportData?: ReportDataResult;
+}
+
+export function AskAce({ reportData }: AskAceProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([
         {
@@ -34,6 +39,61 @@ export function AskAce() {
         }
     }, [messages, isOpen]);
 
+    const generateSmartResponse = (query: string, data?: ReportDataResult): string => {
+        if (!data) return "I'm having trouble accessing the report data directly. Try asking again in a moment.";
+
+        const lowerQ = query.toLowerCase();
+
+        // 1. High-level Summary
+        if (lowerQ.includes("summary") || lowerQ.includes("overview") || lowerQ.includes("tell me about")) {
+            return data.viewModel.subheadline ||
+                data.runContext.mode ? `This is a ${data.runContext.mode} analysis focusing on ${data.primaryQuestion || "key trends"}.` :
+                "I can see a comprehensive analysis here. What specific aspect would you like to know about?";
+        }
+
+        // 2. Risks & Anomalies
+        if (lowerQ.includes("risk") || lowerQ.includes("bad") || lowerQ.includes("worry") || lowerQ.includes("anomaly")) {
+            const risks = data.narrativeSummary?.risks || [];
+            if (risks.length > 0) {
+                return `I identified ${risks.length} key risks. The most critical one is: "${risks[0]}". Would you like to hear the others?`;
+            }
+            return "I didn't detect any major critical risks in this specific run, but always keep an eye on the data quality scores.";
+        }
+
+        // 3. Wins & Opportunities
+        if (lowerQ.includes("win") || lowerQ.includes("good") || lowerQ.includes("opportunity") || lowerQ.includes("growth")) {
+            const wins = data.narrativeSummary?.wins || [];
+            if (wins.length > 0) {
+                return `There are some bright spots! ${wins[0]}`;
+            }
+            return "The data shows stability, though no major 'breakout' wins were explicitly flagged in the summary.";
+        }
+
+        // 4. Data Quality / Reliability
+        if (lowerQ.includes("quality") || lowerQ.includes("confidence") || lowerQ.includes("trust")) {
+            const score = Math.round((data.metrics?.dataQualityScore || 0) * 100);
+            return `The data quality score is ${score}%. ${score > 80 ? "This is excellent and reliable." : "Proceed with some caution."}`;
+        }
+
+        // 5. Segments / Personas
+        if (lowerQ.includes("segment") || lowerQ.includes("who") || lowerQ.includes("persona")) {
+            const count = data.personas?.length || 0;
+            if (count > 0) {
+                return `I found ${count} key segments. The top one is likely "${data.personas[0].label || 'Segment A'}".`;
+            }
+            return "No distinct customer personas were isolated in this specific analysis.";
+        }
+
+        // Fallback: Random heuristic or generic help
+        const fallbacks = [
+            "That's an interesting question. Based on the metrics, I recommend looking at the 'Narrative Insights' section for more detail.",
+            "I'm focusing on the key drivers right now. Try asking about 'risks' or 'data quality'.",
+            "I can help you interpret the Executive Brief. Would you like a summary?",
+            `I've analyzed ${data.metrics?.totalRows?.toLocaleString() || 'the'} rows of data. What specifically do you need to know?`
+        ];
+        return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+    };
+
     const handleSend = async () => {
         if (!inputValue.trim()) return;
 
@@ -47,26 +107,19 @@ export function AskAce() {
         setInputValue("");
         setIsThinking(true);
 
-        // Mock AI response delay
+        // Simulate network delay for realism
         setTimeout(() => {
-            const responses = [
-                "Based on the data, the highest risk segment is the 'New Acquisitions' group due to low retention.",
-                "I found a strong correlation between marketing spend and churn in Q3. You might want to optimize that channel.",
-                "The data quality score is 92%, which is excellent. No major anomalies were detected in the primary fields.",
-                "Recommendation: Focus on the 'High Value' segment. They show a 15% growth potential if targeted correctly."
-            ];
-
-            const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+            const responseText = generateSmartResponse(userMsg.content, reportData);
 
             const aiMsg: Message = {
                 id: (Date.now() + 1).toString(),
                 role: "assistant",
-                content: randomResponse
+                content: responseText
             };
 
             setMessages(prev => [...prev, aiMsg]);
             setIsThinking(false);
-        }, 1500);
+        }, 1000);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {

@@ -73,7 +73,7 @@ DATA_TYPE_CATALOG: Dict[str, Dict[str, List[str]]] = {
         "columns": ["correlation", "rho", "coef", "p_value", "variable_a", "variable_b"],
         "values": ["pearson", "spearman", "kendall"],
     },
-    "time_series_trend": {
+    "time_series_trends": {
         "columns": ["date", "timestamp", "time", "period", "week", "month", "year"],
         "values": [],
     },
@@ -189,7 +189,7 @@ def classify_dataset(df: pd.DataFrame) -> DataTypeResult:
     # Time series detection: datetime column + sorted index trend
     datetime_cols = [c for c in df.columns if "date" in c.lower() or "time" in c.lower()]
     if datetime_cols:
-        scores["time_series_trend"] = scores.get("time_series_trend", 0) + 2
+        scores["time_series_trends"] = scores.get("time_series_trends", 0) + 2
 
     # Text heavy detection
     if _text_dominant(df):
