@@ -29,6 +29,7 @@ import { ExecutiveHero } from "./ExecutiveHero"; // [NEW] visual update
 import { useSmoothScroll, formatBriefText } from "@/hooks/useSmoothScroll";
 import { TechnicalSection } from "@/components/report/technical/TechnicalSection";
 import { KeyPerformanceIndicators } from "./KeyPerformanceIndicators"; // [NEW] visual update
+import { AskAce } from "./story/AskAce";
 
 // Refactored viewer components
 import {
@@ -703,256 +704,111 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
   );
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className={cn("w-full", className)}>
-      <ReportDataValidator data={reportData} content={content || ""}>
+    <div className="min-h-screen w-full bg-background text-foreground font-sans selection:bg-accent/20 selection:text-accent-foreground animate-in fade-in duration-500">
 
-        <InsightCanvasLayout
-          navigation={
-            <NavigationRail
-              items={reportData.viewModel?.navigation || []}
-              activeSection={currentSection}
-              onNavigate={handleSectionClick}
-            />
-          }
-          rightRail={
-            <div className="space-y-4">
-              {/* Evidence Panel Content */}
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-semibold">Evidence Lab</span>
-                <button onClick={handleCloseEvidence} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
-              </div>
+      {/* 1. Hero Section (Full Bleed) */}
+      <ExecutiveHero
+        headline={reportData.viewModel.headline || "Analysis Report"}
+        subheadline={formatBriefText({
+          headline: '',
+          keyFinding: reportData.heroInsight?.keyInsight || reportData.viewModel.subheadline,
+          decision: reportData.executiveBrief?.recommendedAction,
+          confidenceScore: 0
+        }).split('\n')[0] || "Executive Summary"}
+        date={reportData.metadata?.runId ? `Run: ${reportData.metadata.runId.substring(0, 8)}` : undefined}
+        confidenceScore={Math.round(reportData.metrics.confidenceLevel * 100)}
+        authorName="ACE System"
+      />
 
-              {reportData.safeMode && (
-                <WhyExplainer
-                  reasons={safeModeReasons}
-                  className="mb-4 bg-amber-50/50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800"
-                />
-              )}
+      {/* 2. Main Content (Apple-Style Editorial Layout) */}
+      <main className="w-full max-w-[1800px] mx-auto px-4 sm:px-8 md:px-16 lg:px-24 space-y-24 pb-40">
 
-
-              <TableOfContents sections={reportData.evidenceSections} />
-              <EvidencePanel records={evidenceRegistry} />
-
-              {/* Reuse existing Evidence Inspector */}
-              <ReportEvidenceInspector
-                evidenceSections={reportData.evidenceSections}
-                evidencePreview={evidencePreview}
-                evidenceSample={evidenceSample}
-                evidenceLoading={evidenceLoading}
-                evidenceError={evidenceError}
-                onFetchEvidenceSample={handleFetchEvidenceSample}
-                onCloseEvidence={handleCloseEvidence}
-              />
-
-              <IntelligenceRail
-                keyTakeaways={reportData.keyTakeaways}
-                criticalIssues={{
-                  count: reportData.metrics.anomalyCount || 0,
-                  items: reportData.metrics.anomalyCount ? [`${reportData.metrics.anomalyCount} anomalies detected`] : [],
-                }}
-                quickStats={{
-                  dataQuality: reportData.metrics.dataQualityScore,
-                  confidence: reportData.metrics.confidenceLevel,
-                  anomalies: reportData.metrics.anomalyCount,
-                }}
-                sections={reportData.evidenceSections.map((s) => ({ id: s.id, title: s.title }))}
-                currentSection={currentSection}
-                readingProgress={readingProgress}
-                onSectionClick={handleSectionClick}
-              />
-            </div>
-          }
-          isRightRailOpen={isRightRailOpen}
-          mainContent={
-            <>
-              {missingIdentityFields?.length ? (
-                <LimitationBanner
-                  message="Dataset identity card flagged missing fields. Gaps are surfaced before visuals."
-                  fields={missingIdentityFields}
-                  severity="warning"
-                  className="mb-4"
-                />
-              ) : null}
-
-              {/* Executive TL;DR Brief */}
-              <ExecutiveBrief
-                headline={reportData.viewModel.headline || "Report Analysis"}
-                keyFinding={reportData.heroInsight?.keyInsight || reportData.viewModel.subheadline || "Key insights extracted."}
-                decision={reportData.executiveBrief?.recommendedAction || reportData.executiveBrief?.purpose || "Review full report for details."}
-                status={reportData.safeMode ? "caution" : "optimal"}
-                accentColor="teal"
-                confidenceSignal={reportData.viewModel.header?.signal || { value: "medium", confidenceScore: 0.8, label: "Medium Confidence" }}
-                onCopy={() => {
-                  const briefText = formatBriefText({
-                    headline: reportData.viewModel.headline,
-                    keyFinding: reportData.heroInsight?.keyInsight,
-                    decision: reportData.executiveBrief?.recommendedAction,
-                    confidenceScore: reportData.confidenceValue || 0,
-                  });
-                  navigator.clipboard.writeText(briefText);
-                  toast({ title: "Brief copied to clipboard" });
-                }}
-                onFindingClick={() => scrollToSection('executive-summary')}
-                onDecisionClick={() => {
-                  if (reportData.safeMode) {
-                    setIsGuidanceModalOpen(true);
-                  } else {
-                    scrollToSection('recommendations');
-                  }
-                }}
-              />
-
-              {/* Hidden internal debug banners for Lovable look */}
-              {/*
-              <SafeModeBanner
-                safeMode={reportData.safeMode}
-                limitationsReason={safeModeReasons[0] || null}
-                onHelpClick={() => setIsGuidanceModalOpen(true)}
-              />
-              */}
-
-              {/* [NEW] Executive Hero Section */}
-              <div id="executive-summary" className="scroll-mt-20">
-                <ExecutiveHero
-                  headline={reportData.viewModel.headline}
-                  subheadline={reportData.viewModel.subheadline}
-                  date={reportData.viewModel.meta?.date}
-                  confidenceScore={reportData.confidenceValue}
-                />
-
-                {/* Brief is next */}
-                <ExecutiveBrief
-                  brief={reportData.executiveBrief}
-                  isLoading={isLoading}
-                />
-              </div>
-
-              <KeyPerformanceIndicators
-                confidence={reportData.confidenceValue || 0}
-                quality={reportData.dataQualityValue || 0}
-                clusterCount={reportData.clusterMetrics?.clusterCount}
-              />
-              <div className="flex justify-end mb-4 px-2">
-                <SignalStrength
-                  strength={reportData.confidenceValue >= 80 ? "high" : reportData.confidenceValue >= 50 ? "moderate" : "low"}
-                  score={reportData.confidenceValue}
-                />
-              </div>
-              {/* Hidden for Executive View (Phase 3)
-              <HighlightsRibbon highlights={reportData.highlights} />
-              <IdentityTrustStrip
-                identityStats={reportData.identityStats}
-                confidenceLevel={reportData.metrics.confidenceLevel}
-                uncertaintySignals={reportData.uncertaintySignals}
-              />
-              <DiagnosticsCard
-                confidenceMode={confidenceMode}
-                safeModeReasons={safeModeReasons}
-                decisionSummary={reportData.decisionSummary}
-                taskContractSummary={reportData.taskContractSummary}
-                hasTimeField={reportData.hasTimeField}
-                onConfidenceModeChange={setConfidenceMode}
-              />
-              */}
-
-              {reportData.shouldEmitInsights ? (
-                <>
-                  <HeroInsightPanel {...reportData.heroInsight} />
-                  {reportData.mondayActions.length > 0 && !reportData.hideActions && (
-                    <MondayMorningActions actions={reportData.mondayActions} className="mt-8" />
-                  )}
-                </>
-              ) : (
-                <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-6 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30">
-                  Insights are suppressed due to confidence/contract/validation gates.
-                </div>
-              )}
-
-              {(reportData.decisionSummary || reportData.taskContractSummary) && (
-                <div className="mt-6 rounded-lg border bg-muted/30 p-4 space-y-2">
-                  <div className="text-sm font-semibold text-foreground">Decision & Task Contract</div>
-                  {reportData.decisionSummary && <p className="text-sm text-foreground whitespace-pre-line">{reportData.decisionSummary}</p>}
-                  {reportData.taskContractSummary && <p className="text-xs text-muted-foreground whitespace-pre-line">{reportData.taskContractSummary}</p>}
-                </div>
-              )}
-
-              <ReportToolbar
-                runId={runId}
-                copied={copied}
-                diffRunId={diffRunId}
-                diffLoading={diffLoading}
-                pptxLoading={pptxLoading}
-                onCopy={handleCopy}
-                onDownloadMarkdown={handleDownloadMarkdown}
-                onRunDiff={handleRunDiff}
-                onPptxExport={handlePptxExport}
-                onDiffRunIdChange={setDiffRunId}
-              />
-
-              {(diffError || diffData) && (
-                <Card className="mb-4 p-3">
-                  <div className="text-sm font-semibold mb-1">Run Diff</div>
-                  {diffError && <div className="text-xs text-red-600">{diffError}</div>}
-                  {diffData && (
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <div>Confidence delta: {diffData.confidence_delta ?? "n/a"}</div>
-                      <div>New segments: {(diffData.new_segments || []).length}</div>
-                      <div>Removed segments: {(diffData.removed_segments || []).length}</div>
-                      <div>New personas: {(diffData.new_personas || []).length}</div>
-                      <div>Evidence changes: {(diffData.evidence_changes || []).length}</div>
-                    </div>
-                  )}
-                </Card>
-              )}
-
-              {pptxError && (
-                <Card className="mb-4 p-3">
-                  <div className="text-sm font-semibold text-red-700">PPTX Export</div>
-                  <div className="text-xs text-red-700">{pptxError}</div>
-                </Card>
-              )}
-
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                {/* Old ExecutiveBrief removed - replaced with new TL;DR design at top */}
-              </motion.div>
-
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
-                <TechnicalDetailsSection metrics={reportData.metrics} runId={runId} />
-              </motion.div>
-
-              {simulationState.comparison_mode ? (
-                <SplitReportViewer
-                  baselineContent={renderReportBody(false)}
-                  simulatedContent={renderReportBody(true)}
-                />
-              ) : (
-                renderReportBody(false)
-              )}
-            </>
-          }
+        {/* Metric Cards (Bento Grid) */}
+        <KeyPerformanceIndicators
+          confidence={Math.round(reportData.metrics.confidenceLevel * 100)}
+          quality={Math.round(reportData.metrics.dataQualityScore * 100)}
+          clusterCount={reportData.clusterMetrics?.clusterCount}
         />
 
-      </ReportDataValidator>
+        {/* Executive Brief (If exists) */}
+        {reportData.executiveBrief && (
+          <div className="max-w-4xl">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-6">Briefing</h3>
+            <ExecutiveBrief
+              brief={reportData.executiveBrief}
+              status={reportData.safeMode ? "limited" : "success"}
+            />
+          </div>
+        )}
 
-      {/* Scope Lock Modal */}
+        {/* Collapsible Sections (Visualizations, Clusters, Personas) */}
+        <div className="space-y-16">
+          {reportData.sections?.map((section) => (
+            <section key={section.id} id={section.id} className="scroll-mt-32">
+              <div className="flex items-baseline justify-between border-b pb-4 mb-8">
+                <h2 className="text-3xl font-bold tracking-tight text-primary">
+                  {section.title}
+                </h2>
+                <span className="text-sm font-mono text-muted-foreground opacity-50">
+                  {section.id.toUpperCase()}
+                </span>
+              </div>
+
+              {/* Dynamic Content Rendering based on ID */}
+              {section.id === 'visualizations' && (
+                <TechnicalSection
+                  title="Visual Analysis"
+                  content={reportData.enhancedAnalytics?.distribution_analysis?.insights?.[0] || "No visual insights available."}
+                  metrics={reportData.metrics}
+                  runId={runId || ""}
+                />
+              )}
+
+              {section.id === 'personas' && reportData.personas.length > 0 && (
+                <PersonaSection personas={reportData.personas} />
+              )}
+
+              <TraceableText
+                content={typeof section.content === 'string' ? section.content : ''}
+                className="prose-lg"
+                onReferenceClick={setActiveEvidenceId}
+              />
+            </section>
+          ))}
+
+          {/* Default Technical Content Fallback */}
+          {!reportData.sections?.length && (
+            <div className="prose prose-slate dark:prose-invert max-w-none prose-lg">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {content}
+              </ReactMarkdown>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* Modals & Overlays */}
+      <GuidanceModal
+        isOpen={isGuidanceModalOpen}
+        onClose={() => setIsGuidanceModalOpen(false)}
+        guidanceEntries={getGuidance(safeModeReasons)}
+        onUploadNewDataset={() => window.location.href = '/'}
+      />
+
       <ScopeLockModal
         open={Boolean(scopeLockDimension)}
         dimension={scopeLockDimension || undefined}
         onAcknowledge={() => setScopeLockDimension(null)}
       />
 
-      {/* Guidance Modal for error remediation */}
-      <GuidanceModal
-        isOpen={isGuidanceModalOpen}
-        onClose={() => setIsGuidanceModalOpen(false)}
-        guidanceEntries={getGuidance(safeModeReasons)}
-        onUploadNewDataset={() => {
-          setIsGuidanceModalOpen(false);
-          // TODO: Implement navigation to upload page
-          window.location.href = '/';
-        }}
-      />
-    </motion.div>
+      {/* Simulation / Split View Controls (Hidden or Minimized) */}
+      {simulationState.comparison_mode && (
+        <div className="fixed bottom-0 left-0 w-full bg-background border-t p-4 z-50">
+          <SimulationControls />
+        </div>
+      )}
+      <AskAce />
+    </div>
   );
 }
 
