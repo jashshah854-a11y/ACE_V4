@@ -16,7 +16,7 @@ interface ExecutiveHeroProps {
 export function ExecutiveHero({ headline, subheadline, date, confidenceScore = 0, authorName = "ACE System", children }: ExecutiveHeroProps) {
 
     // Dynamic greeting based on time of day (mocked for now, or real if we want)
-    const greeting = "Analysis Report";
+    const greeting = "ACE Intelligence";
 
     return (
         <div className="relative w-full mb-16 pt-12 pb-8 px-1 border-b border-border/40">
