@@ -28,7 +28,7 @@ export function PersonaDeck({ personas, className }: PersonaDeckProps) {
                 </h3>
             </div>
 
-            <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory no-scrollbar mask-gradient-right">
+            <div className="flex gap-4 overflow-x-auto pb-6 px-4 -mx-4 snap-x snap-mandatory no-scrollbar mask-gradient-right">
                 {personas.map((p, idx) => (
                     <Card
                         key={p.id || idx}

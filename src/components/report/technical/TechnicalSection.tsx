@@ -63,7 +63,7 @@ export function TechnicalSection({
             </div>
 
             {isOpen && (
-                <CardContent className="p-6 animate-in slide-in-from-top-2 duration-200">
+                <CardContent className="p-4 md:p-6 animate-in slide-in-from-top-2 duration-200">
                     <div className="prose prose-sm dark:prose-invert max-w-none">
                         {children}
                     </div>
