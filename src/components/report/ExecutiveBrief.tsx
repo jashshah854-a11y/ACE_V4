@@ -11,35 +11,45 @@ import { Search, Zap, Copy, AlertTriangle } from "lucide-react";
 import { ConfidenceSignal } from "./ConfidenceSignal";
 import { cn } from "@/lib/utils";
 
+interface BriefData {
+    purpose: string;
+    keyFindings: string[];
+    confidenceVerdict: string;
+    recommendedAction: string;
+}
+
 interface ExecutiveBriefProps {
-    headline: string;
-    keyFinding: string;
-    decision: string;
-    status: "success" | "limited" | "error";
-    accentColor: "teal" | "amber" | "red";
-    confidenceSignal: {
-        strength: "high" | "moderate" | "low";
-        bars: 1 | 2 | 3;
-        color: string;
-        label: string;
-        confidenceScore: number;
-    };
+    brief: BriefData;
+    isLoading?: boolean;
+    // Optional overrides
+    status?: "success" | "limited" | "error";
+    accentColor?: "teal" | "amber" | "red";
     onCopy?: () => void;
     onFindingClick?: () => void;
     onDecisionClick?: () => void;
 }
 
 export function ExecutiveBrief({
-    headline,
-    keyFinding,
-    decision,
-    status,
-    accentColor,
-    confidenceSignal,
+    brief,
+    isLoading = false,
+    status = "success",
+    accentColor = "teal",
     onCopy,
     onFindingClick,
     onDecisionClick,
 }: ExecutiveBriefProps) {
+    const headline = brief.purpose || "Executive Summary";
+    const keyFinding = brief.keyFindings?.[0] || "Analysis complete.";
+    const decision = brief.recommendedAction || "Review detailed metrics below.";
+
+    // safe signal mock
+    const confidenceSignal = {
+        strength: "high" as const,
+        bars: 3 as const,
+        color: "teal",
+        label: "AI Confidence",
+        confidenceScore: 95
+    };
 
     // Determine accent color classes
     const accentClasses = {
