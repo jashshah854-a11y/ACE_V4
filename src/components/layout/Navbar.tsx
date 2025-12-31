@@ -28,10 +28,10 @@ export const Navbar = () => {
           {/* Navigation */}
           <div className="flex items-center gap-1">
             <Link
-              to="/report/summary"
+              to="/"
               className={cn(
                 "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2",
-                isPulse
+                location.pathname === "/" || location.pathname.includes("/report/summary")
                   ? "bg-navy-900 text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
                 isSafeMode && !isPulse && "opacity-50 pointer-events-none"
@@ -41,10 +41,10 @@ export const Navbar = () => {
               Pulse
             </Link>
             <Link
-              to="/"
+              to="/upload"
               className={cn(
                 "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2",
-                isUpload
+                location.pathname === "/upload"
                   ? "bg-navy-900 text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
