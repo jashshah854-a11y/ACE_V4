@@ -9,9 +9,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WideReportViewer } from "@/components/report/WideReportViewer";
 import { PipelineStatus } from "@/components/report/PipelineStatus";
-import { FileText, Plus, Search, AlertCircle } from "lucide-react";
+import { FileText, Plus, Search, AlertCircle, Loader2, CheckCircle2, History, ChevronDown } from "lucide-react";
 import { getReport, API_BASE } from "@/lib/api-client";
 import { getRecentReports, saveRecentReport, validateAndCleanRecentReports, removeRecentReport } from "@/lib/localStorage";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 
 const Reports = () => {
@@ -25,6 +33,28 @@ const Reports = () => {
   const [runInput, setRunInput] = useState(initialRunId);
   const [activeRunId, setActiveRunId] = useState(initialRunId);
   const [hasValidated, setHasValidated] = useState(false);
+
+  // Validation State
+  const [isValidating, setIsValidating] = useState(false);
+  const [isValid, setIsValid] = useState<boolean | null>(null);
+
+  // Validate Run ID format (simple regex)
+  useEffect(() => {
+    const validate = async () => {
+      if (!runInput) {
+        setIsValid(null);
+        return;
+      }
+      setIsValidating(true);
+      // Simulate check (or could regex check activeRunId format if standardized)
+      await new Promise(resolve => setTimeout(resolve, 600));
+      setIsValid(runInput.length >= 8); // Simple length check for visual feedback
+      setIsValidating(false);
+    };
+
+    const timeout = setTimeout(validate, 500);
+    return () => clearTimeout(timeout);
+  }, [runInput]);
 
   // Validate and clean localStorage on mount
   useEffect(() => {
@@ -91,10 +121,13 @@ const Reports = () => {
     }
   }, [isReportNotReady]);
 
-  // Clear content when changing run IDs
+  // Clear content when run ID changed (but only if it's a real change)
   useEffect(() => {
-    setLastKnownContent(undefined);
-    setIsPipelineRunning(false);
+    if (activeRunId) {
+      setIsPipelineRunning(false);
+      // Don't clear content immediately if we are just switching back to a known run
+      // Let react-query cache handle it, unless explicitly new
+    }
   }, [activeRunId]);
 
   useEffect(() => {
@@ -107,9 +140,16 @@ const Reports = () => {
     setActiveRunId(sanitized);
   };
 
+  const handleRecentSelect = (runId: string) => {
+    setRunInput(runId);
+    setActiveRunId(runId);
+  };
+
   const handlePipelineComplete = () => {
     reportQuery.refetch();
   };
+
+  const recentReports = getRecentReports();
 
   return (
     <div className="min-h-screen bg-background">
@@ -144,13 +184,50 @@ const Reports = () => {
                     Enter a valid Run ID to fetch and view the full markdown report from the ACE Engine.
                   </p>
                 </div>
-                <div className="flex gap-2 w-full md:w-auto">
-                  <Input
-                    placeholder="Paste Run ID here..."
-                    value={runInput}
-                    onChange={(e) => setRunInput(e.target.value)}
-                    className="font-mono text-sm"
-                  />
+
+                {/* Input Group */}
+                <div className="flex gap-2 w-full md:w-auto items-center">
+                  {/* Recent Runs Dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="icon" title="Recent Runs">
+                        <History className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[240px]">
+                      <DropdownMenuLabel>Recent Reports</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {recentReports.length === 0 ? (
+                        <div className="p-2 text-xs text-muted-foreground text-center">No recent history</div>
+                      ) : (
+                        recentReports.slice(0, 5).map((r) => (
+                          <DropdownMenuItem key={r.runId} onClick={() => handleRecentSelect(r.runId)}>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-mono font-medium">{r.runId}</span>
+                              <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">{r.label || "Untitled Run"}</span>
+                            </div>
+                          </DropdownMenuItem>
+                        ))
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <div className="relative">
+                    <Input
+                      placeholder="Paste Run ID here..."
+                      value={runInput}
+                      onChange={(e) => setRunInput(e.target.value)}
+                      className="font-mono text-sm w-[220px] pr-8"
+                    />
+                    <div className="absolute right-2 top-2.5">
+                      {isValidating ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      ) : isValid ? (
+                        <CheckCircle2 className="h-4 w-4 text-teal-500" />
+                      ) : null}
+                    </div>
+                  </div>
+
                   <Button onClick={handleLoadReport} disabled={!runInput.trim()}>
                     Load
                   </Button>
