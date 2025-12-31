@@ -16,6 +16,7 @@ import { useDiagnostics } from "@/hooks/useDiagnostics";
 import { useModelArtifacts } from "@/hooks/useModelArtifacts";
 import type { GovernedReport, TaskContractSnapshot } from "@/hooks/useGovernedReport";
 import { transformAPIResponse, ReportViewModel, filterSuppressedSections } from "@/lib/reportViewModel";
+import { ensureSafeReport } from "@/lib/ReportGuard";
 
 export interface ReportDataResult {
   // Core extracted data
@@ -419,8 +420,8 @@ export function useReportData(
 
 
 
-  // Return with safe defaults for all values
-  return {
+  // Return with safe defaults for all values via Report Guard
+  return ensureSafeReport({
     metrics: metrics || {},
     progressMetrics: progressMetrics || {},
     sections: sections || [],
@@ -463,5 +464,5 @@ export function useReportData(
     diagnostics,
     modelArtifacts,
     viewModel,
-  };
+  });
 }

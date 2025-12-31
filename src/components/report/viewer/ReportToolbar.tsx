@@ -1,63 +1,45 @@
 import { Button } from "@/components/ui/button";
-import { Copy, FileDown } from "lucide-react";
-import { PDFExporter } from "../PDFExporter";
+import { Download, Share2, Presentation, Link, Copy } from "lucide-react";
+import { PDFExporter, copyToClipboard } from "@/components/report/PDFExporter";
+import { useToast } from "@/hooks/use-toast";
 
 interface ReportToolbarProps {
-  runId?: string;
-  copied: boolean;
-  diffRunId: string;
-  diffLoading: boolean;
-  pptxLoading: boolean;
-  onCopy: () => void;
-  onDownloadMarkdown: () => void;
-  onRunDiff: () => void;
-  onPptxExport: () => void;
-  onDiffRunIdChange: (value: string) => void;
+  reportId: string;
+  hasExecutiveBrief: boolean;
 }
 
-export function ReportToolbar({
-  runId,
-  copied,
-  diffRunId,
-  diffLoading,
-  pptxLoading,
-  onCopy,
-  onDownloadMarkdown,
-  onRunDiff,
-  onPptxExport,
-  onDiffRunIdChange,
-}: ReportToolbarProps) {
+export function ReportToolbar({ reportId, hasExecutiveBrief }: ReportToolbarProps) {
+  const { toast } = useToast();
+
+  const handleShare = async () => {
+    // In a real app, this would be a real deep link
+    const url = window.location.href;
+    const success = await copyToClipboard(url);
+    if (success) {
+      toast({ title: "Link copied to clipboard", description: "Share this analysis with your team." });
+    }
+  };
+
+  const handleSlideMode = () => {
+    // Current MVP: Just toast, later: Full screen mode
+    toast({ title: "Presentation Mode", description: "Press F11 for full screen experience." });
+  };
+
   return (
-    <div className="flex gap-2 justify-end flex-wrap mt-8 mb-6">
-      <Button onClick={onCopy} variant="outline" size="sm" className="gap-2">
-        <Copy className="h-4 w-4" />
-        {copied ? "Copied!" : "Copy"}
+    <div className="flex items-center gap-2">
+      <Button variant="ghost" size="sm" onClick={handleShare} className="hidden sm:flex gap-1.5 text-muted-foreground">
+        <Link className="h-4 w-4" />
+        Share
       </Button>
 
-      <Button onClick={onDownloadMarkdown} variant="outline" size="sm" className="gap-2">
-        <FileDown className="h-4 w-4" />
-        Download MD
+      {/* Slide Mode Trigger */}
+      <Button variant="outline" size="sm" onClick={handleSlideMode} className="gap-1.5">
+        <Presentation className="h-4 w-4" />
+        Present
       </Button>
 
-      <PDFExporter
-        contentId="report-content"
-        filename={runId ? `ace-report-${runId}.pdf` : "ace-report.pdf"}
-      />
-
-      <Button onClick={onRunDiff} variant="outline" size="sm" className="gap-2">
-        {diffLoading ? "Diffing..." : "Run Diff"}
-      </Button>
-
-      <input
-        className="h-9 rounded-md border px-2 text-sm bg-background"
-        placeholder="Compare run ID"
-        value={diffRunId}
-        onChange={(e) => onDiffRunIdChange(e.target.value)}
-      />
-
-      <Button onClick={onPptxExport} variant="outline" size="sm" className="gap-2">
-        {pptxLoading ? "Exporting..." : "PPTX"}
-      </Button>
+      {/* PDF Export Action */}
+      <PDFExporter contentId="ace-report-content" filename={`ACE-Report-${reportId}.pdf`} />
     </div>
   );
 }

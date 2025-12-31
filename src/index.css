@@ -36,242 +36,174 @@
 
 @layer base {
   :root {
-    /* Atlas Financial Consultant Palette - "Lovable" Update */
-    /* Background: Very soft, warm cream/paper text */
-    --background: 40 20% 98%;
-    --foreground: 215 40% 12%;
+    /* Apple/Cupertino System Palette */
+    /* Background: System Gray 6 (Light) */
+    --background: 0 0% 96.1%;
+    /* #F5F5F7 */
+    --foreground: 0 0% 0%;
+    /* #000000 */
 
-    /* Card: Pure white with subtle warmth */
+    /* Card: Pure White */
     --card: 0 0% 100%;
-    --card-foreground: 215 40% 12%;
+    --card-foreground: 0 0% 0%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 40% 12%;
+    --popover-foreground: 0 0% 0%;
 
-    /* Primary: Deep, Rich Navy (Executive) */
-    --primary: 220 50% 10%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary: System Blue (or Black for monochrome) */
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
 
-    /* Accent: Vivid but professional Teal */
-    --accent: 170 75% 40%;
+    /* Accent: System Blue */
+    --accent: 211 100% 50%;
+    /* #0071E3 */
     --accent-foreground: 0 0% 100%;
 
-    /* Secondary: Very soft gray-blue */
-    --secondary: 215 20% 96%;
-    --secondary-foreground: 215 40% 20%;
+    /* Secondary: System Gray 5 */
+    --secondary: 0 0% 89.8%;
+    /* #E5E5EA */
+    --secondary-foreground: 0 0% 0%;
 
-    /* Muted: Warm gray */
-    --muted: 220 10% 96%;
-    --muted-foreground: 215 10% 50%;
+    /* Muted: System Gray 4 */
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45%;
 
-    /* Destructive: Muted red */
-    --destructive: 0 60% 50%;
-    --destructive-foreground: 0 0% 100%;
+    /* Destructive: System Red */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
 
     /* Borders */
-    --border: 220 12% 90%;
-    --input: 220 12% 90%;
-    --ring: 168 70% 35%;
-    --radius: 0.25rem;
+    --border: 0 0% 89.8%;
+    /* Matches secondary usually */
+    --input: 0 0% 89.8%;
+    --ring: 211 100% 50%;
 
-    /* Semantic Colors */
-    --warning: 20 55% 52%;
+    /* Radius: Apple favors large roundness (20px+) */
+    --radius: 1rem;
+
+    /* Semantic - Clean Signals */
+    --warning: 35 100% 50%;
+    /* Amber */
     --warning-foreground: 0 0% 100%;
-    --info: 200 75% 50%;
+    --info: 211 100% 50%;
+    /* Blue */
     --info-foreground: 0 0% 100%;
-    --success: 168 70% 35%;
+    --success: 142 76% 36%;
+    /* Green */
     --success-foreground: 0 0% 100%;
 
-    /* Custom Navy Scale */
-    --navy-50: 215 30% 97%;
-    --navy-100: 215 30% 93%;
-    --navy-200: 215 35% 85%;
-    --navy-800: 215 50% 15%;
-    --navy-900: 215 50% 10%;
-
-    /* Custom Teal/Emerald Scale */
-    --teal-50: 168 50% 96%;
-    --teal-100: 168 50% 90%;
-    --teal-400: 168 65% 45%;
-    --teal-500: 168 70% 35%;
-    --teal-600: 168 70% 30%;
-
-    /* Copper/Terracotta for Warnings */
-    --copper-50: 20 40% 96%;
-    --copper-100: 20 40% 90%;
-    --copper-400: 20 55% 52%;
-    --copper-600: 20 55% 42%;
-
-    /* Sidebar */
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 215 50% 10%;
-    --sidebar-primary: 215 50% 10%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 12% 95%;
-    --sidebar-accent-foreground: 215 50% 15%;
-    --sidebar-border: 220 12% 90%;
-    --sidebar-ring: 168 70% 35%;
-
-    /* Lab and Library Design System */
-    /* Typography */
-    --font-library-heading: 'Crimson Pro', 'Georgia', serif;
-    --font-library-body: 'Lora', 'Times New Roman', serif;
-    --font-lab: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
-
-    /* Lab Colors (Evidence Layer) */
-    --lab-charcoal: 0 0% 10%;
-    /* Deep Charcoal background */
-    --lab-silver: 0 0% 75%;
-    /* Soft Silver text */
-    --lab-signal: 200 85% 60%;
-    /* Blue/Teal for active signals */
-    --lab-alert: 20 75% 55%;
-    /* Burnt Amber for alerts */
-    --lab-border: 0 0% 20%;
-    /* Subtle borders */
-
-    /* Library Colors (Narrative Layer) */
-    --library-bg: 40 15% 98%;
-    /* Warm off-white */
-    --library-text: 215 50% 10%;
-    /* Deep navy text */
-    --library-accent: 168 70% 35%;
-    /* Teal accent */
-    --library-muted: 215 15% 45%;
-    /* Muted text */
-
-    /* Spacing for generous negative space */
-    --space-library-xs: 1rem;
-    --space-library-sm: 1.5rem;
-    --space-library-md: 2.5rem;
-    --space-library-lg: 4rem;
-    --space-library-xl: 6rem;
+    /* Sidebar - Transparent/Glass */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   /* Increase specificity to ensure these override :root */
   :root.dark {
-    /* Atlas Financial Dark Theme */
-    --background: 215 35% 8%;
-    --foreground: 40 15% 95%;
-    --card: 215 35% 11%;
-    --card-foreground: 40 15% 95%;
-    --popover: 215 35% 11%;
-    --popover-foreground: 40 15% 95%;
+    /* Apple Dark Mode */
+    --background: 0 0% 0%;
+    /* Pure Black */
+    --foreground: 0 0% 98%;
 
-    /* Primary (lighter navy for contrast) */
-    --primary: 215 40% 80%;
-    --primary-foreground: 215 35% 8%;
+    --card: 0 0% 11%;
+    /* #1C1C1E */
+    --card-foreground: 0 0% 98%;
 
-    /* Accent: Teal */
-    --accent: 168 65% 50%;
-    --accent-foreground: 215 35% 8%;
+    --popover: 0 0% 11%;
+    --popover-foreground: 0 0% 98%;
 
-    /* Secondary */
-    --secondary: 215 25% 16%;
-    --secondary-foreground: 40 15% 95%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
 
-    /* Muted */
-    --muted: 215 25% 14%;
-    --muted-foreground: 215 15% 55%;
+    --accent: 211 100% 50%;
+    --accent-foreground: 0 0% 100%;
 
-    /* Destructive */
-    --destructive: 0 55% 50%;
-    --destructive-foreground: 0 0% 100%;
+    --secondary: 0 0% 17%;
+    /* #2C2C2E */
+    --secondary-foreground: 0 0% 98%;
 
-    /* Borders */
-    --border: 215 25% 20%;
-    --input: 215 25% 20%;
-    --ring: 168 65% 50%;
+    --muted: 0 0% 17%;
+    --muted-foreground: 0 0% 63%;
 
-    /* Semantic */
-    --warning: 20 55% 55%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 17%;
+    --input: 0 0% 17%;
+    --ring: 211 100% 50%;
+
+    --warning: 35 100% 50%;
     --warning-foreground: 0 0% 100%;
-    --info: 200 70% 55%;
+    --info: 211 100% 50%;
     --info-foreground: 0 0% 100%;
-    --success: 168 65% 50%;
-    --success-foreground: 215 35% 8%;
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 100%;
 
-    /* Custom colors for dark mode */
-    --navy-50: 215 25% 16%;
-    --navy-100: 215 25% 20%;
-    --navy-200: 215 30% 28%;
-    --navy-800: 215 40% 70%;
-    --navy-900: 215 40% 80%;
-
-    --teal-50: 168 30% 16%;
-    --teal-100: 168 30% 20%;
-    --teal-400: 168 60% 55%;
-    --teal-500: 168 65% 50%;
-    --teal-600: 168 60% 60%;
-
-    --copper-50: 20 25% 16%;
-    --copper-100: 20 25% 20%;
-    --copper-400: 20 55% 58%;
-    --copper-600: 20 50% 65%;
-
-    /* Sidebar */
-    --sidebar-background: 215 35% 8%;
-    --sidebar-foreground: 40 15% 95%;
-    --sidebar-primary: 215 40% 80%;
-    --sidebar-primary-foreground: 215 35% 8%;
-    --sidebar-accent: 215 25% 16%;
-    --sidebar-accent-foreground: 40 15% 95%;
-    --sidebar-border: 215 25% 20%;
-    --sidebar-ring: 168 65% 50%;
+    --sidebar-background: 0 0% 11%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   /* Fallback for system preference if class is missing */
   @media (prefers-color-scheme: dark) {
     :root {
-      --background: 215 35% 8%;
-      --foreground: 40 15% 95%;
-      --card: 215 35% 11%;
-      --card-foreground: 40 15% 95%;
-      --popover: 215 35% 11%;
-      --popover-foreground: 40 15% 95%;
-      --primary: 215 40% 80%;
-      --primary-foreground: 215 35% 8%;
-      --accent: 168 65% 50%;
-      --accent-foreground: 215 35% 8%;
-      --secondary: 215 25% 16%;
-      --secondary-foreground: 40 15% 95%;
-      --muted: 215 25% 14%;
-      --muted-foreground: 215 15% 55%;
-      --destructive: 0 55% 50%;
-      --destructive-foreground: 0 0% 100%;
-      --border: 215 25% 20%;
-      --input: 215 25% 20%;
-      --ring: 168 65% 50%;
-      --warning: 20 55% 55%;
+      /* Apple Dark Mode */
+      --background: 0 0% 0%;
+      /* Pure Black */
+      --foreground: 0 0% 98%;
+
+      --card: 0 0% 11%;
+      /* #1C1C1E */
+      --card-foreground: 0 0% 98%;
+
+      --popover: 0 0% 11%;
+      --popover-foreground: 0 0% 98%;
+
+      --primary: 0 0% 98%;
+      --primary-foreground: 0 0% 9%;
+
+      --accent: 211 100% 50%;
+      --accent-foreground: 0 0% 100%;
+
+      --secondary: 0 0% 17%;
+      /* #2C2C2E */
+      --secondary-foreground: 0 0% 98%;
+
+      --muted: 0 0% 17%;
+      --muted-foreground: 0 0% 63%;
+
+      --destructive: 0 62.8% 30.6%;
+      --destructive-foreground: 0 0% 98%;
+
+      --border: 0 0% 17%;
+      --input: 0 0% 17%;
+      --ring: 211 100% 50%;
+
+      --warning: 35 100% 50%;
       --warning-foreground: 0 0% 100%;
-      --info: 200 70% 55%;
+      --info: 211 100% 50%;
       --info-foreground: 0 0% 100%;
-      --success: 168 65% 50%;
-      --success-foreground: 215 35% 8%;
+      --success: 142 70% 45%;
+      --success-foreground: 0 0% 100%;
 
-      --navy-50: 215 25% 16%;
-      --navy-100: 215 25% 20%;
-      --navy-200: 215 30% 28%;
-      --navy-800: 215 40% 70%;
-      --navy-900: 215 40% 80%;
-      --teal-50: 168 30% 16%;
-      --teal-100: 168 30% 20%;
-      --teal-400: 168 60% 55%;
-      --teal-500: 168 65% 50%;
-      --teal-600: 168 60% 60%;
-      --copper-50: 20 25% 16%;
-      --copper-100: 20 25% 20%;
-      --copper-400: 20 55% 58%;
-      --copper-600: 20 50% 65%;
-
-      --sidebar-background: 215 35% 8%;
-      --sidebar-foreground: 40 15% 95%;
-      --sidebar-primary: 215 40% 80%;
-      --sidebar-primary-foreground: 215 35% 8%;
-      --sidebar-accent: 215 25% 16%;
-      --sidebar-accent-foreground: 40 15% 95%;
-      --sidebar-border: 215 25% 20%;
-      --sidebar-ring: 168 65% 50%;
+      --sidebar-background: 0 0% 11%;
+      --sidebar-foreground: 240 4.8% 95.9%;
+      --sidebar-primary: 224.3 76.3% 48%;
+      --sidebar-primary-foreground: 0 0% 100%;
+      --sidebar-accent: 240 3.7% 15.9%;
+      --sidebar-accent-foreground: 240 4.8% 95.9%;
+      --sidebar-border: 240 3.7% 15.9%;
+      --sidebar-ring: 217.2 91.2% 59.8%;
     }
   }
 }
