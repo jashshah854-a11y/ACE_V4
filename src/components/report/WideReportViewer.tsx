@@ -25,6 +25,7 @@ import { SimulationControls } from "./simulation/SimulationControls";
 import { useSimulation } from "@/context/SimulationContext";
 import { GuidanceModal } from "./GuidanceModal";
 import { ExecutiveBrief } from "./ExecutiveBrief";
+import { ExecutiveHero } from "./ExecutiveHero"; // [NEW] visual update
 import { useSmoothScroll, formatBriefText } from "@/hooks/useSmoothScroll";
 import { TechnicalSection } from "@/components/report/technical/TechnicalSection";
 
@@ -800,31 +801,31 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
                 }}
               />
 
+              {/* Hidden internal debug banners for Lovable look */}
+              {/*
               <SafeModeBanner
                 safeMode={reportData.safeMode}
                 limitationsReason={safeModeReasons[0] || null}
                 onHelpClick={() => setIsGuidanceModalOpen(true)}
               />
-              <ReportHero
-                title={reportData.viewModel.meta?.title || reportData.viewModel.headline || "Analysis Report"}
-                runId={runId}
-                safeMode={reportData.safeMode}
-                confidenceLevel={reportData.confidenceValue}
-                signal={{
-                  strength: (reportData.confidenceValue || 0) >= 80 ? "high" : (reportData.confidenceValue || 0) >= 50 ? "moderate" : "low",
-                  bars: (reportData.confidenceValue || 0) >= 80 ? 3 : (reportData.confidenceValue || 0) >= 50 ? 2 : 1,
-                  color: (reportData.confidenceValue || 0) >= 80 ? "teal" : "amber",
-                  label: "AI Confidence",
-                  confidenceScore: reportData.confidenceValue || 0
-                }}
-                limitationsReason={safeModeReasons[0] || null}
-                taskContractSummary={reportData.taskContractSummary}
-                decisionSummary={reportData.decisionSummary}
-                primaryQuestion={reportData.primaryQuestion}
-                runContext={reportData.runContext}
-                narrativeSummary={reportData.narrativeSummary}
-                onPdfExport={handlePptxExport}
-              />
+              */}
+
+              {/* [NEW] Executive Hero Section */}
+              <div id="executive-summary" className="scroll-mt-20">
+                <ExecutiveHero
+                  headline={reportData.viewModel.headline}
+                  subheadline={reportData.viewModel.subheadline}
+                  date={reportData.viewModel.meta?.date}
+                  confidenceScore={reportData.confidenceValue}
+                />
+
+                {/* Brief is next */}
+                <ExecutiveBrief
+                  brief={reportData.executiveBrief}
+                  isLoading={isLoading}
+                />
+              </div>
+
               <ReportMetricsStrip
                 confidenceValue={reportData.confidenceValue}
                 dataQualityValue={reportData.dataQualityValue}

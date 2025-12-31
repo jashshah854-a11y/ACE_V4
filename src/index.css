@@ -36,30 +36,33 @@
 
 @layer base {
   :root {
-    /* Atlas Financial Consultant Palette */
-    /* Background: Warm off-white cream */
-    --background: 40 15% 98%;
-    --foreground: 215 50% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 215 50% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 215 50% 10%;
+    /* Atlas Financial Consultant Palette - "Lovable" Update */
+    /* Background: Very soft, warm cream/paper text */
+    --background: 40 20% 98%;
+    --foreground: 215 40% 12%;
 
-    /* Primary: Deep Navy */
-    --primary: 215 50% 10%;
+    /* Card: Pure white with subtle warmth */
+    --card: 0 0% 100%;
+    --card-foreground: 215 40% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 40% 12%;
+
+    /* Primary: Deep, Rich Navy (Executive) */
+    --primary: 220 50% 10%;
     --primary-foreground: 0 0% 100%;
 
-    /* Accent: Teal/Emerald for positive indicators */
-    --accent: 168 70% 35%;
+    /* Accent: Vivid but professional Teal */
+    --accent: 170 75% 40%;
     --accent-foreground: 0 0% 100%;
 
-    /* Secondary: Light slate */
-    --secondary: 220 12% 95%;
-    --secondary-foreground: 215 50% 15%;
+    /* Secondary: Very soft gray-blue */
+    --secondary: 215 20% 96%;
+    --secondary-foreground: 215 40% 20%;
 
-    /* Muted: Subtle gray for backgrounds */
+    /* Muted: Warm gray */
     --muted: 220 10% 96%;
-    --muted-foreground: 215 15% 45%;
+    --muted-foreground: 215 10% 50%;
 
     /* Destructive: Muted red */
     --destructive: 0 60% 50%;
