@@ -801,16 +801,22 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
 
               <SafeModeBanner
                 safeMode={reportData.safeMode}
-                limitationsReason={reportData.viewModel.header.limitationsReason}
+                limitationsReason={safeModeReasons[0] || null}
                 onHelpClick={() => setIsGuidanceModalOpen(true)}
               />
               <ReportHero
-                title={reportData.viewModel.meta?.title || reportData.viewModel.header.title}
+                title={reportData.viewModel.meta?.title || reportData.viewModel.headline || "Analysis Report"}
                 runId={runId}
                 safeMode={reportData.safeMode}
                 confidenceLevel={reportData.confidenceValue}
-                signal={reportData.viewModel.header.signal}
-                limitationsReason={reportData.viewModel.header.limitationsReason}
+                signal={{
+                  strength: (reportData.confidenceValue || 0) >= 80 ? "high" : (reportData.confidenceValue || 0) >= 50 ? "moderate" : "low",
+                  bars: (reportData.confidenceValue || 0) >= 80 ? 3 : (reportData.confidenceValue || 0) >= 50 ? 2 : 1,
+                  color: (reportData.confidenceValue || 0) >= 80 ? "teal" : "amber",
+                  label: "AI Confidence",
+                  confidenceScore: reportData.confidenceValue || 0
+                }}
+                limitationsReason={safeModeReasons[0] || null}
                 taskContractSummary={reportData.taskContractSummary}
                 decisionSummary={reportData.decisionSummary}
                 primaryQuestion={reportData.primaryQuestion}
