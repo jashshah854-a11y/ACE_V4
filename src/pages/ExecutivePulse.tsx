@@ -10,6 +10,7 @@ import { PersonaDeck } from "@/components/report/story/PersonaDeck";
 import { ConfidenceGauge } from "@/components/report/story/ConfidenceGauge";
 import { StorySkeleton } from "@/components/report/story/StorySkeleton";
 import { StoryControlBar } from "@/components/report/story/StoryControlBar";
+import { AskAce } from "@/components/report/story/AskAce";
 import ReactMarkdown from "react-markdown";
 import { motion } from "framer-motion";
 import {
@@ -448,6 +449,8 @@ const ExecutivePulse = () => {
           )}
         </div>
       </main>
+
+      <AskAce />
       <Footer />
     </div>
   );
