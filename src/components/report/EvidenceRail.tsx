@@ -85,7 +85,35 @@ export default function EvidenceRail({ isOpen, onClose, activeEvidence, data, ru
         setAskQuery(chipLabel);
     };
 
-    const suggestions = activeEvidence ? SUGGESTION_CHIPS[activeEvidence] : [];
+    // Calculate dynamic suggestions based on data signals
+    const suggestions = React.useMemo(() => {
+        const baseSuggestions = activeEvidence ? SUGGESTION_CHIPS[activeEvidence] : [];
+        const dynamicSuggestions = [];
+
+        if (activeEvidence === 'business_pulse' && data.enhancedAnalytics) {
+            // Signal 1: Churn Risk > 20%
+            const churnRisk = data.enhancedAnalytics.business_intelligence?.churn_risk?.at_risk_percentage || 0;
+            if (churnRisk > 20) {
+                dynamicSuggestions.push({
+                    label: 'Analyze High-Risk Segment',
+                    icon: '🚨',
+                    action: 'What are the top drivers of churn in this segment?'
+                });
+            }
+
+            // Signal 2: Behavioral Clusters Found
+            const hasClusters = data.enhancedAnalytics.behavioral_clusters && data.enhancedAnalytics.behavioral_clusters.length > 0;
+            if (hasClusters) {
+                dynamicSuggestions.push({
+                    label: 'View Identified Personas',
+                    icon: '👥',
+                    action: 'Describe the key behavioral characteristics of these segments.'
+                });
+            }
+        }
+
+        return [...dynamicSuggestions, ...baseSuggestions];
+    }, [activeEvidence, data.enhancedAnalytics]);
 
     return (
         <AnimatePresence>
@@ -140,7 +168,7 @@ export default function EvidenceRail({ isOpen, onClose, activeEvidence, data, ru
                                     {suggestions.map((chip) => (
                                         <button
                                             key={chip.label}
-                                            onClick={() => handleChipClick(chip.label)}
+                                            onClick={() => handleChipClick('action' in chip ? chip.action : chip.label)}
                                             className="px-3 py-1.5 text-xs font-medium bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-full hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors"
                                         >
                                             <span className="mr-1.5">{chip.icon}</span>
