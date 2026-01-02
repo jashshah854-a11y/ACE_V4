@@ -11,7 +11,8 @@ import ExecutivePulse from "./pages/ExecutivePulse";
 import Pipeline from "./pages/Pipeline";
 import DemoPipelineStatus from "./pages/DemoPipelineStatus";
 import NotFound from "./pages/NotFound";
-import { WideReportViewer } from "@/components/report/WideReportViewer";
+import ReportPage from "./pages/ReportPage";
+import LandingPage from "./pages/LandingPage";
 import { SimulationSafeModeBanner } from "@/components/trust/SafeModeBanner";
 
 import { SimulationProvider } from "./context/SimulationContext";
@@ -28,10 +29,11 @@ const App = () => (
           <BrowserRouter>
             <SimulationSafeModeBanner />
             <Routes>
-              <Route path="/" element={<ExecutivePulse />} />
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/app" element={<ExecutivePulse />} />
               <Route path="/report/summary" element={<ExecutivePulse />} />
               {/* ADDED: Route for the new wide report viewer */}
-              <Route path="/report/:runId" element={<WideReportViewer />} />
+              <Route path="/report/:runId" element={<ReportPage />} />
               <Route path="/upload" element={<Index />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/pipeline/:runId" element={<Pipeline />} />

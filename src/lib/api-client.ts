@@ -1,4 +1,5 @@
-export const API_BASE = import.meta.env.VITE_ACE_API_BASE_URL || "http://localhost:8001";
+// FORCE-PATCHED: Hardcoded to localhost for immediate HMR update
+export const API_BASE = "http://localhost:8000";
 
 export type StepStatus = "pending" | "running" | "completed" | "failed";
 export type RunStatus = "pending" | "running" | "completed" | "complete" | "failed" | "complete_with_errors";
@@ -181,6 +182,42 @@ export async function getInsights(runId: string): Promise<InsightsResponse> {
     } catch (parseError) {
       console.error("Failed to parse error response:", parseError);
       // Use default error message if JSON parsing fails
+    }
+    throw new Error(errorMessage);
+  }
+
+  return response.json();
+}
+
+export async function askQuestion(
+  query: string,
+  context: string,
+  evidenceType: string,
+  runId: string
+): Promise<{
+  answer: string;
+  reasoning_steps: string[];
+  evidence_context: string;
+  grounded: boolean;
+}> {
+  const response = await fetch(`${API_BASE}/api/ask`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query,
+      context,
+      evidence_type: evidenceType,
+      run_id: runId
+    })
+  });
+
+  if (!response.ok) {
+    let errorMessage = `Failed to process question: ${response.statusText}`;
+    try {
+      const errorData: ApiError = await response.json();
+      errorMessage = errorData.detail || errorMessage;
+    } catch (parseError) {
+      console.error("Failed to parse error response:", parseError);
     }
     throw new Error(errorMessage);
   }

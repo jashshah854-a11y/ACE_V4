@@ -131,20 +131,25 @@ export function transformToStory(runData: BackendRunData | null | undefined): St
         const metadataSection = runData.sections?.find((s: BackendReportSection) => s.id === "run-metadata");
         if (metadataSection?.content) {
             // Attempt to parse JSON content from the metadata section
-            const parsed = JSON.parse(metadataSection.content);
-            const result = MetadataSchema.safeParse(parsed);
-            if (result.success) {
-                rowCount = result.data.row_count || 0;
-                metrics.push({
-                    label: "Total Records",
-                    value: rowCount.toLocaleString(),
-                    status: "neutral",
-                    icon: Activity
-                });
+            try {
+                const parsed = JSON.parse(metadataSection.content);
+                const result = MetadataSchema.safeParse(parsed);
+                if (result.success) {
+                    rowCount = result.data.row_count || 0;
+                    metrics.push({
+                        label: "Total Records",
+                        value: rowCount.toLocaleString(),
+                        status: "neutral",
+                        icon: Activity
+                    });
+                }
+            } catch (e) {
+                console.warn("[ReportViewModel] Failed to parse metadata section content as JSON", e);
+                // Fallback: rowCount remains 0, and no metric card is added for it.
             }
         }
     } catch (e) {
-        console.warn("[ReportViewModel] Failed to parse metadata section", e);
+        console.warn("[ReportViewModel] Error accessing metadata section", e);
     }
 
     // Quality Score
