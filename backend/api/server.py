@@ -29,6 +29,7 @@ from jobs.models import JobStatus
 from jobs.progress import ProgressTracker
 from core.config import settings
 from core.task_contract import parse_task_intent, TaskIntentValidationError
+from api.contextual_intelligence import AskRequest, process_ask_query
 import pandas as pd
 
 # Set up logging
@@ -1013,6 +1014,22 @@ async def list_runs(
         "offset": offset,
         "has_more": offset + limit < len(all_runs)
     }
+
+
+@app.post("/api/ask")
+async def ask_contextual_question(request: AskRequest):
+    """
+    Answer contextual questions about evidence with grounding.
+    Provides reasoning steps and evidence-based responses.
+    """
+    try:
+        result = await process_ask_query(request)
+        return JSONResponse(content=result)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error in /api/ask: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
