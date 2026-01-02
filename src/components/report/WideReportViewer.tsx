@@ -30,6 +30,10 @@ import { useSmoothScroll, formatBriefText } from "@/hooks/useSmoothScroll";
 import { TechnicalSection } from "@/components/report/technical/TechnicalSection";
 import { KeyPerformanceIndicators } from "./KeyPerformanceIndicators"; // [NEW] visual update
 import { AskAce } from "./story/AskAce";
+import { BusinessPulse } from "./business/BusinessPulse";
+import { PredictiveDriversChart } from "./predictive/PredictiveDriversChart";
+import EvidenceRail from "./EvidenceRail";
+import DatasetIdentityCard from "./DatasetIdentityCard";
 
 // Refactored viewer components
 import {
@@ -91,6 +95,21 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
   const [confidenceMode, setConfidenceMode] = useState<"strict" | "exploratory">("exploratory");
   const [showAllActions, setShowAllActions] = useState(false);
   const [showAllPersonas, setShowAllPersonas] = useState(false);
+
+  // Evidence Rail state
+  const [isEvidenceRailOpen, setIsEvidenceRailOpen] = useState(false);
+  const [activeEvidence, setActiveEvidence] = useState<'business_pulse' | 'predictive_drivers' | null>(null);
+
+  const openEvidenceRail = useCallback((evidenceType: 'business_pulse' | 'predictive_drivers') => {
+    setActiveEvidence(evidenceType);
+    setIsEvidenceRailOpen(true);
+  }, []);
+
+  const closeEvidenceRail = useCallback(() => {
+    setIsEvidenceRailOpen(false);
+    // Delay clearing active evidence to allow exit animation
+    setTimeout(() => setActiveEvidence(null), 300);
+  }, []);
 
   // Evidence state
   const [activeEvidenceId, setActiveEvidenceId] = useState<string | null>(null);
@@ -490,54 +509,9 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
             </DataInterrogator>
           )}
 
-          {(reportData.enhancedAnalytics?.feature_importance?.feature_importance || reportData.modelArtifacts?.feature_importance) && (
-            <Card className="p-4 border-l-4 border-l-primary/50">
-              <div className="flex items-center justify-between mb-3">
-                <div className="font-semibold text-sm">Top Key Drivers</div>
-                <Badge variant="outline" className="text-[10px] font-normal">Impact Factors</Badge>
-              </div>
-              <div className="space-y-3">
-                {(() => {
-                  const rawData = reportData.enhancedAnalytics?.feature_importance?.feature_importance || reportData.modelArtifacts?.feature_importance || [];
-                  const items = Array.isArray(rawData) ? rawData : Object.entries(rawData).map(([k, v]) => {
-                    let val = v;
-                    if (typeof v === 'object' && v !== null && 'importance' in v) {
-                      val = (v as any).importance;
-                    }
-                    return { feature: k, importance: val };
-                  });
-
-                  // Sort by importance descending
-                  const sortedItems = items.sort((a: any, b: any) => {
-                    const valA = typeof a.importance === 'number' ? a.importance : 0;
-                    const valB = typeof b.importance === 'number' ? b.importance : 0;
-                    return valB - valA;
-                  }).slice(0, 5);
-
-                  const maxVal = Math.max(...sortedItems.map((i: any) => typeof i.importance === 'number' ? i.importance : 0), 1);
-
-                  return sortedItems.map((f: any, i: number) => {
-                    const val = typeof (f.importance || f[1]) === 'number' ? (f.importance || f[1]) : 0;
-                    const percent = Math.min((val / maxVal) * 100, 100);
-
-                    return (
-                      <div key={i} className="space-y-1">
-                        <div className="flex justify-between text-xs">
-                          <span className="font-medium truncate max-w-[70%]">{f.feature || f[0]}</span>
-                          <span className="text-muted-foreground font-mono">{val.toFixed(3)}</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-secondary/30 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-primary/70 rounded-full transition-all duration-500"
-                            style={{ width: `${percent}%` }}
-                          />
-                        </div>
-                      </div>
-                    )
-                  });
-                })()}
-              </div>
-            </Card>
+          {/* Predictive Insight Drivers */}
+          {reportData.enhancedAnalytics?.feature_importance?.available && (
+            <PredictiveDriversChart data={reportData.enhancedAnalytics.feature_importance} />
           )}
 
           {reportData.shouldEmitInsights &&
@@ -730,20 +704,28 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
           clusterCount={reportData.clusterMetrics?.clusterCount}
         />
 
-        {/* Executive Brief (If exists) */}
-        {reportData.executiveBrief && (
-          <div className="max-w-4xl">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-6">Briefing</h3>
-            <ExecutiveBrief
-              brief={reportData.executiveBrief}
-              status={reportData.safeMode ? "limited" : "success"}
-            />
-          </div>
+        {/* 2. Executive Brief (Zero-Touch Intelligence Layer) */}
+        <div className="max-w-4xl">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-6">Briefing</h3>
+          <ExecutiveBrief
+            brief={reportData.executiveBrief || { purpose: "", keyFindings: [], confidenceVerdict: "", recommendedAction: "" }}
+            status={reportData.safeMode ? "limited" : "success"}
+            enhancedAnalytics={reportData.enhancedAnalytics}
+            onEvidenceClick={openEvidenceRail}
+          />
+        </div>
+
+        {/* 3. Business Intelligence Pulse (New Strategic Layer) */}
+        {reportData.enhancedAnalytics?.business_intelligence?.available && (
+          <section className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+            <BusinessPulse data={reportData.enhancedAnalytics.business_intelligence} />
+          </section>
         )}
 
         {/* Collapsible Sections (Visualizations, Clusters, Personas) */}
         <div className="space-y-16">
           {reportData.sections?.map((section) => (
+            /* ... */
             <section key={section.id} id={section.id} className="scroll-mt-32">
               <div className="flex items-baseline justify-between border-b pb-4 mb-8">
                 <h2 className="text-3xl font-bold tracking-tight text-primary">
@@ -753,11 +735,6 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
                   {section.id.toUpperCase()}
                 </span>
               </div>
-
-              import {DistributionCharts} from "./DistributionCharts";
-              import {ReportCharts} from "./ReportCharts";
-
-              // ... existing imports
 
               // ... existing code
 
@@ -826,6 +803,16 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
           <SimulationControls />
         </div>
       )}
+
+      {/* Evidence Rail */}
+      <EvidenceRail
+        isOpen={isEvidenceRailOpen}
+        onClose={closeEvidenceRail}
+        activeEvidence={activeEvidence}
+        data={reportData}
+        runId={runId || ''}
+      />
+
       <AskAce reportData={reportData} />
     </div>
   );
