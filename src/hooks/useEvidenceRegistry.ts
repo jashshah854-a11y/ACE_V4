@@ -31,7 +31,7 @@ export function useEvidenceRegistry(runId?: string) {
       setLoading(true);
       setError(null);
       try {
-        const apiUrl = import.meta.env.VITE_ACE_API_BASE_URL || "http://localhost:8001";
+        const apiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_ACE_API_BASE_URL || "http://localhost:8000";
         const response = await fetch(`${apiUrl}/runs/${runId}/evidence`);
         if (!response.ok) {
           if (response.status === 404) {
