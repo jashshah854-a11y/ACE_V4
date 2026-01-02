@@ -1,6 +1,6 @@
 @import './styles/scrollbar.css';
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Crimson+Pro:wght@400;500;600;700&family=Lora:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Crimson+Pro:wght@400;500;600;700&family=Lora:wght@400;500;600;700&display=swap');
 
 @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700;900&display=swap');
 @tailwind base;
@@ -11,6 +11,14 @@
   :root {
     --font-narrative: "Merriweather", serif;
     --font-mono: "JetBrains Mono", monospace;
+    --font-display: "Inter Tight", sans-serif;
+    
+    /* Glass Monolith Palette */
+    --glass-charcoal: 220 15% 7%;        /* #0F1115 - Deep Charcoal */
+    --glass-silver: 220 10% 90%;         /* #E2E4E9 - Soft Silver */
+    --glass-teal: 174 72% 56%;           /* #2DD4BF - Teal Accent */
+    --glass-blue: 217 91% 60%;           /* #3B82F6 - Blue Accent */
+    --glass-charcoal-light: 220 15% 12%; /* Lighter charcoal for cards */
   }
 }
 

@@ -16,6 +16,7 @@ from scipy import stats
 from scipy.stats import pearsonr, spearmanr, chi2_contingency
 from sklearn.preprocessing import StandardScaler
 import warnings
+import math
 
 warnings.filterwarnings('ignore')
 
@@ -24,6 +25,19 @@ from .explainability import persist_evidence
 
 if TYPE_CHECKING:  # pragma: no cover
     from .state_manager import StateManager
+
+
+def safe_float(val: Any) -> float:
+    """Sanitize float values to prevent JSON serialization errors."""
+    if val is None:
+        return 0.0
+    try:
+        f = float(val)
+        if math.isnan(f) or math.isinf(f):
+            return 0.0
+        return f
+    except (ValueError, TypeError):
+        return 0.0
 
 
 class EnhancedAnalytics:
@@ -247,11 +261,11 @@ class EnhancedAnalytics:
             metrics["evidence"]["value_column"] = value_col
 
             metrics['value_metrics'] = {
-                "total_value": float(values.sum()),
-                "avg_value": float(values.mean()),
-                "median_value": float(values.median()),
-                "top_10_percent_value": float(values.quantile(0.9)),
-                "value_concentration": self._compute_gini_coefficient(values)
+                "total_value": safe_float(values.sum()),
+                "avg_value": safe_float(values.mean()),
+                "median_value": safe_float(values.median()),
+                "top_10_percent_value": safe_float(values.quantile(0.9)),
+                "value_concentration": safe_float(self._compute_gini_coefficient(values))
             }
 
             # Customer Lifetime Value proxy
@@ -260,9 +274,9 @@ class EnhancedAnalytics:
                 record_count = len(self.df)
 
                 metrics['clv_proxy'] = {
-                    "avg_value_per_record": float(avg_value_per_record),
-                    "estimated_total_value": float(avg_value_per_record * record_count),
-                    "high_value_threshold": float(values.quantile(0.75)),
+                    "avg_value_per_record": safe_float(avg_value_per_record),
+                    "estimated_total_value": safe_float(avg_value_per_record * record_count),
+                    "high_value_threshold": safe_float(values.quantile(0.75)),
                     "high_value_count": int((values > values.quantile(0.75)).sum())
                 }
 
@@ -298,10 +312,10 @@ class EnhancedAnalytics:
             at_risk_count = int((activity <= low_activity_threshold).sum())
 
             metrics['churn_risk'] = {
-                "at_risk_count": at_risk_count,
-                "at_risk_percentage": float(at_risk_count / len(self.df) * 100),
-                "avg_activity": float(activity.mean()),
-                "low_activity_threshold": float(low_activity_threshold),
+                "at_risk_count": int(at_risk_count),
+                "at_risk_percentage": safe_float(at_risk_count / len(self.df) * 100),
+                "avg_activity": safe_float(activity.mean()),
+                "low_activity_threshold": safe_float(low_activity_threshold),
                 "activity_column": activity_col
             }
             metrics["evidence"]["churn_activity_column"] = activity_col
