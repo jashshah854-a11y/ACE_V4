@@ -542,6 +542,40 @@ def main_loop(run_path):
                 save_state(state_path, state)
                 continue
 
+        # NEW: Enforce quality-based fail-safe before running insight agents
+        if current in ["overseer", "regression", "personas", "fabricator"]:
+            identity_card = state_manager.read("dataset_identity_card") or {}
+            quality_score = identity_card.get("quality_score", 0.0)
+            
+            if quality_score < 0.75:
+                step_state = state["steps"].setdefault(current, {"name": current})
+                step_state["status"] = "skipped"
+                step_state["message"] = f"Quality score {quality_score:.2f} < 0.75: Agent disabled by fail-safe"
+                state["steps"][current] = step_state
+                state["steps_completed"].append(current)
+                
+                append_limitation(
+                    state_manager,
+                    f"{current} disabled: Quality score {quality_score:.2f} below 0.75 threshold. "
+                    f"Predictive analysis requires higher data quality to prevent hallucinations.",
+                    agent=current,
+                    severity="error"
+                )
+                
+                update_history(state, f"{current} blocked by quality fail-safe (score: {quality_score:.2f})")
+                
+                # Advance to next step
+                idx = PIPELINE_SEQUENCE.index(current)
+                if idx + 1 < len(PIPELINE_SEQUENCE):
+                    state["current_step"] = PIPELINE_SEQUENCE[idx + 1]
+                    state["next_step"] = PIPELINE_SEQUENCE[idx + 1]
+                else:
+                    state["status"] = "complete_with_errors"
+                    state["next_step"] = "complete"
+                
+                save_state(state_path, state)
+                continue
+
         attempts = 0
         success = False
         stdout = ""
