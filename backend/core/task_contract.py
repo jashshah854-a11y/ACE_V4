@@ -69,7 +69,8 @@ def parse_task_intent(payload: Any) -> Dict[str, Any]:
     if not isinstance(payload, dict):
         raise TaskIntentValidationError("Task intent must be a JSON object.")
 
-    primary_question = _clean_text(payload.get("primary_question"))
+    # Accept both 'question' (legacy/API) and 'primary_question' (internal)
+    primary_question = _clean_text(payload.get("primary_question") or payload.get("question"))
     decision_context = _clean_text(payload.get("decision_context"))
     required_output = _clean_text(payload.get("required_output_type")).lower()
     success_criteria = _clean_text(payload.get("success_criteria"))
@@ -166,6 +167,109 @@ def _derive_scope_exclusions(identity_card: Dict[str, Any], intent: Optional[Dic
     return ordered
 
 
+def enforce_quality_failsafe(
+    identity_card: Dict[str, Any],
+    contract: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Enforce fail-safe mode if dataset quality is below threshold.
+    
+    Rules (ACE Engine Guidelines Source [1]):
+    - quality_score < 0.75 → FORCE descriptive mode
+    - Disable predictive agents (regression, personas, fabricator)
+    - Only allow data_overview, quality, eda sections
+    
+    This is the "Safety Catch" - the gun must not fire on bad ammo.
+    """
+    quality_score = identity_card.get("quality_score", 0.0)
+    
+    if quality_score < 0.75:
+        contract["analysis_mode"] = "descriptive"
+        contract["quality_failsafe_triggered"] = True
+        
+        # Extend forbidden sections (don't replace - preserve drift blocks)
+        forbidden = set(contract.get("forbidden_sections", []))
+        forbidden.update(["modeling", "predictions", "recommendations"])
+        contract["forbidden_sections"] = list(forbidden)
+        
+        # Explicitly list forbidden agents
+        contract["forbidden_agents"] = [
+            "regression",
+            "personas", 
+            "fabricator"
+        ]
+        
+        contract["limitations"].append(
+            f"Quality score {quality_score:.2f} < 0.75: Analysis restricted to descriptive mode only. "
+            f"Predictive modeling disabled to prevent hallucinations."
+        )
+        
+        # Disable all speculative claims
+        contract["forbidden_claims"]["allow_forecasting"] = False
+        contract["forbidden_claims"]["allow_causality"] = False
+        contract["forbidden_claims"]["allow_clustering"] = False
+    
+    return contract
+
+
+def derive_forbidden_analyses(
+    identity_card: Dict[str, Any]
+) -> List[str]:
+    """
+    Determine which analyses are structurally impossible based on data capabilities.
+    
+    Returns list of forbidden analysis types (ACE Engine Guidelines Source [3]).
+    
+    Examples:
+    - No date column → Cannot forecast
+    - No numeric columns → Cannot regress
+    - < 30 rows → Cannot cluster
+    """
+    forbidden = []
+    columns = identity_card.get("columns", {})
+    
+    # Check for time-series capability
+    has_date_column = any(
+        "date" in str(col).lower() or 
+        "time" in str(col).lower() or
+        "year" in str(col).lower() or
+        "month" in str(col).lower()
+        for col in columns.keys()
+    )
+    
+    if not has_date_column:
+        forbidden.append("forecasting")
+        forbidden.append("time_series_analysis")
+    
+    # Check for numeric columns (required for regression)
+    has_numeric = any(
+        str(meta.get("dtype", "")).startswith(("int", "float"))
+        for meta in columns.values()
+    )
+    
+    if not has_numeric:
+        forbidden.append("regression")
+        forbidden.append("correlation_analysis")
+    
+    # Check for categorical columns (required for segmentation)
+    has_categorical = any(
+        meta.get("dtype") == "object" or 
+        (meta.get("distinct_pct", 1.0) < 0.1 and meta.get("distinct_pct", 1.0) > 0)
+        for meta in columns.values()
+    )
+    
+    if not has_categorical:
+        forbidden.append("segmentation")
+        forbidden.append("clustering")
+    
+    # Check minimum row count for statistical validity
+    row_count = identity_card.get("row_count", 0)
+    if row_count < 30:
+        forbidden.extend(["regression", "clustering", "statistical_testing"])
+    
+    return forbidden
+
+
 def build_task_contract(
     identity_card: Dict[str, Any],
     validation_report: Dict[str, Any],
@@ -206,6 +310,12 @@ def build_task_contract(
 
     contract["scope_inclusions"] = _derive_scope_inclusions(identity_card, validation_report, user_intent)
     contract["scope_exclusions"] = _derive_scope_exclusions(identity_card, user_intent)
+    
+    # NEW: Derive forbidden analyses based on data capabilities
+    contract["forbidden_analyses"] = derive_forbidden_analyses(identity_card)
+    
+    # NEW: Enforce quality-based fail-safe
+    contract = enforce_quality_failsafe(identity_card, contract)
 
     if user_intent:
         contract.update(
