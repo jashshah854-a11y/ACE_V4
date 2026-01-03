@@ -97,7 +97,7 @@ DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 
 
-ALLOWED_EXTENSIONS = {'.csv', '.json', '.xlsx', '.xls', '.parquet'}
+ALLOWED_EXTENSIONS = {'.csv', '.tsv', '.txt', '.json', '.xlsx', '.xls', '.parquet'}
 ALLOWED_MIME_TYPES = {
     'text/csv',
     'application/json',
@@ -276,7 +276,9 @@ async def preview_dataset(file: UploadFile = File(...)):
             shutil.copyfileobj(file.file, buffer)
         
         if file_ext == '.csv':
-            df = pd.read_csv(temp_path)
+            df = pd.read_csv(temp_path, on_bad_lines='warn', engine='python')
+        elif file_ext in {'.tsv', '.txt'}:
+            df = pd.read_csv(temp_path, sep='\t', on_bad_lines='warn', engine='python')  # Tab-separated
         elif file_ext in {'.xls', '.xlsx'}:
             df = pd.read_excel(temp_path)
         elif file_ext == '.parquet':
