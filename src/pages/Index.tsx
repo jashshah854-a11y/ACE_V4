@@ -209,7 +209,7 @@ const Index = () => {
                       type="file"
                       onChange={handleFileInput}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      accept=".csv,.json,.xlsx,.xls,.parquet"
+                      accept=".csv,.tsv,.txt,.json,.xlsx,.xls,.parquet"
                     />
                     <div className="flex flex-col items-center gap-8 relative z-0">
                       <div
