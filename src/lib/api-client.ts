@@ -149,6 +149,9 @@ export async function getRunStatus(runId: string): Promise<RunState> {
   return response.json();
 }
 
+// Alias for backward compatibility
+export const getRunState = getRunStatus;
+
 export async function getReport(runId: string): Promise<ReportData> {
   const response = await fetch(`${API_BASE}/runs/${runId}/report`);
 
