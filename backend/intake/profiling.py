@@ -1,9 +1,12 @@
 import json
+import logging
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional, Any
 
 import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 def _safe_float(val):
@@ -13,7 +16,75 @@ def _safe_float(val):
         return None
 
 
-def profile_dataframe(df: pd.DataFrame) -> Dict:
+def profile_dataframe(df: pd.DataFrame, target_column: Optional[str] = None) -> Dict[str, Any]:
+    """
+    PHASE 3: Fail-Safe Profiling with Self-Healing
+    
+    Generate comprehensive data profile with automatic fallback to Safe Mode
+    if profiling fails (e.g., type mismatches, numpy errors).
+    """
+    try:
+        # Attempt full profiling
+        return _profile_dataframe_full(df, target_column)
+    except Exception as e:
+        # PHASE 3: Self-Healing - Downgrade to Safe Mode instead of crashing
+        logger.error(f"[PROFILING] Full profiling failed: {str(e)}", exc_info=True)
+        logger.warning("[PROFILING] Falling back to Safe Mode (minimal profile)")
+        
+        return _profile_dataframe_safe_mode(df, error=str(e))
+
+
+def _profile_dataframe_safe_mode(df: pd.DataFrame, error: str) -> Dict[str, Any]:
+    """
+    Safe Mode: Return minimal profile when full profiling fails.
+    Ensures scan succeeds even with problematic data.
+    """
+    try:
+        columns = {}
+        for col in df.columns:
+            try:
+                columns[col] = {
+                    "dtype": str(df[col].dtype),
+                    "null_count": int(df[col].isnull().sum()),
+                    "null_pct": float(df[col].isnull().sum() / len(df)) if len(df) > 0 else 0.0,
+                    "distinct_count": int(df[col].nunique()),
+                    "sample_values": []  # Skip samples in safe mode
+                }
+            except Exception as col_error:
+                logger.error(f"[SAFE_MODE] Error profiling column {col}: {col_error}")
+                columns[col] = {
+                    "dtype": "unknown",
+                    "null_count": 0,
+                    "null_pct": 0.0,
+                    "distinct_count": 0,
+                    "sample_values": []
+                }
+        
+        return {
+            "row_count": len(df),
+            "column_count": len(df.columns),
+            "columns": columns,
+            "quality_score": 0.0,  # Indicate degraded mode
+            "status": "limitations",
+            "error": error,
+            "mode": "safe_mode",
+            "warning": "Full profiling failed. Showing basic statistics only."
+        }
+    except Exception as safe_error:
+        # Ultimate fallback
+        logger.error(f"[SAFE_MODE] Even safe mode failed: {safe_error}")
+        return {
+            "row_count": len(df) if df is not None else 0,
+            "column_count": len(df.columns) if df is not None else 0,
+            "columns": {},
+            "quality_score": 0.0,
+            "status": "error",
+            "error": f"Profiling completely failed: {safe_error}",
+            "mode": "emergency"
+        }
+
+
+def _profile_dataframe_full(df: pd.DataFrame, target_column: Optional[str] = None) -> Dict[str, Any]:
     """Compute lightweight schema/profile stats for a dataframe sample."""
     profile = {
         "row_count": int(len(df)),
@@ -207,45 +278,51 @@ def compute_sample_drift(
         c = current_df[col]
         entry = {"status": "stable"}
 
-        if pd.api.types.is_numeric_dtype(b) and pd.api.types.is_numeric_dtype(c):
-            b_num = pd.to_numeric(b, errors="coerce").dropna()
-            c_num = pd.to_numeric(c, errors="coerce").dropna()
-            if len(b_num) >= 10 and len(c_num) >= 10:
-                # bin edges from combined quantiles
-                edges = np.quantile(
-                    np.concatenate([b_num, c_num]),
-                    [0.0, 0.05, 0.25, 0.5, 0.75, 0.95, 1.0],
-                )
-                edges = np.unique(edges)
-                if len(edges) >= 2:
-                    base_hist = _hist_from_edges(b_num, edges)
-                    cur_hist = _hist_from_edges(c_num, edges)
-                    psi_val = _psi(base_hist, cur_hist)
+        try:
+            if pd.api.types.is_numeric_dtype(b) and pd.api.types.is_numeric_dtype(c):
+                b_num = pd.to_numeric(b, errors="coerce").dropna()
+                c_num = pd.to_numeric(c, errors="coerce").dropna()
+                if len(b_num) >= 10 and len(c_num) >= 10:
+                    # bin edges from combined quantiles
+                    edges = np.quantile(
+                        np.concatenate([b_num, c_num]),
+                        [0.0, 0.05, 0.25, 0.5, 0.75, 0.95, 1.0],
+                    )
+                    edges = np.unique(edges)
+                    if len(edges) >= 2:
+                        base_hist = _hist_from_edges(b_num, edges)
+                        cur_hist = _hist_from_edges(c_num, edges)
+                        psi_val = _psi(base_hist, cur_hist)
+                    else:
+                        psi_val = 0.0
+                    ks_val = _ks_stat(b_num.values, c_num.values)
+                    entry.update({"psi": psi_val, "ks": ks_val})
+                    if psi_val >= psi_block or ks_val >= 0.5:
+                        entry["status"] = "block"
+                        block = True
+                    elif psi_val >= psi_warn or ks_val >= 0.3:
+                        entry["status"] = "warn"
+                        warn = True
                 else:
-                    psi_val = 0.0
-                ks_val = _ks_stat(b_num.values, c_num.values)
-                entry.update({"psi": psi_val, "ks": ks_val})
-                if psi_val >= psi_block or ks_val >= 0.5:
+                    entry["status"] = "unchecked"
+                    entry["reason"] = "insufficient numeric samples"
+            else:
+                # categorical / object frequency delta
+                b_counts = b.astype(str).value_counts().to_dict()
+                c_counts = c.astype(str).value_counts().to_dict()
+                delta = _freq_delta(b_counts, c_counts)
+                entry["freq_delta"] = round(delta, 4)
+                if delta >= psi_block:
                     entry["status"] = "block"
                     block = True
-                elif psi_val >= psi_warn or ks_val >= 0.3:
+                elif delta >= cat_warn:
                     entry["status"] = "warn"
                     warn = True
-            else:
-                entry["status"] = "unchecked"
-                entry["reason"] = "insufficient numeric samples"
-        else:
-            # categorical / object frequency delta
-            b_counts = b.astype(str).value_counts().to_dict()
-            c_counts = c.astype(str).value_counts().to_dict()
-            delta = _freq_delta(b_counts, c_counts)
-            entry["freq_delta"] = round(delta, 4)
-            if delta >= psi_block:
-                entry["status"] = "block"
-                block = True
-            elif delta >= cat_warn:
-                entry["status"] = "warn"
-                warn = True
+        except (TypeError, ValueError, np.core._exceptions._UFuncNoLoopError) as e:
+            # Handle type confusion errors (e.g., boolean subtract, mixed types)
+            entry["status"] = "error"
+            entry["reason"] = f"Type error during drift calculation: {type(e).__name__}"
+            drift["summary"].append(f"Column '{col}' skipped due to type incompatibility")
 
         drift["columns"][col] = entry
 

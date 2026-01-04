@@ -1,9 +1,14 @@
-// Dynamic API base URL resolution
-export const API_BASE = import.meta.env.VITE_ACE_API_BASE_URL || "http://localhost:8000";
+// OPERATION UNSINKABLE - Layer 3: The Bridge
+// Force API URL detection - do not trust .env blindly
+export const API_BASE =
+  typeof window !== 'undefined' && window.location.hostname === 'localhost'
+    ? 'http://localhost:8000'
+    : 'https://ace-v4-production.up.railway.app';
 
-// Debug logging to verify which URL is being used
-console.log("[API_CLIENT] Resolved API_BASE:", API_BASE);
-console.log("[API_CLIENT] VITE_ACE_API_BASE_URL:", import.meta.env.VITE_ACE_API_BASE_URL);
+// Debug logging
+console.log("[ACE Network] Connecting to:", API_BASE);
+console.log("[ACE Network] Hostname:", typeof window !== 'undefined' ? window.location.hostname : 'SSR');
+console.log("[ACE Network] Environment:", import.meta.env.MODE);
 
 export type StepStatus = "pending" | "running" | "completed" | "failed";
 export type RunStatus = "pending" | "running" | "completed" | "complete" | "failed" | "complete_with_errors";
