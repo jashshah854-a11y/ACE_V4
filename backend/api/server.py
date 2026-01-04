@@ -97,7 +97,17 @@ DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 
 
-ALLOWED_EXTENSIONS = {'.csv', '.tsv', '.txt', '.json', '.xlsx', '.xls', '.parquet'}
+# PHASE 2: Ingestion Resilience (Gatekeeper Fix)
+# Comprehensive list of supported file formats
+ALLOWED_EXTENSIONS = {
+    '.csv',      # Comma-separated values
+    '.tsv',      # Tab-separated values
+    '.txt',      # Plain text (treated as TSV)
+    '.json',     # JSON format
+    '.xlsx',     # Excel (modern)
+    '.xls',      # Excel (legacy)
+    '.parquet'   # Apache Parquet
+}
 ALLOWED_MIME_TYPES = {
     'text/csv',
     'application/json',
@@ -267,8 +277,19 @@ async def preview_dataset(file: UploadFile = File(...)):
     Returns Dataset Identity Card for user review.
     """
     file_ext = Path(file.filename).suffix.lower()
+    
+    # PHASE 2: Gatekeeper - Clear error message for unsupported types
     if file_ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(400, f"File type not allowed. Allowed: {ALLOWED_EXTENSIONS}")
+        allowed_list = ", ".join(sorted(ALLOWED_EXTENSIONS))
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "unsupported_file_type",
+                "message": f"File type '{file_ext}' is not supported",
+                "allowed_types": list(ALLOWED_EXTENSIONS),
+                "hint": f"Please upload one of: {allowed_list}"
+            }
+        )
 
     temp_path = DATA_DIR / f"preview_{uuid.uuid4().hex}{file_ext}"
     try:
