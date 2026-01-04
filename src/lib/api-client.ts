@@ -85,20 +85,35 @@ export interface ReportData {
 
 // API Client Functions
 export async function uploadDataset(file: File): Promise<DatasetIdentity> {
+  console.log("[UPLOAD] Starting upload...");
+  console.log("[UPLOAD] File:", file.name, file.size, "bytes");
+  console.log("[UPLOAD] Target URL:", `${API_BASE}/runs/preview`);
+
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${API_BASE}/runs/preview`, {
-    method: "POST",
-    body: formData,
-  });
+  try {
+    const response = await fetch(`${API_BASE}/runs/preview`, {
+      method: "POST",
+      body: formData,
+    });
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Upload failed: ${error}`);
+    console.log("[UPLOAD] Response status:", response.status);
+    console.log("[UPLOAD] Response ok:", response.ok);
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("[UPLOAD] Error response:", error);
+      throw new Error(`Upload failed (${response.status}): ${error}`);
+    }
+
+    const data = await response.json();
+    console.log("[UPLOAD] Success! Data:", data);
+    return data;
+  } catch (error) {
+    console.error("[UPLOAD] Fetch error:", error);
+    throw error;
   }
-
-  return response.json();
 }
 
 export async function startAnalysis(file: File): Promise<{ run_id: string }> {
