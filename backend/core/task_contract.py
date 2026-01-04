@@ -70,10 +70,24 @@ def parse_task_intent(payload: Any) -> Dict[str, Any]:
         raise TaskIntentValidationError("Task intent must be a JSON object.")
 
     # Accept both 'question' (legacy/API) and 'primary_question' (internal)
-    primary_question = _clean_text(payload.get("primary_question") or payload.get("question"))
-    decision_context = _clean_text(payload.get("decision_context"))
-    required_output = _clean_text(payload.get("required_output_type")).lower()
-    success_criteria = _clean_text(payload.get("success_criteria"))
+    # Also accept camelCase variants from frontend (primaryQuestion, decisionContext, etc.)
+    primary_question = _clean_text(
+        payload.get("primary_question") or 
+        payload.get("primaryQuestion") or 
+        payload.get("question")
+    )
+    decision_context = _clean_text(
+        payload.get("decision_context") or 
+        payload.get("decisionContext")
+    )
+    required_output = _clean_text(
+        payload.get("required_output_type") or 
+        payload.get("requiredOutputType")
+    ).lower()
+    success_criteria = _clean_text(
+        payload.get("success_criteria") or 
+        payload.get("successCriteria")
+    )
     constraints = _clean_text(payload.get("constraints"))
 
     # Make validation optional - provide defaults if fields are empty
