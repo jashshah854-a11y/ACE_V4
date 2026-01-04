@@ -1,5 +1,9 @@
-// Configurable API base URL with safe default
-export const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_ACE_API_BASE_URL || "http://localhost:8000";
+// Dynamic API base URL resolution
+export const API_BASE = import.meta.env.VITE_ACE_API_BASE_URL || "http://localhost:8000";
+
+// Debug logging to verify which URL is being used
+console.log("[API_CLIENT] Resolved API_BASE:", API_BASE);
+console.log("[API_CLIENT] VITE_ACE_API_BASE_URL:", import.meta.env.VITE_ACE_API_BASE_URL);
 
 export type StepStatus = "pending" | "running" | "completed" | "failed";
 export type RunStatus = "pending" | "running" | "completed" | "complete" | "failed" | "complete_with_errors";

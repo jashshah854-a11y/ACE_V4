@@ -272,20 +272,37 @@ async def preview_dataset(file: UploadFile = File(...)):
 
     temp_path = DATA_DIR / f"preview_{uuid.uuid4().hex}{file_ext}"
     try:
+        # Save uploaded file
         with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
-        if file_ext == '.csv':
-            df = pd.read_csv(temp_path, on_bad_lines='warn', engine='python')
-        elif file_ext in {'.tsv', '.txt'}:
-            df = pd.read_csv(temp_path, sep='\t', on_bad_lines='warn', engine='python')  # Tab-separated
-        elif file_ext in {'.xls', '.xlsx'}:
-            df = pd.read_excel(temp_path)
-        elif file_ext == '.parquet':
-            df = pd.read_parquet(temp_path)
-        else:
-             df = pd.DataFrame()
-
+        logger.info(f"[PREVIEW] Reading {file_ext} file: {file.filename}")
+        
+        # Read file based on extension
+        try:
+            if file_ext == '.csv':
+                df = pd.read_csv(temp_path, on_bad_lines='warn', engine='python')
+            elif file_ext in {'.tsv', '.txt'}:
+                df = pd.read_csv(temp_path, sep='\t', on_bad_lines='warn', engine='python')
+            elif file_ext in {'.xls', '.xlsx'}:
+                df = pd.read_excel(temp_path)
+            elif file_ext == '.parquet':
+                df = pd.read_parquet(temp_path)
+            else:
+                df = pd.DataFrame()
+        except Exception as read_error:
+            logger.error(f"[PREVIEW] File read error: {str(read_error)}")
+            # Fallback: Try reading without on_bad_lines for older pandas versions
+            if file_ext == '.csv':
+                df = pd.read_csv(temp_path)
+            elif file_ext in {'.tsv', '.txt'}:
+                df = pd.read_csv(temp_path, sep='\t')
+            else:
+                raise read_error
+        
+        logger.info(f"[PREVIEW] Successfully read {len(df)} rows, {len(df.columns)} columns")
+        
+        # Build identity card
         identity = {
             "row_count": len(df),
             "column_count": len(df.columns),
@@ -297,10 +314,11 @@ async def preview_dataset(file: UploadFile = File(...)):
             "warnings": _generate_warnings(df)
         }
         
+        logger.info(f"[PREVIEW] Quality score: {identity['quality_score']:.2f}")
         return identity
         
     except Exception as e:
-        logger.error(f"Preview failed: {str(e)}")
+        logger.error(f"[PREVIEW] Failed to analyze dataset: {str(e)}", exc_info=True)
         raise HTTPException(500, f"Failed to analyze dataset: {str(e)}")
     finally:
         if temp_path.exists():
