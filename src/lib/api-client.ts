@@ -136,6 +136,9 @@ export async function startAnalysis(file: File): Promise<{ run_id: string }> {
   return response.json();
 }
 
+// Alias for backward compatibility
+export const submitRun = startAnalysis;
+
 export async function getRunStatus(runId: string): Promise<RunState> {
   const response = await fetch(`${API_BASE}/runs/${runId}/status`);
 
