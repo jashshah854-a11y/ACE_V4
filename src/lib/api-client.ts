@@ -119,9 +119,14 @@ export async function uploadDataset(file: File): Promise<DatasetIdentity> {
 // Alias for backward compatibility
 export const previewDataset = uploadDataset;
 
-export async function startAnalysis(file: File): Promise<{ run_id: string }> {
+export async function startAnalysis(file: File, taskIntent?: any): Promise<{ run_id: string }> {
   const formData = new FormData();
   formData.append("file", file);
+
+  // Add task intent if provided
+  if (taskIntent) {
+    formData.append("task_intent", JSON.stringify(taskIntent));
+  }
 
   const response = await fetch(`${API_BASE}/run`, {
     method: "POST",
