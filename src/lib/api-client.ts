@@ -1,15 +1,14 @@
-// PHASE 1: Network & Connectivity (Build Trap Fix)
-// Smart environment detection: Use env var, or auto-detect based on window.location
+// OPERATION UNSINKABLE - Layer 3: The Bridge
+// Force API URL detection - do not trust .env blindly
 export const API_BASE =
-  import.meta.env.VITE_ACE_API_BASE_URL ||
-  (typeof window !== 'undefined' && window.location.origin.includes('localhost')
-    ? "http://localhost:8000"
-    : "https://ace-v4-production.up.railway.app");
+  typeof window !== 'undefined' && window.location.hostname === 'localhost'
+    ? 'http://localhost:8000'
+    : 'https://ace-v4-production.up.railway.app';
 
-// Debug logging to verify connection target
-console.log("[API_CLIENT] Connected to:", API_BASE);
-console.log("[API_CLIENT] Environment:", import.meta.env.MODE);
-console.log("[API_CLIENT] VITE_ACE_API_BASE_URL:", import.meta.env.VITE_ACE_API_BASE_URL);
+// Debug logging
+console.log("[ACE Network] Connecting to:", API_BASE);
+console.log("[ACE Network] Hostname:", typeof window !== 'undefined' ? window.location.hostname : 'SSR');
+console.log("[ACE Network] Environment:", import.meta.env.MODE);
 
 export type StepStatus = "pending" | "running" | "completed" | "failed";
 export type RunStatus = "pending" | "running" | "completed" | "complete" | "failed" | "complete_with_errors";
