@@ -243,6 +243,3 @@ meaning it has the strongest correlation with the target variable '{evidence.get
         answer = f"Based on the available evidence:\n\n{evidence_context}\n\nFor specific insights, try asking:\n- 'What is the exact number of at-risk users?'\n- 'Compare the segments'\n- 'Forecast next month'"
     
     return {"answer": answer}
-
-
-```
