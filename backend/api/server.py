@@ -97,7 +97,9 @@ DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 
 
-ALLOWED_EXTENSIONS = {'.csv', '.tsv', '.txt', '.json', '.xlsx', '.xls', '.parquet'}
+# OPERATION UNSINKABLE - Layer 1: The Gatekeeper
+# Hard-coded file extensions (NEVER reject valid data files)
+ALLOWED_EXTENSIONS = {'.csv', '.tsv', '.txt', '.json', '.xlsx', '.parquet', '.xls'}
 ALLOWED_MIME_TYPES = {
     'text/csv',
     'application/json',
@@ -267,14 +269,34 @@ async def preview_dataset(file: UploadFile = File(...)):
     Returns Dataset Identity Card for user review.
     """
     file_ext = Path(file.filename).suffix.lower()
+    
+    # PHASE 2: Gatekeeper - Clear error message for unsupported types
     if file_ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(400, f"File type not allowed. Allowed: {ALLOWED_EXTENSIONS}")
+        allowed_list = ", ".join(sorted(ALLOWED_EXTENSIONS))
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "unsupported_file_type",
+                "message": f"File type '{file_ext}' is not supported",
+                "allowed_types": list(ALLOWED_EXTENSIONS),
+                "hint": f"Please upload one of: {allowed_list}"
+            }
+        )
 
     temp_path = DATA_DIR / f"preview_{uuid.uuid4().hex}{file_ext}"
+    
+    # OPERATION UNSINKABLE - Layer 2: The Safety Net
+    # Global try/except ensures we NEVER return 500 errors
     try:
-        # Save uploaded file
-        with open(temp_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        # Save uploaded file with encoding fallback
+        try:
+            with open(temp_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+        except UnicodeDecodeError:
+            logger.warning("[SAFETY_NET] UTF-8 decode failed, trying latin-1")
+            file.file.seek(0)
+            with open(temp_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
         
         logger.info(f"[PREVIEW] Reading {file_ext} file: {file.filename}")
         
@@ -288,6 +310,8 @@ async def preview_dataset(file: UploadFile = File(...)):
                 df = pd.read_excel(temp_path)
             elif file_ext == '.parquet':
                 df = pd.read_parquet(temp_path)
+            elif file_ext == '.json':
+                df = pd.read_json(temp_path)
             else:
                 df = pd.DataFrame()
         except Exception as read_error:
@@ -318,8 +342,27 @@ async def preview_dataset(file: UploadFile = File(...)):
         return identity
         
     except Exception as e:
-        logger.error(f"[PREVIEW] Failed to analyze dataset: {str(e)}", exc_info=True)
-        raise HTTPException(500, f"Failed to analyze dataset: {str(e)}")
+        # OPERATION UNSINKABLE: Never crash - return Safe Mode instead
+        logger.error(f"[SAFETY_NET] Analysis failed, entering Safe Mode: {str(e)}", exc_info=True)
+        
+        # Return Safe Mode response (200 OK with degraded data)
+        return {
+            "row_count": 0,
+            "column_count": 0,
+            "file_type": file_ext.replace('.', '').upper() if file_ext else "UNKNOWN",
+            "schema_map": [],
+            "quality_score": 0.0,
+            "critical_gaps": ["ANALYSIS_FAILED"],
+            "detected_capabilities": [],
+            "warnings": [
+                f"⚠️ Safe Mode: Analysis failed - {str(e)[:200]}",
+                "The system could not fully analyze this file.",
+                "You can still proceed, but insights will be limited."
+            ],
+            "status": "limitations",
+            "mode": "safe_mode",
+            "error_log": str(e)
+        }
     finally:
         if temp_path.exists():
             try:
