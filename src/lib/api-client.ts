@@ -1,5 +1,5 @@
 // Dynamic API base URL resolution
-const API_BASE = import.meta.env.VITE_ACE_API_BASE_URL || "http://localhost:8000";
+export const API_BASE = import.meta.env.VITE_ACE_API_BASE_URL || "http://localhost:8000";
 
 // Debug logging to verify which URL is being used
 console.log("[API_CLIENT] Resolved API_BASE:", API_BASE);
