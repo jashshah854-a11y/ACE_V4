@@ -1,8 +1,14 @@
-// Dynamic API base URL resolution
-export const API_BASE = import.meta.env.VITE_ACE_API_BASE_URL || "http://localhost:8000";
+// PHASE 1: Network & Connectivity (Build Trap Fix)
+// Smart environment detection: Use env var, or auto-detect based on window.location
+export const API_BASE =
+  import.meta.env.VITE_ACE_API_BASE_URL ||
+  (typeof window !== 'undefined' && window.location.origin.includes('localhost')
+    ? "http://localhost:8000"
+    : "https://ace-v4-production.up.railway.app");
 
-// Debug logging to verify which URL is being used
-console.log("[API_CLIENT] Resolved API_BASE:", API_BASE);
+// Debug logging to verify connection target
+console.log("[API_CLIENT] Connected to:", API_BASE);
+console.log("[API_CLIENT] Environment:", import.meta.env.MODE);
 console.log("[API_CLIENT] VITE_ACE_API_BASE_URL:", import.meta.env.VITE_ACE_API_BASE_URL);
 
 export type StepStatus = "pending" | "running" | "completed" | "failed";
