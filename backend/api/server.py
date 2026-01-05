@@ -1021,15 +1021,32 @@ async def get_run_state(request: Request, run_id: str):
         # Fallback: Check Redis Queue (Iron Dome Persistence)
         # This handles cases where Worker and Server are in different containers
         try:
-            sys.path.append(str(Path(__file__).parent.parent))
-            from jobs.redis_queue import get_queue
+            logger.info(f"[RedisFallback] Attempting to check Redis for {run_id}")
             
-            queue = get_queue()
+            # 1. Fix Import Path
+            try:
+                sys.path.append(str(Path(__file__).parent.parent))
+                from jobs.redis_queue import get_queue
+                logger.debug("[RedisFallback] Successfully imported get_queue")
+            except ImportError as ie:
+                logger.error(f"[RedisFallback] IMPORT ERROR: {ie}")
+                raise
+
+            # 2. Connect/Get Queue
+            try:
+                queue = get_queue()
+                if not queue:
+                    raise ValueError("get_queue() returned None")
+                logger.debug(f"[RedisFallback] Got queue instance: {queue}")
+            except Exception as ce:
+                logger.error(f"[RedisFallback] CONNECTION ERROR: {ce}")
+                raise
+
+            # 3. Fetch Job
             job = queue.get_job(run_id)
-            
             if job:
                 # Synthesize state from Redis job data
-                logger.info(f"State file missing for {run_id}, using Redis fallback. Status: {job.status}")
+                logger.info(f"[RedisFallback] SUCCESS. Run {run_id} found in Redis. Status: {job.status}")
                 return {
                     "run_id": run_id,
                     "status": job.status,
@@ -1043,11 +1060,15 @@ async def get_run_state(request: Request, run_id: str):
                     "progress": 100 if job.status in ["completed", "complete"] else 0,
                     "steps": {} # Frontend might handle empty steps gracefully or we might need dummy ones
                 }
+            else:
+                 logger.warning(f"[RedisFallback] Job {run_id} NOT FOUND in Redis state hash.")
+
         except Exception as e:
-            logger.warning(f"Failed to check Redis for run {run_id}: {e}")
+            logger.error(f"[RedisFallback] CRITICAL FAILURE for {run_id}: {e}", exc_info=True)
 
         # If we reach here, neither file nor Redis has it
-        raise HTTPException(status_code=404, detail="State not found")
+        logger.error(f"[404] State not found for {run_id} (File missing, Redis fallback failed)")
+        raise HTTPException(status_code=404, detail=f"State not found for {run_id}")
 
     # Ensure progress fields exist for backward compatibility
     if "progress" not in state:
