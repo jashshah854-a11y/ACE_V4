@@ -217,34 +217,38 @@ export default function EvidenceRail({ isOpen, onClose, activeEvidence, data, ru
                         </div>
 
                         {/* Response Area */}
-                        {(isAsking || reasoningSteps.length > 0 || answer) && (
-                            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:border-gray-800/30">
-                                {/* Reasoning Steps */}
-                                <div className="space-y-1 mb-3">
+                        {/* Ask ACE Interface */}
+                        <div className="border-t border-gray-200 dark:border-gray-800 p-6 bg-gray-50 dark:bg-gray-900/50">
+                            {/* Reasoning Steps (Monospace - Evidence) */}
+                            {reasoningSteps.length > 0 && (
+                                <div className="mb-4 space-y-2 font-mono text-xs">
                                     {reasoningSteps.map((step, idx) => (
-                                        <div key={idx} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                                            <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
-                                            <span className="font-mono">{step}</span>
-                                        </div>
+                                        <motion.div
+                                            key={idx}
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            className="flex items-center gap-2 text-gray-600 dark:text-gray-400"
+                                        >
+                                            <CheckCircle className="w-3 h-3 text-green-500" />
+                                            <span>{step}</span>
+                                        </motion.div>
                                     ))}
-                                    {isAsking && reasoningSteps.length === 0 && (
-                                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                                            <div className="w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                                            <span>Initializing...</span>
-                                        </div>
-                                    )}
                                 </div>
+                            )}
 
-                                {/* Answer */}
-                                {answer && (
-                                    <div className="p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg">
-                                        <p className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed font-mono">
-                                            {answer}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                            {/* Answer (Serif - Story/Narrative) */}
+                            {answer && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="mb-4 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
+                                >
+                                    <p className="text-sm font-serif text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">
+                                        {answer}
+                                    </p>
+                                </motion.div>
+                            )}
+                        </div>
 
                         {/* Ask Interface (The Mouth) */}
                         <div className="sticky bottom-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-6 py-4">
