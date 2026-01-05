@@ -236,9 +236,11 @@ export async function pollRunStatus(
   });
 }
 
-// Ensure direct getRunStatus also uses singular /run
+// Ensure direct getRunStatus uses the LEGACY endpoint that is currently live
 export async function getRunStatus(runId: string): Promise<RunState> {
-  const response = await fetch(`${API_BASE}/run/${runId}/status`);
+  // Reverted to /runs/ path because Backend Deployment of V3 (Singular) is stuck.
+  // This matches the currently running "ACE V3 API".
+  const response = await fetch(`${API_BASE}/runs/${runId}/state`);
 
   if (!response.ok) {
     if (response.status === 404) {
