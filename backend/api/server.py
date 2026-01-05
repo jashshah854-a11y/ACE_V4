@@ -1012,11 +1012,40 @@ async def get_run_state(request: Request, run_id: str):
     run_path = DATA_DIR / "runs" / run_id
     state_path = run_path / "orchestrator_state.json"
 
-    if not state_path.exists():
-        raise HTTPException(status_code=404, detail="State not found")
+    if state_path.exists():
+        with open(state_path, "r", encoding="utf-8") as f:
+            state = json.load(f)
+    else:
+        # Fallback: Check Redis Queue (Iron Dome Persistence)
+        # This handles cases where Worker and Server are in different containers
+        try:
+            sys.path.append(str(Path(__file__).parent.parent))
+            from jobs.redis_queue import get_queue
+            
+            queue = get_queue()
+            job = queue.get_job(run_id)
+            
+            if job:
+                # Synthesize state from Redis job data
+                logger.info(f"State file missing for {run_id}, using Redis fallback. Status: {job.status}")
+                return {
+                    "run_id": run_id,
+                    "status": job.status,
+                    "created_at": job.created_at,
+                    "updated_at": job.updated_at,
+                    "current_step": "unknown (redis fallback)",
+                    "next_step": None,
+                    "steps_completed": [],
+                    "failed_steps": [],
+                    "message": job.message,
+                    "progress": 100 if job.status in ["completed", "complete"] else 0,
+                    "steps": {} # Frontend might handle empty steps gracefully or we might need dummy ones
+                }
+        except Exception as e:
+            logger.warning(f"Failed to check Redis for run {run_id}: {e}")
 
-    with open(state_path, "r", encoding="utf-8") as f:
-        state = json.load(f)
+        # If we reach here, neither file nor Redis has it
+        raise HTTPException(status_code=404, detail="State not found")
 
     # Ensure progress fields exist for backward compatibility
     if "progress" not in state:
