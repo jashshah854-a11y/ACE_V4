@@ -49,7 +49,7 @@ export function ExecutiveBrief({
 
     // safe signal mock
     const qualityScore = 0.85; // Placeholder - should come from analytics
-    const isLowQuality = qualityScore < 0.7; // Define low quality threshold
+    // isLowQuality variable removed to prevent ReferenceErrors
     const confidenceSignal = {
         strength: "high" as const,
         bars: 3 as const,
@@ -117,7 +117,7 @@ export function ExecutiveBrief({
                                 {headline}
                             </h2>
                             {/* Quality Gate Badge */}
-                            {isLowQuality && (
+                            {(qualityScore < 0.7) && (
                                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
                                     <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                                     <span className="text-xs font-mono font-medium text-amber-500">
