@@ -192,10 +192,58 @@ export async function startAnalysis(file: File, taskIntent?: any): Promise<{ run
 // Alias for backward compatibility
 export const submitRun = startAnalysis;
 
+// Polling utility for run status
+export async function pollRunStatus(
+  runId: string,
+  onUpdate: (status: RunState) => void,
+  intervalMs: number = 2000
+): Promise<RunState> {
+  return new Promise((resolve, reject) => {
+    const poll = async () => {
+      try {
+        // Enforce Singular Resource Protocol: /run/{id}/status
+        // Circuit Breaker implemented: Stop polling on 404
+        const response = await fetch(`${API_BASE}/run/${runId}/status`);
+
+        if (response.status === 404) {
+          console.error(`[Circuit Breaker] Endpoint Mismatch Error: 404 Not Found for /run/${runId}/status`);
+          reject(new Error("Run not found (404) - Stopping polling"));
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`Failed to get status: ${response.statusText}`);
+        }
+
+        const status = await response.json();
+        onUpdate(status);
+
+        if (status.status === "completed" || status.status === "complete") {
+          resolve(status);
+        } else if (status.status === "failed") {
+          reject(new Error(status.error || "Analysis failed"));
+        } else {
+          setTimeout(poll, intervalMs);
+        }
+      } catch (error) {
+        // If it's a network error, we might want to retry, but for now we follow the circuit breaker pattern mostly for logic errors
+        console.error("Polling error:", error);
+        reject(error);
+      }
+    };
+
+    poll();
+  });
+}
+
+// Ensure direct getRunStatus also uses singular /run
 export async function getRunStatus(runId: string): Promise<RunState> {
-  const response = await fetch(`${API_BASE}/runs/${runId}/status`);
+  const response = await fetch(`${API_BASE}/run/${runId}/status`);
 
   if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error("Endpoint Mismatch: 404 Not Found");
+    }
     throw new Error(`Failed to get run status: ${response.statusText}`);
   }
 

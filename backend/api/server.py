@@ -1000,8 +1000,9 @@ async def get_key_insights(run_id: str):
     }
 
 
-@app.get("/runs/{run_id}/state", tags=["History"])
-@app.get("/runs/{run_id}/status", tags=["History"])
+@app.get("/run/{run_id}/status", tags=["History"])
+@app.get("/runs/{run_id}/status", tags=["History"]) # Deprecated alias
+@app.get("/runs/{run_id}/state", tags=["History"]) # Deprecated alias
 @limiter.limit("60/minute")
 async def get_run_state(request: Request, run_id: str):
     """Return orchestrator state for a run.
