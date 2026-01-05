@@ -39,6 +39,7 @@ import { SafeIcon } from "@/components/ui/SafeIcon";
 import { useSimulation } from "@/context/SimulationContext";
 import { cn } from "@/lib/utils";
 import { translateTechnicalTerm } from "@/lib/dataTypeMapping";
+import SimulationControls from "@/components/report/SimulationControls";
 
 const ExecutivePulse = () => {
   const [searchParams] = useSearchParams();
@@ -457,6 +458,49 @@ const ExecutivePulse = () => {
           )}
         </div>
       </main>
+
+      {/* Strategy Simulator Section */}
+      {reportData && reportData.profile?.columns && (
+        <section className="py-8 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border-y border-border/40">
+          <div className="container px-4 max-w-6xl">
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-xl bg-purple-600/10 flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">Strategy Simulator</h2>
+                  <p className="text-sm text-muted-foreground">
+                    What-If Analysis for Executive Decision-Making
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Extract numeric columns */}
+            {(() => {
+              const numericColumns = Object.entries(reportData.profile.columns)
+                .filter(([_, col]: [string, any]) =>
+                  col.dtype && (col.dtype.includes('int') || col.dtype.includes('float'))
+                )
+                .map(([name]) => name);
+
+              return numericColumns.length > 0 ? (
+                <SimulationControls
+                  runId={activeRun}
+                  availableColumns={numericColumns}
+                />
+              ) : (
+                <div className="p-6 bg-white dark:bg-gray-800 rounded-xl border border-border/40 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No numeric columns available for simulation
+                  </p>
+                </div>
+              );
+            })()}
+          </div>
+        </section>
+      )}
 
       <AskAce reportData={reportData} />
       <Footer />
