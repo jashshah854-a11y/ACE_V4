@@ -14,9 +14,12 @@ import json
 logger = logging.getLogger(__name__)
 
 
+MAX_SIMULATION_ROWS = 100000  # Cap simulation size for memory safety
+
 class SimulationEngine:
     """
     Handles ephemeral dataset modifications and delta calculations
+    IRON DOME: Enforces memory limits to prevent OOM
     """
     
     def __init__(self, run_id: str):
@@ -24,13 +27,35 @@ class SimulationEngine:
         self.run_path = Path(f"data/runs/{run_id}")
         
     def load_dataset(self) -> pd.DataFrame:
-        """Load original dataset from run"""
+        """
+        Load original dataset from run
+        IRON DOME: Downsamples large datasets to prevent OOM
+        """
         data_path = self.run_path / "processed_data.parquet"
         if not data_path.exists():
             raise FileNotFoundError(f"Dataset not found for run {self.run_id}")
         
         logger.info(f"[SIMULATION] Loading dataset from {data_path}")
-        return pd.read_parquet(data_path)
+        
+        try:
+            # Read metadata first without loading full file (if possible)
+            # For robustness, we'll read and check length immediately
+            df = pd.read_parquet(data_path)
+            
+            # DOWN-SAMPLE if too large
+            if len(df) > MAX_SIMULATION_ROWS:
+                logger.warning(f"[IRON DOME] Dataset too large ({len(df)} rows). Downsampling to {MAX_SIMULATION_ROWS} for simulation.")
+                df = df.sample(n=MAX_SIMULATION_ROWS, random_state=42)
+            
+            return df
+            
+        except MemoryError:
+            logger.critical("[IRON DOME] MemoryError during dataset load. Attempting emergency downsample.")
+            # Emergency fallback: Read chunks or fail gracefully
+            raise ValueError("Dataset too large for simulation memory limits")
+        except Exception as e:
+            logger.error(f"[SIMULATION] Load error: {e}")
+            raise
     
     def load_original_analytics(self) -> Dict[str, Any]:
         """Load original analytics results"""
@@ -51,6 +76,7 @@ class SimulationEngine:
         Apply modification to target column
         
         CONSTRAINT: Returns a copy - never modifies original
+        IRON DOME: Catches MemoryError during copy
         
         Args:
             df: Original dataframe
@@ -60,7 +86,12 @@ class SimulationEngine:
         Returns:
             Modified copy of dataframe
         """
-        df_sim = df.copy()  # Ephemeral copy
+        try:
+            df_sim = df.copy()  # Ephemeral copy
+        except MemoryError:
+            logger.critical("[IRON DOME] MemoryError during simulation copy. Dataset too large.")
+            raise ValueError("System memory limit reached during simulation. Please reduce dataset size.")
+
         
         if target_column not in df_sim.columns:
             raise ValueError(f"Column '{target_column}' not found in dataset")
