@@ -319,6 +319,63 @@ class EnhancedAnalytics:
                 "activity_column": activity_col
             }
             metrics["evidence"]["churn_activity_column"] = activity_col
+            
+            # PHASE 9: Ghost Revenue Detection
+            # High-engagement users with zero revenue = monetization opportunities
+            revenue_col = self._find_column_by_role(['revenue', 'spend', 'payment', 'purchase', 'sales'])
+            if revenue_col:
+                revenue = self.df[revenue_col].fillna(0)
+                activity_threshold_75 = activity.quantile(0.75)
+                
+                # Ghost users: High activity BUT zero revenue
+                ghost_users = (activity > activity_threshold_75) & (revenue == 0)
+                ghost_count = int(ghost_users.sum())
+                
+                if ghost_count > 0:
+                    metrics['ghost_revenue'] = {
+                        "ghost_user_count": ghost_count,
+                        "ghost_user_percentage": safe_float(ghost_count / len(self.df) * 100),
+                        "avg_ghost_activity": safe_float(activity[ghost_users].mean()),
+                        "activity_threshold_75": safe_float(activity_threshold_75),
+                        "opportunity_segment": "High-Engagement, Zero-Revenue",
+                        "activity_column": activity_col,
+                        "revenue_column": revenue_col
+                    }
+                    metrics["evidence"]["ghost_revenue_columns"] = [activity_col, revenue_col]
+            
+            # PHASE 9: Zombie Cohorts Detection
+            # Active users generating zero value = dead weight
+            value_col = self._find_column_by_role(['value', 'ltv', 'lifetime_value', 'total_value'])
+            active_col = self._find_column_by_role(['active', 'status', 'is_active'])
+            
+            if value_col and active_col:
+                try:
+                    # Handle boolean or string active status
+                    if self.df[active_col].dtype == 'bool':
+                        is_active = self.df[active_col]
+                    else:
+                        # Assume 'active', 'Active', 'true', 'True', 1 mean active
+                        is_active = self.df[active_col].astype(str).str.lower().isin(['active', 'true', '1'])
+                    
+                    total_value = self.df[value_col].fillna(0)
+                    
+                    # Zombies: Active BUT zero value
+                    zombies = is_active & (total_value == 0)
+                    zombie_count = int(zombies.sum())
+                    
+                    if zombie_count > 0:
+                        metrics['zombie_cohorts'] = {
+                            "zombie_count": zombie_count,
+                            "zombie_percentage": safe_float(zombie_count / len(self.df) * 100),
+                            "zombie_segment": "Active, Zero-Value",
+                            "active_column": active_col,
+                            "value_column": value_col
+                        }
+                        metrics["evidence"]["zombie_cohort_columns"] = [active_col, value_col]
+                except Exception as e:
+                    # Silently skip if zombie detection fails
+                    pass
+
 
         if len([k for k in metrics.keys() if k != "evidence"]) == 0:
             return {"available": False, "reason": "Insufficient business-related columns"}
