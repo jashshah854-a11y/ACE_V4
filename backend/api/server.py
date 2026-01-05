@@ -565,6 +565,8 @@ async def trigger_run(
     Rate limit: 10 requests per minute
     """
     logger.info(f"[API] POST /run - File: {file.filename}")
+    logger.info(f"[API] task_intent received: {task_intent}")
+    logger.info(f"[API] confidence_acknowledged received: {confidence_acknowledged}")
     
     try:
         intent_payload = parse_task_intent(task_intent)
