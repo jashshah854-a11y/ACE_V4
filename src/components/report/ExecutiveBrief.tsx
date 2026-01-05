@@ -48,6 +48,8 @@ export function ExecutiveBrief({
     const decision = brief.recommendedAction || "Review detailed metrics below.";
 
     // safe signal mock
+    const qualityScore = 0.85; // Placeholder - should come from analytics
+    const isLowQuality = qualityScore < 0.7; // Define low quality threshold
     const confidenceSignal = {
         strength: "high" as const,
         bars: 3 as const,
