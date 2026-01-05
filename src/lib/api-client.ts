@@ -259,8 +259,8 @@ export async function pollRunStatus(
 
 // Ensure direct getRunStatus uses the LEGACY endpoint that is currently live
 export async function getRunStatus(runId: string): Promise<RunState> {
-  // Singular Protocol: /run/ (Law 2 Compliance)
-  const response = await fetch(`${API_BASE}/run/${runId}/status`);
+  // EMERGENCY ROLLBACK: Backend deployment failed, still on V3 (/runs/)
+  const response = await fetch(`${API_BASE}/runs/${runId}/state`);
 
   if (!response.ok) {
     if (response.status === 404) {
@@ -278,7 +278,7 @@ export const getRunState = getRunStatus;
 // Report is returned as a raw Markdown string (FileResponse), NOT JSON.
 // Fixes "Unexpected token #" error.
 export async function getReport(runId: string): Promise<string> {
-  const response = await fetch(`${API_BASE}/run/${runId}/report`);
+  const response = await fetch(`${API_BASE}/runs/${runId}/report`);
 
   if (!response.ok) {
     throw new Error(`Failed to get report: ${response.statusText}`);
@@ -288,7 +288,7 @@ export async function getReport(runId: string): Promise<string> {
 }
 
 export async function getEnhancedAnalytics(runId: string): Promise<any> {
-  const response = await fetch(`${API_BASE}/run/${runId}/enhanced-analytics`);
+  const response = await fetch(`${API_BASE}/runs/${runId}/enhanced-analytics`);
 
   if (!response.ok) {
     throw new Error(`Failed to get enhanced analytics: ${response.statusText}`);
@@ -298,7 +298,7 @@ export async function getEnhancedAnalytics(runId: string): Promise<any> {
 }
 
 export async function getAllRuns(): Promise<string[]> {
-  const response = await fetch(`${API_BASE}/run`);
+  const response = await fetch(`${API_BASE}/runs`);
 
   if (!response.ok) {
     throw new Error(`Failed to get runs: ${response.statusText}`);
