@@ -47,9 +47,55 @@ export interface ReportDataResult {
     scoredSections: any[];
 
     // External data
-    enhancedAnalytics: any;
+    enhancedAnalytics: EnhancedAnalyticsData; // Use specific type
     analyticsLoading: boolean;
     diagnostics: any;
     modelArtifacts: any;
     viewModel: ReportViewModel;
+}
+
+export interface EnhancedAnalyticsData {
+    business_intelligence?: BusinessIntelligence;
+    feature_importance?: FeatureImportance;
+    quality_metrics?: any;
+    correlation_analysis?: any;
+    distribution_analysis?: any;
+}
+
+export interface BusinessIntelligence {
+    available: boolean;
+    value_metrics?: {
+        total_value: number;
+        avg_value: number;
+        median_value: number;
+        value_concentration: number; // Gini coefficient
+    };
+    clv_proxy?: {
+        avg_value_per_record: number;
+        estimated_total_value: number;
+        high_value_count: number;
+    };
+    churn_risk?: {
+        at_risk_count: number;
+        at_risk_percentage: number;
+        activity_column: string;
+    };
+    segment_value?: Array<{
+        segment: string;
+        total_value: number;
+        value_contribution_pct: number;
+    }>;
+    insights?: string[];
+}
+
+export interface FeatureImportance {
+    available: boolean;
+    target?: string;
+    task_type?: "regression" | "classification";
+    feature_importance?: Array<{
+        feature: string;
+        importance: number;
+        rank: number;
+    }>;
+    insights?: string[];
 }
