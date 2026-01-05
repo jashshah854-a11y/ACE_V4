@@ -1142,9 +1142,7 @@ async def stream_ask_response(request: AskRequest):
         
         if not evidence:
             # Stream error
-            yield f"data: {{\"type\": \"error\", \"content\": \"Evidence not found for run {request.run_id}\"}}
-
-"
+            yield f'data: {{"type": "error", "content": "Evidence not found for run {request.run_id}"}}\n\n'
             return
         
         # Generate and stream reasoning steps
