@@ -1001,6 +1001,7 @@ async def get_key_insights(run_id: str):
 
 
 @app.get("/runs/{run_id}/state", tags=["History"])
+@app.get("/runs/{run_id}/status", tags=["History"])
 @limiter.limit("60/minute")
 async def get_run_state(request: Request, run_id: str):
     """Return orchestrator state for a run.
