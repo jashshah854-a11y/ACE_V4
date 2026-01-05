@@ -188,7 +188,7 @@ export async function startAnalysis(file: File, taskIntent?: any): Promise<{ run
       throw new Error(`Analysis failed to start (${response.status}): ${error}`);
     }
 
-    const data = await response.json();
+    const data = await safeJsonParse(response);
     console.log("[RUN] Success! Run ID:", data.run_id);
     return data;
   } catch (error) {
@@ -269,7 +269,7 @@ export async function getRunStatus(runId: string): Promise<RunState> {
     throw new Error(`Failed to get run status: ${response.statusText}`);
   }
 
-  return response.json();
+  return safeJsonParse(response);
 }
 
 // Alias for backward compatibility
@@ -347,7 +347,7 @@ export async function simulateScenario(runId: string, request: SimulationRequest
     throw new Error(`Simulation failed: ${error}`);
   }
 
-  return response.json();
+  return safeJsonParse(response);
 }
 
 export async function askQuestion(
@@ -373,7 +373,7 @@ export async function askQuestion(
     throw new Error(`Ask query failed: ${response.statusText}`);
   }
 
-  return response.json();
+  return safeJsonParse(response);
 }
 
 
