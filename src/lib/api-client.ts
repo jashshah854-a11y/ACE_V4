@@ -133,6 +133,9 @@ export async function uploadDataset(file: File): Promise<DatasetIdentity> {
 export const previewDataset = uploadDataset;
 
 export async function startAnalysis(file: File, taskIntent?: any): Promise<{ run_id: string }> {
+  console.log("[RUN] Starting analysis...");
+  console.log("[RUN] Task intent:", taskIntent);
+
   const formData = new FormData();
   formData.append("file", file);
 
@@ -141,17 +144,40 @@ export async function startAnalysis(file: File, taskIntent?: any): Promise<{ run
     formData.append("task_intent", JSON.stringify(taskIntent));
   }
 
-  const response = await fetch(`${API_BASE}/run`, {
-    method: "POST",
-    body: formData,
-  });
+  try {
+    const response = await fetch(`${API_BASE}/run`, {
+      method: "POST",
+      body: formData,
+    });
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Analysis failed to start: ${error}`);
+    console.log("[RUN] Response status:", response.status);
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("[RUN] Error response:", error);
+      throw new Error(`Analysis failed to start (${response.status}): ${error}`);
+    }
+
+    const data = await response.json();
+    console.log("[RUN] Success! Run ID:", data.run_id);
+    return data;
+  } catch (error) {
+    console.error("[RUN] Fetch error:", error);
+
+    // Iron Dome: Detect browser blocking
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      if (!navigator.onLine) {
+        throw new Error("No internet connection detected. Please check your network.");
+      }
+      console.warn("[ACE Sentry] Request blocked by client. Suspecting ad blocker.");
+      throw new Error(
+        "BROWSER_BLOCK_DETECTED: Your browser or an extension is blocking this request. " +
+        "Please try disabling ad blockers, or use Chrome/Incognito mode."
+      );
+    }
+
+    throw error;
   }
-
-  return response.json();
 }
 
 // Alias for backward compatibility
