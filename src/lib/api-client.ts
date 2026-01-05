@@ -16,6 +16,27 @@ export const API_BASE = getBaseUrl();
 // Debug Log to confirm connection target in Console
 console.log("[ACE NETWORK] 🚀 Connecting to Backend at:", API_BASE);
 
+// LAW 3: DEFENSIVE PARSING - Content-Type Validation
+// Prevents "Unexpected token" errors by checking response type before parsing
+async function safeJsonParse(response: Response): Promise<any> {
+  const contentType = response.headers.get("content-type");
+
+  if (!contentType) {
+    throw new Error("Response missing Content-Type header");
+  }
+
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  if (contentType.includes("text/")) {
+    const text = await response.text();
+    throw new Error(`Expected JSON, received ${contentType}. Body: ${text.substring(0, 100)}...`);
+  }
+
+  throw new Error(`Unsupported Content-Type: ${contentType}`);
+}
+
 export type StepStatus = "pending" | "running" | "completed" | "failed";
 export type RunStatus = "pending" | "running" | "completed" | "complete" | "failed" | "complete_with_errors";
 
@@ -107,7 +128,7 @@ export async function uploadDataset(file: File): Promise<DatasetIdentity> {
       throw new Error(`Upload failed (${response.status}): ${error}`);
     }
 
-    const data = await response.json();
+    const data = await safeJsonParse(response);
     console.log("[UPLOAD] Success! Data:", data);
     return data;
   } catch (error) {
@@ -215,7 +236,7 @@ export async function pollRunStatus(
           throw new Error(`Failed to get status: ${response.statusText}`);
         }
 
-        const status = await response.json();
+        const status = await safeJsonParse(response);
         onUpdate(status);
 
         if (status.status === "completed" || status.status === "complete") {
@@ -238,9 +259,8 @@ export async function pollRunStatus(
 
 // Ensure direct getRunStatus uses the LEGACY endpoint that is currently live
 export async function getRunStatus(runId: string): Promise<RunState> {
-  // Reverted to /runs/ path because Backend Deployment of V3 (Singular) is stuck.
-  // This matches the currently running "ACE V3 API".
-  const response = await fetch(`${API_BASE}/runs/${runId}/state`);
+  // Singular Protocol: /run/ (Law 2 Compliance)
+  const response = await fetch(`${API_BASE}/run/${runId}/status`);
 
   if (!response.ok) {
     if (response.status === 404) {
@@ -258,7 +278,7 @@ export const getRunState = getRunStatus;
 // Report is returned as a raw Markdown string (FileResponse), NOT JSON.
 // Fixes "Unexpected token #" error.
 export async function getReport(runId: string): Promise<string> {
-  const response = await fetch(`${API_BASE}/runs/${runId}/report`);
+  const response = await fetch(`${API_BASE}/run/${runId}/report`);
 
   if (!response.ok) {
     throw new Error(`Failed to get report: ${response.statusText}`);
@@ -268,7 +288,7 @@ export async function getReport(runId: string): Promise<string> {
 }
 
 export async function getEnhancedAnalytics(runId: string): Promise<any> {
-  const response = await fetch(`${API_BASE}/runs/${runId}/enhanced-analytics`);
+  const response = await fetch(`${API_BASE}/run/${runId}/enhanced-analytics`);
 
   if (!response.ok) {
     throw new Error(`Failed to get enhanced analytics: ${response.statusText}`);
@@ -278,13 +298,13 @@ export async function getEnhancedAnalytics(runId: string): Promise<any> {
 }
 
 export async function getAllRuns(): Promise<string[]> {
-  const response = await fetch(`${API_BASE}/runs`);
+  const response = await fetch(`${API_BASE}/run`);
 
   if (!response.ok) {
     throw new Error(`Failed to get runs: ${response.statusText}`);
   }
 
-  const data = await response.json();
+  const data = await safeJsonParse(response);
   return data.run_ids || [];
 }
 
