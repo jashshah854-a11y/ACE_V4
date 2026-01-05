@@ -1149,18 +1149,14 @@ async def stream_ask_response(request: AskRequest):
         steps = generate_reasoning_steps(request.query, request.evidence_type)
         
         for step in steps:
-            yield f"data: {{\"type\": \"step\", \"content\": \"{step}\"}}
-
-"
+            yield f'data: {{"type": "step", "content": "{step}"}}\n\n'
             await asyncio.sleep(0.3)  # 300ms delay between steps
         
         # Build evidence context
         evidence_context = build_evidence_context(evidence, request.evidence_type)
         
         # Stream thinking indicator
-        yield f"data: {{\"type\": \"thinking\", \"content\": \"Analyzing evidence...\"}}
-
-"
+        yield f'data: {{"type": "thinking", "content": "Analyzing evidence..."}}\n\n'
         await asyncio.sleep(0.5)
         
         # Generate response using Gemini (if available)
@@ -1191,37 +1187,27 @@ Rules:
                 words = response_text.split()
                 for i in range(0, len(words), 3):  # Stream 3 words at a time
                     chunk = " ".join(words[i:i+3])
-                    yield f"data: {{\"type\": \"token\", \"content\": \"{chunk} \"}}
-
-"
+                    yield f'data: {{"type": "token", "content": "{chunk} "}}\n\n'
                     await asyncio.sleep(0.1)
             else:
                 # Fallback template response
                 response_text = f"Based on the evidence: {evidence_context[:200]}..."
-                yield f"data: {{\"type\": \"token\", \"content\": \"{response_text}\"}}
-
-"
+                yield f'data: {{"type": "token", "content": "{response_text}"}}\n\n'
         
         except Exception as e:
             logger.error(f"[ASK-STREAM] Gemini error: {e}")
             # Fallback response
             response_text = "I encountered an issue generating a detailed response. Please try rephrasing your question."
-            yield f"data: {{\"type\": \"token\", \"content\": \"{response_text}\"}}
-
-"
+            yield f'data: {{"type": "token", "content": "{response_text}"}}\n\n'
         
         # Stream completion
-        yield f"data: {{\"type\": \"done\", \"content\": {{\"status\": \"complete\"}}}}
-
-"
+        yield f'data: {{"type": "done", "content": {{"status": "complete"}}}}\n\n'
         logger.info(f"[ASK-STREAM] Success - Stream completed")
         
     except Exception as e:
         # IRON DOME: Stream error but don't crash
         logger.error(f"[ASK-STREAM] Unexpected error: {e}", exc_info=True)
-        yield f"data: {{\"type\": \"error\", \"content\": \"An error occurred: {str(e)}\"}}
-
-"
+        yield f'data: {{"type": "error", "content": "An error occurred: {str(e)}"}}\n\n'
 
 
 @app.post("/api/ask/stream", tags=["Intelligence"])
