@@ -1079,20 +1079,40 @@ async def list_runs(
     }
 
 
-@app.post("/api/ask")
+@app.post("/api/ask", tags=["Intelligence"])
 async def ask_contextual_question(request: AskRequest):
     """
     Answer contextual questions about evidence with grounding.
     Provides reasoning steps and evidence-based responses.
+    
+    IRON DOME: Never crashes. Returns safe fallback if Gemini unavailable.
+    ANTI-WRAPPER: Only responds based on Evidence Object (JSON), not raw data.
     """
     try:
+        logger.info(f"[ASK] Query: {request.query[:50]}... | Run: {request.run_id}")
         result = await process_ask_query(request)
+        logger.info(f"[ASK] Success - Response generated")
         return JSONResponse(content=result)
     except HTTPException as e:
+        logger.warning(f"[ASK] HTTP error: {e.detail}")
         raise e
     except Exception as e:
-        logger.error(f"Error in /api/ask: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # IRON DOME: Log but don't crash
+        logger.error(f"[ASK] Unexpected error: {e}", exc_info=True)
+        
+        # Return safe fallback response
+        return JSONResponse(
+            status_code=200,  # Don't return 500 - fail open
+            content={
+                "answer": "I encountered an issue processing your question. Please try rephrasing or contact support.",
+                "reasoning_steps": [
+                    {"step": "Error encountered", "status": "error"}
+                ],
+                "evidence_refs": [],
+                "confidence": 0.0,
+                "error_log": str(e)
+            }
+        )
 
 
 if __name__ == "__main__":
