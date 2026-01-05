@@ -93,6 +93,8 @@ async def startup_event():
         logger.error("[API] Job queue will not be available - /run endpoint will return 503")
         # Don't raise - let app start but /run will return 503
 
+# FORCE REBUILD 2026-01-05T02:28:00
+
 
 # Ensure data directory exists
 # Ensure data directory exists
