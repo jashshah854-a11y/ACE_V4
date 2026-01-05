@@ -352,32 +352,6 @@ export async function askQuestion(
   return response.json();
 }
 
-// Polling utility for run status
-export async function pollRunStatus(
-  runId: string,
-  onUpdate: (status: RunState) => void,
-  intervalMs: number = 2000
-): Promise<RunState> {
-  return new Promise((resolve, reject) => {
-    const poll = async () => {
-      try {
-        const status = await getRunStatus(runId);
-        onUpdate(status);
 
-        if (status.status === "completed" || status.status === "complete") {
-          resolve(status);
-        } else if (status.status === "failed") {
-          reject(new Error(status.error || "Analysis failed"));
-        } else {
-          setTimeout(poll, intervalMs);
-        }
-      } catch (error) {
-        reject(error);
-      }
-    };
-
-    poll();
-  });
-}
 
 // PHASE 10: What-If Simulation
