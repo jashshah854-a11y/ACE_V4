@@ -280,3 +280,72 @@ export async function pollRunStatus(
     poll();
   });
 }
+
+// PHASE 10: What-If Simulation
+export interface SimulationRequest {
+  target_column: string;
+  modification_factor: number;
+}
+
+export interface SimulationResult {
+  run_id: string;
+  modification: {
+    column: string;
+    factor: number;
+    description: string;
+  };
+  delta: {
+    churn_risk?: {
+      original: number;
+      simulated: number;
+      delta: number;
+      delta_direction: 'increase' | 'decrease';
+      delta_percentage: number;
+    };
+    ghost_revenue?: {
+      original: number;
+      simulated: number;
+      delta: number;
+    };
+    zombie_cohorts?: {
+      original: number;
+      simulated: number;
+      delta: number;
+    };
+  };
+}
+
+export async function simulateScenario(
+  runId: string,
+  request: SimulationRequest
+): Promise<SimulationResult> {
+  console.log("[SIMULATE] Starting simulation...");
+  console.log("[SIMULATE] Run ID:", runId);
+  console.log("[SIMULATE] Column:", request.target_column);
+  console.log("[SIMULATE] Factor:", request.modification_factor);
+
+  try {
+    const response = await fetch(`${API_BASE}/run/${runId}/simulate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+
+    console.log("[SIMULATE] Response status:", response.status);
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("[SIMULATE] Error response:", error);
+      throw new Error(`Simulation failed (${response.status}): ${error}`);
+    }
+
+    const data = await response.json();
+    console.log("[SIMULATE] Success! Delta:", data.delta);
+    return data;
+  } catch (error) {
+    console.error("[SIMULATE] Fetch error:", error);
+    throw error;
+  }
+}
