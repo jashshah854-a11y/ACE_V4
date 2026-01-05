@@ -227,6 +227,14 @@ export default function EvidenceRail({ isOpen, onClose, activeEvidence, data, ru
                             )}
                         </div>
 
+                        {/* PHASE 10: What-If Simulation Controls */}
+                        {activeEvidence === 'business_pulse' && numericColumns.length > 0 && (
+                            <SimulationControls
+                                runId={runId}
+                                availableColumns={numericColumns}
+                            />
+                        )}
+
                         {/* Response Area */}
                         {/* Ask ACE Interface */}
                         <div className="border-t border-gray-200 dark:border-gray-800 p-6 bg-gray-50 dark:bg-gray-900/50">
