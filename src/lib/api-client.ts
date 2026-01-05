@@ -236,6 +236,48 @@ export async function getAllRuns(): Promise<string[]> {
   return data.run_ids || [];
 }
 
+export interface Modification {
+  target_column: string;
+  modification_factor: number;
+}
+
+export interface SimulationRequest {
+  target_column?: string; // Legacy support
+  modification_factor?: number; // Legacy support
+  modifications?: Modification[];
+}
+
+export interface SimulationResult {
+  run_id: string;
+  delta: any;
+  business_impact: any;
+}
+
+export async function simulateScenario(runId: string, request: SimulationRequest): Promise<SimulationResult> {
+  // Auto-convert legacy single-param to list format if needed
+  if (!request.modifications && request.target_column && request.modification_factor) {
+    request.modifications = [{
+      target_column: request.target_column,
+      modification_factor: request.modification_factor
+    }];
+  }
+
+  const response = await fetch(`${API_BASE}/run/${runId}/simulate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Simulation failed: ${error}`);
+  }
+
+  return response.json();
+}
+
 export async function askQuestion(
   runId: string,
   query: string,
