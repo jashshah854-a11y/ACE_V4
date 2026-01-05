@@ -62,7 +62,7 @@ const ExecutivePulse = () => {
   const { setSafeMode } = useSimulation();
 
   // Sync Safe Mode state
-  useMemo(() => {
+  useEffect(() => {
     setSafeMode(reportData.safeMode);
   }, [reportData.safeMode, setSafeMode]);
 
