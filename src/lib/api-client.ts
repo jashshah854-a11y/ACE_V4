@@ -139,9 +139,18 @@ export async function startAnalysis(file: File, taskIntent?: any): Promise<{ run
   const formData = new FormData();
   formData.append("file", file);
 
-  // Add task intent if provided
+  // Add required fields
+  formData.append("confidence_acknowledged", "true");
+
+  // Add task intent (required field)
   if (taskIntent) {
     formData.append("task_intent", JSON.stringify(taskIntent));
+  } else {
+    // Default task intent if not provided
+    formData.append("task_intent", JSON.stringify({
+      primary_question: "Analyze this dataset",
+      confidence_threshold: 0.8
+    }));
   }
 
   try {
