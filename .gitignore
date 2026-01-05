@@ -67,6 +67,9 @@ archive/
 .env.test
 !.env.example
 
+# MCP Configuration (contains API keys)
+.mcp-config.json
+
 # Binaries and installers
 *.exe
 *.dll
