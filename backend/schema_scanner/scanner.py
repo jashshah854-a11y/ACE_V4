@@ -120,11 +120,39 @@ def scan_dataset(file_path: str, sample_size: int = 5, corr_threshold: float = 0
             "missing_rate": float(series.isna().mean())
         }
 
-    # Correlations
+    # Correlations - PHASE 9: Dimensionality Gate
     if len(result["basic_types"]["numeric"]) > 1:
         # Select only numeric columns for correlation
         numeric_df = df[result["basic_types"]["numeric"]].apply(pd.to_numeric, errors='coerce')
-        corr_matrix = numeric_df.corr()
+        
+        # DIMENSIONALITY GATE: Handle high-dimensional datasets efficiently
+        n_numeric = len(result["basic_types"]["numeric"])
+        DIMENSIONALITY_THRESHOLD = 500
+        
+        if n_numeric > DIMENSIONALITY_THRESHOLD:
+            # High-dimensional mode: Use variance-based feature selection
+            print(f"[DIMENSIONALITY GATE] High dimensionality detected: {n_numeric} columns")
+            print(f"[DIMENSIONALITY GATE] Switching to heuristic correlation mode (top 50 variance features)")
+            
+            # Calculate variances
+            variances = numeric_df.var()
+            
+            # Select top 50 features by variance
+            top_features = variances.nlargest(50).index.tolist()
+            numeric_df_reduced = numeric_df[top_features]
+            
+            # Calculate correlations only for top features
+            corr_matrix = numeric_df_reduced.corr()
+            
+            # Add metadata about dimensionality mode
+            result["dimensionality_mode"] = "heuristic"
+            result["total_numeric_features"] = n_numeric
+            result["analyzed_features"] = len(top_features)
+            result["performance_note"] = f"Analyzed top {len(top_features)} features by variance to optimize performance"
+        else:
+            # Standard mode: Full correlation matrix
+            corr_matrix = numeric_df.corr()
+            result["dimensionality_mode"] = "standard"
 
         for col in corr_matrix.columns:
             result["relationships"]["correlations"][col] = {}
