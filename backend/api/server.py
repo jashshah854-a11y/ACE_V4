@@ -30,6 +30,8 @@ from jobs.progress import ProgressTracker
 from core.config import settings
 from core.task_contract import parse_task_intent, TaskIntentValidationError
 from api.contextual_intelligence import AskRequest, process_ask_query
+from core.simulation import SimulationEngine
+from core.enhanced_analytics import EnhancedAnalytics
 import pandas as pd
 
 # Set up logging
@@ -1111,6 +1113,78 @@ async def ask_contextual_question(request: AskRequest):
                 "evidence_refs": [],
                 "confidence": 0.0,
                 "error_log": str(e)
+            }
+        )
+
+
+class SimulationRequest(BaseModel):
+    target_column: str
+    modification_factor: float  # e.g., 1.1 for 10% increase
+
+
+@app.post("/run/{run_id}/simulate", tags=["Intelligence"])
+async def simulate_scenario(run_id: str, request: SimulationRequest):
+    """
+    Run What-If scenario simulation
+    
+    Returns delta between original and simulated analytics.
+    CONSTRAINT: All simulations are ephemeral (RAM only) - never modify original data.
+    """
+    try:
+        logger.info(f"[SIMULATE] Run: {run_id} | Column: {request.target_column} | Factor: {request.modification_factor}")
+        
+        # Initialize simulation engine
+        engine = SimulationEngine(run_id)
+        
+        # Load original dataset
+        df_original = engine.load_dataset()
+        
+        # Apply modification (ephemeral copy)
+        df_simulated = engine.apply_modification(
+            df_original,
+            request.target_column,
+            request.modification_factor
+        )
+        
+        # Load original analytics
+        original_analytics = engine.load_original_analytics()
+        
+        # Re-run analytics on simulated data
+        analyzer = EnhancedAnalytics(df_simulated)
+        simulated_bi = analyzer.compute_business_intelligence()
+        
+        # Calculate delta
+        delta = engine.calculate_delta(
+            original_analytics.get('business_intelligence', {}),
+            simulated_bi
+        )
+        
+        logger.info(f"[SIMULATE] Success - Delta calculated")
+        
+        return JSONResponse(content={
+            "run_id": run_id,
+            "modification": {
+                "column": request.target_column,
+                "factor": request.modification_factor,
+                "description": f"{request.target_column} modified by {(request.modification_factor - 1) * 100:.1f}%"
+            },
+            "delta": delta
+        })
+        
+    except FileNotFoundError as e:
+        logger.error(f"[SIMULATE] File not found: {e}")
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        logger.error(f"[SIMULATE] Invalid parameter: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        # IRON DOME: Log but don't crash
+        logger.error(f"[SIMULATE] Unexpected error: {e}", exc_info=True)
+        return JSONResponse(
+            status_code=200,
+            content={
+                "error": str(e),
+                "message": "Simulation failed. Please check parameters."
             }
         )
 
