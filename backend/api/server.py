@@ -95,8 +95,19 @@ async def startup_event():
 
 
 # Ensure data directory exists
-DATA_DIR = Path("data")
+# Ensure data directory exists
+# Fix: Anchor DATA_DIR to absolute path relative to project root (backend/)
+# This prevents CWD mismatch (e.g. running from api/ vs backend/)
+DATA_DIR = Path(__file__).parent.parent / "data"
 DATA_DIR.mkdir(exist_ok=True)
+
+print(f"🚀 SERVER STARTING - VERSION: REDIS_FALLBACK_V3 - DATA_DIR: {DATA_DIR.absolute()}")
+try:
+    sys.path.append(str(Path(__file__).parent.parent))
+    import jobs.redis_queue
+    print("✅ jobs.redis_queue import verified")
+except ImportError as e:
+    print(f"❌ CRITICAL: jobs.redis_queue import failed: {e}")
 
 
 # OPERATION UNSINKABLE - Layer 1: The Gatekeeper
