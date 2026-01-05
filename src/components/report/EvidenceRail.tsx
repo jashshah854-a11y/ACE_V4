@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ReportDataResult } from '@/types/reportTypes';
 import { BusinessPulse } from './business/BusinessPulse';
 import { PredictiveDriversChart } from './predictive/PredictiveDriversChart';
+import SimulationControls from './SimulationControls';
 
 interface EvidenceRailProps {
     isOpen: boolean;
@@ -29,6 +30,16 @@ export default function EvidenceRail({ isOpen, onClose, activeEvidence, data, ru
     const [isAsking, setIsAsking] = React.useState(false);
     const [reasoningSteps, setReasoningSteps] = React.useState<string[]>([]);
     const [answer, setAnswer] = React.useState<string | null>(null);
+
+    // Extract numeric columns for simulation
+    const numericColumns = React.useMemo(() => {
+        if (!data.profile?.columns) return [];
+        return Object.entries(data.profile.columns)
+            .filter(([_, col]: [string, any]) =>
+                col.dtype && (col.dtype.includes('int') || col.dtype.includes('float'))
+            )
+            .map(([name]) => name);
+    }, [data.profile]);
 
     // Close on Escape key
     React.useEffect(() => {
