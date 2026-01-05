@@ -255,14 +255,16 @@ export async function getRunStatus(runId: string): Promise<RunState> {
 // Alias for backward compatibility
 export const getRunState = getRunStatus;
 
-export async function getReport(runId: string): Promise<ReportData> {
+// Report is returned as a raw Markdown string (FileResponse), NOT JSON.
+// Fixes "Unexpected token #" error.
+export async function getReport(runId: string): Promise<string> {
   const response = await fetch(`${API_BASE}/runs/${runId}/report`);
 
   if (!response.ok) {
     throw new Error(`Failed to get report: ${response.statusText}`);
   }
 
-  return response.json();
+  return response.text();
 }
 
 export async function getEnhancedAnalytics(runId: string): Promise<any> {
