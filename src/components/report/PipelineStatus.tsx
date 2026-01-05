@@ -183,8 +183,8 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
     },
   });
 
-  const isComplete = state?.status === "completed" || state?.status === "complete";
-  const isFailed = state?.status === "failed" || state?.status === "complete_with_errors";
+  const isComplete = state?.status === "completed" || state?.status === "complete" || state?.status === "complete_with_errors";
+  const isFailed = state?.status === "failed";
 
   const stepStates = useMemo(() => {
     if (!state) return {};
