@@ -1,5 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Form
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -1117,9 +1117,262 @@ async def ask_contextual_question(request: AskRequest):
         )
 
 
+# NEURAL PULSE: Server-Sent Events (SSE) Streaming
+async def stream_ask_response(request: AskRequest):
+    """
+    Stream reasoning steps and response tokens in real-time using SSE.
+    
+    Format: data: {"type": "step", "content": "..."}
+    Format: data: {"type": "token", "content": "..."}
+    Format: data: {"type": "done", "content": {...}}
+    """
+    import asyncio
+    
+    try:
+        logger.info(f"[ASK-STREAM] Query: {request.query[:50]}... | Run: {request.run_id}")
+        
+        # Load evidence
+        from api.contextual_intelligence import (
+            load_evidence_object,
+            generate_reasoning_steps,
+            build_evidence_context
+        )
+        
+        evidence = load_evidence_object(request.run_id, request.evidence_type)
+        
+        if not evidence:
+            # Stream error
+            yield f"data: {{\"type\": \"error\", \"content\": \"Evidence not found for run {request.run_id}\"}}
+
+"
+            return
+        
+        # Generate and stream reasoning steps
+        steps = generate_reasoning_steps(request.query, request.evidence_type)
+        
+        for step in steps:
+            yield f"data: {{\"type\": \"step\", \"content\": \"{step}\"}}
+
+"
+            await asyncio.sleep(0.3)  # 300ms delay between steps
+        
+        # Build evidence context
+        evidence_context = build_evidence_context(evidence, request.evidence_type)
+        
+        # Stream thinking indicator
+        yield f"data: {{\"type\": \"thinking\", \"content\": \"Analyzing evidence...\"}}
+
+"
+        await asyncio.sleep(0.5)
+        
+        # Generate response using Gemini (if available)
+        try:
+            from api.gemini_client import generate_strategic_insight, is_gemini_available
+            
+            if is_gemini_available():
+                # Build prompt
+                prompt = f"""
+You are ACE, an AI data analyst. Answer this question based ONLY on the evidence provided.
+
+Question: {request.query}
+
+Evidence:
+{evidence_context}
+
+Rules:
+1. ONLY use information from the Evidence section
+2. If the evidence doesn't contain the answer, say "I cannot answer that based on the available data"
+3. Cite specific numbers from the evidence
+4. Be concise and direct
+"""
+                
+                # Generate response
+                response_text = generate_strategic_insight(prompt)
+                
+                # Stream response tokens (simulate streaming by chunking)
+                words = response_text.split()
+                for i in range(0, len(words), 3):  # Stream 3 words at a time
+                    chunk = " ".join(words[i:i+3])
+                    yield f"data: {{\"type\": \"token\", \"content\": \"{chunk} \"}}
+
+"
+                    await asyncio.sleep(0.1)
+            else:
+                # Fallback template response
+                response_text = f"Based on the evidence: {evidence_context[:200]}..."
+                yield f"data: {{\"type\": \"token\", \"content\": \"{response_text}\"}}
+
+"
+        
+        except Exception as e:
+            logger.error(f"[ASK-STREAM] Gemini error: {e}")
+            # Fallback response
+            response_text = "I encountered an issue generating a detailed response. Please try rephrasing your question."
+            yield f"data: {{\"type\": \"token\", \"content\": \"{response_text}\"}}
+
+"
+        
+        # Stream completion
+        yield f"data: {{\"type\": \"done\", \"content\": {{\"status\": \"complete\"}}}}
+
+"
+        logger.info(f"[ASK-STREAM] Success - Stream completed")
+        
+    except Exception as e:
+        # IRON DOME: Stream error but don't crash
+        logger.error(f"[ASK-STREAM] Unexpected error: {e}", exc_info=True)
+        yield f"data: {{\"type\": \"error\", \"content\": \"An error occurred: {str(e)}\"}}
+
+"
+
+
+@app.post("/api/ask/stream", tags=["Intelligence"])
+async def ask_contextual_question_stream(request: AskRequest):
+    """
+    Stream reasoning steps and response in real-time using Server-Sent Events.
+    
+    NEURAL PULSE: Streams thinking process visibly.
+    IRON DOME: Never crashes, streams errors gracefully.
+    ANTI-WRAPPER: Only responds based on Evidence Object (JSON), not raw data.
+    """
+    return StreamingResponse(
+        stream_ask_response(request),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"  # Disable nginx buffering
+        }
+    )
+
+
 class SimulationRequest(BaseModel):
     target_column: str
     modification_factor: float  # e.g., 1.1 for 10% increase
+
+
+# NEURAL PULSE: Streaming Simulation Progress
+async def stream_simulation_progress(run_id: str, request: SimulationRequest):
+    """
+    Stream simulation progress updates in real-time using SSE.
+    
+    Format: data: {"type": "progress", "content": "..."}
+    Format: data: {"type": "result", "content": {...}}
+    """
+    import asyncio
+    
+    try:
+        logger.info(f"[SIMULATE-STREAM] Run: {run_id} | Column: {request.target_column} | Factor: {request.modification_factor}")
+        
+        # Step 1: Initialize
+        yield f'data: {{"type": "progress", "content": "Initializing simulation engine..."}}\n\n'
+        await asyncio.sleep(0.3)
+        
+        # Initialize simulation engine
+        engine = SimulationEngine(run_id)
+        
+        # Step 2: Load dataset
+        yield f'data: {{"type": "progress", "content": "Loading original dataset..."}}\n\n'
+        await asyncio.sleep(0.3)
+        
+        df_original = engine.load_dataset()
+        
+        # Step 3: Clone dataset
+        yield f'data: {{"type": "progress", "content": "Cloning dataset to RAM (ephemeral copy)..."}}\n\n'
+        await asyncio.sleep(0.3)
+        
+        # Step 4: Apply modification
+        modification_pct = (request.modification_factor - 1) * 100
+        yield f'data: {{"type": "progress", "content": "Applying modification: {request.target_column} {modification_pct:+.1f}%..."}}\n\n'
+        await asyncio.sleep(0.5)
+        
+        df_simulated = engine.apply_modification(
+            df_original,
+            request.target_column,
+            request.modification_factor
+        )
+        
+        # Step 5: Load original analytics
+        yield f'data: {{"type": "progress", "content": "Loading baseline analytics..."}}\n\n'
+        await asyncio.sleep(0.3)
+        
+        original_analytics = engine.load_original_analytics()
+        
+        # Step 6: Re-run analytics
+        yield f'data: {{"type": "progress", "content": "Re-running churn risk analysis on modified data..."}}\n\n'
+        await asyncio.sleep(0.5)
+        
+        analyzer = EnhancedAnalytics(df_simulated)
+        simulated_bi = analyzer.compute_business_intelligence()
+        
+        # Step 7: Calculate delta
+        yield f'data: {{"type": "progress", "content": "Calculating delta (before vs after)..."}}\n\n'
+        await asyncio.sleep(0.3)
+        
+        delta = engine.calculate_delta(
+            original_analytics.get('business_intelligence', {}),
+            simulated_bi
+        )
+        
+        # Step 8: Format result
+        if delta.get('churn_risk'):
+            delta_value = delta['churn_risk']['delta']
+            direction = "decreased" if delta_value < 0 else "increased"
+            yield f'data: {{"type": "progress", "content": "Delta detected: Churn risk {direction} by {abs(delta_value):.1f}%"}}\n\n'
+            await asyncio.sleep(0.3)
+        
+        # Step 9: Stream final result
+        result = {
+            "run_id": run_id,
+            "modification": {
+                "column": request.target_column,
+                "factor": request.modification_factor,
+                "description": f"{request.target_column} modified by {modification_pct:.1f}%"
+            },
+            "delta": delta
+        }
+        
+        import json
+        yield f'data: {{"type": "result", "content": {json.dumps(result)}}}\n\n'
+        
+        logger.info(f"[SIMULATE-STREAM] Success - Simulation completed")
+        
+    except FileNotFoundError as e:
+        # IRON DOME: Stream error gracefully
+        logger.error(f"[SIMULATE-STREAM] File not found: {e}")
+        yield f'data: {{"type": "error", "content": "Dataset or analytics not found for this run"}}\n\n'
+    except ValueError as e:
+        # IRON DOME: Stream validation error
+        logger.error(f"[SIMULATE-STREAM] Invalid parameter: {e}")
+        yield f'data: {{"type": "error", "content": "{str(e)}"}}\n\n'
+    except MemoryError as e:
+        # IRON DOME: Safe Mode for RAM overflow
+        logger.error(f"[SIMULATE-STREAM] Memory error: {e}")
+        yield f'data: {{"type": "error", "content": "Safe Mode: Dataset too large for simulation. Try with a smaller dataset."}}\n\n'
+    except Exception as e:
+        # IRON DOME: Catch-all fail-open
+        logger.error(f"[SIMULATE-STREAM] Unexpected error: {e}", exc_info=True)
+        yield f'data: {{"type": "error", "content": "Simulation failed. Please check parameters and try again."}}\n\n'
+
+
+@app.post("/run/{run_id}/simulate/stream", tags=["Intelligence"])
+async def simulate_scenario_stream(run_id: str, request: SimulationRequest):
+    """
+    Stream simulation progress in real-time using Server-Sent Events.
+    
+    NEURAL PULSE: Streams simulation steps visibly.
+    IRON DOME: Never crashes, streams errors gracefully.
+    EPHEMERAL: All simulations are RAM-only, never modify original data.
+    """
+    return StreamingResponse(
+        stream_simulation_progress(run_id, request),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
 
 
 @app.post("/run/{run_id}/simulate", tags=["Intelligence"])
