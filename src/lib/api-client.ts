@@ -112,6 +112,19 @@ export async function uploadDataset(file: File): Promise<DatasetIdentity> {
     return data;
   } catch (error) {
     console.error("[UPLOAD] Fetch error:", error);
+
+    // Layer 2: Intelligent Error Handling - Detect browser blocking
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      if (!navigator.onLine) {
+        throw new Error("No internet connection detected. Please check your network.");
+      }
+      console.warn("[ACE Sentry] Request blocked by client. Suspecting ad blocker.");
+      throw new Error(
+        "BROWSER_BLOCK_DETECTED: Your browser or an extension is blocking this request. " +
+        "Please try disabling ad blockers, or use Chrome/Incognito mode."
+      );
+    }
+
     throw error;
   }
 }
