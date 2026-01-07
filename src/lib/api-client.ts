@@ -257,23 +257,7 @@ export async function pollRunStatus(
   });
 }
 
-// Ensure direct getRunStatus uses the LEGACY endpoint that is currently live
-export async function getRunStatus(runId: string): Promise<RunState> {
-  // EMERGENCY ROLLBACK: Backend deployment failed, still on V3 (/runs/)
-  const response = await fetch(`${API_BASE}/runs/${runId}/state`);
 
-  if (!response.ok) {
-    if (response.status === 404) {
-      throw new Error("Endpoint Mismatch: 404 Not Found");
-    }
-    throw new Error(`Failed to get run status: ${response.statusText}`);
-  }
-
-  return safeJsonParse(response);
-}
-
-// Alias for backward compatibility
-export const getRunState = getRunStatus;
 
 // Report is returned as a raw Markdown string (FileResponse), NOT JSON.
 // Fixes "Unexpected token #" error.
