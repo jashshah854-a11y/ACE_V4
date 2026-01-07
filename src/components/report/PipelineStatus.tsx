@@ -1,7 +1,7 @@
 import React, { useMemo, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { getRunState, RunState } from "@/lib/api-client";
+import { startAnalysis, pollRunStatus, getRunStatus, type RunState } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import {
   Loader2,
@@ -163,7 +163,7 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
     error
   } = useQuery<RunState>({
     queryKey: ["run-state", runId],
-    queryFn: () => getRunState(runId),
+    queryFn: () => getRunStatus(runId),
     enabled: Boolean(runId),
     retry: (failureCount, error) => {
       // Retry 404 errors (state not created yet) up to 3 times
