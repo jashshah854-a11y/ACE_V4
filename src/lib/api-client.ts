@@ -303,89 +303,88 @@ export async function getEnhancedAnalytics(runId: string): Promise<any> {
 
   if (!response.ok) {
     throw new Error(`Failed to get enhanced analytics: ${response.statusText}`);
-    ```
   }
 
   return response.json();
 }
 
 export async function getAllRuns(): Promise<RunHistoryItem[]> {
-  const response = await fetch(`${ API_BASE }/run`);
+  const response = await fetch(`${API_BASE}/run`);
 
-    if (!response.ok) {
-      throw new Error(`Failed to get runs: ${response.statusText}`);
-    }
-
-    return safeJsonParse(response);
+  if (!response.ok) {
+    throw new Error(`Failed to get runs: ${response.statusText}`);
   }
 
-  export interface Modification {
-    target_column: string;
-    modification_factor: number;
+  return safeJsonParse(response);
+}
+
+export interface Modification {
+  target_column: string;
+  modification_factor: number;
+}
+
+export interface SimulationRequest {
+  target_column?: string; // Legacy support
+  modification_factor?: number; // Legacy support
+  modifications?: Modification[];
+}
+
+export interface SimulationResult {
+  run_id: string;
+  delta: any;
+  business_impact: any;
+}
+
+export async function simulateScenario(runId: string, request: SimulationRequest): Promise<SimulationResult> {
+  // Auto-convert legacy single-param to list format if needed
+  if (!request.modifications && request.target_column && request.modification_factor) {
+    request.modifications = [{
+      target_column: request.target_column,
+      modification_factor: request.modification_factor
+    }];
   }
 
-  export interface SimulationRequest {
-    target_column?: string; // Legacy support
-    modification_factor?: number; // Legacy support
-    modifications?: Modification[];
+  const response = await fetch(`${API_BASE}/run/${runId}/simulate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Simulation failed: ${error}`);
   }
 
-  export interface SimulationResult {
-    run_id: string;
-    delta: any;
-    business_impact: any;
+  return safeJsonParse(response);
+}
+
+export async function askQuestion(
+  runId: string,
+  query: string,
+  evidenceType: string = "business_pulse",
+  context: string = "executive_summary"
+): Promise<any> {
+  const response = await fetch(`${API_BASE}/api/ask`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      run_id: runId,
+      query,
+      evidence_type: evidenceType,
+      context,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Ask query failed: ${response.statusText}`);
   }
 
-  export async function simulateScenario(runId: string, request: SimulationRequest): Promise<SimulationResult> {
-    // Auto-convert legacy single-param to list format if needed
-    if (!request.modifications && request.target_column && request.modification_factor) {
-      request.modifications = [{
-        target_column: request.target_column,
-        modification_factor: request.modification_factor
-      }];
-    }
-
-    const response = await fetch(`${API_BASE}/run/${runId}/simulate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(request),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Simulation failed: ${error}`);
-    }
-
-    return safeJsonParse(response);
-  }
-
-  export async function askQuestion(
-    runId: string,
-    query: string,
-    evidenceType: string = "business_pulse",
-    context: string = "executive_summary"
-  ): Promise<any> {
-    const response = await fetch(`${API_BASE}/api/ask`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        run_id: runId,
-        query,
-        evidence_type: evidenceType,
-        context,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Ask query failed: ${response.statusText}`);
-    }
-
-    return safeJsonParse(response);
-  }
+  return safeJsonParse(response);
+}
 
 
 
