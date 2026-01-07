@@ -1,0 +1,178 @@
+{
+  "dataset_info": {
+    "name": "missing_data_hell",
+    "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\stress_tests\\missing_data_hell.csv",
+    "row_count": 400,
+    "column_count": 7,
+    "sample_rows": [
+      {
+        "customer_id": 0,
+        "revenue": NaN,
+        "age": 70.0,
+        "visits": 10.0,
+        "satisfaction": NaN,
+        "tenure_months": 4.0,
+        "last_purchase_date": "2024-01-01"
+      },
+      {
+        "customer_id": 1,
+        "revenue": NaN,
+        "age": NaN,
+        "visits": NaN,
+        "satisfaction": 2.5826105956059675,
+        "tenure_months": NaN,
+        "last_purchase_date": "2024-01-02"
+      },
+      {
+        "customer_id": 2,
+        "revenue": NaN,
+        "age": 65.0,
+        "visits": 6.0,
+        "satisfaction": NaN,
+        "tenure_months": 88.0,
+        "last_purchase_date": "2024-01-03"
+      },
+      {
+        "customer_id": 3,
+        "revenue": NaN,
+        "age": 31.0,
+        "visits": NaN,
+        "satisfaction": NaN,
+        "tenure_months": NaN,
+        "last_purchase_date": "2024-01-04"
+      },
+      {
+        "customer_id": 4,
+        "revenue": 2515.6362045604787,
+        "age": 77.0,
+        "visits": NaN,
+        "satisfaction": NaN,
+        "tenure_months": 24.0,
+        "last_purchase_date": "2024-01-05"
+      }
+    ]
+  },
+  "basic_types": {
+    "numeric": [
+      "customer_id",
+      "revenue",
+      "age",
+      "visits",
+      "satisfaction",
+      "tenure_months"
+    ],
+    "categorical": [],
+    "datetime": [
+      "last_purchase_date"
+    ],
+    "text": []
+  },
+  "stats": {
+    "customer_id": {
+      "mean": 199.5,
+      "median": 199.5,
+      "std": 115.61430130683084,
+      "min": 0.0,
+      "max": 399.0,
+      "skew": 0.0,
+      "missing_rate": 0.0
+    },
+    "revenue": {
+      "mean": 10573.63593599387,
+      "median": 2515.6362045604787,
+      "std": 21825.583978638762,
+      "min": 13.679439449330694,
+      "max": 157614.9335309184,
+      "skew": 4.232247789938331,
+      "missing_rate": 0.5875
+    },
+    "age": {
+      "mean": 48.69318181818182,
+      "median": 47.0,
+      "std": 18.290267797489896,
+      "min": 18.0,
+      "max": 79.0,
+      "skew": 0.01789747776301193,
+      "missing_rate": 0.56
+    },
+    "visits": {
+      "mean": 10.060240963855422,
+      "median": 10.0,
+      "std": 3.074230714673033,
+      "min": 4.0,
+      "max": 18.0,
+      "skew": 0.25947240452750386,
+      "missing_rate": 0.585
+    },
+    "satisfaction": {
+      "mean": 2.995565490905353,
+      "median": 3.093849554135468,
+      "std": 1.1637394588703693,
+      "min": 1.0376835213180318,
+      "max": 4.970180639988044,
+      "skew": -0.010377871987808462,
+      "missing_rate": 0.6225
+    },
+    "tenure_months": {
+      "mean": 51.37179487179487,
+      "median": 51.5,
+      "std": 27.885761877118007,
+      "min": 1.0,
+      "max": 99.0,
+      "skew": -0.06586164567166526,
+      "missing_rate": 0.61
+    }
+  },
+  "relationships": {
+    "correlations": {
+      "customer_id": {
+        "revenue": -0.07525642023348825,
+        "age": -0.012529511910754899,
+        "visits": -0.037831105839809843,
+        "satisfaction": 0.04079037761523994,
+        "tenure_months": -0.055727336928150614
+      },
+      "revenue": {
+        "customer_id": -0.07525642023348825,
+        "age": -0.14617043940065108,
+        "visits": -0.036004257087788,
+        "satisfaction": 0.11958649068427196,
+        "tenure_months": 0.1472264989405489
+      },
+      "age": {
+        "customer_id": -0.012529511910754899,
+        "revenue": -0.14617043940065108,
+        "visits": -0.041591425575374805,
+        "satisfaction": -0.040359665710259035,
+        "tenure_months": -0.021809016611943087
+      },
+      "visits": {
+        "customer_id": -0.037831105839809843,
+        "revenue": -0.036004257087788,
+        "age": -0.041591425575374805,
+        "satisfaction": -0.3486340155515059,
+        "tenure_months": 0.0011451017392822816
+      },
+      "satisfaction": {
+        "customer_id": 0.04079037761523994,
+        "revenue": 0.11958649068427196,
+        "age": -0.040359665710259035,
+        "visits": -0.3486340155515059,
+        "tenure_months": -0.13373153525556378
+      },
+      "tenure_months": {
+        "customer_id": -0.055727336928150614,
+        "revenue": 0.1472264989405489,
+        "age": -0.021809016611943087,
+        "visits": 0.0011451017392822816,
+        "satisfaction": -0.13373153525556378
+      }
+    },
+    "strong_pairs": []
+  },
+  "warnings": {
+    "missing_numeric": false,
+    "low_row_count": false,
+    "suspected_data_issues": []
+  }
+}

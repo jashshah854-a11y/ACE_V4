@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { AceLogo } from "@/components/ui/AceLogo";
-import { Sparkles, FileText, Upload } from "lucide-react";
+import { Sparkles, FileText, Upload, Beaker } from "lucide-react";
 import { useTaskContext } from "@/context/TaskContext";
 
 export const Navbar = () => {
@@ -40,18 +40,20 @@ export const Navbar = () => {
               <Sparkles className="w-4 h-4" />
               Pulse
             </Link>
+
             <Link
-              to="/upload"
+              to={location.pathname.includes("/report/") ? location.pathname.replace("/report/", "/lab/") : "/lab"}
               className={cn(
                 "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2",
-                location.pathname === "/upload"
+                location.pathname.includes("/lab")
                   ? "bg-navy-900 text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
             >
-              <Upload className="w-4 h-4" />
-              Upload
+              <Beaker className="w-4 h-4" />
+              Lab
             </Link>
+
             <Link
               to={reportsHref}
               className={cn(

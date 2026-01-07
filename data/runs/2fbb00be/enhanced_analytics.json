@@ -1,0 +1,401 @@
+{
+  "correlation_analysis": {
+    "available": true,
+    "pearson_matrix": {
+      "customer_id": {
+        "customer_id": 1.0,
+        "revenue": 0.19837267764892563,
+        "age": 0.1270723235418851,
+        "visits": 0.19415354601713353,
+        "satisfaction": 0.07776839503010874
+      },
+      "revenue": {
+        "customer_id": 0.19837267764892563,
+        "revenue": 1.0,
+        "age": 0.37163335980011514,
+        "visits": 0.5304432291166326,
+        "satisfaction": 0.1599495235759682
+      },
+      "age": {
+        "customer_id": 0.1270723235418851,
+        "revenue": 0.37163335980011514,
+        "age": 1.0,
+        "visits": 0.3291794132259689,
+        "satisfaction": 0.8684526462855694
+      },
+      "visits": {
+        "customer_id": 0.19415354601713353,
+        "revenue": 0.5304432291166326,
+        "age": 0.3291794132259689,
+        "visits": 1.0,
+        "satisfaction": 0.11909268395104475
+      },
+      "satisfaction": {
+        "customer_id": 0.07776839503010874,
+        "revenue": 0.1599495235759682,
+        "age": 0.8684526462855694,
+        "visits": 0.11909268395104475,
+        "satisfaction": 1.0
+      }
+    },
+    "spearman_matrix": {
+      "customer_id": {
+        "customer_id": 1.0,
+        "revenue": 0.10497824391297565,
+        "age": 0.05536744949069066,
+        "visits": 0.04367635386361868,
+        "satisfaction": 0.026961803847215388
+      },
+      "revenue": {
+        "customer_id": 0.10497824391297565,
+        "revenue": 1.0,
+        "age": 0.13736074697798578,
+        "visits": 0.06259071224768496,
+        "satisfaction": -0.03430775323101293
+      },
+      "age": {
+        "customer_id": 0.05536744949069066,
+        "revenue": 0.13736074697798578,
+        "age": 1.0,
+        "visits": -0.026472815985871673,
+        "satisfaction": 0.010655965845111151
+      },
+      "visits": {
+        "customer_id": 0.04367635386361868,
+        "revenue": 0.06259071224768496,
+        "age": -0.026472815985871673,
+        "visits": 1.0,
+        "satisfaction": -0.007392245000643376
+      },
+      "satisfaction": {
+        "customer_id": 0.026961803847215388,
+        "revenue": -0.03430775323101293,
+        "age": 0.010655965845111151,
+        "visits": -0.007392245000643376,
+        "satisfaction": 1.0
+      }
+    },
+    "strong_correlations": [
+      {
+        "feature1": "age",
+        "feature2": "satisfaction",
+        "pearson": 0.8684526462855694,
+        "spearman": 0.010655965845111151,
+        "strength": "very_strong",
+        "direction": "positive"
+      },
+      {
+        "feature1": "revenue",
+        "feature2": "visits",
+        "pearson": 0.5304432291166326,
+        "spearman": 0.06259071224768496,
+        "strength": "moderate",
+        "direction": "positive"
+      }
+    ],
+    "total_correlations": 2,
+    "features": [
+      "customer_id",
+      "revenue",
+      "age",
+      "visits",
+      "satisfaction"
+    ],
+    "insights": [
+      "Found 2 significant feature relationships",
+      "Strongest relationship: age and satisfaction (positive, r=0.87)",
+      "1 strong positive correlations indicate features that increase together"
+    ]
+  },
+  "distribution_analysis": {
+    "available": true,
+    "distributions": {
+      "customer_id": {
+        "mean": 249.5,
+        "median": 249.5,
+        "std": 144.4818327679989,
+        "min": 0.0,
+        "max": 499.0,
+        "skewness": 0.0,
+        "kurtosis": -1.2000096000384002,
+        "is_normal": false,
+        "normality_p_value": 2.9461017126100505e-11,
+        "distribution_type": "symmetric",
+        "quartiles": {
+          "q1": 124.75,
+          "q2": 249.5,
+          "q3": 374.25
+        },
+        "iqr": 249.5,
+        "outlier_count": 0,
+        "outlier_percentage": 0.0
+      },
+      "revenue": {
+        "mean": 82805.7474989958,
+        "median": 1196.6942970347825,
+        "std": 693485.4644672272,
+        "min": 62.7093169578609,
+        "max": 9301169.354863264,
+        "skewness": 10.365746416197542,
+        "kurtosis": 115.86626417321534,
+        "is_normal": false,
+        "normality_p_value": 2.91073155675782e-43,
+        "distribution_type": "right_skewed",
+        "quartiles": {
+          "q1": 622.2046320695646,
+          "q2": 1196.6942970347825,
+          "q3": 2324.667258436421
+        },
+        "iqr": 1702.4626263668565,
+        "outlier_count": 49,
+        "outlier_percentage": 9.8
+      },
+      "age": {
+        "mean": 52.016,
+        "median": 50.0,
+        "std": 48.891107830051276,
+        "min": 18.0,
+        "max": 999.0,
+        "skewness": 15.012884435288058,
+        "kurtosis": 281.7386398674705,
+        "is_normal": false,
+        "normality_p_value": 9.884627943828984e-40,
+        "distribution_type": "right_skewed",
+        "quartiles": {
+          "q1": 33.0,
+          "q2": 50.0,
+          "q3": 64.0
+        },
+        "iqr": 31.0,
+        "outlier_count": 5,
+        "outlier_percentage": 1.0
+      },
+      "visits": {
+        "mean": 822.644,
+        "median": 10.0,
+        "std": 7134.645011501573,
+        "min": 2.0,
+        "max": 90494.0,
+        "skewness": 9.769165899496956,
+        "kurtosis": 100.15007446188777,
+        "is_normal": false,
+        "normality_p_value": 2.396401500262357e-43,
+        "distribution_type": "right_skewed",
+        "quartiles": {
+          "q1": 8.0,
+          "q2": 10.0,
+          "q3": 12.0
+        },
+        "iqr": 4.0,
+        "outlier_count": 12,
+        "outlier_percentage": 2.4
+      },
+      "satisfaction": {
+        "mean": 23.101827389434405,
+        "median": 3.002067028913412,
+        "std": 447.0586939393985,
+        "min": -50.0,
+        "max": 9999.0,
+        "skewness": 22.28921744186608,
+        "kurtosis": 494.8732231169349,
+        "is_normal": false,
+        "normality_p_value": 2.0331220983793969e-44,
+        "distribution_type": "right_skewed",
+        "quartiles": {
+          "q1": 2.0111364718985687,
+          "q2": 3.002067028913412,
+          "q3": 4.129297336448241
+        },
+        "iqr": 2.1181608645496723,
+        "outlier_count": 3,
+        "outlier_percentage": 0.6
+      }
+    },
+    "insights": [
+      "Analyzed 5 numeric features",
+      "4 features show significant skewness",
+      "1 features contain >5% outliers"
+    ]
+  },
+  "feature_importance": {
+    "available": true,
+    "target": "revenue",
+    "task_type": "regression",
+    "feature_importance": [
+      {
+        "feature": "customer_id",
+        "importance": 399.81471297228774
+      },
+      {
+        "feature": "age",
+        "importance": 8344.485870304516
+      },
+      {
+        "feature": "visits",
+        "importance": 35.80934788070044
+      },
+      {
+        "feature": "satisfaction",
+        "importance": 622.5132477739128
+      }
+    ],
+    "total_features": 4,
+    "confidence_interval": [
+      -1080865.4258388332,
+      1080865.4258388332
+    ],
+    "confidence": 68.31922149088192,
+    "evidence": {
+      "columns_used": [
+        "customer_id",
+        "age",
+        "visits",
+        "satisfaction"
+      ],
+      "computation_method": "Linear Regression",
+      "result_statistic": {
+        "r2": 0.3663844298176385,
+        "residual_std": 551461.9519585883
+      },
+      "confidence_level": 68.31922149088192,
+      "data_confidence": null,
+      "limitations": [],
+      "evidence_id": "7228811d",
+      "timestamp": "2026-01-02T01:48:44.514011"
+    },
+    "evidence_id": "7228811d",
+    "coefficients": {
+      "customer_id": 399.81471297228774,
+      "age": 8344.485870304516,
+      "visits": 35.80934788070044,
+      "satisfaction": -622.5132477739128
+    },
+    "insights": [
+      "Top 3 features explain 878011.0% of revenue variance",
+      "Most important feature: customer_id (39981.5% importance)"
+    ]
+  },
+  "business_intelligence": {
+    "evidence": {
+      "value_column": "revenue",
+      "segment_value_column": "revenue",
+      "churn_activity_column": "visits"
+    },
+    "value_metrics": {
+      "total_value": 41402873.7494979,
+      "avg_value": 82805.7474989958,
+      "median_value": 1196.6942970347825,
+      "top_10_percent_value": 4591.67351840755,
+      "value_concentration": 0.9763050792157278
+    },
+    "clv_proxy": {
+      "avg_value_per_record": 82805.7474989958,
+      "estimated_total_value": 41402873.7494979,
+      "high_value_threshold": 2324.667258436421,
+      "high_value_count": 125
+    },
+    "segment_value": [
+      {
+        "segment": "Cluster 1",
+        "total_value": 17529069.374726534,
+        "avg_value": 8764534.687363267,
+        "size": 2,
+        "value_per_member": 8764534.687363267,
+        "value_contribution_pct": 42.33780843519132
+      },
+      {
+        "segment": "Cluster 3",
+        "total_value": 11224293.273751808,
+        "avg_value": 5612146.636875904,
+        "size": 2,
+        "value_per_member": 5612146.636875904,
+        "value_contribution_pct": 27.109937686119984
+      },
+      {
+        "segment": "Cluster 2",
+        "total_value": 7982080.280180223,
+        "avg_value": 2660693.4267267413,
+        "size": 3,
+        "value_per_member": 2660693.4267267413,
+        "value_contribution_pct": 19.27904890968353
+      },
+      {
+        "segment": "Cluster 4",
+        "total_value": 3691715.6350967605,
+        "avg_value": 1230571.8783655867,
+        "size": 3,
+        "value_per_member": 1230571.8783655867,
+        "value_contribution_pct": 8.916568587564603
+      },
+      {
+        "segment": "Cluster 0",
+        "total_value": 975715.1857425777,
+        "avg_value": 1991.2554811073014,
+        "size": 490,
+        "value_per_member": 1991.2554811073014,
+        "value_contribution_pct": 2.3566363814405764
+      }
+    ],
+    "churn_risk": {
+      "at_risk_count": 171,
+      "at_risk_percentage": 34.2,
+      "avg_activity": 822.644,
+      "low_activity_threshold": 8.0,
+      "activity_column": "visits"
+    },
+    "available": true,
+    "insights": [
+      "Total value: $41,402,873.75",
+      "High value concentration - significant inequality in value distribution",
+      "Top segment contributes 42.3% of total value",
+      "Warning: 34.2% of records show low activity (churn risk)"
+    ]
+  },
+  "quality_metrics": {
+    "available": true,
+    "overall_completeness": 100.0,
+    "completeness_by_column": {
+      "customer_id": 100.0,
+      "revenue": 100.0,
+      "age": 100.0,
+      "visits": 100.0,
+      "satisfaction": 100.0
+    },
+    "uniqueness_ratios": {
+      "customer_id": 1.0,
+      "revenue": 1.0,
+      "age": 0.134,
+      "visits": 0.054,
+      "satisfaction": 1.0
+    },
+    "consistency_scores": {
+      "customer_id": {
+        "coefficient_of_variation": 0.5790855020761478,
+        "is_consistent": true
+      },
+      "revenue": {
+        "coefficient_of_variation": 8.374846981190977,
+        "is_consistent": false
+      },
+      "age": {
+        "coefficient_of_variation": 0.9399244046072608,
+        "is_consistent": true
+      },
+      "visits": {
+        "coefficient_of_variation": 8.67282203663015,
+        "is_consistent": false
+      },
+      "satisfaction": {
+        "coefficient_of_variation": 19.351659347254074,
+        "is_consistent": false
+      }
+    },
+    "total_records": 500,
+    "total_features": 5,
+    "numeric_features": 5,
+    "categorical_features": 0,
+    "insights": [
+      "3 features show high variability"
+    ]
+  }
+}

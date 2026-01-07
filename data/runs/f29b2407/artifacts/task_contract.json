@@ -1,0 +1,35 @@
+{
+  "task": "regression",
+  "template": "finance_ops",
+  "data_type": "financial_accounting",
+  "allowed_sections": [
+    "data_overview",
+    "quality",
+    "eda",
+    "modeling",
+    "insights"
+  ],
+  "forbidden_sections": [],
+  "limitations": [],
+  "scope_inclusions": [
+    "churn_risk",
+    "customer_id",
+    "revenue",
+    "segment",
+    "visits"
+  ],
+  "scope_exclusions": [],
+  "forbidden_claims": {
+    "allow_causality": false,
+    "allow_forecasting": true
+  },
+  "primary_question": "Analyze churn risk in user base",
+  "decision_context": "Identify at-risk customers",
+  "required_output_type": "descriptive",
+  "success_criteria": null,
+  "constraints": null,
+  "confidence_threshold": 0.8,
+  "out_of_scope_dimensions": [],
+  "is_signed": true,
+  "signed_at": "2026-01-02T17:42:54.490606Z"
+}

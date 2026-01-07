@@ -1,0 +1,196 @@
+{
+  "run_id": "66785d98",
+  "status": "complete_with_errors",
+  "created_at": "2026-01-02T01:31:43Z",
+  "updated_at": "2026-01-02T01:32:23Z",
+  "current_step": "sentry",
+  "next_step": "sentry",
+  "steps_completed": [
+    "ingestion",
+    "type_identifier",
+    "scanner",
+    "interpreter",
+    "validator",
+    "overseer",
+    "regression"
+  ],
+  "failed_steps": [],
+  "steps": {
+    "ingestion": {
+      "name": "ingestion",
+      "description": "Data ingestion and sanitization",
+      "status": "completed",
+      "completed_at": "2026-01-02T01:31:43Z",
+      "stdout_tail": "Ingestion completed during run initialization"
+    },
+    "type_identifier": {
+      "name": "type_identifier",
+      "description": "Identify dataset domain/type from schema and content",
+      "status": "completed",
+      "started_at": "2026-01-02T01:31:44Z",
+      "attempts": 1,
+      "completed_at": "2026-01-02T01:31:47Z",
+      "runtime_seconds": 3.26,
+      "stdout_tail": "{\"timestamp\": \"2026-01-02T01:31:46.825928\", \"level\": \"INFO\", \"logger\": \"ace\", \"message\": \"[LAUNCH] Running Data Type Identification...\"}\n[LAUNCH] Running Data Type Identification...\n{\"timestamp\": \"2026-01-02T01:31:46.880431\", \"level\": \"INFO\", \"logger\": \"ace\", \"message\": \"[OK] Data type identified: financial_accounting (exploratory)\"}\n[OK] Data type identified: financial_accounting (exploratory)\n"
+    },
+    "scanner": {
+      "name": "scanner",
+      "description": "Profile dataset",
+      "status": "completed",
+      "started_at": "2026-01-02T01:31:47Z",
+      "attempts": 1,
+      "completed_at": "2026-01-02T01:31:54Z",
+      "runtime_seconds": 6.98,
+      "stdout_tail": "Scanning: C:\\Users\\jashs\\Projects\\ACE_V4\\data\\stress_tests\\extreme_imbalance.csv\n[DataLoader] Loading full file (0.0 MB)\n[DataLoader] Loaded 1000 rows\nScanner complete.\n"
+    },
+    "interpreter": {
+      "name": "interpreter",
+      "description": "Create schema map",
+      "status": "completed",
+      "started_at": "2026-01-02T01:31:55Z",
+      "attempts": 1,
+      "completed_at": "2026-01-02T01:32:07Z",
+      "runtime_seconds": 12.51,
+      "stdout_tail": "[ERROR] data/schema_scan_output.json not found\n"
+    },
+    "validator": {
+      "name": "validator",
+      "description": "Validate data sufficiency and guardrails",
+      "status": "completed",
+      "started_at": "2026-01-02T01:32:08Z",
+      "attempts": 1,
+      "completed_at": "2026-01-02T01:32:09Z",
+      "runtime_seconds": 1.49,
+      "stdout_tail": "{\"timestamp\": \"2026-01-02T01:32:09.610095\", \"level\": \"INFO\", \"logger\": \"ace\", \"message\": \"[LAUNCH] Running data sufficiency validation...\"}\n[LAUNCH] Running data sufficiency validation...\n{\"timestamp\": \"2026-01-02T01:32:09.642336\", \"level\": \"INFO\", \"logger\": \"ace\", \"message\": \"[OK] Validation completed (mode=insight, confidence=moderate)\"}\n[OK] Validation completed (mode=insight, confidence=moderate)\n"
+    },
+    "overseer": {
+      "name": "overseer",
+      "description": "Clustering and segmentation",
+      "status": "completed",
+      "started_at": "2026-01-02T01:32:10Z",
+      "attempts": 1,
+      "completed_at": "2026-01-02T01:32:23Z",
+      "runtime_seconds": 12.77,
+      "stdout_tail": "{\"timestamp\": \"2026-01-02T01:32:20.144055\", \"level\": \"INFO\", \"logger\": \"ace\", \"message\": \"[LAUNCH] Triggering ACE Overseer...\"}\n[LAUNCH] Triggering ACE Overseer...\n[Overseer] Loading CSV from C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\66785d98\\artifacts\\dataset.parquet\n[Overseer] Loaded 1000 rows, 5 columns\n[Overseer] Dataset fingerprint: 48d1f70a53fe3d38...\n[Overseer] Cache MISS - running fresh clustering...\n[Overseer] Starting clustering...\n   Universal Clustering on ['customer_id', 'revenue', 'visits', 'churn_risk', 'risk_score'] (K=3-5)...\n   Using SEQUENTIAL clustering\n[Overseer] Results cached for future runs\n{\"timestamp\": \"2026-01-02T01:32:22.401590\", \"level\": \"INFO\", \"logger\": \"ace\", \"message\": \"[OK] Overseer V3 Complete. Output saved.\"}\n[OK] Overseer V3 Complete. Output saved.\n"
+    },
+    "regression": {
+      "name": "regression",
+      "description": "Model numeric outcomes",
+      "status": "skipped",
+      "started_at": "2026-01-02T01:32:23Z",
+      "_start_epoch": 1767317543.7909126,
+      "message": "Predictive modeling out of scope for this task contract"
+    },
+    "sentry": {
+      "name": "sentry",
+      "description": "Anomaly detection",
+      "status": "pending"
+    },
+    "personas": {
+      "name": "personas",
+      "description": "Persona generation",
+      "status": "pending"
+    },
+    "fabricator": {
+      "name": "fabricator",
+      "description": "Strategy generation",
+      "status": "pending"
+    },
+    "expositor": {
+      "name": "expositor",
+      "description": "Final report assembly",
+      "status": "pending"
+    }
+  },
+  "history": [
+    {
+      "timestamp": "2026-01-02T01:31:43Z",
+      "event": "Run initialized",
+      "data_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\stress_tests\\extreme_imbalance.csv"
+    },
+    {
+      "timestamp": "2026-01-02T01:31:43Z",
+      "event": "ingestion completed",
+      "returncode": 0
+    },
+    {
+      "timestamp": "2026-01-02T01:31:44Z",
+      "event": "type_identifier started"
+    },
+    {
+      "timestamp": "2026-01-02T01:31:47Z",
+      "event": "type_identifier completed",
+      "returncode": 0
+    },
+    {
+      "timestamp": "2026-01-02T01:31:47Z",
+      "event": "scanner started"
+    },
+    {
+      "timestamp": "2026-01-02T01:31:54Z",
+      "event": "scanner completed",
+      "returncode": 0
+    },
+    {
+      "timestamp": "2026-01-02T01:31:55Z",
+      "event": "interpreter started"
+    },
+    {
+      "timestamp": "2026-01-02T01:32:07Z",
+      "event": "interpreter completed",
+      "returncode": 0
+    },
+    {
+      "timestamp": "2026-01-02T01:32:08Z",
+      "event": "validator started"
+    },
+    {
+      "timestamp": "2026-01-02T01:32:09Z",
+      "event": "validator completed",
+      "returncode": 0
+    },
+    {
+      "timestamp": "2026-01-02T01:32:09Z",
+      "event": "Validation warnings present but insights allowed; continuing",
+      "returncode": 0
+    },
+    {
+      "timestamp": "2026-01-02T01:32:10Z",
+      "event": "overseer started"
+    },
+    {
+      "timestamp": "2026-01-02T01:32:23Z",
+      "event": "overseer completed",
+      "returncode": 0
+    },
+    {
+      "timestamp": "2026-01-02T01:32:23Z",
+      "event": "regression started"
+    },
+    {
+      "timestamp": "2026-01-02T01:32:23Z",
+      "event": "regression skipped due to governance: Predictive modeling out of scope for this task contract"
+    }
+  ],
+  "progress": 54,
+  "current_stage": "Predictive Modeling",
+  "stage_progress": 0,
+  "completed_steps": 6,
+  "total_steps": 11,
+  "start_epoch": 1767317503.8464258,
+  "artifacts": {
+    "dataset_manifest": "dataset_manifest.json",
+    "sanitizer_report": "sanitizer_report.json",
+    "ingestion_meta": "ingestion_meta.json"
+  },
+  "data_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\66785d98\\artifacts\\dataset.parquet",
+  "run_config": {
+    "task_intent": {
+      "primary_question": "Analyze extreme_imbalance.csv for anomalies and insights",
+      "confidence_threshold": 80,
+      "required_output_type": "descriptive"
+    },
+    "fast_mode": false
+  },
+  "run_mode": "strict"
+}

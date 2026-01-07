@@ -1,0 +1,5 @@
+{
+  "can_suggest": "General patterns and observations",
+  "cannot_suggest": "Domain-specific conclusions without validation",
+  "requires": "Explicit uncertainty labeling"
+}

@@ -1,0 +1,15 @@
+{
+  "source_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\stress_tests\\time_series_chaos.csv",
+  "parquet_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\2b1f142c\\artifacts\\dataset.parquet",
+  "sample_parquet_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\2b1f142c\\artifacts\\sample.parquet",
+  "row_count_estimate": 1000,
+  "columns": [
+    "date",
+    "revenue",
+    "customers",
+    "marketing_spend"
+  ],
+  "fast_mode_used": false,
+  "sha256": "96c60cb9695d3421edb384f684594d1d6c4b137e6dabcf6103f078d2f1c0ae63",
+  "cache_key": "96c60cb9695d3421edb384f684594d1d6c4b137e6dabcf6103f078d2f1c0ae63_full_ingest-fast-v1"
+}

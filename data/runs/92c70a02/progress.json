@@ -1,0 +1,17 @@
+{
+  "ingestion": {
+    "status": "completed",
+    "source": "data\\stress_tests\\missing_data_hell.csv",
+    "file_mb": 0.02,
+    "fast_mode": false,
+    "sample_rows": 400,
+    "dtype_columns": 7,
+    "manifest": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\92c70a02\\artifacts\\dataset_manifest.json"
+  },
+  "type_identifier": {
+    "status": "completed"
+  },
+  "validator": {
+    "status": "completed"
+  }
+}

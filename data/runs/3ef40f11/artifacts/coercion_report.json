@@ -1,0 +1,16 @@
+{
+  "columns": {
+    "constant_2": {
+      "numeric_parse_rate": 0.0,
+      "datetime_parse_rate": 0.0
+    },
+    "region": {
+      "numeric_parse_rate": 0.0,
+      "datetime_parse_rate": 0.0
+    },
+    "plan_type": {
+      "numeric_parse_rate": 0.0,
+      "datetime_parse_rate": 0.0
+    }
+  }
+}

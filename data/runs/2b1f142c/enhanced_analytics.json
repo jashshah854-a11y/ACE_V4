@@ -1,0 +1,224 @@
+{
+  "correlation_analysis": {
+    "available": true,
+    "pearson_matrix": {
+      "revenue": {
+        "revenue": 1.0,
+        "customers": 0.02639477518994471,
+        "marketing_spend": -0.01266504790942412
+      },
+      "customers": {
+        "revenue": 0.02639477518994471,
+        "customers": 1.0,
+        "marketing_spend": -0.04172689236281677
+      },
+      "marketing_spend": {
+        "revenue": -0.01266504790942412,
+        "customers": -0.04172689236281677,
+        "marketing_spend": 1.0
+      }
+    },
+    "spearman_matrix": {
+      "revenue": {
+        "revenue": 1.0,
+        "customers": 0.04023556481361286,
+        "marketing_spend": -0.019600842443237603
+      },
+      "customers": {
+        "revenue": 0.04023556481361286,
+        "customers": 1.0,
+        "marketing_spend": -0.0479767773981842
+      },
+      "marketing_spend": {
+        "revenue": -0.019600842443237603,
+        "customers": -0.0479767773981842,
+        "marketing_spend": 1.0
+      }
+    },
+    "strong_correlations": [],
+    "total_correlations": 0,
+    "features": [
+      "revenue",
+      "customers",
+      "marketing_spend"
+    ],
+    "insights": [
+      "No strong correlations detected between features"
+    ]
+  },
+  "distribution_analysis": {
+    "available": true,
+    "distributions": {
+      "revenue": {
+        "mean": 519.3756470355477,
+        "median": 525.0043138164551,
+        "std": 381.3266168635588,
+        "min": 0.0,
+        "max": 1307.3387517669607,
+        "skewness": 0.10275739991050652,
+        "kurtosis": -1.3867696495165658,
+        "is_normal": false,
+        "normality_p_value": 2.890299359005577e-22,
+        "distribution_type": "symmetric",
+        "quartiles": {
+          "q1": 148.76338632233205,
+          "q2": 525.0043138164551,
+          "q3": 860.4151531373693
+        },
+        "iqr": 711.6517668150373,
+        "outlier_count": 0,
+        "outlier_percentage": 0.0
+      },
+      "customers": {
+        "mean": 50.212,
+        "median": 50.0,
+        "std": 7.014004009996866,
+        "min": 29.0,
+        "max": 74.0,
+        "skewness": 0.11639964483602287,
+        "kurtosis": -0.11926123857320192,
+        "is_normal": false,
+        "normality_p_value": 0.02729907537278715,
+        "distribution_type": "symmetric",
+        "quartiles": {
+          "q1": 45.0,
+          "q2": 50.0,
+          "q3": 55.0
+        },
+        "iqr": 10.0,
+        "outlier_count": 2,
+        "outlier_percentage": 0.2
+      },
+      "marketing_spend": {
+        "mean": 4739.961437804103,
+        "median": 3082.321813834743,
+        "std": 5594.203245893583,
+        "min": 91.82028388360631,
+        "max": 69234.91046426508,
+        "skewness": 4.161782473607238,
+        "kurtosis": 30.212821962300254,
+        "is_normal": false,
+        "normality_p_value": 6.322197099757664e-41,
+        "distribution_type": "right_skewed",
+        "quartiles": {
+          "q1": 1550.5379092217977,
+          "q2": 3082.321813834743,
+          "q3": 5894.838974454282
+        },
+        "iqr": 4344.301065232485,
+        "outlier_count": 74,
+        "outlier_percentage": 7.3999999999999995
+      }
+    },
+    "insights": [
+      "Analyzed 3 numeric features",
+      "1 features show significant skewness",
+      "1 features contain >5% outliers"
+    ]
+  },
+  "feature_importance": {
+    "available": true,
+    "target": "revenue",
+    "task_type": "regression",
+    "feature_importance": [
+      {
+        "feature": "customers",
+        "importance": 1.4087122130499186
+      },
+      {
+        "feature": "marketing_spend",
+        "importance": 0.0007896081399074488
+      }
+    ],
+    "total_features": 2,
+    "confidence_interval": [
+      -746.7160575471461,
+      746.7160575471461
+    ],
+    "confidence": 50.04153179936011,
+    "evidence": {
+      "columns_used": [
+        "customers",
+        "marketing_spend"
+      ],
+      "computation_method": "Linear Regression",
+      "result_statistic": {
+        "r2": 0.0008306359872020108,
+        "residual_std": 380.97758038119696
+      },
+      "confidence_level": 50.04153179936011,
+      "data_confidence": null,
+      "limitations": [],
+      "evidence_id": "8594bd20",
+      "timestamp": "2026-01-02T01:50:57.983072"
+    },
+    "evidence_id": "8594bd20",
+    "coefficients": {
+      "customers": 1.4087122130499186,
+      "marketing_spend": -0.0007896081399074488
+    },
+    "insights": [
+      "Top 3 features explain 141.0% of revenue variance",
+      "Most important feature: customers (140.9% importance)"
+    ]
+  },
+  "business_intelligence": {
+    "evidence": {
+      "value_column": "revenue"
+    },
+    "value_metrics": {
+      "total_value": 519375.6470355477,
+      "avg_value": 519.3756470355477,
+      "median_value": 525.0043138164551,
+      "top_10_percent_value": 1029.7477227570582,
+      "value_concentration": 0.42098461813959137
+    },
+    "clv_proxy": {
+      "avg_value_per_record": 519.3756470355477,
+      "estimated_total_value": 519375.64703554765,
+      "high_value_threshold": 860.4151531373693,
+      "high_value_count": 250
+    },
+    "available": true,
+    "insights": [
+      "Total value: $519,375.65"
+    ]
+  },
+  "quality_metrics": {
+    "available": true,
+    "overall_completeness": 100.0,
+    "completeness_by_column": {
+      "date": 100.0,
+      "revenue": 100.0,
+      "customers": 100.0,
+      "marketing_spend": 100.0
+    },
+    "uniqueness_ratios": {
+      "date": 1.0,
+      "revenue": 0.907,
+      "customers": 0.042,
+      "marketing_spend": 1.0
+    },
+    "consistency_scores": {
+      "revenue": {
+        "coefficient_of_variation": 0.7342019577545954,
+        "is_consistent": true
+      },
+      "customers": {
+        "coefficient_of_variation": 0.1396878039113532,
+        "is_consistent": true
+      },
+      "marketing_spend": {
+        "coefficient_of_variation": 1.1802212569233952,
+        "is_consistent": false
+      }
+    },
+    "total_records": 1000,
+    "total_features": 4,
+    "numeric_features": 3,
+    "categorical_features": 0,
+    "insights": [
+      "1 features show high variability"
+    ]
+  }
+}

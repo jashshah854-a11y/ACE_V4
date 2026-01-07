@@ -1,0 +1,8 @@
+{
+  "columns": {
+    "segment": {
+      "numeric_parse_rate": 0.0,
+      "datetime_parse_rate": 0.0
+    }
+  }
+}

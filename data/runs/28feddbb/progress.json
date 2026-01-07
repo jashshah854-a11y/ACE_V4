@@ -1,0 +1,17 @@
+{
+  "ingestion": {
+    "status": "completed",
+    "source": "data\\stress_tests\\high_dimensionality.csv",
+    "file_mb": 1.88,
+    "fast_mode": false,
+    "sample_rows": 100,
+    "dtype_columns": 1001,
+    "manifest": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\28feddbb\\artifacts\\dataset_manifest.json"
+  },
+  "type_identifier": {
+    "status": "completed"
+  },
+  "validator": {
+    "status": "completed"
+  }
+}

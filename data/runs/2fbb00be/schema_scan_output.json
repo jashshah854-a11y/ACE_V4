@@ -1,0 +1,161 @@
+{
+  "dataset_info": {
+    "name": "outlier_storm",
+    "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\stress_tests\\outlier_storm.csv",
+    "row_count": 500,
+    "column_count": 5,
+    "sample_rows": [
+      {
+        "customer_id": 8,
+        "revenue": 1224.448929589313,
+        "age": 39,
+        "visits": 12,
+        "satisfaction": 3.1587293502181955
+      },
+      {
+        "customer_id": 132,
+        "revenue": 1060.876864169718,
+        "age": 19,
+        "visits": 7,
+        "satisfaction": 3.1382201607855005
+      },
+      {
+        "customer_id": 290,
+        "revenue": 951.3333101365912,
+        "age": 24,
+        "visits": 10,
+        "satisfaction": 2.0529801540175803
+      },
+      {
+        "customer_id": 151,
+        "revenue": 651.2953565856333,
+        "age": 43,
+        "visits": 11,
+        "satisfaction": 3.5304480514404237
+      },
+      {
+        "customer_id": 269,
+        "revenue": 849.5152705177878,
+        "age": 40,
+        "visits": 10,
+        "satisfaction": 3.277459425870872
+      }
+    ]
+  },
+  "basic_types": {
+    "numeric": [
+      "customer_id",
+      "revenue",
+      "age",
+      "visits",
+      "satisfaction"
+    ],
+    "categorical": [],
+    "datetime": [],
+    "text": []
+  },
+  "stats": {
+    "customer_id": {
+      "mean": 249.5,
+      "median": 249.5,
+      "std": 144.4818327679989,
+      "min": 0.0,
+      "max": 499.0,
+      "skew": 0.0,
+      "missing_rate": 0.0
+    },
+    "revenue": {
+      "mean": 82805.7474989958,
+      "median": 1196.6942970347823,
+      "std": 693485.4644672272,
+      "min": 62.7093169578609,
+      "max": 9301169.354863264,
+      "skew": 10.365746416197542,
+      "missing_rate": 0.0
+    },
+    "age": {
+      "mean": 52.016,
+      "median": 50.0,
+      "std": 48.891107830051276,
+      "min": 18.0,
+      "max": 999.0,
+      "skew": 15.012884435288058,
+      "missing_rate": 0.0
+    },
+    "visits": {
+      "mean": 822.644,
+      "median": 10.0,
+      "std": 7134.645011501573,
+      "min": 2.0,
+      "max": 90494.0,
+      "skew": 9.769165899496956,
+      "missing_rate": 0.0
+    },
+    "satisfaction": {
+      "mean": 23.101827389434405,
+      "median": 3.0020670289134124,
+      "std": 447.0586939393985,
+      "min": -50.0,
+      "max": 9999.0,
+      "skew": 22.28921744186608,
+      "missing_rate": 0.0
+    }
+  },
+  "relationships": {
+    "correlations": {
+      "customer_id": {
+        "revenue": 0.19837267764892563,
+        "age": 0.1270723235418851,
+        "visits": 0.19415354601713353,
+        "satisfaction": 0.07776839503010874
+      },
+      "revenue": {
+        "customer_id": 0.19837267764892563,
+        "age": 0.37163335980011514,
+        "visits": 0.5304432291166324,
+        "satisfaction": 0.1599495235759682
+      },
+      "age": {
+        "customer_id": 0.1270723235418851,
+        "revenue": 0.37163335980011514,
+        "visits": 0.3291794132259689,
+        "satisfaction": 0.8684526462855694
+      },
+      "visits": {
+        "customer_id": 0.19415354601713353,
+        "revenue": 0.5304432291166324,
+        "age": 0.3291794132259689,
+        "satisfaction": 0.11909268395104475
+      },
+      "satisfaction": {
+        "customer_id": 0.07776839503010874,
+        "revenue": 0.1599495235759682,
+        "age": 0.8684526462855694,
+        "visits": 0.11909268395104475
+      }
+    },
+    "strong_pairs": [
+      [
+        "revenue",
+        "visits"
+      ],
+      [
+        "age",
+        "satisfaction"
+      ],
+      [
+        "visits",
+        "revenue"
+      ],
+      [
+        "satisfaction",
+        "age"
+      ]
+    ]
+  },
+  "warnings": {
+    "missing_numeric": false,
+    "low_row_count": false,
+    "suspected_data_issues": []
+  }
+}

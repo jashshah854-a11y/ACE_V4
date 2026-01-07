@@ -1,0 +1,9 @@
+{
+  "task_intent": {
+    "primary_question": "Analyze churn risk in user base",
+    "decision_context": "Identify at-risk customers",
+    "required_output_type": "descriptive",
+    "confidence_threshold": 0.8
+  },
+  "fast_mode": false
+}

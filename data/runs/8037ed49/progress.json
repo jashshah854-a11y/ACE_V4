@@ -1,0 +1,11 @@
+{
+  "ingestion": {
+    "status": "completed",
+    "source": "data\\stress_tests\\extreme_imbalance.csv",
+    "file_mb": 0.03,
+    "fast_mode": false,
+    "sample_rows": 1000,
+    "dtype_columns": 5,
+    "manifest": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\8037ed49\\artifacts\\dataset_manifest.json"
+  }
+}

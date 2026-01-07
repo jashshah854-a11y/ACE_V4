@@ -1,0 +1,37 @@
+{
+  "task": "regression",
+  "template": "finance_ops",
+  "data_type": "financial_accounting",
+  "allowed_sections": [
+    "data_overview",
+    "quality",
+    "eda",
+    "modeling",
+    "insights"
+  ],
+  "forbidden_sections": [],
+  "limitations": [],
+  "scope_inclusions": [
+    "constant_1",
+    "constant_2",
+    "customer_id",
+    "plan_type",
+    "region",
+    "revenue",
+    "visits"
+  ],
+  "scope_exclusions": [],
+  "forbidden_claims": {
+    "allow_causality": false,
+    "allow_forecasting": true
+  },
+  "primary_question": "Analyze zero_variance.csv for anomalies",
+  "decision_context": null,
+  "required_output_type": "descriptive",
+  "success_criteria": null,
+  "constraints": null,
+  "confidence_threshold": 80,
+  "out_of_scope_dimensions": [],
+  "is_signed": true,
+  "signed_at": "2026-01-02T01:43:35.668822Z"
+}

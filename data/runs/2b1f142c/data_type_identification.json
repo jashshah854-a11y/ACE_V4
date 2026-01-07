@@ -1,0 +1,23 @@
+{
+  "primary_type": "time_series_trends",
+  "secondary_types": [
+    "financial_accounting",
+    "marketing_performance"
+  ],
+  "confidence": 0.4,
+  "confidence_label": "exploratory",
+  "signals": {
+    "marketing_performance": [
+      "columns:spend"
+    ],
+    "time_series_trends": [
+      "columns:date"
+    ],
+    "financial_accounting": [
+      "columns:revenue,ar"
+    ]
+  },
+  "notes": [
+    "Primary type inferred from column/value signals (score=4)."
+  ]
+}

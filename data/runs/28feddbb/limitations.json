@@ -1,0 +1,17 @@
+[
+  {
+    "agent": "overseer",
+    "message": "Scope lock trimmed columns for overseer: tenure_months, satisfaction, noise_feature_2, noise_feature_3, noise_feature_4",
+    "severity": "warning"
+  },
+  {
+    "agent": "overseer",
+    "message": "Overseer limited to 11 in-scope columns (was 1001).",
+    "severity": "info"
+  },
+  {
+    "agent": "regression",
+    "message": "regression blocked: Predictive modeling out of scope for this task contract",
+    "severity": "error"
+  }
+]

@@ -1,0 +1,8 @@
+{
+  "columns": {
+    "last_purchase_date": {
+      "numeric_parse_rate": 0.0,
+      "datetime_parse_rate": 1.0
+    }
+  }
+}

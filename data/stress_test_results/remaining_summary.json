@@ -1,0 +1,39 @@
+[
+  {
+    "dataset": "perfect_correlation.csv",
+    "run_id": "91ea538d",
+    "status": "success",
+    "signals": [
+      "DETECTED_PERFECT_CORRELATIONS(10)"
+    ]
+  },
+  {
+    "dataset": "zero_variance.csv",
+    "run_id": "3ef40f11",
+    "status": "success",
+    "signals": []
+  },
+  {
+    "dataset": "missing_data_hell.csv",
+    "run_id": "92c70a02",
+    "status": "success",
+    "signals": []
+  },
+  {
+    "dataset": "outlier_storm.csv",
+    "run_id": "2fbb00be",
+    "status": "success",
+    "signals": []
+  },
+  {
+    "dataset": "time_series_chaos.csv",
+    "run_id": "2b1f142c",
+    "status": "success",
+    "signals": []
+  },
+  {
+    "dataset": "type_confusion.csv",
+    "status": "failed",
+    "error": "argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'"
+  }
+]

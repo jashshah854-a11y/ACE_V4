@@ -1,0 +1,95 @@
+{
+  "dataset_info": {
+    "name": "categorical_explosion",
+    "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\stress_tests\\categorical_explosion.csv",
+    "row_count": 500,
+    "column_count": 5,
+    "sample_rows": [
+      {
+        "customer_id": 0,
+        "product_id": "PROD_0",
+        "user_agent": "Browser_98_Version_64",
+        "revenue": 14699.712341233995,
+        "category": "A"
+      },
+      {
+        "customer_id": 1,
+        "product_id": "PROD_1",
+        "user_agent": "Browser_70_Version_85",
+        "revenue": 3287.439537711234,
+        "category": "A"
+      },
+      {
+        "customer_id": 2,
+        "product_id": "PROD_2",
+        "user_agent": "Browser_1_Version_46",
+        "revenue": 1049.897021134426,
+        "category": "B"
+      },
+      {
+        "customer_id": 3,
+        "product_id": "PROD_3",
+        "user_agent": "Browser_87_Version_36",
+        "revenue": 1390.966963606949,
+        "category": "A"
+      },
+      {
+        "customer_id": 4,
+        "product_id": "PROD_4",
+        "user_agent": "Browser_99_Version_4",
+        "revenue": 1839.95341928495,
+        "category": "B"
+      }
+    ]
+  },
+  "basic_types": {
+    "numeric": [
+      "customer_id",
+      "revenue"
+    ],
+    "categorical": [
+      "category"
+    ],
+    "datetime": [],
+    "text": [
+      "product_id",
+      "user_agent"
+    ]
+  },
+  "stats": {
+    "customer_id": {
+      "mean": 249.5,
+      "median": 249.5,
+      "std": 144.4818327679989,
+      "min": 0.0,
+      "max": 499.0,
+      "skew": 0.0,
+      "missing_rate": 0.0
+    },
+    "revenue": {
+      "mean": 3211.2077204580064,
+      "median": 1049.1897698830398,
+      "std": 9066.362714243864,
+      "min": 10.446829906770285,
+      "max": 153657.23596578976,
+      "skew": 10.649365850320459,
+      "missing_rate": 0.0
+    }
+  },
+  "relationships": {
+    "correlations": {
+      "customer_id": {
+        "revenue": 0.007684418235795941
+      },
+      "revenue": {
+        "customer_id": 0.007684418235795941
+      }
+    },
+    "strong_pairs": []
+  },
+  "warnings": {
+    "missing_numeric": false,
+    "low_row_count": false,
+    "suspected_data_issues": []
+  }
+}

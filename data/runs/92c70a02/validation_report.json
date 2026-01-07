@@ -1,0 +1,61 @@
+{
+  "allow_insights": false,
+  "mode": "limitations",
+  "blocked_agents": [
+    "fabricator",
+    "overseer",
+    "personas",
+    "regression"
+  ],
+  "checks": {
+    "sample_size": {
+      "ok": true,
+      "detail": "Rows=400, min_required=50"
+    },
+    "target_variable": {
+      "ok": true,
+      "detail": "revenue"
+    },
+    "variance": {
+      "ok": true,
+      "detail": "usable=165, std=21759.3453 unique=165"
+    },
+    "time_coverage": {
+      "ok": true,
+      "detail": "399.0 days"
+    },
+    "causal_context": {
+      "ok": false,
+      "detail": "No causal design detected; analysis treated as observational."
+    }
+  },
+  "row_count": 400,
+  "column_count": 7,
+  "target_column": "revenue",
+  "confidence": 0.85,
+  "confidence_label": "high",
+  "notes": [
+    "Dataset treated as observational; causal claims are prohibited.",
+    "Profile/sample drift at block level; insights disabled."
+  ],
+  "data_type": {
+    "primary_type": "time_series_trends",
+    "secondary_types": [],
+    "confidence": 0.6,
+    "confidence_label": "moderate",
+    "signals": {
+      "time_series_trends": [
+        "columns:date,month"
+      ],
+      "financial_accounting": [
+        "columns:revenue"
+      ],
+      "customer_behavior": [
+        "columns:action"
+      ]
+    },
+    "notes": [
+      "Primary type inferred from column/value signals (score=6)."
+    ]
+  }
+}

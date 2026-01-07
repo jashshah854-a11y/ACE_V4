@@ -1,0 +1,8 @@
+{
+  "task_intent": {
+    "question": "Analyze this dataset for patterns and insights",
+    "confidence_threshold": 80,
+    "required_output_type": "descriptive"
+  },
+  "fast_mode": false
+}

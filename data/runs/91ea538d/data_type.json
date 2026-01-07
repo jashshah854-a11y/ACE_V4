@@ -1,0 +1,19 @@
+{
+  "primary_type": "financial_accounting",
+  "secondary_types": [
+    "customer_behavior"
+  ],
+  "confidence": 0.2,
+  "confidence_label": "exploratory",
+  "signals": {
+    "financial_accounting": [
+      "columns:revenue"
+    ],
+    "customer_behavior": [
+      "columns:action"
+    ]
+  },
+  "notes": [
+    "Primary type inferred from column/value signals (score=2)."
+  ]
+}

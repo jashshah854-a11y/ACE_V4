@@ -1,0 +1,18 @@
+{
+  "source_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\stress_tests\\zero_variance.csv",
+  "parquet_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\3ef40f11\\artifacts\\dataset.parquet",
+  "sample_parquet_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\3ef40f11\\artifacts\\sample.parquet",
+  "row_count_estimate": 300,
+  "columns": [
+    "customer_id",
+    "constant_1",
+    "constant_2",
+    "revenue",
+    "visits",
+    "region",
+    "plan_type"
+  ],
+  "fast_mode_used": false,
+  "sha256": "2e0ba6bee566694e392fc269c7df90befc222af4c423064a009aaeb417b155fd",
+  "cache_key": "2e0ba6bee566694e392fc269c7df90befc222af4c423064a009aaeb417b155fd_full_ingest-fast-v1"
+}

@@ -1,0 +1,79 @@
+{
+  "run_id": "8037ed49",
+  "status": "pending",
+  "created_at": "2026-01-02T02:04:22Z",
+  "updated_at": "2026-01-02T02:04:22Z",
+  "current_step": "ingestion",
+  "next_step": "ingestion",
+  "steps_completed": [],
+  "failed_steps": [],
+  "steps": {
+    "ingestion": {
+      "name": "ingestion",
+      "description": "Data ingestion and sanitization",
+      "status": "pending"
+    },
+    "type_identifier": {
+      "name": "type_identifier",
+      "description": "Identify dataset domain/type from schema and content",
+      "status": "pending"
+    },
+    "scanner": {
+      "name": "scanner",
+      "description": "Profile dataset",
+      "status": "pending"
+    },
+    "interpreter": {
+      "name": "interpreter",
+      "description": "Create schema map",
+      "status": "pending"
+    },
+    "validator": {
+      "name": "validator",
+      "description": "Validate data sufficiency and guardrails",
+      "status": "pending"
+    },
+    "overseer": {
+      "name": "overseer",
+      "description": "Clustering and segmentation",
+      "status": "pending"
+    },
+    "regression": {
+      "name": "regression",
+      "description": "Model numeric outcomes",
+      "status": "pending"
+    },
+    "sentry": {
+      "name": "sentry",
+      "description": "Anomaly detection",
+      "status": "pending"
+    },
+    "personas": {
+      "name": "personas",
+      "description": "Persona generation",
+      "status": "pending"
+    },
+    "fabricator": {
+      "name": "fabricator",
+      "description": "Strategy generation",
+      "status": "pending"
+    },
+    "expositor": {
+      "name": "expositor",
+      "description": "Final report assembly",
+      "status": "pending"
+    }
+  },
+  "history": [
+    {
+      "timestamp": "2026-01-02T02:04:22Z",
+      "event": "Run initialized",
+      "data_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\stress_tests\\extreme_imbalance.csv"
+    }
+  ],
+  "progress": 0,
+  "current_stage": "Data Ingestion",
+  "stage_progress": 0,
+  "completed_steps": 0,
+  "total_steps": 11
+}

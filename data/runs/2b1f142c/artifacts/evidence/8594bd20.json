@@ -1,0 +1,17 @@
+{
+  "columns_used": [
+    "customers",
+    "marketing_spend"
+  ],
+  "computation_method": "Linear Regression",
+  "result_statistic": {
+    "r2": 0.0008306359872020108,
+    "residual_std": 380.97758038119696
+  },
+  "confidence_level": 50.04153179936011,
+  "data_confidence": null,
+  "limitations": [],
+  "evidence_id": "8594bd20",
+  "timestamp": "2026-01-02T01:50:57.983072",
+  "scope": "feature_importance"
+}

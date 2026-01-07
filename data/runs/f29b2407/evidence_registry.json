@@ -1,0 +1,20 @@
+{
+  "b7d268fe": {
+    "columns_used": [
+      "customer_id",
+      "visits",
+      "churn_risk"
+    ],
+    "computation_method": "Linear Regression",
+    "result_statistic": {
+      "r2": 0.7229329270450578,
+      "residual_std": 512.536071404843
+    },
+    "confidence_level": 86.14664635225289,
+    "data_confidence": null,
+    "limitations": [],
+    "evidence_id": "b7d268fe",
+    "timestamp": "2026-01-02T17:43:22.853949",
+    "scope": "feature_importance"
+  }
+}

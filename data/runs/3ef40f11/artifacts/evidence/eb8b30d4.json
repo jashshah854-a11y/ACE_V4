@@ -1,0 +1,20 @@
+{
+  "columns_used": [
+    "customer_id",
+    "constant_1",
+    "revenue",
+    "visits",
+    "risk_score"
+  ],
+  "computation_method": "KMeans (k=3)",
+  "result_statistic": {
+    "silhouette": 0.9139645062828046,
+    "k": 3
+  },
+  "confidence_level": 95.69822531414023,
+  "data_confidence": null,
+  "limitations": [],
+  "evidence_id": "eb8b30d4",
+  "timestamp": "2026-01-02T01:44:12.199192",
+  "scope": "clustering"
+}

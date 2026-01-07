@@ -1,0 +1,17 @@
+{
+  "project_hash": "RHKN-9C0EA8",
+  "snapshots": [
+    {
+      "id": "snapshot_20260107_153450",
+      "timestamp": "2026-01-07T15:34:50.952115Z",
+      "sequence": 1,
+      "endpoints": 55,
+      "api_calls": 99,
+      "connections": 134,
+      "files": 2698,
+      "drift": 0.0,
+      "status": "baseline",
+      "report_file": "1"
+    }
+  ]
+}

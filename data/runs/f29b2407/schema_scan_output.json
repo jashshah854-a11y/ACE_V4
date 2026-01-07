@@ -1,0 +1,135 @@
+{
+  "dataset_info": {
+    "name": "extreme_imbalance",
+    "path": "C:\\Users\\jashs\\Downloads\\extreme_imbalance.csv",
+    "row_count": 1000,
+    "column_count": 5,
+    "sample_rows": [
+      {
+        "customer_id": 433,
+        "revenue": 114.35084511591924,
+        "visits": 6,
+        "segment": "normal",
+        "churn_risk": 0
+      },
+      {
+        "customer_id": 960,
+        "revenue": 112.85445519735087,
+        "visits": 5,
+        "segment": "normal",
+        "churn_risk": 0
+      },
+      {
+        "customer_id": 522,
+        "revenue": 86.74752482108306,
+        "visits": 2,
+        "segment": "normal",
+        "churn_risk": 0
+      },
+      {
+        "customer_id": 375,
+        "revenue": 84.65304874223901,
+        "visits": 3,
+        "segment": "normal",
+        "churn_risk": 0
+      },
+      {
+        "customer_id": 331,
+        "revenue": 82.05491257028336,
+        "visits": 9,
+        "segment": "normal",
+        "churn_risk": 0
+      }
+    ]
+  },
+  "basic_types": {
+    "numeric": [
+      "customer_id",
+      "revenue",
+      "visits",
+      "churn_risk"
+    ],
+    "categorical": [
+      "segment"
+    ],
+    "datetime": [],
+    "text": []
+  },
+  "stats": {
+    "customer_id": {
+      "mean": 499.5,
+      "median": 499.5,
+      "std": 288.8194360957494,
+      "min": 0.0,
+      "max": 999.0,
+      "skew": 0.0,
+      "missing_rate": 0.0
+    },
+    "revenue": {
+      "mean": 196.208145504556,
+      "median": 100.80835391875543,
+      "std": 974.2024854760916,
+      "min": 35.17465319861854,
+      "max": 13595.373053699044,
+      "skew": 10.459309649486856,
+      "missing_rate": 0.0
+    },
+    "visits": {
+      "mean": 5.434,
+      "median": 5.0,
+      "std": 5.014657594571226,
+      "min": 0.0,
+      "max": 65.0,
+      "skew": 7.574980727777513,
+      "missing_rate": 0.0
+    },
+    "churn_risk": {
+      "mean": 0.085,
+      "median": 0.0,
+      "std": 0.27902124086322355,
+      "min": 0.0,
+      "max": 1.0,
+      "skew": 2.9761723836525866,
+      "missing_rate": 0.0
+    }
+  },
+  "relationships": {
+    "correlations": {
+      "customer_id": {
+        "revenue": 0.16954900038111637,
+        "visits": 0.14774388190947335,
+        "churn_risk": -0.0159677201017471
+      },
+      "revenue": {
+        "customer_id": 0.16954900038111637,
+        "visits": 0.8490839008449333,
+        "churn_risk": -0.029407013451291045
+      },
+      "visits": {
+        "customer_id": 0.14774388190947335,
+        "revenue": 0.8490839008449333,
+        "churn_risk": -0.032830237110057406
+      },
+      "churn_risk": {
+        "customer_id": -0.0159677201017471,
+        "revenue": -0.029407013451291045,
+        "visits": -0.032830237110057406
+      }
+    },
+    "strong_pairs": [
+      [
+        "revenue",
+        "visits"
+      ],
+      [
+        "visits",
+        "revenue"
+      ]
+    ]
+  },
+  "warnings": {
+    "missing_numeric": false,
+    "low_row_count": false,
+    "suspected_data_issues": []
+  }
+}

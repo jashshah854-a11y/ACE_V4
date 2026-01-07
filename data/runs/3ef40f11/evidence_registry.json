@@ -1,0 +1,40 @@
+{
+  "eb8b30d4": {
+    "columns_used": [
+      "customer_id",
+      "constant_1",
+      "revenue",
+      "visits",
+      "risk_score"
+    ],
+    "computation_method": "KMeans (k=3)",
+    "result_statistic": {
+      "silhouette": 0.9139645062828046,
+      "k": 3
+    },
+    "confidence_level": 95.69822531414023,
+    "data_confidence": null,
+    "limitations": [],
+    "evidence_id": "eb8b30d4",
+    "timestamp": "2026-01-02T01:44:12.199192",
+    "scope": "clustering"
+  },
+  "bb39417e": {
+    "columns_used": [
+      "customer_id",
+      "constant_1",
+      "visits"
+    ],
+    "computation_method": "Linear Regression",
+    "result_statistic": {
+      "r2": 0.008348254445365133,
+      "residual_std": 43791.95247120123
+    },
+    "confidence_level": 50.41741272226825,
+    "data_confidence": null,
+    "limitations": [],
+    "evidence_id": "bb39417e",
+    "timestamp": "2026-01-02T01:44:39.943301",
+    "scope": "feature_importance"
+  }
+}

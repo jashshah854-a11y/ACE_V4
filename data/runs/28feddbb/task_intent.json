@@ -1,0 +1,5 @@
+{
+  "primary_question": "Analyze high_dimensionality.csv for anomalies and insights",
+  "confidence_threshold": 80,
+  "required_output_type": "descriptive"
+}

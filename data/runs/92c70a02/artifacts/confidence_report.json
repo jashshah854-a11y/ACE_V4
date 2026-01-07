@@ -1,0 +1,8 @@
+{
+  "data_confidence": 0.1,
+  "confidence_label": "low",
+  "reasons": [
+    "High null rate in at least one column.",
+    "Blocking drift detected."
+  ]
+}

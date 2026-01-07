@@ -1,0 +1,17 @@
+{
+  "ingestion": {
+    "status": "completed",
+    "source": "data\\stress_tests\\categorical_explosion.csv",
+    "file_mb": 0.03,
+    "fast_mode": false,
+    "sample_rows": 500,
+    "dtype_columns": 5,
+    "manifest": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\d4174c4d\\artifacts\\dataset_manifest.json"
+  },
+  "type_identifier": {
+    "status": "completed"
+  },
+  "validator": {
+    "status": "completed"
+  }
+}

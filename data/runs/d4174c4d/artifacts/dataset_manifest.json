@@ -1,0 +1,16 @@
+{
+  "source_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\stress_tests\\categorical_explosion.csv",
+  "parquet_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\d4174c4d\\artifacts\\dataset.parquet",
+  "sample_parquet_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\d4174c4d\\artifacts\\sample.parquet",
+  "row_count_estimate": 500,
+  "columns": [
+    "customer_id",
+    "product_id",
+    "user_agent",
+    "revenue",
+    "category"
+  ],
+  "fast_mode_used": false,
+  "sha256": "0d0e14c7d11c53affea4741b224ad7804a0e8eafc2a50ae89f0bcf43c264d844",
+  "cache_key": "0d0e14c7d11c53affea4741b224ad7804a0e8eafc2a50ae89f0bcf43c264d844_full_ingest-fast-v1"
+}
