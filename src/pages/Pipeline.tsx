@@ -5,7 +5,7 @@ import { ThinkingView } from "@/components/thinking/ThinkingView";
 import { Home, ChevronRight, Upload, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getRunState } from "@/lib/api-client";
+import { getRunStatus } from "@/lib/api-client";
 
 // Wrapper component to poll run state and pass to ThinkingView
 function ThinkingViewWithPolling({ runId, onComplete }: { runId: string; onComplete: () => void }) {
@@ -18,7 +18,7 @@ function ThinkingViewWithPolling({ runId, onComplete }: { runId: string; onCompl
 
     const pollState = async () => {
       try {
-        const state = await getRunState(runId);
+        const state = await getRunStatus(runId);
         setCurrentStep(state.current_step);
         setStepsCompleted(state.steps_completed || []);
         setStatus(state.status);
