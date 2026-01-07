@@ -30,7 +30,7 @@ const App = () => (
           <BrowserRouter>
             <SimulationSafeModeBanner />
             <Routes>
-              <Route path="/" element={<LandingPage />} />
+              <Route path="/" element={<Index />} />
               <Route path="/app" element={<ExecutivePulse />} />
               <Route path="/report/summary" element={<ExecutivePulse />} />
               {/* ADDED: Route for the new wide report viewer */}

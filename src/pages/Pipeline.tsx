@@ -5,13 +5,12 @@ import { ThinkingView } from "@/components/thinking/ThinkingView";
 import { Home, ChevronRight, Upload, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getRunStatus } from "@/lib/api-client";
+import { getRunStatus, type RunState } from "@/lib/api-client";
+import { PipelineVisualizer } from "@/components/report/PipelineVisualizer";
 
-// Wrapper component to poll run state and pass to ThinkingView
+// Wrapper component to poll run state and pass to Visualizer
 function ThinkingViewWithPolling({ runId, onComplete }: { runId: string; onComplete: () => void }) {
-  const [currentStep, setCurrentStep] = useState<string | undefined>();
-  const [stepsCompleted, setStepsCompleted] = useState<string[]>([]);
-  const [status, setStatus] = useState<string>("running");
+  const [runState, setRunState] = useState<RunState | null>(null);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -19,13 +18,11 @@ function ThinkingViewWithPolling({ runId, onComplete }: { runId: string; onCompl
     const pollState = async () => {
       try {
         const state = await getRunStatus(runId);
-        setCurrentStep(state.current_step);
-        setStepsCompleted(state.steps_completed || []);
-        setStatus(state.status);
+        setRunState(state);
 
         if (state.status === "complete" || state.status === "complete_with_errors") {
           clearInterval(interval);
-          setTimeout(onComplete, 1500); // Small delay before navigating
+          setTimeout(onComplete, 2000); // Allow user to see the green checkmark
         }
       } catch (error) {
         console.error("Error polling run state:", error);
@@ -38,20 +35,28 @@ function ThinkingViewWithPolling({ runId, onComplete }: { runId: string; onCompl
     return () => clearInterval(interval);
   }, [runId, onComplete]);
 
-  if (status === "complete" || status === "complete_with_errors") {
+  if (!runState) {
     return (
-      <div className="text-center py-12">
-        <div className="text-[hsl(var(--lab-signal))] font-[family-name:var(--font-lab)] text-lg mb-4">
-          ✓ Analysis Complete
-        </div>
-        <p className="text-[hsl(var(--library-muted))] font-[family-name:var(--font-library-body)]">
-          Redirecting to report...
-        </p>
+      <div className="flex flex-col items-center justify-center p-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mb-4" />
+        <p className="text-muted-foreground">Initializing Pipeline Connection...</p>
       </div>
     );
   }
 
-  return <ThinkingView currentStep={currentStep} stepsCompleted={stepsCompleted} />;
+  if (runState.status === "complete" || runState.status === "complete_with_errors") {
+    // Keep showing visualizer in completed state briefly before redirect
+    return (
+      <div className="space-y-8">
+        <PipelineVisualizer runState={runState} />
+        <div className="text-center animate-fade-in-up">
+          <p className="text-teal-600 font-medium">Analysis Finalized. Preparing Report...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <PipelineVisualizer runState={runState} />;
 }
 
 export default function Pipeline() {
