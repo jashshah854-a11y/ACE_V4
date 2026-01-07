@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getRunStatus, type RunState } from "@/lib/api-client";
 import { PipelineVisualizer } from "@/components/report/PipelineVisualizer";
 
+// Vercel Build Fix: Forced State Refresh
 // Wrapper component to poll run state and pass to Visualizer
 function ThinkingViewWithPolling({ runId, onComplete }: { runId: string; onComplete: () => void }) {
   const [runState, setRunState] = useState<RunState | null>(null);
