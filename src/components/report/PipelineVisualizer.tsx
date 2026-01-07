@@ -34,7 +34,8 @@ const STEP_DESCRIPTIONS: Record<string, string> = {
 };
 
 export function PipelineVisualizer({ runState, className }: PipelineVisualizerProps) {
-    const steps = runState.steps || [];
+    // Law 3: Defensive Parsing (Handle cases where steps might be an object/dict from legacy/redis status)
+    const steps = Array.isArray(runState.steps) ? runState.steps : [];
 
     // Helper to determine step status
     const getStepStatus = (stepName: string, index: number) => {

@@ -1071,7 +1071,7 @@ async def get_run_state(request: Request, run_id: str):
                     "failed_steps": [],
                     "message": job.message,
                     "progress": 100 if job.status in ["completed", "complete"] else 0,
-                    "steps": {} # Frontend might handle empty steps gracefully or we might need dummy ones
+                    "steps": [] # Frontend handles empty array gracefully
                 }
             else:
                  logger.warning(f"[RedisFallback] Job {run_id} NOT FOUND in Redis state hash.")
