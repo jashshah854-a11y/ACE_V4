@@ -13,6 +13,7 @@ import DemoPipelineStatus from "./pages/DemoPipelineStatus";
 import NotFound from "./pages/NotFound";
 import ReportPage from "./pages/ReportPage";
 import LandingPage from "./pages/LandingPage";
+import LabPage from "./pages/LabPage";
 import { SimulationSafeModeBanner } from "@/components/trust/SafeModeBanner";
 
 import { SimulationProvider } from "./context/SimulationContext";
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="/reports" element={<Reports />} />
               <Route path="/pipeline/:runId" element={<Pipeline />} />
               <Route path="/pipeline" element={<Pipeline />} />
+              <Route path="/lab/:runId" element={<LabPage />} />
               <Route path="/demo/pipeline-status" element={<DemoPipelineStatus />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

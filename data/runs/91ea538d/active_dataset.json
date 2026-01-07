@@ -1,0 +1,6 @@
+{
+  "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\91ea538d\\artifacts\\dataset.parquet",
+  "source": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\stress_tests\\perfect_correlation.csv",
+  "strategy": "full",
+  "manifest": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\91ea538d\\artifacts\\dataset_manifest.json"
+}

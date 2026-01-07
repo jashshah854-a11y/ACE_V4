@@ -1,0 +1,7 @@
+[
+  {
+    "agent": "regression",
+    "message": "regression blocked: Predictive modeling out of scope for this task contract",
+    "severity": "error"
+  }
+]

@@ -1,0 +1,103 @@
+{
+  "dataset_info": {
+    "name": "time_series_chaos",
+    "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\stress_tests\\time_series_chaos.csv",
+    "row_count": 1000,
+    "column_count": 4,
+    "sample_rows": [
+      {
+        "date": "2020-01-01",
+        "revenue": 14.897290934734484,
+        "customers": 46,
+        "marketing_spend": 3107.189066699891
+      },
+      {
+        "date": "2020-01-02",
+        "revenue": 168.89853481886968,
+        "customers": 54,
+        "marketing_spend": 3700.513505803959
+      },
+      {
+        "date": "2020-01-03",
+        "revenue": 126.32135611814827,
+        "customers": 43,
+        "marketing_spend": 4752.717560893426
+      },
+      {
+        "date": "2020-01-04",
+        "revenue": 48.10379566566616,
+        "customers": 46,
+        "marketing_spend": 7646.531117521469
+      },
+      {
+        "date": "2020-01-05",
+        "revenue": 0.0,
+        "customers": 54,
+        "marketing_spend": 1555.9644700671304
+      }
+    ]
+  },
+  "basic_types": {
+    "numeric": [
+      "revenue",
+      "customers",
+      "marketing_spend"
+    ],
+    "categorical": [],
+    "datetime": [
+      "date"
+    ],
+    "text": []
+  },
+  "stats": {
+    "revenue": {
+      "mean": 519.3756470355477,
+      "median": 525.0043138164551,
+      "std": 381.32661686355885,
+      "min": 0.0,
+      "max": 1307.3387517669607,
+      "skew": 0.10275739991050652,
+      "missing_rate": 0.0
+    },
+    "customers": {
+      "mean": 50.212,
+      "median": 50.0,
+      "std": 7.014004009996866,
+      "min": 29.0,
+      "max": 74.0,
+      "skew": 0.11639964483602287,
+      "missing_rate": 0.0
+    },
+    "marketing_spend": {
+      "mean": 4739.961437804103,
+      "median": 3082.321813834743,
+      "std": 5594.203245893583,
+      "min": 91.82028388360632,
+      "max": 69234.91046426508,
+      "skew": 4.161782473607239,
+      "missing_rate": 0.0
+    }
+  },
+  "relationships": {
+    "correlations": {
+      "revenue": {
+        "customers": 0.026394775189944725,
+        "marketing_spend": -0.012665047909424122
+      },
+      "customers": {
+        "revenue": 0.026394775189944725,
+        "marketing_spend": -0.04172689236281676
+      },
+      "marketing_spend": {
+        "revenue": -0.012665047909424122,
+        "customers": -0.04172689236281676
+      }
+    },
+    "strong_pairs": []
+  },
+  "warnings": {
+    "missing_numeric": false,
+    "low_row_count": false,
+    "suspected_data_issues": []
+  }
+}

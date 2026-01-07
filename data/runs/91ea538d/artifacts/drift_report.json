@@ -1,0 +1,48 @@
+{
+  "columns": {
+    "customer_id": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "revenue": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "revenue_copy_1": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "revenue_copy_2": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "revenue_scaled": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "revenue_inverse": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "visits": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "satisfaction": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    }
+  },
+  "status": "none",
+  "summary": [
+    "No material profile drift detected."
+  ]
+}

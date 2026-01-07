@@ -1,0 +1,20 @@
+{
+  "primary_type": "financial_accounting",
+  "secondary_types": [
+    "risk_compliance",
+    "mixed"
+  ],
+  "confidence": 0.2,
+  "confidence_label": "exploratory",
+  "signals": {
+    "financial_accounting": [
+      "columns:revenue"
+    ],
+    "risk_compliance": [
+      "columns:risk"
+    ]
+  },
+  "notes": [
+    "Primary type inferred from column/value signals (score=2)."
+  ]
+}

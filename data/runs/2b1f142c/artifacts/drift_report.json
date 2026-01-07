@@ -1,0 +1,55 @@
+{
+  "columns": {
+    "revenue": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "customers": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "marketing_spend": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "date": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    }
+  },
+  "status": "block",
+  "summary": [
+    "No material profile drift detected."
+  ],
+  "recency_drift": {
+    "columns": {
+      "date": {
+        "status": "stable",
+        "freq_delta": 0.05
+      },
+      "revenue": {
+        "status": "block",
+        "psi": 25.99446176380414,
+        "ks": 1.0
+      },
+      "customers": {
+        "status": "block",
+        "psi": 0.6806384949143555,
+        "ks": 0.19999999999999996
+      },
+      "marketing_spend": {
+        "status": "block",
+        "psi": 1.9961427235530083,
+        "ks": 0.4
+      }
+    },
+    "status": "block",
+    "summary": [
+      "Significant sample drift detected."
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "task_intent": {
+    "primary_question": "Analyze missing_data_hell.csv for anomalies",
+    "confidence_threshold": 80,
+    "required_output_type": "descriptive"
+  },
+  "fast_mode": false
+}

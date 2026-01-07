@@ -1,0 +1,19 @@
+{
+  "source_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\stress_tests\\perfect_correlation.csv",
+  "parquet_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\91ea538d\\artifacts\\dataset.parquet",
+  "sample_parquet_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\91ea538d\\artifacts\\sample.parquet",
+  "row_count_estimate": 500,
+  "columns": [
+    "customer_id",
+    "revenue",
+    "revenue_copy_1",
+    "revenue_copy_2",
+    "revenue_scaled",
+    "revenue_inverse",
+    "visits",
+    "satisfaction"
+  ],
+  "fast_mode_used": false,
+  "sha256": "a95f95256be5cd1073638634db6968387c26ee46f022cd1916fc01c8a976e14f",
+  "cache_key": "a95f95256be5cd1073638634db6968387c26ee46f022cd1916fc01c8a976e14f_full_ingest-fast-v1"
+}

@@ -1,0 +1,16 @@
+{
+  "columns": {
+    "product_id": {
+      "numeric_parse_rate": 0.0,
+      "datetime_parse_rate": 0.0
+    },
+    "user_agent": {
+      "numeric_parse_rate": 0.0,
+      "datetime_parse_rate": 0.0
+    },
+    "category": {
+      "numeric_parse_rate": 0.0,
+      "datetime_parse_rate": 0.0
+    }
+  }
+}

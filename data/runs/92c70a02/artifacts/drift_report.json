@@ -1,0 +1,81 @@
+{
+  "columns": {
+    "customer_id": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "revenue": {
+      "null_delta": 0.0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "age": {
+      "null_delta": 0.0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "visits": {
+      "null_delta": 0.0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "satisfaction": {
+      "null_delta": 0.0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "tenure_months": {
+      "null_delta": 0.0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "last_purchase_date": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    }
+  },
+  "status": "block",
+  "summary": [
+    "No material profile drift detected."
+  ],
+  "recency_drift": {
+    "columns": {
+      "customer_id": {
+        "status": "block",
+        "psi": 25.744249262253135,
+        "ks": 1.0
+      },
+      "revenue": {
+        "status": "unchecked",
+        "reason": "insufficient numeric samples"
+      },
+      "age": {
+        "status": "unchecked",
+        "reason": "insufficient numeric samples"
+      },
+      "visits": {
+        "status": "unchecked",
+        "reason": "insufficient numeric samples"
+      },
+      "satisfaction": {
+        "status": "block",
+        "psi": 4.816602127520936,
+        "ks": 0.43333333333333335
+      },
+      "tenure_months": {
+        "status": "unchecked",
+        "reason": "insufficient numeric samples"
+      },
+      "last_purchase_date": {
+        "status": "stable",
+        "freq_delta": 0.05
+      }
+    },
+    "status": "block",
+    "summary": [
+      "Significant sample drift detected."
+    ]
+  }
+}

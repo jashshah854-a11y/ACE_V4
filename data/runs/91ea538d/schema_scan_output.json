@@ -1,0 +1,312 @@
+{
+  "dataset_info": {
+    "name": "perfect_correlation",
+    "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\stress_tests\\perfect_correlation.csv",
+    "row_count": 500,
+    "column_count": 8,
+    "sample_rows": [
+      {
+        "customer_id": 0,
+        "revenue": 6043.956986975349,
+        "revenue_copy_1": 6043.956986975349,
+        "revenue_copy_2": 6043.956986975349,
+        "revenue_scaled": 604.3956986975348,
+        "revenue_inverse": 3956.0430130246514,
+        "visits": 8,
+        "satisfaction": 1.3224502234235205
+      },
+      {
+        "customer_id": 1,
+        "revenue": 4679.952243222848,
+        "revenue_copy_1": 4679.952243222848,
+        "revenue_copy_2": 4679.952243222848,
+        "revenue_scaled": 467.9952243222848,
+        "revenue_inverse": 5320.047756777152,
+        "visits": 5,
+        "satisfaction": 2.47703005591329
+      },
+      {
+        "customer_id": 2,
+        "revenue": 5300.28579593856,
+        "revenue_copy_1": 5300.28579593856,
+        "revenue_copy_2": 5300.28579593856,
+        "revenue_scaled": 530.028579593856,
+        "revenue_inverse": 4699.71420406144,
+        "visits": 13,
+        "satisfaction": 2.9466526987279087
+      },
+      {
+        "customer_id": 3,
+        "revenue": 5574.810003323722,
+        "revenue_copy_1": 5574.810003323722,
+        "revenue_copy_2": 5574.810003323722,
+        "revenue_scaled": 557.4810003323722,
+        "revenue_inverse": 4425.189996676278,
+        "visits": 8,
+        "satisfaction": 2.1010199095364825
+      },
+      {
+        "customer_id": 4,
+        "revenue": 5354.930579383862,
+        "revenue_copy_1": 5354.930579383862,
+        "revenue_copy_2": 5354.930579383862,
+        "revenue_scaled": 535.4930579383862,
+        "revenue_inverse": 4645.069420616138,
+        "visits": 15,
+        "satisfaction": 2.3997423580899966
+      }
+    ]
+  },
+  "basic_types": {
+    "numeric": [
+      "customer_id",
+      "revenue",
+      "revenue_copy_1",
+      "revenue_copy_2",
+      "revenue_scaled",
+      "revenue_inverse",
+      "visits",
+      "satisfaction"
+    ],
+    "categorical": [],
+    "datetime": [],
+    "text": []
+  },
+  "stats": {
+    "customer_id": {
+      "mean": 249.5,
+      "median": 249.5,
+      "std": 144.4818327679989,
+      "min": 0.0,
+      "max": 499.0,
+      "skew": 0.0,
+      "missing_rate": 0.0
+    },
+    "revenue": {
+      "mean": 4983.159520126438,
+      "median": 4929.331701447245,
+      "std": 967.0477608832081,
+      "min": 2142.109248225023,
+      "max": 7862.914852148909,
+      "skew": 0.09067866470424595,
+      "missing_rate": 0.0
+    },
+    "revenue_copy_1": {
+      "mean": 4983.159520126438,
+      "median": 4929.331701447245,
+      "std": 967.0477608832081,
+      "min": 2142.109248225023,
+      "max": 7862.914852148909,
+      "skew": 0.09067866470424595,
+      "missing_rate": 0.0
+    },
+    "revenue_copy_2": {
+      "mean": 4983.159520126438,
+      "median": 4929.331701447245,
+      "std": 967.0477608832081,
+      "min": 2142.109248225023,
+      "max": 7862.914852148909,
+      "skew": 0.09067866470424595,
+      "missing_rate": 0.0
+    },
+    "revenue_scaled": {
+      "mean": 498.3159520126438,
+      "median": 492.9331701447245,
+      "std": 96.70477608832078,
+      "min": 214.2109248225023,
+      "max": 786.2914852148908,
+      "skew": 0.09067866470424715,
+      "missing_rate": 0.0
+    },
+    "revenue_inverse": {
+      "mean": 5016.840479873562,
+      "median": 5070.668298552755,
+      "std": 967.0477608832081,
+      "min": 2137.0851478510917,
+      "max": 7857.890751774978,
+      "skew": -0.09067866470424578,
+      "missing_rate": 0.0
+    },
+    "visits": {
+      "mean": 9.862,
+      "median": 10.0,
+      "std": 3.092909338527838,
+      "min": 2.0,
+      "max": 19.0,
+      "skew": 0.2542879102092142,
+      "missing_rate": 0.0
+    },
+    "satisfaction": {
+      "mean": 2.976460082626181,
+      "median": 2.8967177987228103,
+      "std": 1.156294963899449,
+      "min": 1.000506264137853,
+      "max": 4.998179967721663,
+      "skew": 0.0944901599659299,
+      "missing_rate": 0.0
+    }
+  },
+  "relationships": {
+    "correlations": {
+      "customer_id": {
+        "revenue": -0.06183835800568097,
+        "revenue_copy_1": -0.06183835800568097,
+        "revenue_copy_2": -0.06183835800568097,
+        "revenue_scaled": -0.06183835800568025,
+        "revenue_inverse": 0.061838358005681014,
+        "visits": -0.010200112543765944,
+        "satisfaction": -0.04228914965487585
+      },
+      "revenue": {
+        "customer_id": -0.06183835800568097,
+        "revenue_copy_1": 1.0,
+        "revenue_copy_2": 1.0,
+        "revenue_scaled": 1.0,
+        "revenue_inverse": -1.0000000000000002,
+        "visits": 0.03841624584092974,
+        "satisfaction": -0.10973966919849702
+      },
+      "revenue_copy_1": {
+        "customer_id": -0.06183835800568097,
+        "revenue": 1.0,
+        "revenue_copy_2": 1.0,
+        "revenue_scaled": 1.0,
+        "revenue_inverse": -1.0000000000000002,
+        "visits": 0.03841624584092974,
+        "satisfaction": -0.10973966919849702
+      },
+      "revenue_copy_2": {
+        "customer_id": -0.06183835800568097,
+        "revenue": 1.0,
+        "revenue_copy_1": 1.0,
+        "revenue_scaled": 1.0,
+        "revenue_inverse": -1.0000000000000002,
+        "visits": 0.03841624584092974,
+        "satisfaction": -0.10973966919849702
+      },
+      "revenue_scaled": {
+        "customer_id": -0.06183835800568025,
+        "revenue": 1.0,
+        "revenue_copy_1": 1.0,
+        "revenue_copy_2": 1.0,
+        "revenue_inverse": -1.0,
+        "visits": 0.038416245840929605,
+        "satisfaction": -0.10973966919849702
+      },
+      "revenue_inverse": {
+        "customer_id": 0.061838358005681014,
+        "revenue": -1.0000000000000002,
+        "revenue_copy_1": -1.0000000000000002,
+        "revenue_copy_2": -1.0000000000000002,
+        "revenue_scaled": -1.0,
+        "visits": -0.03841624584092974,
+        "satisfaction": 0.10973966919849702
+      },
+      "visits": {
+        "customer_id": -0.010200112543765944,
+        "revenue": 0.03841624584092974,
+        "revenue_copy_1": 0.03841624584092974,
+        "revenue_copy_2": 0.03841624584092974,
+        "revenue_scaled": 0.038416245840929605,
+        "revenue_inverse": -0.03841624584092974,
+        "satisfaction": 0.0614074193798387
+      },
+      "satisfaction": {
+        "customer_id": -0.04228914965487585,
+        "revenue": -0.10973966919849702,
+        "revenue_copy_1": -0.10973966919849702,
+        "revenue_copy_2": -0.10973966919849702,
+        "revenue_scaled": -0.10973966919849702,
+        "revenue_inverse": 0.10973966919849702,
+        "visits": 0.0614074193798387
+      }
+    },
+    "strong_pairs": [
+      [
+        "revenue",
+        "revenue_copy_1"
+      ],
+      [
+        "revenue",
+        "revenue_copy_2"
+      ],
+      [
+        "revenue",
+        "revenue_scaled"
+      ],
+      [
+        "revenue",
+        "revenue_inverse"
+      ],
+      [
+        "revenue_copy_1",
+        "revenue"
+      ],
+      [
+        "revenue_copy_1",
+        "revenue_copy_2"
+      ],
+      [
+        "revenue_copy_1",
+        "revenue_scaled"
+      ],
+      [
+        "revenue_copy_1",
+        "revenue_inverse"
+      ],
+      [
+        "revenue_copy_2",
+        "revenue"
+      ],
+      [
+        "revenue_copy_2",
+        "revenue_copy_1"
+      ],
+      [
+        "revenue_copy_2",
+        "revenue_scaled"
+      ],
+      [
+        "revenue_copy_2",
+        "revenue_inverse"
+      ],
+      [
+        "revenue_scaled",
+        "revenue"
+      ],
+      [
+        "revenue_scaled",
+        "revenue_copy_1"
+      ],
+      [
+        "revenue_scaled",
+        "revenue_copy_2"
+      ],
+      [
+        "revenue_scaled",
+        "revenue_inverse"
+      ],
+      [
+        "revenue_inverse",
+        "revenue"
+      ],
+      [
+        "revenue_inverse",
+        "revenue_copy_1"
+      ],
+      [
+        "revenue_inverse",
+        "revenue_copy_2"
+      ],
+      [
+        "revenue_inverse",
+        "revenue_scaled"
+      ]
+    ]
+  },
+  "warnings": {
+    "missing_numeric": false,
+    "low_row_count": false,
+    "suspected_data_issues": []
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "source_path": "",
+  "row_count": 300,
+  "column_count": 7,
+  "columns": {
+    "customer_id": {
+      "dtype": "int64",
+      "null_pct": 0.0,
+      "distinct_pct": 1.0,
+      "min": 0.0,
+      "max": 299.0,
+      "mean": 149.5,
+      "std": 86.60205925188308,
+      "p25": 74.75,
+      "p50": 149.5,
+      "p75": 224.25
+    },
+    "constant_1": {
+      "dtype": "int64",
+      "null_pct": 0.0,
+      "distinct_pct": 0.0033333333333333335,
+      "min": 100.0,
+      "max": 100.0,
+      "mean": 100.0,
+      "std": 0.0,
+      "p25": 100.0,
+      "p50": 100.0,
+      "p75": 100.0
+    },
+    "constant_2": {
+      "dtype": "object",
+      "null_pct": 0.0,
+      "distinct_pct": 0.0033333333333333335,
+      "text_len_mean": 10.0,
+      "text_len_p95": 10.0
+    },
+    "revenue": {
+      "dtype": "float64",
+      "null_pct": 0.0,
+      "distinct_pct": 1.0,
+      "min": 6.48668870113871,
+      "max": 755304.9013108719,
+      "mean": 5870.397561692444,
+      "std": 43975.89817590502,
+      "p25": 416.1378162697977,
+      "p50": 1063.5281772567776,
+      "p75": 3265.6810500755314
+    },
+    "visits": {
+      "dtype": "int64",
+      "null_pct": 0.0,
+      "distinct_pct": 0.05333333333333334,
+      "min": 1.0,
+      "max": 16.0,
+      "mean": 8.066666666666666,
+      "std": 2.8347055500625746,
+      "p25": 6.0,
+      "p50": 8.0,
+      "p75": 10.0
+    },
+    "region": {
+      "dtype": "object",
+      "null_pct": 0.0,
+      "distinct_pct": 0.0033333333333333335,
+      "text_len_mean": 5.0,
+      "text_len_p95": 5.0
+    },
+    "plan_type": {
+      "dtype": "object",
+      "null_pct": 0.0,
+      "distinct_pct": 0.0033333333333333335,
+      "text_len_mean": 7.0,
+      "text_len_p95": 7.0
+    }
+  },
+  "data_type": {
+    "primary_type": "financial_accounting",
+    "secondary_types": [
+      "mixed"
+    ],
+    "confidence": 0.2,
+    "confidence_label": "exploratory",
+    "signals": {
+      "financial_accounting": [
+        "columns:revenue"
+      ]
+    },
+    "notes": [
+      "Primary type inferred from column/value signals (score=2)."
+    ]
+  },
+  "quality": {
+    "avg_null_pct": 0.0,
+    "max_null_pct": 0,
+    "avg_distinct_pct": 0.2952
+  },
+  "drift_status": "none",
+  "critical_gap_score": 0,
+  "is_safe_mode": false
+}

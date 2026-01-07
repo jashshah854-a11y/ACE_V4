@@ -1,0 +1,16 @@
+{
+  "sample_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\2b1f142c\\artifacts\\sample.parquet",
+  "dtypes": {
+    "date": "object",
+    "revenue": "float64",
+    "customers": "int64",
+    "marketing_spend": "float64"
+  },
+  "rows": 1000,
+  "schema_profile": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\2b1f142c\\artifacts\\schema_profile.json",
+  "drift_report": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\2b1f142c\\artifacts\\drift_report.json",
+  "drift_status": "block",
+  "coercion_report": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\2b1f142c\\artifacts\\coercion_report.json",
+  "dataset_manifest": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\2b1f142c\\artifacts\\dataset_manifest.json",
+  "fast_mode": false
+}

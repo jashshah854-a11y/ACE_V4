@@ -1,0 +1,47 @@
+{
+  "task": "regression",
+  "template": "generic",
+  "data_type": "time_series_trends",
+  "allowed_sections": [
+    "data_overview",
+    "quality"
+  ],
+  "forbidden_sections": [
+    "modeling",
+    "recommendations",
+    "insights"
+  ],
+  "limitations": [
+    "Drift blocking: restrict to diagnostics.",
+    "Validation in limitation mode; insights downgraded."
+  ],
+  "scope_inclusions": [
+    "customer_id",
+    "last_purchase_date",
+    "age",
+    "visits",
+    "revenue",
+    "tenure_months",
+    "satisfaction"
+  ],
+  "scope_exclusions": [
+    "revenue",
+    "age",
+    "visits",
+    "satisfaction",
+    "tenure_months"
+  ],
+  "forbidden_claims": {
+    "allow_causality": false,
+    "allow_forecasting": false
+  },
+  "primary_question": "Analyze missing_data_hell.csv for anomalies",
+  "decision_context": null,
+  "required_output_type": "descriptive",
+  "success_criteria": null,
+  "constraints": null,
+  "confidence_threshold": 80,
+  "out_of_scope_dimensions": [],
+  "is_signed": true,
+  "signed_at": "2026-01-02T01:45:51.270380Z"
+}

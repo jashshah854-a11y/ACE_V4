@@ -1,0 +1,111 @@
+[
+  {
+    "name": "extreme_imbalance",
+    "description": "99% normal, 1% high-value customers",
+    "rows": 1000,
+    "expected_challenges": [
+      "Clustering may collapse to single cluster",
+      "Minority class detection"
+    ],
+    "success_criteria": [
+      "ACE identifies the 1% high-value segment",
+      "Churn model handles imbalance"
+    ]
+  },
+  {
+    "name": "high_dimensionality",
+    "description": "1000 features, 100 rows",
+    "expected_challenges": [
+      "Feature importance should filter noise",
+      "Memory/performance issues"
+    ],
+    "success_criteria": [
+      "ACE identifies the 5 meaningful features",
+      "Pipeline completes without crash"
+    ]
+  },
+  {
+    "name": "perfect_correlation",
+    "description": "Multiple perfectly correlated features",
+    "expected_challenges": [
+      "Correlation analysis should flag this",
+      "Feature importance may be unstable"
+    ],
+    "success_criteria": [
+      "ACE detects perfect correlations",
+      "Regression doesn't crash"
+    ]
+  },
+  {
+    "name": "zero_variance",
+    "description": "Multiple columns with zero variance",
+    "expected_challenges": [
+      "Feature importance should skip these",
+      "Clustering may fail"
+    ],
+    "success_criteria": [
+      "ACE filters out zero-variance features",
+      "Quality metrics flag this issue"
+    ]
+  },
+  {
+    "name": "missing_data_hell",
+    "description": "60% missing values across most columns",
+    "expected_challenges": [
+      "Data quality score should be very low",
+      "Imputation strategies tested"
+    ],
+    "success_criteria": [
+      "ACE completes analysis",
+      "Quality report flags missing data"
+    ]
+  },
+  {
+    "name": "outlier_storm",
+    "description": "Extreme outliers in every numeric column",
+    "expected_challenges": [
+      "Distribution analysis should detect outliers",
+      "Anomaly detection triggered"
+    ],
+    "success_criteria": [
+      "ACE flags outliers",
+      "Robust statistics used"
+    ]
+  },
+  {
+    "name": "time_series_chaos",
+    "description": "Non-stationary time series with structural break",
+    "expected_challenges": [
+      "Time series detection",
+      "Trend + seasonality decomposition"
+    ],
+    "success_criteria": [
+      "ACE identifies time series pattern",
+      "Detects structural break"
+    ]
+  },
+  {
+    "name": "type_confusion",
+    "description": "Numeric data stored as strings with formatting",
+    "expected_challenges": [
+      "Type detection and parsing",
+      "Data cleaning required"
+    ],
+    "success_criteria": [
+      "ACE parses strings to numbers",
+      "Analysis proceeds correctly"
+    ]
+  },
+  {
+    "name": "categorical_explosion",
+    "description": "Extremely high cardinality categorical features",
+    "expected_challenges": [
+      "Memory issues with encoding",
+      "Feature importance may struggle"
+    ],
+    "success_criteria": [
+      "ACE handles high cardinality",
+      "Identifies ID-like columns"
+    ]
+  }
+]

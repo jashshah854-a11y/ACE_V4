@@ -1,0 +1,22 @@
+{
+  "acdf23dc": {
+    "columns_used": [
+      "customer_id",
+      "age",
+      "visits",
+      "satisfaction",
+      "tenure_months"
+    ],
+    "computation_method": "Linear Regression",
+    "result_statistic": {
+      "r2": 0.013102943319858285,
+      "residual_std": 13883.332597629378
+    },
+    "confidence_level": 50.65514716599291,
+    "data_confidence": null,
+    "limitations": [],
+    "evidence_id": "acdf23dc",
+    "timestamp": "2026-01-02T01:46:13.739318",
+    "scope": "feature_importance"
+  }
+}

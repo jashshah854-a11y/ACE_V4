@@ -1,0 +1,43 @@
+{
+  "columns": {
+    "customer_id": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "constant_1": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "revenue": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "visits": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "constant_2": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "region": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    },
+    "plan_type": {
+      "null_delta": 0,
+      "distinct_delta": 0.0,
+      "status": "stable"
+    }
+  },
+  "status": "none",
+  "summary": [
+    "No material profile drift detected."
+  ]
+}

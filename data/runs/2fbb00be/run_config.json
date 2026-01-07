@@ -1,0 +1,8 @@
+{
+  "task_intent": {
+    "primary_question": "Analyze outlier_storm.csv for anomalies",
+    "confidence_threshold": 80,
+    "required_output_type": "descriptive"
+  },
+  "fast_mode": false
+}

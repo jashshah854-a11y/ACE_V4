@@ -1,0 +1,19 @@
+{
+  "columns_used": [
+    "customer_id",
+    "age",
+    "visits",
+    "satisfaction"
+  ],
+  "computation_method": "Linear Regression",
+  "result_statistic": {
+    "r2": 0.3663844298176385,
+    "residual_std": 551461.9519585883
+  },
+  "confidence_level": 68.31922149088192,
+  "data_confidence": null,
+  "limitations": [],
+  "evidence_id": "7228811d",
+  "timestamp": "2026-01-02T01:48:44.514011",
+  "scope": "feature_importance"
+}

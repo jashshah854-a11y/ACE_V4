@@ -1,0 +1,17 @@
+{
+  "ingestion": {
+    "status": "completed",
+    "source": "data\\stress_tests\\time_series_chaos.csv",
+    "file_mb": 0.05,
+    "fast_mode": false,
+    "sample_rows": 1000,
+    "dtype_columns": 4,
+    "manifest": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\2b1f142c\\artifacts\\dataset_manifest.json"
+  },
+  "type_identifier": {
+    "status": "completed"
+  },
+  "validator": {
+    "status": "completed"
+  }
+}

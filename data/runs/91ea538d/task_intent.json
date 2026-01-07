@@ -1,0 +1,5 @@
+{
+  "primary_question": "Analyze perfect_correlation.csv for anomalies",
+  "confidence_threshold": 80,
+  "required_output_type": "descriptive"
+}

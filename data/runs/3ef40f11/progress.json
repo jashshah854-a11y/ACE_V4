@@ -1,0 +1,17 @@
+{
+  "ingestion": {
+    "status": "completed",
+    "source": "data\\stress_tests\\zero_variance.csv",
+    "file_mb": 0.02,
+    "fast_mode": false,
+    "sample_rows": 300,
+    "dtype_columns": 7,
+    "manifest": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\3ef40f11\\artifacts\\dataset_manifest.json"
+  },
+  "type_identifier": {
+    "status": "completed"
+  },
+  "validator": {
+    "status": "completed"
+  }
+}

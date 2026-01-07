@@ -1,0 +1,21 @@
+{
+  "columns_used": [
+    "customer_id",
+    "revenue",
+    "age",
+    "visits",
+    "satisfaction",
+    "risk_score"
+  ],
+  "computation_method": "KMeans (k=5)",
+  "result_statistic": {
+    "silhouette": 0.9937204472732892,
+    "k": 5
+  },
+  "confidence_level": 99.0,
+  "data_confidence": null,
+  "limitations": [],
+  "evidence_id": "5da205b8",
+  "timestamp": "2026-01-02T01:48:09.778960",
+  "scope": "clustering"
+}

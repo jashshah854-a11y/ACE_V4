@@ -459,45 +459,21 @@ const ExecutivePulse = () => {
         </div>
       </main>
 
-      {/* Strategy Simulator Section */}
+      {/* Strategy Simulator CTA */}
       {reportData && reportData.profile?.columns && (
-        <section className="py-8 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border-y border-border/40">
-          <div className="container px-4 max-w-6xl">
-            <div className="mb-6">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-purple-600/10 flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold">Strategy Simulator</h2>
-                  <p className="text-sm text-muted-foreground">
-                    What-If Analysis for Executive Decision-Making
-                  </p>
-                </div>
-              </div>
+        <section className="py-12 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border-y border-border/40">
+          <div className="container px-4 max-w-4xl text-center">
+            <div className="w-16 h-16 rounded-2xl bg-purple-600/10 flex items-center justify-center mx-auto mb-6">
+              <Zap className="w-8 h-8 text-purple-600 dark:text-purple-400" />
             </div>
-
-            {/* Extract numeric columns */}
-            {(() => {
-              const numericColumns = Object.entries(reportData.profile.columns)
-                .filter(([_, col]: [string, any]) =>
-                  col.dtype && (col.dtype.includes('int') || col.dtype.includes('float'))
-                )
-                .map(([name]) => name);
-
-              return numericColumns.length > 0 ? (
-                <SimulationControls
-                  runId={activeRun}
-                  availableColumns={numericColumns}
-                />
-              ) : (
-                <div className="p-6 bg-white dark:bg-gray-800 rounded-xl border border-border/40 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    No numeric columns available for simulation
-                  </p>
-                </div>
-              );
-            })()}
+            <h2 className="text-3xl font-bold mb-4">Deep Dive Strategy Lab</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto mb-8 text-lg">
+              Want to run "What-If" scenarios? Enter the Lab to simulate market changes, adjust variables, and forecast business impact using the ACE Simulation Engine.
+            </p>
+            <Button size="lg" onClick={() => navigate(`/lab/${activeRun}`)} className="gap-2 bg-purple-600 hover:bg-purple-700 text-white">
+              <Sparkles className="w-4 h-4" />
+              Enter Strategy Lab
+            </Button>
           </div>
         </section>
       )}

@@ -1,0 +1,18 @@
+{
+  "source_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\stress_tests\\missing_data_hell.csv",
+  "parquet_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\92c70a02\\artifacts\\dataset.parquet",
+  "sample_parquet_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\92c70a02\\artifacts\\sample.parquet",
+  "row_count_estimate": 400,
+  "columns": [
+    "customer_id",
+    "revenue",
+    "age",
+    "visits",
+    "satisfaction",
+    "tenure_months",
+    "last_purchase_date"
+  ],
+  "fast_mode_used": false,
+  "sha256": "dcac9bfe31166f8fa7c4f7d738e26b38b3d0691c689d0fd3ff8757a0e8b18e18",
+  "cache_key": "dcac9bfe31166f8fa7c4f7d738e26b38b3d0691c689d0fd3ff8757a0e8b18e18_full_ingest-fast-v1"
+}

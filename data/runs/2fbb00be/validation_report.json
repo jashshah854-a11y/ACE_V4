@@ -1,0 +1,55 @@
+{
+  "allow_insights": true,
+  "mode": "insight",
+  "blocked_agents": [],
+  "checks": {
+    "sample_size": {
+      "ok": true,
+      "detail": "Rows=500, min_required=50"
+    },
+    "target_variable": {
+      "ok": true,
+      "detail": "revenue"
+    },
+    "variance": {
+      "ok": true,
+      "detail": "usable=500, std=692791.6319 unique=500"
+    },
+    "time_coverage": {
+      "ok": false,
+      "detail": "No time field with coverage"
+    },
+    "causal_context": {
+      "ok": false,
+      "detail": "No causal design detected; analysis treated as observational."
+    }
+  },
+  "row_count": 500,
+  "column_count": 5,
+  "target_column": "revenue",
+  "confidence": 0.7,
+  "confidence_label": "moderate",
+  "notes": [
+    "Time coverage unknown; treat any trend/forecasting as exploratory only.",
+    "Dataset treated as observational; causal claims are prohibited."
+  ],
+  "data_type": {
+    "primary_type": "financial_accounting",
+    "secondary_types": [
+      "customer_behavior"
+    ],
+    "confidence": 0.2,
+    "confidence_label": "exploratory",
+    "signals": {
+      "financial_accounting": [
+        "columns:revenue"
+      ],
+      "customer_behavior": [
+        "columns:action"
+      ]
+    },
+    "notes": [
+      "Primary type inferred from column/value signals (score=2)."
+    ]
+  }
+}

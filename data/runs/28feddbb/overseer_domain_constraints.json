@@ -1,0 +1,5 @@
+{
+  "can_suggest": "Directional trends and patterns",
+  "cannot_suggest": "Causality without additional context",
+  "requires": "Adequate time span for trend detection"
+}

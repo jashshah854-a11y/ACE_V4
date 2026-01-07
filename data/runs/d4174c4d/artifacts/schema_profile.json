@@ -1,0 +1,51 @@
+{
+  "row_count": 500,
+  "column_count": 5,
+  "columns": {
+    "customer_id": {
+      "dtype": "int64",
+      "null_pct": 0.0,
+      "distinct_pct": 1.0,
+      "min": 0.0,
+      "max": 499.0,
+      "mean": 249.5,
+      "std": 144.33727862198316,
+      "p25": 124.75,
+      "p50": 249.5,
+      "p75": 374.25
+    },
+    "product_id": {
+      "dtype": "object",
+      "null_pct": 0.0,
+      "distinct_pct": 1.0,
+      "text_len_mean": 7.78,
+      "text_len_p95": 8.0
+    },
+    "user_agent": {
+      "dtype": "object",
+      "null_pct": 0.0,
+      "distinct_pct": 0.968,
+      "text_len_mean": 20.79,
+      "text_len_p95": 21.0
+    },
+    "revenue": {
+      "dtype": "float64",
+      "null_pct": 0.0,
+      "distinct_pct": 1.0,
+      "min": 10.446829906770285,
+      "max": 153657.23596578976,
+      "mean": 3211.2077204580064,
+      "std": 9057.291813809406,
+      "p25": 419.14265969082146,
+      "p50": 1049.1897698830398,
+      "p75": 2787.836009069993
+    },
+    "category": {
+      "dtype": "object",
+      "null_pct": 0.0,
+      "distinct_pct": 0.006,
+      "text_len_mean": 1.0,
+      "text_len_p95": 1.0
+    }
+  }
+}

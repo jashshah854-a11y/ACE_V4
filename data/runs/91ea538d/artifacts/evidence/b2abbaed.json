@@ -1,0 +1,24 @@
+{
+  "columns_used": [
+    "customer_id",
+    "revenue",
+    "revenue_copy_1",
+    "revenue_copy_2",
+    "revenue_scaled",
+    "revenue_inverse",
+    "visits",
+    "satisfaction",
+    "risk_score"
+  ],
+  "computation_method": "KMeans (k=3)",
+  "result_statistic": {
+    "silhouette": 0.5155420520105787,
+    "k": 3
+  },
+  "confidence_level": 75.77710260052893,
+  "data_confidence": null,
+  "limitations": [],
+  "evidence_id": "b2abbaed",
+  "timestamp": "2026-01-02T01:42:12.350083",
+  "scope": "clustering"
+}

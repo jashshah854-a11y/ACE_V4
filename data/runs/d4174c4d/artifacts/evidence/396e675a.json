@@ -1,0 +1,16 @@
+{
+  "columns_used": [
+    "customer_id"
+  ],
+  "computation_method": "Linear Regression",
+  "result_statistic": {
+    "r2": 5.9050283622519295e-05,
+    "residual_std": 9057.024392036277
+  },
+  "confidence_level": 50.00295251418112,
+  "data_confidence": null,
+  "limitations": [],
+  "evidence_id": "396e675a",
+  "timestamp": "2026-01-02T01:31:42.836465",
+  "scope": "feature_importance"
+}

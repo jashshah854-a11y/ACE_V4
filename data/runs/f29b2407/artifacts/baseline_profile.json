@@ -1,0 +1,61 @@
+{
+  "row_count": 1000,
+  "column_count": 5,
+  "columns": {
+    "customer_id": {
+      "dtype": "int64",
+      "null_pct": 0.0,
+      "distinct_pct": 1.0,
+      "min": 0.0,
+      "max": 999.0,
+      "mean": 499.5,
+      "std": 288.6749902572095,
+      "p25": 249.75,
+      "p50": 499.5,
+      "p75": 749.25
+    },
+    "revenue": {
+      "dtype": "float64",
+      "null_pct": 0.0,
+      "distinct_pct": 1.0,
+      "min": 35.17465319861854,
+      "max": 13595.373053699044,
+      "mean": 196.208145504556,
+      "std": 973.715262397117,
+      "p25": 87.25049316914566,
+      "p50": 100.80835391875543,
+      "p75": 113.52028112717244
+    },
+    "visits": {
+      "dtype": "int64",
+      "null_pct": 0.0,
+      "distinct_pct": 0.023,
+      "min": 0.0,
+      "max": 65.0,
+      "mean": 5.434,
+      "std": 5.012149638628129,
+      "p25": 3.0,
+      "p50": 5.0,
+      "p75": 6.0
+    },
+    "segment": {
+      "dtype": "object",
+      "null_pct": 0.0,
+      "distinct_pct": 0.002,
+      "text_len_mean": 6.04,
+      "text_len_p95": 6.0
+    },
+    "churn_risk": {
+      "dtype": "int64",
+      "null_pct": 0.0,
+      "distinct_pct": 0.002,
+      "min": 0.0,
+      "max": 1.0,
+      "mean": 0.085,
+      "std": 0.2788816953476871,
+      "p25": 0.0,
+      "p50": 0.0,
+      "p75": 0.0
+    }
+  }
+}

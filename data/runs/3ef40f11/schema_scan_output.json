@@ -1,0 +1,131 @@
+{
+  "dataset_info": {
+    "name": "zero_variance",
+    "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\stress_tests\\zero_variance.csv",
+    "row_count": 300,
+    "column_count": 7,
+    "sample_rows": [
+      {
+        "customer_id": 0,
+        "constant_1": 100,
+        "constant_2": "same_value",
+        "revenue": 421.62313724457294,
+        "visits": 6,
+        "region": "North",
+        "plan_type": "Premium"
+      },
+      {
+        "customer_id": 1,
+        "constant_1": 100,
+        "constant_2": "same_value",
+        "revenue": 619.5307815652371,
+        "visits": 10,
+        "region": "North",
+        "plan_type": "Premium"
+      },
+      {
+        "customer_id": 2,
+        "constant_1": 100,
+        "constant_2": "same_value",
+        "revenue": 345.44093305571414,
+        "visits": 10,
+        "region": "North",
+        "plan_type": "Premium"
+      },
+      {
+        "customer_id": 3,
+        "constant_1": 100,
+        "constant_2": "same_value",
+        "revenue": 214.39972859064108,
+        "visits": 8,
+        "region": "North",
+        "plan_type": "Premium"
+      },
+      {
+        "customer_id": 4,
+        "constant_1": 100,
+        "constant_2": "same_value",
+        "revenue": 77.39495590712649,
+        "visits": 8,
+        "region": "North",
+        "plan_type": "Premium"
+      }
+    ]
+  },
+  "basic_types": {
+    "numeric": [
+      "customer_id",
+      "constant_1",
+      "revenue",
+      "visits"
+    ],
+    "categorical": [
+      "constant_2",
+      "region",
+      "plan_type"
+    ],
+    "datetime": [],
+    "text": []
+  },
+  "stats": {
+    "customer_id": {
+      "mean": 149.5,
+      "median": 149.5,
+      "std": 86.74675786448736,
+      "min": 0.0,
+      "max": 299.0,
+      "skew": 0.0,
+      "missing_rate": 0.0
+    },
+    "constant_1": {
+      "mean": 100.0,
+      "median": 100.0,
+      "std": 0.0,
+      "min": 100.0,
+      "max": 100.0,
+      "skew": NaN,
+      "missing_rate": 0.0
+    },
+    "revenue": {
+      "mean": 5870.397561692444,
+      "median": 1063.5281772567776,
+      "std": 44049.37508290989,
+      "min": 6.48668870113871,
+      "max": 755304.9013108719,
+      "skew": 16.523107420822317,
+      "missing_rate": 0.0
+    },
+    "visits": {
+      "mean": 8.066666666666666,
+      "median": 8.0,
+      "std": 2.839441903490877,
+      "min": 1.0,
+      "max": 16.0,
+      "skew": 0.279178949636103,
+      "missing_rate": 0.0
+    }
+  },
+  "relationships": {
+    "correlations": {
+      "customer_id": {
+        "revenue": 0.09038428847954139,
+        "visits": 0.015777881878686114
+      },
+      "constant_1": {},
+      "revenue": {
+        "customer_id": 0.09038428847954139,
+        "visits": 0.01480106036915308
+      },
+      "visits": {
+        "customer_id": 0.015777881878686114,
+        "revenue": 0.01480106036915308
+      }
+    },
+    "strong_pairs": []
+  },
+  "warnings": {
+    "missing_numeric": false,
+    "low_row_count": false,
+    "suspected_data_issues": []
+  }
+}

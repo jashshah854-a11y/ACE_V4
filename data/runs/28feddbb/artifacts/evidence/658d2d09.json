@@ -1,0 +1,27 @@
+{
+  "columns_used": [
+    "id",
+    "revenue",
+    "age",
+    "churn",
+    "noise_feature_0",
+    "noise_feature_1",
+    "noise_feature_10",
+    "noise_feature_100",
+    "noise_feature_101",
+    "noise_feature_102",
+    "noise_feature_103",
+    "risk_score"
+  ],
+  "computation_method": "KMeans (k=3)",
+  "result_statistic": {
+    "silhouette": 0.8561200729198546,
+    "k": 3
+  },
+  "confidence_level": 92.80600364599273,
+  "data_confidence": null,
+  "limitations": [],
+  "evidence_id": "658d2d09",
+  "timestamp": "2026-01-02T01:33:45.315491",
+  "scope": "clustering"
+}

@@ -1,0 +1,636 @@
+{
+  "correlation_analysis": {
+    "available": true,
+    "pearson_matrix": {
+      "customer_id": {
+        "customer_id": 1.0,
+        "revenue": -0.061838358005681,
+        "revenue_copy_1": -0.061838358005681,
+        "revenue_copy_2": -0.061838358005681,
+        "revenue_scaled": -0.06183835800568072,
+        "revenue_inverse": 0.061838358005680986,
+        "visits": -0.010200112543765944,
+        "satisfaction": -0.04228914965487592
+      },
+      "revenue": {
+        "customer_id": -0.061838358005681,
+        "revenue": 1.0,
+        "revenue_copy_1": 1.0,
+        "revenue_copy_2": 1.0,
+        "revenue_scaled": 1.0000000000000002,
+        "revenue_inverse": -1.0,
+        "visits": 0.03841624584092972,
+        "satisfaction": -0.109739669198497
+      },
+      "revenue_copy_1": {
+        "customer_id": -0.061838358005681,
+        "revenue": 1.0,
+        "revenue_copy_1": 1.0,
+        "revenue_copy_2": 1.0,
+        "revenue_scaled": 1.0000000000000002,
+        "revenue_inverse": -1.0,
+        "visits": 0.03841624584092972,
+        "satisfaction": -0.109739669198497
+      },
+      "revenue_copy_2": {
+        "customer_id": -0.061838358005681,
+        "revenue": 1.0,
+        "revenue_copy_1": 1.0,
+        "revenue_copy_2": 1.0,
+        "revenue_scaled": 1.0000000000000002,
+        "revenue_inverse": -1.0,
+        "visits": 0.03841624584092972,
+        "satisfaction": -0.109739669198497
+      },
+      "revenue_scaled": {
+        "customer_id": -0.06183835800568072,
+        "revenue": 1.0000000000000002,
+        "revenue_copy_1": 1.0000000000000002,
+        "revenue_copy_2": 1.0000000000000002,
+        "revenue_scaled": 1.0,
+        "revenue_inverse": -1.0000000000000004,
+        "visits": 0.03841624584092964,
+        "satisfaction": -0.10973966919849709
+      },
+      "revenue_inverse": {
+        "customer_id": 0.061838358005680986,
+        "revenue": -1.0,
+        "revenue_copy_1": -1.0,
+        "revenue_copy_2": -1.0,
+        "revenue_scaled": -1.0000000000000004,
+        "revenue_inverse": 1.0,
+        "visits": -0.038416245840929744,
+        "satisfaction": 0.10973966919849702
+      },
+      "visits": {
+        "customer_id": -0.010200112543765944,
+        "revenue": 0.03841624584092972,
+        "revenue_copy_1": 0.03841624584092972,
+        "revenue_copy_2": 0.03841624584092972,
+        "revenue_scaled": 0.03841624584092964,
+        "revenue_inverse": -0.038416245840929744,
+        "visits": 1.0,
+        "satisfaction": 0.0614074193798387
+      },
+      "satisfaction": {
+        "customer_id": -0.04228914965487592,
+        "revenue": -0.109739669198497,
+        "revenue_copy_1": -0.109739669198497,
+        "revenue_copy_2": -0.109739669198497,
+        "revenue_scaled": -0.10973966919849709,
+        "revenue_inverse": 0.10973966919849702,
+        "visits": 0.0614074193798387,
+        "satisfaction": 1.0
+      }
+    },
+    "spearman_matrix": {
+      "customer_id": {
+        "customer_id": 1.0,
+        "revenue": -0.06385225540902163,
+        "revenue_copy_1": -0.06385225540902163,
+        "revenue_copy_2": -0.06385225540902163,
+        "revenue_scaled": -0.06385225540902163,
+        "revenue_inverse": 0.06385225540902163,
+        "visits": 0.013622142280825492,
+        "satisfaction": -0.044699794799179196
+      },
+      "revenue": {
+        "customer_id": -0.06385225540902163,
+        "revenue": 1.0,
+        "revenue_copy_1": 1.0,
+        "revenue_copy_2": 1.0,
+        "revenue_scaled": 1.0,
+        "revenue_inverse": -1.0,
+        "visits": 0.03443149725775479,
+        "satisfaction": -0.10518570074280297
+      },
+      "revenue_copy_1": {
+        "customer_id": -0.06385225540902163,
+        "revenue": 1.0,
+        "revenue_copy_1": 1.0,
+        "revenue_copy_2": 1.0,
+        "revenue_scaled": 1.0,
+        "revenue_inverse": -1.0,
+        "visits": 0.03443149725775479,
+        "satisfaction": -0.10518570074280297
+      },
+      "revenue_copy_2": {
+        "customer_id": -0.06385225540902163,
+        "revenue": 1.0,
+        "revenue_copy_1": 1.0,
+        "revenue_copy_2": 1.0,
+        "revenue_scaled": 1.0,
+        "revenue_inverse": -1.0,
+        "visits": 0.03443149725775479,
+        "satisfaction": -0.10518570074280297
+      },
+      "revenue_scaled": {
+        "customer_id": -0.06385225540902163,
+        "revenue": 1.0,
+        "revenue_copy_1": 1.0,
+        "revenue_copy_2": 1.0,
+        "revenue_scaled": 1.0,
+        "revenue_inverse": -1.0,
+        "visits": 0.03443149725775479,
+        "satisfaction": -0.10518570074280297
+      },
+      "revenue_inverse": {
+        "customer_id": 0.06385225540902163,
+        "revenue": -1.0,
+        "revenue_copy_1": -1.0,
+        "revenue_copy_2": -1.0,
+        "revenue_scaled": -1.0,
+        "revenue_inverse": 1.0,
+        "visits": -0.03443149725775479,
+        "satisfaction": 0.10518570074280297
+      },
+      "visits": {
+        "customer_id": 0.013622142280825492,
+        "revenue": 0.03443149725775479,
+        "revenue_copy_1": 0.03443149725775479,
+        "revenue_copy_2": 0.03443149725775479,
+        "revenue_scaled": 0.03443149725775479,
+        "revenue_inverse": -0.03443149725775479,
+        "visits": 1.0,
+        "satisfaction": 0.06319539949341738
+      },
+      "satisfaction": {
+        "customer_id": -0.044699794799179196,
+        "revenue": -0.10518570074280297,
+        "revenue_copy_1": -0.10518570074280297,
+        "revenue_copy_2": -0.10518570074280297,
+        "revenue_scaled": -0.10518570074280297,
+        "revenue_inverse": 0.10518570074280297,
+        "visits": 0.06319539949341738,
+        "satisfaction": 1.0
+      }
+    },
+    "strong_correlations": [
+      {
+        "feature1": "revenue_scaled",
+        "feature2": "revenue_inverse",
+        "pearson": -1.0000000000000004,
+        "spearman": -1.0,
+        "strength": "very_strong",
+        "direction": "negative"
+      },
+      {
+        "feature1": "revenue",
+        "feature2": "revenue_scaled",
+        "pearson": 1.0000000000000002,
+        "spearman": 1.0,
+        "strength": "very_strong",
+        "direction": "positive"
+      },
+      {
+        "feature1": "revenue_copy_1",
+        "feature2": "revenue_scaled",
+        "pearson": 1.0000000000000002,
+        "spearman": 1.0,
+        "strength": "very_strong",
+        "direction": "positive"
+      },
+      {
+        "feature1": "revenue_copy_2",
+        "feature2": "revenue_scaled",
+        "pearson": 1.0000000000000002,
+        "spearman": 1.0,
+        "strength": "very_strong",
+        "direction": "positive"
+      },
+      {
+        "feature1": "revenue",
+        "feature2": "revenue_copy_1",
+        "pearson": 1.0,
+        "spearman": 1.0,
+        "strength": "very_strong",
+        "direction": "positive"
+      },
+      {
+        "feature1": "revenue",
+        "feature2": "revenue_copy_2",
+        "pearson": 1.0,
+        "spearman": 1.0,
+        "strength": "very_strong",
+        "direction": "positive"
+      },
+      {
+        "feature1": "revenue",
+        "feature2": "revenue_inverse",
+        "pearson": -1.0,
+        "spearman": -1.0,
+        "strength": "very_strong",
+        "direction": "negative"
+      },
+      {
+        "feature1": "revenue_copy_1",
+        "feature2": "revenue_copy_2",
+        "pearson": 1.0,
+        "spearman": 1.0,
+        "strength": "very_strong",
+        "direction": "positive"
+      },
+      {
+        "feature1": "revenue_copy_1",
+        "feature2": "revenue_inverse",
+        "pearson": -1.0,
+        "spearman": -1.0,
+        "strength": "very_strong",
+        "direction": "negative"
+      },
+      {
+        "feature1": "revenue_copy_2",
+        "feature2": "revenue_inverse",
+        "pearson": -1.0,
+        "spearman": -1.0,
+        "strength": "very_strong",
+        "direction": "negative"
+      }
+    ],
+    "total_correlations": 10,
+    "features": [
+      "customer_id",
+      "revenue",
+      "revenue_copy_1",
+      "revenue_copy_2",
+      "revenue_scaled",
+      "revenue_inverse",
+      "visits",
+      "satisfaction"
+    ],
+    "insights": [
+      "Found 10 significant feature relationships",
+      "Strongest relationship: revenue_scaled and revenue_inverse (negative, r=-1.00)",
+      "6 strong positive correlations indicate features that increase together",
+      "4 strong negative correlations indicate inverse relationships"
+    ]
+  },
+  "distribution_analysis": {
+    "available": true,
+    "distributions": {
+      "customer_id": {
+        "mean": 249.5,
+        "median": 249.5,
+        "std": 144.4818327679989,
+        "min": 0.0,
+        "max": 499.0,
+        "skewness": 0.0,
+        "kurtosis": -1.2000096000384002,
+        "is_normal": false,
+        "normality_p_value": 2.946101712610329e-11,
+        "distribution_type": "symmetric",
+        "quartiles": {
+          "q1": 124.75,
+          "q2": 249.5,
+          "q3": 374.25
+        },
+        "iqr": 249.5,
+        "outlier_count": 0,
+        "outlier_percentage": 0.0
+      },
+      "revenue": {
+        "mean": 4983.159520126438,
+        "median": 4929.331701447245,
+        "std": 967.0477608832081,
+        "min": 2142.109248225023,
+        "max": 7862.914852148909,
+        "skewness": 0.09067866470424589,
+        "kurtosis": -0.1993747939932291,
+        "is_normal": true,
+        "normality_p_value": 0.832161381157285,
+        "distribution_type": "normal",
+        "quartiles": {
+          "q1": 4282.22748909439,
+          "q2": 4929.331701447245,
+          "q3": 5628.433784435062
+        },
+        "iqr": 1346.206295340672,
+        "outlier_count": 3,
+        "outlier_percentage": 0.6
+      },
+      "revenue_copy_1": {
+        "mean": 4983.159520126438,
+        "median": 4929.331701447245,
+        "std": 967.0477608832081,
+        "min": 2142.109248225023,
+        "max": 7862.914852148909,
+        "skewness": 0.09067866470424589,
+        "kurtosis": -0.1993747939932291,
+        "is_normal": true,
+        "normality_p_value": 0.832161381157285,
+        "distribution_type": "normal",
+        "quartiles": {
+          "q1": 4282.22748909439,
+          "q2": 4929.331701447245,
+          "q3": 5628.433784435062
+        },
+        "iqr": 1346.206295340672,
+        "outlier_count": 3,
+        "outlier_percentage": 0.6
+      },
+      "revenue_copy_2": {
+        "mean": 4983.159520126438,
+        "median": 4929.331701447245,
+        "std": 967.0477608832081,
+        "min": 2142.109248225023,
+        "max": 7862.914852148909,
+        "skewness": 0.09067866470424589,
+        "kurtosis": -0.1993747939932291,
+        "is_normal": true,
+        "normality_p_value": 0.832161381157285,
+        "distribution_type": "normal",
+        "quartiles": {
+          "q1": 4282.22748909439,
+          "q2": 4929.331701447245,
+          "q3": 5628.433784435062
+        },
+        "iqr": 1346.206295340672,
+        "outlier_count": 3,
+        "outlier_percentage": 0.6
+      },
+      "revenue_scaled": {
+        "mean": 498.3159520126438,
+        "median": 492.9331701447245,
+        "std": 96.7047760883208,
+        "min": 214.2109248225023,
+        "max": 786.2914852148908,
+        "skewness": 0.09067866470424711,
+        "kurtosis": -0.19937479399322777,
+        "is_normal": true,
+        "normality_p_value": 0.832161381157285,
+        "distribution_type": "normal",
+        "quartiles": {
+          "q1": 428.222748909439,
+          "q2": 492.9331701447245,
+          "q3": 562.8433784435063
+        },
+        "iqr": 134.62062953406723,
+        "outlier_count": 3,
+        "outlier_percentage": 0.6
+      },
+      "revenue_inverse": {
+        "mean": 5016.840479873562,
+        "median": 5070.668298552755,
+        "std": 967.0477608832081,
+        "min": 2137.0851478510913,
+        "max": 7857.890751774978,
+        "skewness": -0.09067866470424592,
+        "kurtosis": -0.1993747939932291,
+        "is_normal": true,
+        "normality_p_value": 0.8321613811577827,
+        "distribution_type": "normal",
+        "quartiles": {
+          "q1": 4371.566215564938,
+          "q2": 5070.668298552755,
+          "q3": 5717.77251090561
+        },
+        "iqr": 1346.206295340672,
+        "outlier_count": 3,
+        "outlier_percentage": 0.6
+      },
+      "visits": {
+        "mean": 9.862,
+        "median": 10.0,
+        "std": 3.092909338527838,
+        "min": 2.0,
+        "max": 19.0,
+        "skewness": 0.2542879102092142,
+        "kurtosis": -0.06593663734131239,
+        "is_normal": false,
+        "normality_p_value": 6.139228890604084e-05,
+        "distribution_type": "symmetric",
+        "quartiles": {
+          "q1": 8.0,
+          "q2": 10.0,
+          "q3": 12.0
+        },
+        "iqr": 4.0,
+        "outlier_count": 3,
+        "outlier_percentage": 0.6
+      },
+      "satisfaction": {
+        "mean": 2.976460082626181,
+        "median": 2.8967177987228103,
+        "std": 1.1562949638994493,
+        "min": 1.000506264137853,
+        "max": 4.998179967721663,
+        "skewness": 0.09449015996592992,
+        "kurtosis": -1.1548322254134773,
+        "is_normal": false,
+        "normality_p_value": 2.5330791200168553e-11,
+        "distribution_type": "symmetric",
+        "quartiles": {
+          "q1": 2.0302379834842266,
+          "q2": 2.8967177987228103,
+          "q3": 3.9924631512687476
+        },
+        "iqr": 1.962225167784521,
+        "outlier_count": 0,
+        "outlier_percentage": 0.0
+      }
+    },
+    "insights": [
+      "Analyzed 8 numeric features",
+      "5 features follow normal distribution"
+    ]
+  },
+  "feature_importance": {
+    "available": true,
+    "target": "revenue",
+    "task_type": "regression",
+    "feature_importance": [
+      {
+        "feature": "customer_id",
+        "importance": 1.3395708591675108e-16
+      },
+      {
+        "feature": "revenue_copy_1",
+        "importance": 0.33222591362126275
+      },
+      {
+        "feature": "revenue_copy_2",
+        "importance": 0.33222591362126286
+      },
+      {
+        "feature": "revenue_scaled",
+        "importance": 0.03322259136212629
+      },
+      {
+        "feature": "revenue_inverse",
+        "importance": 0.33222591362126286
+      },
+      {
+        "feature": "visits",
+        "importance": 1.6772878658893875e-15
+      },
+      {
+        "feature": "satisfaction",
+        "importance": 1.9266272605067414e-15
+      }
+    ],
+    "total_features": 7,
+    "confidence_interval": [
+      -2.1641027569062396e-12,
+      2.1641027569062396e-12
+    ],
+    "confidence": 99.0,
+    "evidence": {
+      "columns_used": [
+        "customer_id",
+        "revenue_copy_1",
+        "revenue_copy_2",
+        "revenue_scaled",
+        "revenue_inverse",
+        "visits",
+        "satisfaction"
+      ],
+      "computation_method": "Linear Regression",
+      "result_statistic": {
+        "r2": 1.0,
+        "residual_std": 1.1041340596460407e-12
+      },
+      "confidence_level": 99.0,
+      "data_confidence": null,
+      "limitations": [],
+      "evidence_id": "72743697",
+      "timestamp": "2026-01-02T01:42:34.490684"
+    },
+    "evidence_id": "72743697",
+    "coefficients": {
+      "customer_id": 1.3395708591675108e-16,
+      "revenue_copy_1": 0.33222591362126275,
+      "revenue_copy_2": 0.33222591362126286,
+      "revenue_scaled": 0.03322259136212629,
+      "revenue_inverse": -0.33222591362126286,
+      "visits": 1.6772878658893875e-15,
+      "satisfaction": -1.9266272605067414e-15
+    },
+    "insights": [
+      "Top 3 features explain 66.4% of revenue variance",
+      "Most important feature: customer_id (0.0% importance)",
+      "Remaining 2 features contribute 0.0%"
+    ]
+  },
+  "business_intelligence": {
+    "evidence": {
+      "value_column": "revenue",
+      "segment_value_column": "revenue",
+      "churn_activity_column": "visits"
+    },
+    "value_metrics": {
+      "total_value": 2491579.760063219,
+      "avg_value": 4983.159520126438,
+      "median_value": 4929.331701447245,
+      "top_10_percent_value": 6279.94979292236,
+      "value_concentration": 0.10981417415401051
+    },
+    "clv_proxy": {
+      "avg_value_per_record": 4983.159520126438,
+      "estimated_total_value": 2491579.760063219,
+      "high_value_threshold": 5628.433784435062,
+      "high_value_count": 125
+    },
+    "segment_value": [
+      {
+        "segment": "Cluster 0",
+        "total_value": 1124177.4796825498,
+        "avg_value": 4974.236635763495,
+        "size": 226,
+        "value_per_member": 4974.236635763495,
+        "value_contribution_pct": 45.119064526917896
+      },
+      {
+        "segment": "Cluster 1",
+        "total_value": 835582.218446346,
+        "avg_value": 6189.497914417378,
+        "size": 135,
+        "value_per_member": 6189.497914417378,
+        "value_contribution_pct": 33.53624201960706
+      },
+      {
+        "segment": "Cluster 2",
+        "total_value": 531820.0619343233,
+        "avg_value": 3826.043611038297,
+        "size": 139,
+        "value_per_member": 3826.043611038297,
+        "value_contribution_pct": 21.344693453475053
+      }
+    ],
+    "churn_risk": {
+      "at_risk_count": 176,
+      "at_risk_percentage": 35.199999999999996,
+      "avg_activity": 9.862,
+      "low_activity_threshold": 8.0,
+      "activity_column": "visits"
+    },
+    "available": true,
+    "insights": [
+      "Total value: $2,491,579.76",
+      "Top segment contributes 45.1% of total value",
+      "Warning: 35.2% of records show low activity (churn risk)"
+    ]
+  },
+  "quality_metrics": {
+    "available": true,
+    "overall_completeness": 100.0,
+    "completeness_by_column": {
+      "customer_id": 100.0,
+      "revenue": 100.0,
+      "revenue_copy_1": 100.0,
+      "revenue_copy_2": 100.0,
+      "revenue_scaled": 100.0,
+      "revenue_inverse": 100.0,
+      "visits": 100.0,
+      "satisfaction": 100.0
+    },
+    "uniqueness_ratios": {
+      "customer_id": 1.0,
+      "revenue": 1.0,
+      "revenue_copy_1": 1.0,
+      "revenue_copy_2": 1.0,
+      "revenue_scaled": 1.0,
+      "revenue_inverse": 1.0,
+      "visits": 0.036,
+      "satisfaction": 1.0
+    },
+    "consistency_scores": {
+      "customer_id": {
+        "coefficient_of_variation": 0.5790855020761478,
+        "is_consistent": true
+      },
+      "revenue": {
+        "coefficient_of_variation": 0.1940631755771429,
+        "is_consistent": true
+      },
+      "revenue_copy_1": {
+        "coefficient_of_variation": 0.1940631755771429,
+        "is_consistent": true
+      },
+      "revenue_copy_2": {
+        "coefficient_of_variation": 0.1940631755771429,
+        "is_consistent": true
+      },
+      "revenue_scaled": {
+        "coefficient_of_variation": 0.1940631755771429,
+        "is_consistent": true
+      },
+      "revenue_inverse": {
+        "coefficient_of_variation": 0.1927603169291084,
+        "is_consistent": true
+      },
+      "visits": {
+        "coefficient_of_variation": 0.31361887431837737,
+        "is_consistent": true
+      },
+      "satisfaction": {
+        "coefficient_of_variation": 0.3884799163438573,
+        "is_consistent": true
+      }
+    },
+    "total_records": 500,
+    "total_features": 8,
+    "numeric_features": 8,
+    "categorical_features": 0,
+    "insights": []
+  }
+}

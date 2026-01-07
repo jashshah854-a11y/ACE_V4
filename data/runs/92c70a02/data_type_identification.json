@@ -1,0 +1,20 @@
+{
+  "primary_type": "time_series_trends",
+  "secondary_types": [],
+  "confidence": 0.6,
+  "confidence_label": "moderate",
+  "signals": {
+    "time_series_trends": [
+      "columns:date,month"
+    ],
+    "financial_accounting": [
+      "columns:revenue"
+    ],
+    "customer_behavior": [
+      "columns:action"
+    ]
+  },
+  "notes": [
+    "Primary type inferred from column/value signals (score=6)."
+  ]
+}

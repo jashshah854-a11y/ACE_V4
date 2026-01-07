@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ACE API Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #0a0a0a; color: #00ff00; }
+        button { padding: 10px 20px; margin: 10px; background: #00ff00; color: #000; border: none; cursor: pointer; }
+        pre { background: #1a1a1a; padding: 15px; border: 1px solid #00ff00; overflow-x: auto; }
+        .success { color: #00ff00; }
+        .error { color: #ff0000; }
+    </style>
+</head>
+<body>
+    <h1>ACE V4 API Connection Test</h1>
+    
+    <button onclick="testReport()">Test Report API</button>
+    <button onclick="testEnhancedAnalytics()">Test Enhanced Analytics API</button>
+    
+    <div id="output"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        const RUN_ID = 'f29b2407';
+
+        async function testReport() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<p>Testing /runs/f29b2407/report...</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/runs/${RUN_ID}/report`);
+                const text = await response.text();
+                
+                output.innerHTML = `
+                    <p class="success">✅ Report API Success!</p>
+                    <p>Status: ${response.status}</p>
+                    <p>Content Length: ${text.length} bytes</p>
+                    <pre>${text.substring(0, 500)}...</pre>
+                `;
+            } catch (error) {
+                output.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+            }
+        }
+
+        async function testEnhancedAnalytics() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<p>Testing /runs/f29b2407/enhanced-analytics...</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/runs/${RUN_ID}/enhanced-analytics`);
+                const json = await response.json();
+                
+                const churnRisk = json.business_intelligence?.churn_risk;
+                
+                output.innerHTML = `
+                    <p class="success">✅ Enhanced Analytics API Success!</p>
+                    <p>Status: ${response.status}</p>
+                    <p><strong>Churn Risk Data:</strong></p>
+                    <pre>${JSON.stringify(churnRisk, null, 2)}</pre>
+                    <p><strong>At Risk Percentage:</strong> ${churnRisk?.at_risk_percentage}% (Type: ${typeof churnRisk?.at_risk_percentage})</p>
+                    <p><strong>At Risk Count:</strong> ${churnRisk?.at_risk_count} (Type: ${typeof churnRisk?.at_risk_count})</p>
+                `;
+            } catch (error) {
+                output.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

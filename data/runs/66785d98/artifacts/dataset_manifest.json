@@ -1,0 +1,16 @@
+{
+  "source_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\stress_tests\\extreme_imbalance.csv",
+  "parquet_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\66785d98\\artifacts\\dataset.parquet",
+  "sample_parquet_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\66785d98\\artifacts\\sample.parquet",
+  "row_count_estimate": 1000,
+  "columns": [
+    "customer_id",
+    "revenue",
+    "visits",
+    "segment",
+    "churn_risk"
+  ],
+  "fast_mode_used": false,
+  "sha256": "46e9935d98983145810a2a1005109a54dcf87445a3e3abb220749215ec7cfe77",
+  "cache_key": "46e9935d98983145810a2a1005109a54dcf87445a3e3abb220749215ec7cfe77_full_ingest-fast-v1"
+}

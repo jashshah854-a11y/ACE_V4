@@ -1,0 +1,196 @@
+{
+  "run_id": "91ea538d",
+  "status": "complete_with_errors",
+  "created_at": "2026-01-02T01:40:27Z",
+  "updated_at": "2026-01-02T01:42:14Z",
+  "current_step": "sentry",
+  "next_step": "sentry",
+  "steps_completed": [
+    "ingestion",
+    "type_identifier",
+    "scanner",
+    "interpreter",
+    "validator",
+    "overseer",
+    "regression"
+  ],
+  "failed_steps": [],
+  "steps": {
+    "ingestion": {
+      "name": "ingestion",
+      "description": "Data ingestion and sanitization",
+      "status": "completed",
+      "completed_at": "2026-01-02T01:40:27Z",
+      "stdout_tail": "Ingestion completed during run initialization"
+    },
+    "type_identifier": {
+      "name": "type_identifier",
+      "description": "Identify dataset domain/type from schema and content",
+      "status": "completed",
+      "started_at": "2026-01-02T01:40:27Z",
+      "attempts": 1,
+      "completed_at": "2026-01-02T01:40:37Z",
+      "runtime_seconds": 9.65,
+      "stdout_tail": "{\"timestamp\": \"2026-01-02T01:40:36.995133\", \"level\": \"INFO\", \"logger\": \"ace\", \"message\": \"[LAUNCH] Running Data Type Identification...\"}\n[LAUNCH] Running Data Type Identification...\n{\"timestamp\": \"2026-01-02T01:40:37.091955\", \"level\": \"INFO\", \"logger\": \"ace\", \"message\": \"[OK] Data type identified: financial_accounting (exploratory)\"}\n[OK] Data type identified: financial_accounting (exploratory)\n"
+    },
+    "scanner": {
+      "name": "scanner",
+      "description": "Profile dataset",
+      "status": "completed",
+      "started_at": "2026-01-02T01:40:38Z",
+      "attempts": 1,
+      "completed_at": "2026-01-02T01:40:59Z",
+      "runtime_seconds": 20.96,
+      "stdout_tail": "Scanning: C:\\Users\\jashs\\Projects\\ACE_V4\\data\\stress_tests\\perfect_correlation.csv\n[DataLoader] Loading full file (0.1 MB)\n[DataLoader] Loaded 500 rows\nScanner complete.\n"
+    },
+    "interpreter": {
+      "name": "interpreter",
+      "description": "Create schema map",
+      "status": "completed",
+      "started_at": "2026-01-02T01:40:59Z",
+      "attempts": 1,
+      "completed_at": "2026-01-02T01:41:22Z",
+      "runtime_seconds": 22.8,
+      "stdout_tail": "[ERROR] data/schema_scan_output.json not found\n"
+    },
+    "validator": {
+      "name": "validator",
+      "description": "Validate data sufficiency and guardrails",
+      "status": "completed",
+      "started_at": "2026-01-02T01:41:23Z",
+      "attempts": 1,
+      "completed_at": "2026-01-02T01:41:29Z",
+      "runtime_seconds": 6.43,
+      "stdout_tail": "{\"timestamp\": \"2026-01-02T01:41:28.956336\", \"level\": \"INFO\", \"logger\": \"ace\", \"message\": \"[LAUNCH] Running data sufficiency validation...\"}\n[LAUNCH] Running data sufficiency validation...\n{\"timestamp\": \"2026-01-02T01:41:29.010414\", \"level\": \"INFO\", \"logger\": \"ace\", \"message\": \"[OK] Validation completed (mode=insight, confidence=moderate)\"}\n[OK] Validation completed (mode=insight, confidence=moderate)\n"
+    },
+    "overseer": {
+      "name": "overseer",
+      "description": "Clustering and segmentation",
+      "status": "completed",
+      "started_at": "2026-01-02T01:41:30Z",
+      "attempts": 1,
+      "completed_at": "2026-01-02T01:42:13Z",
+      "runtime_seconds": 43.43,
+      "stdout_tail": "{\"timestamp\": \"2026-01-02T01:42:09.123774\", \"level\": \"INFO\", \"logger\": \"ace\", \"message\": \"[LAUNCH] Triggering ACE Overseer...\"}\n[LAUNCH] Triggering ACE Overseer...\n[Overseer] Loading CSV from C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\91ea538d\\artifacts\\dataset.parquet\n[Overseer] Loaded 500 rows, 8 columns\n[Overseer] Dataset fingerprint: 30b1c15d2541d554...\n[Overseer] Cache MISS - running fresh clustering...\n[Overseer] Starting clustering...\n   Universal Clustering on ['customer_id', 'revenue', 'revenue_copy_1', 'revenue_copy_2', 'revenue_scaled', 'revenue_inverse', 'visits', 'satisfaction', 'risk_score'] (K=3-5)...\n   Using SEQUENTIAL clustering\n[Overseer] Results cached for future runs\n{\"timestamp\": \"2026-01-02T01:42:12.442698\", \"level\": \"INFO\", \"logger\": \"ace\", \"message\": \"[OK] Overseer V3 Complete. Output saved.\"}\n[OK] Overseer V3 Complete. Output saved.\n"
+    },
+    "regression": {
+      "name": "regression",
+      "description": "Model numeric outcomes",
+      "status": "skipped",
+      "started_at": "2026-01-02T01:42:14Z",
+      "_start_epoch": 1767318134.2009845,
+      "message": "Predictive modeling out of scope for this task contract"
+    },
+    "sentry": {
+      "name": "sentry",
+      "description": "Anomaly detection",
+      "status": "pending"
+    },
+    "personas": {
+      "name": "personas",
+      "description": "Persona generation",
+      "status": "pending"
+    },
+    "fabricator": {
+      "name": "fabricator",
+      "description": "Strategy generation",
+      "status": "pending"
+    },
+    "expositor": {
+      "name": "expositor",
+      "description": "Final report assembly",
+      "status": "pending"
+    }
+  },
+  "history": [
+    {
+      "timestamp": "2026-01-02T01:40:27Z",
+      "event": "Run initialized",
+      "data_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\stress_tests\\perfect_correlation.csv"
+    },
+    {
+      "timestamp": "2026-01-02T01:40:27Z",
+      "event": "ingestion completed",
+      "returncode": 0
+    },
+    {
+      "timestamp": "2026-01-02T01:40:27Z",
+      "event": "type_identifier started"
+    },
+    {
+      "timestamp": "2026-01-02T01:40:37Z",
+      "event": "type_identifier completed",
+      "returncode": 0
+    },
+    {
+      "timestamp": "2026-01-02T01:40:38Z",
+      "event": "scanner started"
+    },
+    {
+      "timestamp": "2026-01-02T01:40:59Z",
+      "event": "scanner completed",
+      "returncode": 0
+    },
+    {
+      "timestamp": "2026-01-02T01:40:59Z",
+      "event": "interpreter started"
+    },
+    {
+      "timestamp": "2026-01-02T01:41:22Z",
+      "event": "interpreter completed",
+      "returncode": 0
+    },
+    {
+      "timestamp": "2026-01-02T01:41:23Z",
+      "event": "validator started"
+    },
+    {
+      "timestamp": "2026-01-02T01:41:29Z",
+      "event": "validator completed",
+      "returncode": 0
+    },
+    {
+      "timestamp": "2026-01-02T01:41:29Z",
+      "event": "Validation warnings present but insights allowed; continuing",
+      "returncode": 0
+    },
+    {
+      "timestamp": "2026-01-02T01:41:30Z",
+      "event": "overseer started"
+    },
+    {
+      "timestamp": "2026-01-02T01:42:13Z",
+      "event": "overseer completed",
+      "returncode": 0
+    },
+    {
+      "timestamp": "2026-01-02T01:42:14Z",
+      "event": "regression started"
+    },
+    {
+      "timestamp": "2026-01-02T01:42:14Z",
+      "event": "regression skipped due to governance: Predictive modeling out of scope for this task contract"
+    }
+  ],
+  "progress": 54,
+  "current_stage": "Predictive Modeling",
+  "stage_progress": 0,
+  "completed_steps": 6,
+  "total_steps": 11,
+  "start_epoch": 1767318027.6437187,
+  "artifacts": {
+    "dataset_manifest": "dataset_manifest.json",
+    "sanitizer_report": "sanitizer_report.json",
+    "ingestion_meta": "ingestion_meta.json"
+  },
+  "data_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\runs\\91ea538d\\artifacts\\dataset.parquet",
+  "run_config": {
+    "task_intent": {
+      "primary_question": "Analyze perfect_correlation.csv for anomalies",
+      "confidence_threshold": 80,
+      "required_output_type": "descriptive"
+    },
+    "fast_mode": false
+  },
+  "run_mode": "strict"
+}
