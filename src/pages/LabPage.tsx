@@ -23,7 +23,29 @@ const LabPage = () => {
     const { data: governedReport } = useGovernedReport(runId || "");
     const reportData = useReportData(reportQuery.data || "", runId || "", "strict", governedReport);
 
-    if (!runId) return <div>Invalid Run ID</div>;
+    // Safe handling for missing runId
+    if (!runId) {
+        return (
+            <div className="min-h-screen bg-background flex flex-col">
+                <Navbar />
+                <main className="container flex-1 flex flex-col items-center justify-center p-8 text-center">
+                    <div className="bg-purple-100 dark:bg-purple-900/30 p-4 rounded-full mb-6">
+                        <Beaker className="w-12 h-12 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <h1 className="text-3xl font-bold mb-2">Welcome to Strategy Lab</h1>
+                    <p className="text-muted-foreground max-w-md mb-8">
+                        Select an existing analysis report to enter the simulation environment.
+                    </p>
+                    <Link to="/reports">
+                        <Button size="lg" className="gap-2">
+                            View Reports to Select <ArrowLeft className="w-4 h-4 rotate-180" />
+                        </Button>
+                    </Link>
+                </main>
+                <Footer />
+            </div>
+        );
+    }
     if (reportQuery.isLoading) return <div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin" /></div>;
 
     // Extract numeric columns for simulation

@@ -31,14 +31,13 @@ export const Navbar = () => {
               to="/"
               className={cn(
                 "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2",
-                location.pathname === "/" || location.pathname.includes("/report/summary")
+                location.pathname === "/"
                   ? "bg-navy-900 text-white shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                isSafeMode && !isPulse && "opacity-50 pointer-events-none"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
             >
-              <Sparkles className="w-4 h-4" />
-              Pulse
+              <Upload className="w-4 h-4" />
+              New Mission
             </Link>
 
             <Link
