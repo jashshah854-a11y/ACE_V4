@@ -650,8 +650,8 @@ async def trigger_run(
         file_path.unlink(missing_ok=True)
         raise HTTPException(status_code=500, detail=f"ACE Execution Failed: {str(e)}")
 
-@app.get("/runs/{run_id}/progress", tags=["Execution"])
-async def get_progress(run_id: str):
+# REMOVED: Plural route - use /run/{run_id}/status instead
+# async def get_progress(run_id: str):
     _validate_run_id(run_id)
     
     if not job_queue:
@@ -684,7 +684,7 @@ async def get_progress(run_id: str):
         "state": state,
     }
 
-@app.get("/runs/{run_id}/report", tags=["Artifacts"])
+@app.get("/run/{run_id}/report", tags=["Artifacts"])
 @limiter.limit("30/minute")
 async def get_report(request: Request, run_id: str, format: str = "markdown"):
     """Get the final report in markdown or PDF format.
@@ -726,7 +726,7 @@ async def get_report(request: Request, run_id: str, format: str = "markdown"):
         filename=f"ace_report_{run_id}.md"
     )
 
-@app.get("/runs/{run_id}/artifacts/{artifact_name}", tags=["Artifacts"])
+# REMOVED: Plural route - use /run/{run_id}/artifacts/{name} if needed
 async def get_artifact(run_id: str, artifact_name: str):
     """Get a specific JSON artifact (e.g., overseer_output, personas, strategies)."""
     _validate_run_id(run_id)
@@ -744,7 +744,7 @@ async def get_artifact(run_id: str, artifact_name: str):
     return data
 
 
-@app.get("/runs/{run_id}/enhanced-analytics", tags=["Artifacts"])
+@app.get("/run/{run_id}/enhanced-analytics", tags=["Artifacts"])
 async def get_enhanced_analytics(run_id: str):
     """Get enhanced analytics data including correlations, distributions, and business intelligence.
 
@@ -762,7 +762,7 @@ async def get_enhanced_analytics(run_id: str):
 
     return enhanced_analytics
 
-@app.get("/runs/{run_id}/evidence/sample", tags=["Artifacts"])
+# REMOVED: Plural route - evidence system deprecated
 async def get_evidence_sample(run_id: str, rows: int = 5):
     """
     Return a small sample of the source dataset (redacted) for evidence inspection.
@@ -794,7 +794,7 @@ async def get_evidence_sample(run_id: str, rows: int = 5):
     sample = df.head(rows).to_dict(orient="records")
     return {"rows": sample, "row_count": len(sample)}
 
-@app.get("/runs/{run_id}/diagnostics", tags=["Artifacts"])
+# REMOVED: Plural route - diagnostics available in run status
 async def get_diagnostics(run_id: str):
     """
     Return Safe Mode / validation diagnostics for a run.
@@ -836,7 +836,7 @@ async def get_diagnostics(run_id: str):
         "reasons": reasons,
     }
 
-@app.get("/runs/{run_id}/model-artifacts", tags=["Artifacts"])
+# REMOVED: Plural route - use /run/{run_id}/artifacts if needed
 async def get_model_artifacts(run_id: str):
     """
     Return model transparency artifacts (feature importances/coefficients) if available.
@@ -860,7 +860,7 @@ async def get_model_artifacts(run_id: str):
     }
 
 
-@app.get("/runs/{run_id}/evidence", tags=["Artifacts"])
+# REMOVED: Plural route - evidence system deprecated
 async def get_evidence(run_id: str, evidence_id: Optional[str] = None):
     """Expose persisted evidence objects for inspection."""
     _validate_run_id(run_id)
@@ -877,7 +877,7 @@ async def get_evidence(run_id: str, evidence_id: Optional[str] = None):
     return {"records": registry}
 
 
-@app.get("/runs/{run_id}/diff/{other_run_id}", tags=["Artifacts"])
+# REMOVED: Plural route - diff feature not in scope
 async def diff_runs(run_id: str, other_run_id: str):
     """
     Minimal diff: compare confidence and presence of overseer/personas/strategies between two runs.
@@ -910,13 +910,13 @@ async def diff_runs(run_id: str, other_run_id: str):
     return {"run_a": run_id, "run_b": other_run_id, "diff": diff}
 
 
-@app.get("/runs/{run_id}/pptx", tags=["Artifacts"])
+# REMOVED: Plural route - PPTX export deprecated
 async def export_pptx(run_id: str):
     """
     Placeholder for PPTX Evidence Deck export.
     """
     raise HTTPException(status_code=501, detail="PPTX export not implemented yet.")
-@app.get("/runs/{run_id}/insights", tags=["Artifacts"])
+# REMOVED: Plural route - insights available in enhanced-analytics
 async def get_key_insights(run_id: str):
     """Extract and return key insights from analysis.
 
@@ -1014,8 +1014,6 @@ async def get_key_insights(run_id: str):
 
 
 @app.get("/run/{run_id}/status", tags=["History"])
-@app.get("/runs/{run_id}/status", tags=["History"])  # Compatibility alias
-@app.get("/runs/{run_id}/state", tags=["History"])   # Compatibility alias
 @limiter.limit("60/minute")
 async def get_run_state(request: Request, run_id: str):
     """Return orchestrator state for a run.

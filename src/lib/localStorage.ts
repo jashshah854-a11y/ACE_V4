@@ -128,7 +128,8 @@ export function removeRecentReport(runId: string): void {
  */
 export async function validateRunId(runId: string, apiBase: string): Promise<boolean> {
     try {
-        const response = await fetch(`${apiBase}/runs/${runId}/state`);
+        // Enforce Singular Protocol
+        const response = await fetch(`${apiBase}/run/${runId}/status`);
         return response.ok;
     } catch {
         return false;

@@ -32,7 +32,10 @@ export function useEvidenceRegistry(runId?: string) {
       setError(null);
       try {
         const apiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_ACE_API_BASE_URL || "http://localhost:8000";
-        const response = await fetch(`${apiUrl}/runs/${runId}/evidence`);
+        // Evidence system deprecated - endpoint removed in Grand Unification
+        setData(null);
+        return;
+        // const response = await fetch(`${apiUrl}/run/${runId}/evidence`);
         if (!response.ok) {
           if (response.status === 404) {
             setData(null);

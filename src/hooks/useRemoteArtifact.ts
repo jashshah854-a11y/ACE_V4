@@ -28,7 +28,7 @@ export function useRemoteArtifact<T>(runId: string | undefined, endpoint: string
                 // Handle fully qualified URLs or relative paths
                 const url = endpoint.startsWith("http")
                     ? endpoint
-                    : `${API_BASE}/runs/${runId}/${endpoint}`;
+                    : `${API_BASE}/run/${runId}/${endpoint}`;
 
                 const res = await fetch(url);
 

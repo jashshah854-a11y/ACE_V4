@@ -34,7 +34,7 @@ interface EnhancedAnalytics {
 }
 
 export function useEnhancedAnalytics(runId?: string) {
-  // Pass relative path "enhanced-analytics"; useRemoteArtifact prepends /runs/{runId}/
+  // Pass relative path "enhanced-analytics"; useRemoteArtifact prepends /run/{runId}/
   const { data, loading, error } = useRemoteArtifact<EnhancedAnalytics>(runId, "enhanced-analytics");
   return { data, loading, error };
 }
