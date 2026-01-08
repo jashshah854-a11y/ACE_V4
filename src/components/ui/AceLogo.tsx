@@ -25,14 +25,14 @@ export function AceLogo({ className, mode = "full", size = "md" }: AceLogoProps)
     return (
         <div className={cn("flex items-center gap-3 font-sans", className)}>
             <div className={cn("relative aspect-square flex items-center justify-center", sizeClasses[size])}>
-                <svg viewBox="0 0 100 100" className="w-full h-full text-teal-500 overflow-visible">
+                <svg viewBox="0 0 100 100" className="w-full h-full text-teal-600 dark:text-teal-400 overflow-visible">
                     <defs>
-                        <linearGradient id="ace-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="currentColor" stopOpacity="1" />
-                            <stop offset="100%" stopColor="#059669" stopOpacity="1" />
+                        <linearGradient id="ace-gradient-logo" x1="0%" y1="100%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#0F766E" />
+                            <stop offset="100%" stopColor="#2DD4BF" />
                         </linearGradient>
-                        <filter id="glow">
-                            <feGaussianBlur stdDeviation="2.5" result="coloredBlur" />
+                        <filter id="glow-logo">
+                            <feGaussianBlur stdDeviation="1.5" result="coloredBlur" />
                             <feMerge>
                                 <feMergeNode in="coloredBlur" />
                                 <feMergeNode in="SourceGraphic" />
@@ -40,43 +40,79 @@ export function AceLogo({ className, mode = "full", size = "md" }: AceLogoProps)
                         </filter>
                     </defs>
 
-                    {/* Central Core */}
+                    {/* The Quill / Feather Shape - representing Story */}
                     <motion.path
-                        d="M50 20 L80 35 L80 65 L50 80 L20 65 L20 35 Z"
-                        fill="none"
-                        stroke="url(#ace-gradient)"
-                        strokeWidth="8"
+                        d="M30 85 C30 85 45 70 55 50 C65 30 80 10 90 5 C90 5 80 20 75 40 C70 60 55 80 50 90 Z"
+                        fill="url(#ace-gradient-logo)"
+                        stroke="none"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: 1 }}
-                        transition={{ duration: 1.5, ease: "easeInOut" }}
-                        filter="url(#glow)"
+                        transition={{ duration: 1.5, ease: "easeOut" }}
                     />
 
-                    {/* Inner Structure */}
+                    {/* The Quill Spine */}
                     <motion.path
-                        d="M50 20 L50 50 L80 65 M50 50 L20 65"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        strokeOpacity="0.5"
+                        d="M30 85 Q 55 50 90 5"
                         fill="none"
+                        stroke="white"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
                         initial={{ pathLength: 0 }}
                         animate={{ pathLength: 1 }}
                         transition={{ delay: 0.5, duration: 1 }}
                     />
 
-                    {/* Orbital Ring - Dynamic */}
-                    <motion.circle
-                        cx="50"
-                        cy="50"
-                        r="42"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeOpacity="0.3"
+                    {/* Data Nodes / Circuit Lines flowing INTO the Quill */}
+                    {/* Line 1 */}
+                    <motion.path
+                        d="M10 30 L 30 30 L 45 45"
                         fill="none"
-                        strokeDasharray="10 10"
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ delay: 0.8, duration: 0.8 }}
                     />
+                    <motion.circle cx="10" cy="30" r="3" fill="currentColor" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.8 }} />
+
+                    {/* Line 2 */}
+                    <motion.path
+                        d="M15 50 L 35 50 L 42 57"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ delay: 1.0, duration: 0.8 }}
+                    />
+                    <motion.circle cx="15" cy="50" r="3" fill="currentColor" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 1.0 }} />
+
+                    {/* Line 3 (Bottom) */}
+                    <motion.path
+                        d="M20 70 L 35 70"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ delay: 1.2, duration: 0.8 }}
+                    />
+                    <motion.circle cx="20" cy="70" r="3" fill="currentColor" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 1.2 }} />
+
+
+                    {/* Sparkles / Magic */}
+                    <motion.g
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 1.8, duration: 0.5 }}
+                    >
+                        <circle cx="85" cy="15" r="1.5" fill="#facc15" className="animate-pulse" />
+                        <circle cx="75" cy="25" r="1" fill="#facc15" className="animate-pulse-slow" />
+                    </motion.g>
+
                 </svg>
             </div>
 
@@ -87,7 +123,7 @@ export function AceLogo({ className, mode = "full", size = "md" }: AceLogoProps)
                     </h1>
                     {size !== 'sm' && (
                         <span className="text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-medium">
-                            Autonomous Cognitive Engine
+                            Advanced Contextual Engine
                         </span>
                     )}
                 </div>
