@@ -273,7 +273,7 @@ export async function getRunStatus(runId: string): Promise<RunState> {
 }
 
 export async function getReport(runId: string): Promise<string> {
-  const response = await fetch(`${API_BASE}/runs/${runId}/report`);
+  const response = await fetch(`${API_BASE}/run/${runId}/report`);
 
   if (!response.ok) {
     throw new Error(`Failed to get report: ${response.statusText}`);
@@ -283,7 +283,7 @@ export async function getReport(runId: string): Promise<string> {
 }
 
 export async function getEnhancedAnalytics(runId: string): Promise<any> {
-  const response = await fetch(`${API_BASE}/runs/${runId}/enhanced-analytics`);
+  const response = await fetch(`${API_BASE}/run/${runId}/enhanced-analytics`);
 
   if (!response.ok) {
     throw new Error(`Failed to get enhanced analytics: ${response.statusText}`);

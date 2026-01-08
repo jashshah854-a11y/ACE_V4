@@ -284,16 +284,20 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
     setDiffLoading(true);
     setDiffError(null);
     setDiffData(null);
-    try {
-      const res = await fetch(`${API_BASE}/runs/${runId}/diff/${diffRunId}`);
-      if (!res.ok) throw new Error(`Diff failed: ${res.statusText}`);
-      const json = await res.json();
-      setDiffData(json);
-    } catch (err) {
-      setDiffError(err instanceof Error ? err.message : "Unknown diff error");
-    } finally {
-      setDiffLoading(false);
-    }
+    // Feature deprecated in Grand Unification - endpoint removed
+    setDiffError("Run comparison feature temporarily unavailable");
+    setDiffLoading(false);
+    return;
+    // try {
+    //   const res = await fetch(`${API_BASE}/run/${runId}/diff/${diffRunId}`);
+    //   if (!res.ok) throw new Error(`Diff failed: ${res.statusText}`);
+    //   const json = await res.json();
+    //   setDiffData(json);
+    // } catch (err) {
+    //   setDiffError(err instanceof Error ? err.message : "Unknown diff error");
+    // } finally {
+    //   setDiffLoading(false);
+    // }
   };
 
   const handlePptxExport = async () => {
@@ -303,22 +307,26 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
     }
     setPptxLoading(true);
     setPptxError(null);
-    try {
-      const res = await fetch(`${API_BASE}/runs/${runId}/pptx`);
-      if (!res.ok) throw new Error(`PPTX export failed: ${res.statusText}`);
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = runId ? `ace-report-${runId}.pptx` : "ace-report.pptx";
-      a.click();
-      window.URL.revokeObjectURL(url);
-      toast({ title: "PPTX export ready", description: a.download });
-    } catch (err) {
-      setPptxError(err instanceof Error ? err.message : "Unknown PPTX error");
-    } finally {
-      setPptxLoading(false);
-    }
+    // Feature deprecated in Grand Unification - endpoint removed
+    setPptxError("PPTX export temporarily unavailable");
+    setPptxLoading(false);
+    return;
+    // try {
+    //   const res = await fetch(`${API_BASE}/run/${runId}/pptx`);
+    //   if (!res.ok) throw new Error(`PPTX export failed: ${res.statusText}`);
+    //   const blob = await res.blob();
+    //   const url = window.URL.createObjectURL(blob);
+    //   const a = document.createElement("a");
+    //   a.href = url;
+    //   a.download = runId ? `ace-report-${runId}.pptx` : "ace-report.pptx";
+    //   a.click();
+    //   window.URL.revokeObjectURL(url);
+    //   toast({ title: "PPTX export ready", description: a.download });
+    // } catch (err) {
+    //   setPptxError(err instanceof Error ? err.message : "Unknown PPTX error");
+    // } finally {
+    //   setPptxLoading(false);
+    // }
   };
 
   const handleFetchEvidenceSample = async ({
@@ -346,17 +354,21 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
     setEvidenceLoading(true);
     setEvidenceError(null);
     setEvidenceSample(null);
-    try {
-      const qs = new URLSearchParams({ rows: "5", ...(evidenceId ? { evidence_id: evidenceId } : {}) });
-      const res = await fetch(`${API_BASE}/runs/${runId}/evidence/sample?${qs.toString()}`);
-      if (!res.ok) throw new Error(`Failed to fetch evidence sample: ${res.statusText}`);
-      const json = await res.json();
-      setEvidenceSample(json.rows || []);
-    } catch (err) {
-      setEvidenceError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setEvidenceLoading(false);
-    }
+    // Evidence system deprecated in Grand Unification - endpoint removed
+    setEvidenceError("Evidence sampling temporarily unavailable");
+    setEvidenceLoading(false);
+    return;
+    // try {
+    //   const qs = new URLSearchParams({ rows: "5", ...(evidenceId ? { evidence_id: evidenceId } : {}) });
+    //   const res = await fetch(`${API_BASE}/run/${runId}/evidence/sample?${qs.toString()}`);
+    //   if (!res.ok) throw new Error(`Failed to fetch evidence sample: ${res.statusText}`);
+    //   const json = await res.json();
+    //   setEvidenceSample(json.rows || []);
+    // } catch (err) {
+    //   setEvidenceError(err instanceof Error ? err.message : "Unknown error");
+    // } finally {
+    //   setEvidenceLoading(false);
+    // }
   };
 
   const handleCloseEvidence = () => {
