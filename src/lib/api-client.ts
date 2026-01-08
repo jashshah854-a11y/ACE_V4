@@ -1,20 +1,12 @@
-// SMART ENVIRONMENT SWITCH
-// If we are on localhost, use local backend. 
-// If we are on the web (Vercel), use Production Railway Backend.
-const getBaseUrl = () => {
-  if (typeof window !== 'undefined') {
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return "http://localhost:8000";
-    }
-  }
-  // Fallback to Production for ANY non-local environment
-  return "https://ace-v4-production.up.railway.app";
-};
-
-export const API_BASE = getBaseUrl();
+// SMART ENVIRONMENT DETECTION
+// Priority: 1. Environment Var, 2. Production Flag, 3. Localhost Fallback
+export const API_BASE = import.meta.env.VITE_ACE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? "https://ace-v4-production.up.railway.app" : "http://localhost:8000");
 
 // Debug Log to confirm connection target in Console
 console.log("[ACE NETWORK] 🚀 Connecting to Backend at:", API_BASE);
+console.log("[ACE NETWORK] 📊 Environment Mode:", import.meta.env.PROD ? "PRODUCTION" : "DEVELOPMENT");
 
 // LAW 3: DEFENSIVE PARSING - Content-Type Validation
 // Prevents "Unexpected token" errors by checking response type before parsing
