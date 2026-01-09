@@ -1,8 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
 
 interface NarrativeStreamProps {
     content: string;
@@ -12,23 +11,6 @@ interface NarrativeStreamProps {
 export function NarrativeStream({ content, onClaimClick }: NarrativeStreamProps) {
     // Custom renderer to intercept sensitive text (like percentages) and make them interactive
     const components = {
-        code({ inline, className, children, ...props }: any) {
-            const match = /language-(\w+)/.exec(className || '');
-            return !inline && match ? (
-                <SyntaxHighlighter
-                    style={vscDarkPlus}
-                    language={match[1]}
-                    PreTag="div"
-                    {...props}
-                >
-                    {String(children).replace(/\n$/, '')}
-                </SyntaxHighlighter>
-            ) : (
-                <code className={`${className} bg-slate-200 dark:bg-slate-800 rounded px-1 py-0.5 font-mono text-sm`} {...props}>
-                    {children}
-                </code>
-            );
-        },
         // Intercept strong emphasis to act as "Claim Buttons" if they look like metrics
         strong({ children, ...props }: any) {
             // Simple heuristic: if it contains a % or $, treat it as a claim
@@ -63,6 +45,7 @@ export function NarrativeStream({ content, onClaimClick }: NarrativeStreamProps)
                 {/* Markdown Content */}
                 <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeHighlight]}
                     components={components}
                 >
                     {content}

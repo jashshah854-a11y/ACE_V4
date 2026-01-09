@@ -7,8 +7,6 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import IntelligenceCanvas from "@/components/canvas/IntelligenceCanvas"; // [NEW CANVAS]
 import { PipelineStatus } from "@/components/report/PipelineStatus";
 import { FileText, Plus, Search, AlertCircle, Loader2, CheckCircle2, History, ChevronDown } from "lucide-react";
@@ -156,8 +154,6 @@ const Reports = () => {
   const handlePipelineComplete = () => {
     reportQuery.refetch();
   };
-
-  const recentReports = getRecentReports();
 
   const recentReports = getRecentReports();
 

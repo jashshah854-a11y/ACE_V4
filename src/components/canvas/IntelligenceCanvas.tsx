@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import { Shield, Brain, PenTool, Layout, ChevronRight, Menu } from 'lucide-react';
+import { Shield, Brain, PenTool, Layout, ChevronRight, Menu, Terminal as TerminalIcon } from 'lucide-react';
 import { NarrativeStream } from './NarrativeStream';
 import EvidenceRail from '../report/EvidenceRail'; // Importing from legacy location for now
 import { useReportData } from '@/hooks/useReportData';
+import { ZoneALoader } from './skeletons/ZoneALoader';
+import { ZoneBLoader } from './skeletons/ZoneBLoader';
+import { ZoneCLoader } from './skeletons/ZoneCLoader';
+import { TerminalOverlay } from './TerminalOverlay';
 
 // --- ZONE A: The Neural Spine (Navigation) ---
 interface NeuralSpineProps {
@@ -10,9 +14,10 @@ interface NeuralSpineProps {
     status: string;
     activeAgent: string;
     onAgentSelect: (agent: string) => void;
+    onOpenTerminal: () => void;
 }
 
-const NeuralSpine = ({ runId, status, activeAgent, onAgentSelect }: NeuralSpineProps) => {
+const NeuralSpine = ({ runId, status, activeAgent, onAgentSelect, onOpenTerminal }: NeuralSpineProps) => {
     const agents = [
         { id: 'all', label: 'Full Brief', icon: Layout },
         { id: 'sentry', label: 'Sentry', icon: Shield },
@@ -26,7 +31,7 @@ const NeuralSpine = ({ runId, status, activeAgent, onAgentSelect }: NeuralSpineP
             {/* Mission Control Header */}
             <div className="p-6 border-b border-slate-800">
                 <div className="flex items-center gap-3">
-                    <div className={`w-3 h-3 rounded-full ${status === 'completed' ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-blue-500 animate-pulse'}`} />
+                    <div className={`w - 3 h - 3 rounded - full ${status === 'completed' ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-blue-500 animate-pulse'} `} />
                     <div>
                         <p className="text-xs text-slate-500 font-mono">MISSION CONTROL</p>
                         <p className="text-sm font-mono text-slate-300 truncate w-[160px]" title={runId}>{runId}</p>
@@ -41,10 +46,11 @@ const NeuralSpine = ({ runId, status, activeAgent, onAgentSelect }: NeuralSpineP
                     <button
                         key={agent.id}
                         onClick={() => onAgentSelect(agent.id)}
-                        className={`w-full px-6 py-3 flex items-center gap-3 text-sm transition-colors
+                        className={`w - full px - 6 py - 3 flex items - center gap - 3 text - sm transition - colors
                             ${activeAgent === agent.id
                                 ? 'bg-slate-900 text-white border-l-2 border-blue-500'
-                                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'}`}
+                                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+                            } `}
                     >
                         <agent.icon className="w-4 h-4" />
                         <span className="font-medium">{agent.label}</span>
@@ -54,8 +60,16 @@ const NeuralSpine = ({ runId, status, activeAgent, onAgentSelect }: NeuralSpineP
             </div>
 
             {/* Footer */}
-            <div className="p-6 border-t border-slate-800">
-                <p className="text-xs text-slate-600 font-mono text-center">ACE V4.0.0 // SINGULARITY</p>
+            <div className="p-6 border-t border-slate-800 flex justify-between items-center">
+                <p className="text-xs text-slate-600 font-mono">ACE V4.0.0 // SINGULARITY</p>
+                {/* Terminal Toggle */}
+                <button
+                    onClick={onOpenTerminal}
+                    className="p-1 hover:bg-slate-900 rounded text-slate-600 hover:text-green-500 transition-colors"
+                    title="Open Kernel Debugger"
+                >
+                    <TerminalIcon className="w-4 h-4" />
+                </button>
             </div>
         </div>
     );
@@ -71,6 +85,7 @@ export default function IntelligenceCanvas({ runId }: IntelligenceCanvasProps) {
     const [activeAgent, setActiveAgent] = useState('all');
     const [isEvidenceOpen, setIsEvidenceOpen] = useState(false); // Collapsed by default
     const [activeEvidenceType, setActiveEvidenceType] = useState<'business_pulse' | 'predictive_drivers' | null>(null);
+    const [isTerminalOpen, setIsTerminalOpen] = useState(false);
 
     // Filter logic: In a real app, we'd parse the markdown and split by agent.
     // For now, we just pass the full content but pretend to filter.
@@ -83,10 +98,16 @@ export default function IntelligenceCanvas({ runId }: IntelligenceCanvasProps) {
 
     if (isLoading) {
         return (
-            <div className="flex h-screen bg-slate-950 items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <Brain className="w-12 h-12 text-blue-500 animate-pulse" />
-                    <p className="font-mono text-slate-400">ESTABLISHING NEURAL LINK...</p>
+            <div className="flex h-screen w-full overflow-hidden bg-slate-900">
+                {/* ZONE A SKELETON */}
+                <ZoneALoader />
+
+                {/* ZONE B SKELETON */}
+                <ZoneBLoader />
+
+                {/* ZONE C SKELETON (Hidden on mobile to match responsive behavior) */}
+                <div className="hidden lg:block border-l border-slate-800">
+                    <ZoneCLoader />
                 </div>
             </div>
         );
@@ -112,6 +133,7 @@ export default function IntelligenceCanvas({ runId }: IntelligenceCanvasProps) {
                 status={data.status}
                 activeAgent={activeAgent}
                 onAgentSelect={setActiveAgent}
+                onOpenTerminal={() => setIsTerminalOpen(true)}
             />
 
             {/* ZONE B: The Narrative Stream */}
@@ -149,6 +171,13 @@ export default function IntelligenceCanvas({ runId }: IntelligenceCanvasProps) {
                     <Menu className="w-6 h-6" />
                 </button>
             )}
+
+            {/* TERMINAL OVERLAY */}
+            <TerminalOverlay
+                isOpen={isTerminalOpen}
+                onClose={() => setIsTerminalOpen(false)}
+                status={data?.status === 'completed' ? 'SYSTEM_IDLE' : 'PROCESSING'}
+            />
         </div>
     );
 }
