@@ -207,8 +207,26 @@ export function WideReportViewer({ content, className, isLoading, runId }: WideR
 
   if (!content || content.trim().length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-        No report content available.
+      <div className="flex flex-col items-center justify-center py-20 px-4 text-center border-2 border-dashed rounded-xl bg-muted/20">
+        <div className="w-16 h-16 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center mb-4">
+          <SafeIcon icon={AlertTriangle} className="w-8 h-8 text-yellow-600 dark:text-yellow-500" />
+        </div>
+        <h3 className="text-xl font-semibold mb-2">Analysis Complete, But Report Missing</h3>
+        <p className="text-muted-foreground max-w-md mb-6">
+          The analysis pipeline finished successfully, but the final report file was not generated or could not be retrieved.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            Reload Page
+          </button>
+          {/* Future: Add Regenerate Button */}
+        </div>
+        <p className="text-xs text-muted-foreground mt-8">
+          Run ID: <code className="bg-muted px-1 py-0.5 rounded">{runId}</code>
+        </p>
       </div>
     );
   }
