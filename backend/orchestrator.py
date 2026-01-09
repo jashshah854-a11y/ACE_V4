@@ -429,8 +429,17 @@ def main_loop(run_path):
                      state["steps_completed"].remove("expositor")
                      save_state(state_path, state)
                 
-                run_agent("expositor", run_path)
+                success, stdout, stderr = run_agent("expositor", run_path)
                 state = load_state(state_path) # Reload state after agent run
+
+                # If still missing, write a hard fallback to prevent UI loop
+                if not report_check_path.exists():
+                    print(f"[ORCHESTRATOR] ❌ CRITICAL: Emergency expositor run failed to produce report. Writing fallback.")
+                    try:
+                        with open(report_check_path, "w", encoding="utf-8") as f:
+                            f.write(f"# Analysis Failed\n\nThe system could not generate a final report.\n\n### Error Details\n`Expositor failed to run`\n\n**Stderr:**\n```\n{stderr}\n```\n\n**Stdout:**\n```\n{stdout}\n```")
+                    except Exception as e:
+                         print(f"[ORCHESTRATOR] Failed to write fallback report: {e}")
             
             final_status = state.get("status", "unknown")
             _record_final_status(run_path, final_status)
