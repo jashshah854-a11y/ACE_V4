@@ -52,7 +52,14 @@ function ThinkingViewWithPolling({ runId, onComplete }: { runId: string; onCompl
       <div className="space-y-8">
         <PipelineVisualizer runState={runState} />
         <div className="text-center animate-fade-in-up">
-          <p className="text-teal-600 font-medium">Analysis Finalized. Preparing Report...</p>
+          <p className="text-teal-600 font-medium mb-4">Analysis Finalized. Preparing Report...</p>
+          <Button
+            onClick={onComplete}
+            variant="default"
+            className="bg-teal-600 hover:bg-teal-700 text-white shadow-lg animate-pulse"
+          >
+            Open Report Now (Click if stuck)
+          </Button>
         </div>
       </div>
     );
