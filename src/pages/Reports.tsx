@@ -93,9 +93,11 @@ const Reports = () => {
     retryDelay: 2000,
     refetchInterval: (query) => {
       // Keep polling every 3s if we got a 404 OR explicit "not generated yet" error
+      // Use efficient duck-typing to catch any error object with a message
       const error = query.state.error;
-      if (error && error instanceof Error) {
-        if (error.message.includes("404") || error.message.includes("Report not generated yet")) {
+      if (error) {
+        const msg = (error as any).message || String(error);
+        if (msg.includes("404") || msg.includes("Report not generated yet")) {
           return 3000;
         }
       }
@@ -105,8 +107,10 @@ const Reports = () => {
 
   const isReportNotReady =
     reportQuery.isError &&
-    reportQuery.error instanceof Error &&
-    (reportQuery.error.message.includes("404") || reportQuery.error.message.includes("Report not generated yet"));
+    (() => {
+      const msg = (reportQuery.error as any)?.message || String(reportQuery.error);
+      return msg.includes("404") || msg.includes("Report not generated yet");
+    })();
 
   // Preserve content during background refetches
   useEffect(() => {
