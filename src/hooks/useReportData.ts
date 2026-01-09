@@ -206,7 +206,22 @@ export function useReportData(
   const anomalies = useMemo(() => extractAnomalies(content), [content]);
 
   // Narrative components
-  const executiveBrief = useMemo(() => extractExecutiveBrief(content), [content]);
+  const executiveBrief = useMemo(() => {
+    if (isFallbackReport) {
+      // Manual extraction for fallback reports
+      const lines = content.split('\n').filter(l => l.trim().length > 0);
+      const purpose = lines.find(l => l.toLowerCase().includes("notice")) || "The system encountered an error during analysis.";
+      const status = lines.find(l => l.toLowerCase().includes("status:")) || "Status: Incomplete";
+      return {
+        purpose: purpose.replace(/^[>#\-\s*]+/, "").trim(),
+        keyFindings: [status.replace(/^[>#\-\s*]+/, "").trim()],
+        confidenceVerdict: "Low (Fallback)",
+        recommendedAction: "Please review the diagnostics section or retry the analysis."
+      };
+    }
+    return extractExecutiveBrief(content);
+  }, [content, isFallbackReport]);
+
   const conclusion = useMemo(() => extractConclusion(content), [content]);
   const heroInsight = useMemo(() => extractHeroInsight(content, metrics), [content, metrics]);
   const mondayActions = useMemo(() => generateMondayActions(content, metrics, anomalies), [content, metrics, anomalies]);
