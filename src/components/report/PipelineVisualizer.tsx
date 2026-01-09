@@ -43,7 +43,7 @@ export function PipelineVisualizer({ runState, className }: PipelineVisualizerPr
         if (step) return step.status;
 
         // Fallback if step not explicitly in list (shouldn't happen with correct backend)
-        const currentStepIndex = steps.findIndex(s => s.name === runState.current_step);
+        if (runState.status === "completed" || runState.status === "complete") return "completed";
         if (index < currentStepIndex) return "completed";
         if (index === currentStepIndex) return "running";
         return "pending";
