@@ -265,13 +265,33 @@ export async function getRunStatus(runId: string): Promise<RunState> {
 }
 
 export async function getReport(runId: string): Promise<string> {
-  const response = await fetch(`${API_BASE}/run/${runId}/report`);
+  const cleanId = runId.trim();
+  // CRITICAL FIX 1: Use Singular Protocol (/run/) not Plural (/runs/)
+  const response = await fetch(`${API_BASE}/run/${cleanId}/report`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
 
   if (!response.ok) {
-    throw new Error(`Failed to get report: ${response.statusText}`);
+    if (response.status === 404) {
+      console.error(`[API] Report not found for run ${cleanId}. The agent may have failed to save 'final_report.md'.`);
+      throw new Error("Report not generated yet");
+    }
+    throw new Error(`Failed to fetch report: ${response.statusText}`);
   }
 
-  return response.text();
+  // CRITICAL FIX 2: Handle Markdown content safely (Do NOT parse as JSON)
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    // If backend incorrectly sends JSON error, handle it
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Unknown error");
+  }
+
+  // Return raw markdown text
+  return await response.text();
 }
 
 export async function getEnhancedAnalytics(runId: string): Promise<any> {
