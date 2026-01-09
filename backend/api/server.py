@@ -706,32 +706,54 @@ async def get_report(request: Request, run_id: str, format: str = "markdown"):
     if not report_path.exists():
         # AUTO-HEAL: If run is technically complete but report is missing, generate fallback
         try:
+            status = ""
+            created_at = "unknown"
+            updated_at = "unknown"
+
+            # 1. Try file-based state first
             state_path = run_path / "orchestrator_state.json"
             if state_path.exists():
                 with open(state_path, "r", encoding="utf-8") as f:
                     state = json.load(f)
-                
                 status = state.get("status", "")
-                if status in ["complete", "complete_with_errors", "failed"]:
-                    logger.warning(f"[AUTO-HEAL] Run {run_id} is {status} but report missing. specialized fallback...")
-                    
-                    fallback_content = (
-                        f"# Analysis Report ({status})\n\n"
-                        f"**Run ID:** `{run_id}`\n\n"
-                        f"> ⚠️ **System Notice:** The final report generation step encountered an issue, but the analysis pipeline finished.\n\n"
-                        f"## Status Overview\n"
-                        f"- **Status:** {status}\n"
-                        f"- **Created:** {state.get('created_at')}\n"
-                        f"- **Updated:** {state.get('updated_at')}\n\n"
-                        f"## Diagnostics\n"
-                        f"Please check the [Analysis Logs](/logs/{run_id}) for details on why the `expositor` agent failed to produce output."
-                    )
-                    
-                    # Write the fallback to disk so it sticks
-                    with open(report_path, "w", encoding="utf-8") as f:
-                        f.write(fallback_content)
-                    
-                    logger.info(f"[AUTO-HEAL] Fallback report created at {report_path}")
+                created_at = state.get("created_at")
+                updated_at = state.get("updated_at")
+            else:
+                 # 2. Try Redis fallback (Iron Dome)
+                 try:
+                    sys.path.append(str(Path(__file__).parent.parent))
+                    from jobs.redis_queue import get_queue
+                    queue = get_queue()
+                    if queue:
+                        job = queue.get_job(run_id)
+                        if job:
+                           status = job.status
+                           created_at = job.created_at
+                           updated_at = job.updated_at
+                           logger.info(f"[AUTO-HEAL] Recovered status '{status}' from Redis for {run_id}")
+                 except Exception as re:
+                     logger.warning(f"[AUTO-HEAL] Redis check failed: {re}")
+
+            if status in ["complete", "completed", "complete_with_errors", "failed"]:
+                logger.warning(f"[AUTO-HEAL] Run {run_id} is {status} but report missing. Creating specialized fallback...")
+                
+                fallback_content = (
+                    f"# Analysis Report ({status})\n\n"
+                    f"**Run ID:** `{run_id}`\n\n"
+                    f"> ⚠️ **System Notice:** The final report generation step encountered an issue, but the analysis pipeline finished.\n\n"
+                    f"## Status Overview\n"
+                    f"- **Status:** {status}\n"
+                    f"- **Created:** {created_at}\n"
+                    f"- **Updated:** {updated_at}\n\n"
+                    f"## Diagnostics\n"
+                    f"Please check the [Analysis Logs](/logs/{run_id}) for details on why the `expositor` agent failed to produce output."
+                )
+                
+                # Write the fallback to disk so it sticks
+                with open(report_path, "w", encoding="utf-8") as f:
+                    f.write(fallback_content)
+                
+                logger.info(f"[AUTO-HEAL] Fallback report created at {report_path}")
         except Exception as e:
             logger.error(f"[AUTO-HEAL] Failed to generate fallback: {e}")
 
