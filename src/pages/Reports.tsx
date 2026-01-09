@@ -92,10 +92,14 @@ const Reports = () => {
     retry: 3,
     retryDelay: 2000,
     refetchInterval: (query) => {
-      // Keep polling every 3s if we got a 404 (report not ready yet)
+      // Keep polling every 3s if we got a 404 OR explicit "not generated yet" error
+      // Use efficient duck-typing to catch any error object with a message
       const error = query.state.error;
-      if (error && error instanceof Error && error.message.includes("404")) {
-        return 3000;
+      if (error) {
+        const msg = (error as any).message || String(error);
+        if (msg.includes("404") || msg.includes("Report not generated yet")) {
+          return 3000;
+        }
       }
       return false;
     },
@@ -103,8 +107,10 @@ const Reports = () => {
 
   const isReportNotReady =
     reportQuery.isError &&
-    reportQuery.error instanceof Error &&
-    reportQuery.error.message.includes("404");
+    (() => {
+      const msg = (reportQuery.error as any)?.message || String(reportQuery.error);
+      return msg.includes("404") || msg.includes("Report not generated yet");
+    })();
 
   // Preserve content during background refetches
   useEffect(() => {
@@ -249,6 +255,21 @@ const Reports = () => {
                     <div className="flex-1">
                       <p className="font-medium mb-1">Error loading report</p>
                       <p className="text-sm">{reportQuery.error instanceof Error ? reportQuery.error.message : "Report not found or API error."}</p>
+
+                      {/* DEBUG OVERLAY - TEMPORARY */}
+                      <div className="mt-4 p-2 bg-blue-900/10 border border-blue-500/20 rounded text-xs font-mono">
+                        <p className="font-bold text-blue-600 mb-1">DEBUG INFO:</p>
+                        <pre className="whitespace-pre-wrap break-all">
+                          {JSON.stringify({
+                            isError: reportQuery.isError,
+                            errorType: typeof reportQuery.error,
+                            isInstanceError: reportQuery.error instanceof Error,
+                            rawError: reportQuery.error,
+                            message: (reportQuery.error as any)?.message
+                          }, null, 2)}
+                        </pre>
+                      </div>
+
                       <Button
                         variant="outline"
                         size="sm"

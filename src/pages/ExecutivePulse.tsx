@@ -55,6 +55,17 @@ const ExecutivePulse = () => {
     queryFn: () => getReport(activeRun),
     enabled: Boolean(activeRun),
     staleTime: 30000,
+    refetchInterval: (query) => {
+      // Retry if report is not ready yet (handle various error types confidently)
+      const error = query.state.error;
+      if (error) {
+        const msg = (error as any).message || String(error);
+        if (msg.includes("404") || msg.includes("Report not generated yet")) {
+          return 3000;
+        }
+      }
+      return false;
+    },
   });
 
   const { data: governedReport } = useGovernedReport(activeRun);
@@ -88,11 +99,11 @@ const ExecutivePulse = () => {
   const hasData = activeRun && reportQuery.data && prioritizedSections.primary.length > 0;
 
   // Redirect to upload if no runs exist
-  useEffect(() => {
-    if (recentReports.length === 0 && !searchParams.get("run")) {
-      navigate("/upload");
-    }
-  }, [recentReports.length, searchParams, navigate]);
+  // useEffect(() => {
+  //   if (recentReports.length === 0 && !searchParams.get("run")) {
+  //     navigate("/upload");
+  //   }
+  // }, [recentReports.length, searchParams, navigate]);
 
 
   // Empty State Component
