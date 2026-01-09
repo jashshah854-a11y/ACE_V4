@@ -7,7 +7,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { WideReportViewer } from "@/components/report/WideReportViewer";
+import IntelligenceCanvas from "@/components/canvas/IntelligenceCanvas"; // [NEW CANVAS]
 import { PipelineStatus } from "@/components/report/PipelineStatus";
 import { FileText, Plus, Search, AlertCircle, Loader2, CheckCircle2, History, ChevronDown } from "lucide-react";
 import { getReport, API_BASE } from "@/lib/api-client";
@@ -157,6 +157,35 @@ const Reports = () => {
 
   const recentReports = getRecentReports();
 
+  // [MAGNA CARTA] V4: If Run is Active, Switch to Intelligence OS (Full Screen Canvas)
+  if (activeRunId) {
+    // If report is not ready (Pipeline Running), we show the Status.
+    // However, IntelligenceCanvas handles loading/error states internally too.
+    // For smoother transition, we delegate to IntelligenceCanvas immediately, 
+    // but we can pass 'onBack' to return to search.
+
+    // Note: Reports.tsx previously handled 'isReportNotReady' explicitly. 
+    // For V4, we trust the Canvas to handle "Waiting for Report" or we assume activeRunId implies we want to see it.
+
+    return (
+      <div className="fixed inset-0 z-50 bg-background">
+        {/* If we wanted a "Back" button overlay, we could add it here */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="fixed top-4 right-4 z-[60] text-slate-500 hover:text-white hover:bg-slate-800"
+          onClick={() => {
+            setActiveRunId("");
+            setRunInput("");
+          }}
+        >
+          <Search className="h-5 w-5" />
+        </Button>
+        <IntelligenceCanvas runId={activeRunId} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -178,7 +207,7 @@ const Reports = () => {
           </div>
 
           <div className="space-y-8">
-            {/* Report Viewer Section */}
+            {/* Search Section (Legacy Wrapper for Home) */}
             <div className="rounded-xl border bg-card p-6 shadow-sm">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
                 <div>
@@ -187,7 +216,7 @@ const Reports = () => {
                     Report Viewer
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    Enter a valid Run ID to fetch and view the full markdown report from the ACE Engine.
+                    Enter a valid Run ID to launch the Intelligence Canvas.
                   </p>
                 </div>
 
@@ -235,82 +264,15 @@ const Reports = () => {
                   </div>
 
                   <Button onClick={handleLoadReport} disabled={!runInput.trim()}>
-                    Load
+                    Launch
                   </Button>
                 </div>
               </div>
 
-              {activeRunId && (
-                <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-2 rounded-md">
-                  <span>Viewing report for Run:</span>
-                  <code className="bg-background px-1 py-0.5 rounded border font-mono text-xs">{activeRunId}</code>
-                </div>
-              )}
-
-              {/* Show clear error message for non-404 errors */}
-              {reportQuery.isError && !isReportNotReady && (
-                <div className="p-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 mb-4">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="font-medium mb-1">Error loading report</p>
-                      <p className="text-sm">{reportQuery.error instanceof Error ? reportQuery.error.message : "Report not found or API error."}</p>
-
-                      {/* DEBUG OVERLAY - TEMPORARY */}
-                      <div className="mt-4 p-2 bg-blue-900/10 border border-blue-500/20 rounded text-xs font-mono">
-                        <p className="font-bold text-blue-600 mb-1">DEBUG INFO:</p>
-                        <pre className="whitespace-pre-wrap break-all">
-                          {JSON.stringify({
-                            isError: reportQuery.isError,
-                            errorType: typeof reportQuery.error,
-                            isInstanceError: reportQuery.error instanceof Error,
-                            rawError: reportQuery.error,
-                            message: (reportQuery.error as any)?.message
-                          }, null, 2)}
-                        </pre>
-                      </div>
-
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3"
-                        onClick={() => {
-                          removeRecentReport(activeRunId);
-                          setActiveRunId("");
-                          setRunInput("");
-                        }}
-                      >
-                        Clear and Start Fresh
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="min-h-[400px]">
-                {/* Show pipeline status ONLY when report is not ready AND we don't have content yet */}
-                {isPipelineRunning && !lastKnownContent && (
-                  <div className="mb-4">
-                    <PipelineStatus runId={activeRunId} onComplete={handlePipelineComplete} />
-                  </div>
-                )}
-
-                {/* Show report viewer when we have content OR when initial loading */}
-                {(lastKnownContent || (!isPipelineRunning && reportQuery.isFetching)) && (
-                  <WideReportViewer
-                    content={lastKnownContent}
-                    isLoading={!lastKnownContent && reportQuery.isFetching}
-                    runId={activeRunId}
-                  />
-                )}
-
-                {/* Empty state - only show when no run ID selected */}
-                {!activeRunId && !lastKnownContent && !reportQuery.isFetching && (
-                  <div className="h-full flex flex-col items-center justify-center p-12 text-muted-foreground">
-                    <FileText className="h-12 w-12 mb-4 opacity-20" />
-                    <p>Enter a Run ID above to view the wide premium report layout.</p>
-                  </div>
-                )}
+              {/* Empty Home State */}
+              <div className="h-[300px] flex flex-col items-center justify-center p-12 text-muted-foreground border-t border-dashed">
+                <FileText className="h-12 w-12 mb-4 opacity-20" />
+                <p>Enter a Run ID to launch the ACE V4 Intelligence Canvas.</p>
               </div>
             </div>
           </div>

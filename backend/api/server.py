@@ -117,6 +117,8 @@ except ImportError as e:
 ALLOWED_EXTENSIONS = {'.csv', '.tsv', '.txt', '.json', '.xlsx', '.parquet', '.xls'}
 ALLOWED_MIME_TYPES = {
     'text/csv',
+    'text/plain',
+    'text/tab-separated-values',
     'application/json',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/vnd.ms-excel',
@@ -277,7 +279,7 @@ def _generate_warnings(df):
         pass
     return warnings
 
-@app.post("/runs/preview", response_model=DatasetIdentity, tags=["Execution"])
+@app.post("/run/preview", response_model=DatasetIdentity, tags=["Execution"])
 async def preview_dataset(file: UploadFile = File(...)):
     """
     Sentry scan: Analyze dataset without running full pipeline.
@@ -703,6 +705,64 @@ async def get_report(request: Request, run_id: str, format: str = "markdown"):
     run_path = DATA_DIR / "runs" / run_id
     report_path = run_path / "final_report.md"
     
+    if not report_path.exists():
+        # AUTO-HEAL: If run is technically complete but report is missing, generate fallback
+        try:
+            status = ""
+            created_at = "unknown"
+            updated_at = "unknown"
+
+            # 1. Try file-based state first
+            state_path = run_path / "orchestrator_state.json"
+            if state_path.exists():
+                with open(state_path, "r", encoding="utf-8") as f:
+                    state = json.load(f)
+                status = state.get("status", "")
+                created_at = state.get("created_at")
+                updated_at = state.get("updated_at")
+            else:
+                 # 2. Try Redis fallback (Iron Dome)
+                 try:
+                    sys.path.append(str(Path(__file__).parent.parent))
+                    from jobs.redis_queue import get_queue
+                    queue = get_queue()
+                    if queue:
+                        job = queue.get_job(run_id)
+                        if job:
+                           status = job.status
+                           created_at = job.created_at
+                           updated_at = job.updated_at
+                           logger.info(f"[AUTO-HEAL] Recovered status '{status}' from Redis for {run_id}")
+                 except Exception as re:
+                     logger.warning(f"[AUTO-HEAL] Redis check failed: {re}")
+
+            if status in ["complete", "completed", "complete_with_errors", "failed"]:
+                logger.warning(f"[AUTO-HEAL] Run {run_id} is {status} but report missing. Creating specialized fallback...")
+                
+                fallback_content = (
+                    f"# Analysis Report ({status})\n\n"
+                    f"**Run ID:** `{run_id}`\n\n"
+                    f"> ⚠️ **System Notice:** The final report generation step encountered an issue, but the analysis pipeline finished.\n\n"
+                    f"## Status Overview\n"
+                    f"- **Status:** {status}\n"
+                    f"- **Created:** {created_at}\n"
+                    f"- **Updated:** {updated_at}\n\n"
+                    f"## Diagnostics\n"
+                    f"Please check the [Analysis Logs](/logs/{run_id}) for details on why the `expositor` agent failed to produce output."
+                )
+                
+                # Ensure directory exists (Critical Fix for Container Volumes)
+                report_path.parent.mkdir(parents=True, exist_ok=True)
+
+                # Write the fallback to disk so it sticks
+                with open(report_path, "w", encoding="utf-8") as f:
+                    f.write(fallback_content)
+                
+                logger.info(f"[AUTO-HEAL] Fallback report created at {report_path}")
+        except Exception as e:
+            logger.error(f"[AUTO-HEAL] Failed to generate fallback: {e}")
+
+    # Re-check existence after auto-heal attempt
     if not report_path.exists():
         raise HTTPException(status_code=404, detail="Report not found")
     
