@@ -734,29 +734,29 @@ async def get_report(request: Request, run_id: str, format: str = "markdown"):
                  except Exception as re:
                      logger.warning(f"[AUTO-HEAL] Redis check failed: {re}")
 
-                if status in ["complete", "completed", "complete_with_errors", "failed"]:
-                    logger.warning(f"[AUTO-HEAL] Run {run_id} is {status} but report missing. Creating specialized fallback...")
-                    
-                    fallback_content = (
-                        f"# Analysis Report ({status})\n\n"
-                        f"**Run ID:** `{run_id}`\n\n"
-                        f"> ⚠️ **System Notice:** The final report generation step encountered an issue, but the analysis pipeline finished.\n\n"
-                        f"## Status Overview\n"
-                        f"- **Status:** {status}\n"
-                        f"- **Created:** {created_at}\n"
-                        f"- **Updated:** {updated_at}\n\n"
-                        f"## Diagnostics\n"
-                        f"Please check the [Analysis Logs](/logs/{run_id}) for details on why the `expositor` agent failed to produce output."
-                    )
-                    
-                    # Ensure directory exists (Critical Fix for Container Volumes)
-                    report_path.parent.mkdir(parents=True, exist_ok=True)
+            if status in ["complete", "completed", "complete_with_errors", "failed"]:
+                logger.warning(f"[AUTO-HEAL] Run {run_id} is {status} but report missing. Creating specialized fallback...")
+                
+                fallback_content = (
+                    f"# Analysis Report ({status})\n\n"
+                    f"**Run ID:** `{run_id}`\n\n"
+                    f"> ⚠️ **System Notice:** The final report generation step encountered an issue, but the analysis pipeline finished.\n\n"
+                    f"## Status Overview\n"
+                    f"- **Status:** {status}\n"
+                    f"- **Created:** {created_at}\n"
+                    f"- **Updated:** {updated_at}\n\n"
+                    f"## Diagnostics\n"
+                    f"Please check the [Analysis Logs](/logs/{run_id}) for details on why the `expositor` agent failed to produce output."
+                )
+                
+                # Ensure directory exists (Critical Fix for Container Volumes)
+                report_path.parent.mkdir(parents=True, exist_ok=True)
 
-                    # Write the fallback to disk so it sticks
-                    with open(report_path, "w", encoding="utf-8") as f:
-                        f.write(fallback_content)
-                    
-                    logger.info(f"[AUTO-HEAL] Fallback report created at {report_path}")
+                # Write the fallback to disk so it sticks
+                with open(report_path, "w", encoding="utf-8") as f:
+                    f.write(fallback_content)
+                
+                logger.info(f"[AUTO-HEAL] Fallback report created at {report_path}")
         except Exception as e:
             logger.error(f"[AUTO-HEAL] Failed to generate fallback: {e}")
 
