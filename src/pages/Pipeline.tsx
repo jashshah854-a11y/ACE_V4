@@ -37,12 +37,14 @@ function ThinkingViewWithPolling({ runId, onComplete }: { runId: string; onCompl
   }, [runId, onComplete]);
 
   if (!runState) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mb-4" />
         <p className="text-muted-foreground">Initializing Pipeline Connection...</p>
         <p className="text-xs text-muted-foreground mt-4 font-mono opacity-70">
-           ID: {runId} | Status: {runState ? runState.status : "Connecting..."}
+          ID: {runId} | Status: {runState ? (runState as RunState).status : "Connecting..."}
         </p>
-      </div >
+      </div>
     );
   }
 
