@@ -299,11 +299,30 @@ class Expositor:
         
         # Save Report
         report_path = self.state.get_file_path("final_report.md")
-        with open(report_path, "w", encoding="utf-8") as f:
-            f.write(report)
+        
+        # LOGGING: Explicitly log the target path
+        log_info(f"Saving final report to: {report_path}")
+        
+        try:
+            with open(report_path, "w", encoding="utf-8") as f:
+                f.write(report)
+                f.flush()
+                # Force write to disk
+                import os
+                os.fsync(f.fileno())
+        except Exception as e:
+            log_warn(f"Failed to write report file: {e}")
+            raise e
             
         self.state.write("final_report", report)
-        log_ok(f"Expositor V3 Complete. Report saved to {report_path}")
+        
+        # Verify file existence
+        if Path(report_path).exists():
+             size = Path(report_path).stat().st_size
+             log_ok(f"Expositor V3 Complete. Report verified at {report_path} ({size} bytes)")
+        else:
+             log_warn(f"Expositor V3 Complete but report file missing at {report_path}")
+             
         return "expositor done"
 
     def _check_fallback(self, overseer, personas, strategies):
