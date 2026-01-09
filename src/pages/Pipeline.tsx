@@ -21,7 +21,7 @@ function ThinkingViewWithPolling({ runId, onComplete }: { runId: string; onCompl
         const state = await getRunStatus(runId);
         setRunState(state);
 
-        if (state.status === "complete" || state.status === "complete_with_errors") {
+        if (state.status === "complete" || state.status === "completed" || state.status === "complete_with_errors") {
           clearInterval(interval);
           setTimeout(onComplete, 2000); // Allow user to see the green checkmark
         }
@@ -45,7 +45,7 @@ function ThinkingViewWithPolling({ runId, onComplete }: { runId: string; onCompl
     );
   }
 
-  if (runState.status === "complete" || runState.status === "complete_with_errors") {
+  if (runState.status === "complete" || runState.status === "completed" || runState.status === "complete_with_errors") {
     // Keep showing visualizer in completed state briefly before redirect
     return (
       <div className="space-y-8">
