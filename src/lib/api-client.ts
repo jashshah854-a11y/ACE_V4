@@ -106,7 +106,7 @@ export async function uploadDataset(file: File): Promise<DatasetIdentity> {
   formData.append("file", file);
 
   try {
-    const response = await fetch(`${API_BASE}/runs/preview`, {
+    const response = await fetch(`${API_BASE}/run/preview`, {
       method: "POST",
       body: formData,
     });

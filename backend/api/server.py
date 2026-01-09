@@ -279,7 +279,7 @@ def _generate_warnings(df):
         pass
     return warnings
 
-@app.post("/runs/preview", response_model=DatasetIdentity, tags=["Execution"])
+@app.post("/run/preview", response_model=DatasetIdentity, tags=["Execution"])
 async def preview_dataset(file: UploadFile = File(...)):
     """
     Sentry scan: Analyze dataset without running full pipeline.

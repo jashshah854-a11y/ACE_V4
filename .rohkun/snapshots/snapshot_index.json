@@ -12,6 +12,34 @@
       "drift": 0.0,
       "status": "baseline",
       "report_file": "1"
+    },
+    {
+      "id": "snapshot_20260107_164607",
+      "timestamp": "2026-01-07T16:46:07.590131Z",
+      "sequence": 2,
+      "endpoints": 55,
+      "api_calls": 99,
+      "connections": 132,
+      "files": 2702,
+      "drift": 0.3,
+      "status": "caution",
+      "report_file": "2",
+      "compared_to": "snapshot_20260107_153450",
+      "compared_to_report": "1"
+    },
+    {
+      "id": "snapshot_20260107_172535",
+      "timestamp": "2026-01-07T17:25:35.048804Z",
+      "sequence": 3,
+      "endpoints": 55,
+      "api_calls": 99,
+      "connections": 132,
+      "files": 2703,
+      "drift": 0.0,
+      "status": "healthy",
+      "report_file": "3",
+      "compared_to": "snapshot_20260107_164607",
+      "compared_to_report": "2"
     }
   ]
 }
