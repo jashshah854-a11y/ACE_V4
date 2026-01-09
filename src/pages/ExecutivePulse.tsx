@@ -99,11 +99,11 @@ const ExecutivePulse = () => {
   const hasData = activeRun && reportQuery.data && prioritizedSections.primary.length > 0;
 
   // Redirect to upload if no runs exist
-  useEffect(() => {
-    if (recentReports.length === 0 && !searchParams.get("run")) {
-      navigate("/upload");
-    }
-  }, [recentReports.length, searchParams, navigate]);
+  // useEffect(() => {
+  //   if (recentReports.length === 0 && !searchParams.get("run")) {
+  //     navigate("/upload");
+  //   }
+  // }, [recentReports.length, searchParams, navigate]);
 
 
   // Empty State Component
