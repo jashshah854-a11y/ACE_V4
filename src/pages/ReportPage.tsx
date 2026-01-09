@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { WideReportViewer } from '@/components/report/WideReportViewer';
+import { EnhancedReportViewer } from '@/components/report/EnhancedReportViewer';
 import { getReport } from '@/lib/api-client';
 
 export default function ReportPage() {
@@ -36,7 +36,7 @@ export default function ReportPage() {
     }
 
     return (
-        <WideReportViewer
+        <EnhancedReportViewer
             content={content}
             runId={runId || ''}
             isLoading={false}

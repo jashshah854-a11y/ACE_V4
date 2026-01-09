@@ -168,6 +168,18 @@ export function useReportData(
   const { data: diagnostics } = useDiagnostics(runId);
   const { data: modelArtifacts } = useModelArtifacts(runId);
 
+  // DETECT FALLBACK / ERROR REPORT
+  const isFallbackReport = useMemo(() => {
+    const lower = content.toLowerCase();
+    return (
+      lower.includes("system notice") ||
+      lower.includes("analysis failed") ||
+      lower.includes("analysis report (partially_complete)") ||
+      // Detect the hard fallback header from server.py
+      (lower.includes("# analysis report") && lower.includes("diagnostics"))
+    );
+  }, [content]);
+
   // Core extraction
   const metrics = useMemo(() => extractMetrics(content), [content]);
   const progressMetrics = useMemo(() => extractProgressMetrics(content), [content]);
@@ -194,7 +206,22 @@ export function useReportData(
   const anomalies = useMemo(() => extractAnomalies(content), [content]);
 
   // Narrative components
-  const executiveBrief = useMemo(() => extractExecutiveBrief(content), [content]);
+  const executiveBrief = useMemo(() => {
+    if (isFallbackReport) {
+      // Manual extraction for fallback reports
+      const lines = content.split('\n').filter(l => l.trim().length > 0);
+      const purpose = lines.find(l => l.toLowerCase().includes("notice")) || "The system encountered an error during analysis.";
+      const status = lines.find(l => l.toLowerCase().includes("status:")) || "Status: Incomplete";
+      return {
+        purpose: purpose.replace(/^[>#\-\s*]+/, "").trim(),
+        keyFindings: [status.replace(/^[>#\-\s*]+/, "").trim()],
+        confidenceVerdict: "Low (Fallback)",
+        recommendedAction: "Please review the diagnostics section or retry the analysis."
+      };
+    }
+    return extractExecutiveBrief(content);
+  }, [content, isFallbackReport]);
+
   const conclusion = useMemo(() => extractConclusion(content), [content]);
   const heroInsight = useMemo(() => extractHeroInsight(content, metrics), [content, metrics]);
   const mondayActions = useMemo(() => generateMondayActions(content, metrics, anomalies), [content, metrics, anomalies]);
@@ -238,15 +265,16 @@ export function useReportData(
     const hasSignal = signals.some((sig) => lower.includes(sig));
     const metricLowConfidence = typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel <= 5;
     const governedLowConfidence = typeof governedConfidence === "number" && governedConfidence < confidenceThreshold;
-    return hasSignal || metricLowConfidence || governedLowConfidence;
-  }, [content, metrics.confidenceLevel, governedReport?.mode, governedConfidence, confidenceThreshold]);
+    return hasSignal || metricLowConfidence || governedLowConfidence || isFallbackReport;
+  }, [content, metrics.confidenceLevel, governedReport?.mode, governedConfidence, confidenceThreshold, isFallbackReport]);
 
   const safeMode = useMemo(
     () =>
       limitationsMode ||
       (typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel < confidenceThreshold) ||
-      (diagnostics?.dataset_identity?.is_safe_mode === true),
-    [limitationsMode, metrics.confidenceLevel, confidenceThreshold, diagnostics?.dataset_identity?.is_safe_mode]
+      (diagnostics?.dataset_identity?.is_safe_mode === true) ||
+      isFallbackReport,
+    [limitationsMode, metrics.confidenceLevel, confidenceThreshold, diagnostics?.dataset_identity?.is_safe_mode, isFallbackReport]
   );
 
   const hideActions = useMemo(
@@ -255,8 +283,8 @@ export function useReportData(
   );
 
   const shouldEmitInsights = useMemo(
-    () => !limitationsMode && (typeof metrics.confidenceLevel !== "number" || metrics.confidenceLevel >= confidenceThreshold),
-    [limitationsMode, metrics.confidenceLevel, confidenceThreshold]
+    () => !isFallbackReport && !limitationsMode && (typeof metrics.confidenceLevel !== "number" || metrics.confidenceLevel >= confidenceThreshold),
+    [limitationsMode, metrics.confidenceLevel, confidenceThreshold, isFallbackReport]
   );
 
   const hasTimeField = useMemo(() => {

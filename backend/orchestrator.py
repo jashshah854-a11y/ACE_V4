@@ -510,8 +510,9 @@ def main_loop(run_path):
              else:
                 state["status"] = "complete"
                 save_state(state_path, state)
-                _record_final_status(run_path, "complete")
-                break
+                # Continue loop to hit the Verification Gate at the top (lines 419+)
+                # This ensures final_report.md is validated before we break.
+                continue
 
         # Special handling for ingestion step - it's already done in orchestrate_new_run()
         if current == "ingestion":
