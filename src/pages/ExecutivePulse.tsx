@@ -55,13 +55,12 @@ const ExecutivePulse = () => {
     queryFn: () => getReport(activeRun),
     enabled: Boolean(activeRun),
     staleTime: 30000,
-    retry: 3,
-    retryDelay: 2000,
     refetchInterval: (query) => {
-      // Retry if report is not ready yet
+      // Retry if report is not ready yet (handle various error types confidently)
       const error = query.state.error;
-      if (error && error instanceof Error) {
-        if (error.message.includes("404") || error.message.includes("Report not generated yet")) {
+      if (error) {
+        const msg = (error as any).message || String(error);
+        if (msg.includes("404") || msg.includes("Report not generated yet")) {
           return 3000;
         }
       }
