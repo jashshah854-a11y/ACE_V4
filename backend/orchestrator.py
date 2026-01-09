@@ -415,12 +415,23 @@ def main_loop(run_path):
             continue
 
         # Emergency Report Generation: If completely finished/failed but no report, try one last time
+        # Emergency Report Generation: If completely finished/failed but no report, try one last time
         if state.get("status") in {"complete", "complete_with_errors", "failed"}:
-            if "expositor" not in state.get("steps_completed", []) and "final_report" not in state.get("artifacts", {}) and current != "expositor":
-                print("[ORCHESTRATOR] Pipeline ending without report. Forcing expositor run...")
+            # Check specifically for the file existence, not just current state artifacts
+            import pathlib
+            report_check_path = pathlib.Path(run_path) / "final_report.md"
+            
+            if not report_check_path.exists():
+                print(f"[ORCHESTRATOR] ⚠️ CRITICAL: Pipeline ended but {report_check_path} is missing. Forcing expositor run...")
+                
+                # Remove expositor from completed steps if it's there, to force re-run logic if needed
+                if "expositor" in state.get("steps_completed", []):
+                     state["steps_completed"].remove("expositor")
+                     save_state(state_path, state)
+                
                 run_agent("expositor", run_path)
                 state = load_state(state_path) # Reload state after agent run
-
+            
             final_status = state.get("status", "unknown")
             _record_final_status(run_path, final_status)
             print(f"Pipeline finished with status: {state['status']}")
