@@ -117,6 +117,8 @@ except ImportError as e:
 ALLOWED_EXTENSIONS = {'.csv', '.tsv', '.txt', '.json', '.xlsx', '.parquet', '.xls'}
 ALLOWED_MIME_TYPES = {
     'text/csv',
+    'text/plain',
+    'text/tab-separated-values',
     'application/json',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/vnd.ms-excel',
