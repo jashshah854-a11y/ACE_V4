@@ -37,11 +37,12 @@ function ThinkingViewWithPolling({ runId, onComplete }: { runId: string; onCompl
   }, [runId, onComplete]);
 
   if (!runState) {
-    return (
-      <div className="flex flex-col items-center justify-center p-12">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mb-4" />
         <p className="text-muted-foreground">Initializing Pipeline Connection...</p>
-      </div>
+        <p className="text-xs text-muted-foreground mt-4 font-mono opacity-70">
+           ID: {runId} | Status: {runState ? runState.status : "Connecting..."}
+        </p>
+      </div >
     );
   }
 
@@ -57,7 +58,16 @@ function ThinkingViewWithPolling({ runId, onComplete }: { runId: string; onCompl
     );
   }
 
-  return <PipelineVisualizer runState={runState} />;
+  return (
+    <div className="space-y-4">
+      <PipelineVisualizer runState={runState} />
+      <div className="text-center">
+        <p className="text-xs text-muted-foreground font-mono opacity-50">
+          Debug: {runId} is {runState.status}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export default function Pipeline() {
