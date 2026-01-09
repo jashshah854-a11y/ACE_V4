@@ -264,6 +264,7 @@ export async function getRunStatus(runId: string): Promise<RunState> {
   return safeJsonParse(response);
 }
 
+// Forced Deployment Trigger: 2026-01-09T11:13:00
 export async function getReport(runId: string): Promise<string> {
   const cleanId = runId.trim();
   // CRITICAL FIX 1: Use Singular Protocol (/run/) not Plural (/runs/)
