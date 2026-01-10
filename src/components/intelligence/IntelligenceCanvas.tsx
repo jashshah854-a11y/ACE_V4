@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { NeuralSpine, AgentExecution } from "./NeuralSpine";
 import { NarrativeStream } from "./NarrativeStream";
 import { EvidenceLab, EvidenceObject } from "./EvidenceLab";
-import { getReport, getRunStatus } from "@/lib/api-client";
+import { getReport, getRunStatus, getEnhancedAnalytics } from "@/lib/api-client";
 
 interface IntelligenceCanvasProps {
     runId: string;
@@ -36,6 +36,13 @@ export function IntelligenceCanvas({ runId, className }: IntelligenceCanvasProps
         queryFn: () => getRunStatus(runId),
         enabled: Boolean(runId),
         refetchInterval: 5000, // Poll every 5s
+    });
+
+    // Fetch analytics for evidence extraction
+    const { data: analytics } = useQuery({
+        queryKey: ['analytics', runId],
+        queryFn: () => getEnhancedAnalytics(runId),
+        enabled: Boolean(runId),
     });
 
     // Transform pipeline state to agent executions
