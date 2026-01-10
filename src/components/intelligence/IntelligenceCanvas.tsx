@@ -33,7 +33,7 @@ export function IntelligenceCanvas({ runId, className }: IntelligenceCanvasProps
     // Fetch pipeline state for agent timeline
     const { data: pipelineState } = useQuery({
         queryKey: ['state', runId],
-        queryFn: () => getRunState(runId),
+        queryFn: () => getRunStatus(runId),
         enabled: Boolean(runId),
         refetchInterval: 5000, // Poll every 5s
     });
