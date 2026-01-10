@@ -719,9 +719,6 @@ def main():
     agent = Expositor(schema_map=schema_map, state=state)
     try:
         agent.run()
-    agent = Expositor(schema_map=schema_map, state=state)
-    try:
-        agent.run()
     except Exception as e:
         print(f"[ERROR] Expositor agent failed: {e}")
         # UNSINKABLE: Generate a valid fallback report instead of crashing
