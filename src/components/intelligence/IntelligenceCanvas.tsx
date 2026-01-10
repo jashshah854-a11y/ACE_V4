@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { NeuralSpine, AgentExecution } from "./NeuralSpine";
 import { NarrativeStream } from "./NarrativeStream";
 import { EvidenceLab, EvidenceObject } from "./EvidenceLab";
-import { getReport, getRunState } from "@/lib/api-client";
+import { getReport, getRunStatus } from "@/lib/api-client";
 
 interface IntelligenceCanvasProps {
     runId: string;
