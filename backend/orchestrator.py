@@ -437,7 +437,26 @@ def main_loop(run_path):
                     print(f"[ORCHESTRATOR] ❌ CRITICAL: Emergency expositor run failed to produce report. Writing fallback.")
                     try:
                         with open(report_check_path, "w", encoding="utf-8") as f:
-                            f.write(f"# Analysis Failed\n\nThe system could not generate a final report.\n\n### Error Details\n`Expositor failed to run`\n\n**Stderr:**\n```\n{stderr}\n```\n\n**Stdout:**\n```\n{stdout}\n```")
+                            f.write(f"""# Analysis Report (System Fallback)
+Confidence Score: 0.1
+Data Quality Score: 0.0
+Status: Failed
+Mode: Diagnostic
+
+## System Notice: Critical Failure
+The system could not generate a final report due to an internal processing error.
+
+### Diagnostics
+- **Component**: Expositor Agent
+- **Status**: Failed to execute
+- **Error Trace**:
+```
+{stderr if stderr else "No stderr captured"}
+```
+
+### Recommended Action
+Please retry the analysis with a smaller dataset or check the system logs for 'Orchestrator' errors.
+""")
                     except Exception as e:
                          print(f"[ORCHESTRATOR] Failed to write fallback report: {e}")
             
