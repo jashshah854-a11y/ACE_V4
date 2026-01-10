@@ -22,6 +22,13 @@ warnings.filterwarnings('ignore')
 
 from .analyst_core import ModelSelector, ModelGovernanceError
 from .explainability import persist_evidence
+from .evidence_standards import (
+    EvidenceObject,
+    create_evidence,
+    should_enable_predictive_mode,
+    get_analysis_mode,
+    QUALITY_THRESHOLD
+)
 
 if TYPE_CHECKING:  # pragma: no cover
     from .state_manager import StateManager
@@ -614,22 +621,63 @@ def run_enhanced_analytics(
     state_manager: Optional["StateManager"] = None,
 ) -> Dict[str, Any]:
     """
-    Run complete enhanced analytics suite
+    Run complete enhanced analytics suite with quality-based fail-safe mode.
+    
+    STABILITY LAW 3: Evidence Logic
+    If data quality < 0.5, only descriptive analytics are run to prevent hallucinations.
+    Feature importance and predictive analysis are disabled in fail-safe mode.
 
     Args:
         df: Input dataframe
         schema_map: Optional schema mapping
         cluster_labels: Optional cluster assignments
+        state_manager: Optional state manager for evidence persistence
 
     Returns:
-        Comprehensive analytics results
+        Comprehensive analytics results with mode indicator
     """
     analytics = EnhancedAnalytics(df, schema_map, state_manager=state_manager)
-
-    return {
-        "correlation_analysis": analytics.compute_correlation_matrix(),
-        "distribution_analysis": analytics.analyze_distributions(),
-        "feature_importance": analytics.compute_feature_importance(),
-        "business_intelligence": analytics.compute_business_intelligence(cluster_labels),
-        "quality_metrics": analytics.compute_advanced_quality_metrics()
+    
+    # Determine analysis mode based on data quality
+    quality_score = 1.0  # Default to high quality
+    if state_manager:
+        try:
+            identity_card = state_manager.read("dataset_identity_card")
+            if identity_card:
+                quality_score = identity_card.get("quality_score", 1.0)
+        except Exception:
+            pass  # Safe to proceed with default
+    
+    # FAIL-SAFE MODE GATE
+    analysis_mode = get_analysis_mode(quality_score)
+    enable_predictive = should_enable_predictive_mode(quality_score)
+    
+    print(f"[ENHANCED_ANALYTICS] Quality Score: {quality_score:.2f}")
+    print(f"[ENHANCED_ANALYTICS] Analysis Mode: {analysis_mode.upper()}")
+    
+    results = {
+        "analysis_mode": analysis_mode,
+        "quality_score": quality_score,
+        "quality_threshold": QUALITY_THRESHOLD,
+        "predictive_enabled": enable_predictive,
     }
+    
+    # Always run descriptive analytics
+    results["correlation_analysis"] = analytics.compute_correlation_matrix()
+    results["distribution_analysis"] = analytics.analyze_distributions()
+    results["quality_metrics"] = analytics.compute_advanced_quality_metrics()
+    results["business_intelligence"] = analytics.compute_business_intelligence(cluster_labels)
+    
+    # Only run predictive analytics if quality threshold met
+    if enable_predictive:
+        print("[ENHANCED_ANALYTICS] ✓ Quality threshold met - enabling feature importance")
+        results["feature_importance"] = analytics.compute_feature_importance()
+    else:
+        print(f"[ENHANCED_ANALYTICS] ⚠️ Quality < {QUALITY_THRESHOLD} - skipping predictive analysis (fail-safe mode)")
+        results["feature_importance"] = {
+            "available": False,
+            "reason": f"Data quality ({quality_score:.2f}) below threshold ({QUALITY_THRESHOLD}) - fail-safe mode active",
+            "mode": "descriptive_only"
+        }
+    
+    return results

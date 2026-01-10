@@ -1,0 +1,154 @@
+/* 
+ * Data Quill Aesthetic - Neural Refinery Color Palette
+ * Phase 2: Operation Intelligence Canvas
+ */
+
+@layer base {
+  :root {
+    /* Dark Mode Primary - The Void */
+    --void: 10 14 26;           /* #0a0e1a - Deep space background */
+    --slate: 26 31 46;          /* #1a1f2e - Panel backgrounds */
+    --midnight: 36 42 61;       /* #242a3d - Card backgrounds */
+    
+    /* Accent Colors - Neural */
+    --neural-blue: 59 130 246;  /* #3b82f6 - Primary actions */
+    --pulse: 139 92 246;        /* #8b5cf6 - Active states (purple) */
+    --amber: 245 158 11;        /* #f59e0b - Warnings */
+    --emerald: 16 185 129;      /* #10b981 - Success/Terminal green */
+    
+    /* Text Hierarchy */
+    --text-primary: 229 231 235;   /* #e5e7eb - Primary text */
+    --text-secondary: 156 163 175; /* #9ca3af - Secondary text */
+    --text-muted: 107 114 128;     /* #6b7280 - Muted text */
+    
+    /* Glassmorphism */
+    --glass: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+  }
+}
+
+@layer components {
+  /* Intelligence Canvas Container */
+  .intelligence-canvas {
+    @apply min-h-screen;
+  }
+
+  /* Neural Spine - Left Panel */
+  .neural-spine {
+    @apply font-sans;
+    background-color: rgb(var(--slate));
+    color: rgb(var(--text-primary));
+  }
+
+  /* Narrative Stream - Center Panel (The Library) */
+  .narrative-stream {
+    @apply font-serif;
+    font-family: 'Crimson Text', 'Lora', Georgia, serif;
+    font-size: 18px;
+    line-height: 1.8;
+  }
+
+  /* Evidence Lab - Right Panel (The Proof) */
+  .evidence-lab {
+    @apply font-mono;
+    background-color: rgb(var(--void));
+    font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* Glassmorphism Effect */
+  .glass-panel {
+    background: var(--glass);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Agent Status Animations */
+  @keyframes pulse-agent {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .agent-running {
+    animation: pulse-agent 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Claim Highlight Animation */
+  .claim-active {
+    background: linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(59, 130, 246, 0.2) 50%, 
+      transparent 100%);
+    transition: background 0.3s ease;
+  }
+
+  /* Evidence Viewer Syntax Highlighting Colors */
+  .evidence-json {
+    color: rgb(var(--emerald));
+  }
+
+  .evidence-json .json-key {
+    color: rgb(var(--neural-blue));
+  }
+
+  .evidence-json .json-string {
+    color: rgb(var(--amber));
+  }
+
+  .evidence-json .json-number {
+    color: rgb(var(--pulse));
+  }
+}
+
+/* Typography Utilities */
+@layer utilities {
+  .text-void {
+    color: rgb(var(--void));
+  }
+
+  .bg-void {
+    background-color: rgb(var(--void));
+  }
+
+  .text-slate {
+    color: rgb(var(--slate));
+  }
+
+  .bg-slate {
+    background-color: rgb(var(--slate));
+  }
+
+  .bg-midnight {
+    background-color: rgb(var(--midnight));
+  }
+
+  .text-neural-blue {
+    color: rgb(var(--neural-blue));
+  }
+
+  .text-pulse {
+    color: rgb(var(--pulse));
+  }
+
+  .text-emerald {
+    color: rgb(var(--emerald));
+  }
+
+  .text-text-primary {
+    color: rgb(var(--text-primary));
+  }
+
+  .text-text-secondary {
+    color: rgb(var(--text-secondary));
+  }
+
+  .text-text-muted {
+    color: rgb(var(--text-muted));
+  }
+
+  .border-glass-border {
+    border-color: var(--glass-border);
+  }
+}

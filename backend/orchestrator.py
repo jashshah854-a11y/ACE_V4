@@ -414,52 +414,29 @@ def main_loop(run_path):
             time.sleep(POLL_TIME)
             continue
 
-        # Emergency Report Generation: If completely finished/failed but no report, try one last time
-        # Emergency Report Generation: If completely finished/failed but no report, try one last time
+        # STABILITY LAW 1: ABSOLUTE REPORT ENFORCEMENT
+        # The pipeline SHALL NOT complete without a physical final_report.md
+        # Using Report Enforcer module for absolute path verification
         if state.get("status") in {"complete", "complete_with_errors", "failed"}:
-            # Check specifically for the file existence, not just current state artifacts
-            import pathlib
-            report_check_path = pathlib.Path(run_path) / "final_report.md"
+            from core.report_enforcer import enforce_report_existence
             
-            if not report_check_path.exists():
-                print(f"[ORCHESTRATOR] ⚠️ CRITICAL: Pipeline ended but {report_check_path} is missing. Forcing expositor run...")
-                
-                # Remove expositor from completed steps if it's there, to force re-run logic if needed
-                if "expositor" in state.get("steps_completed", []):
-                     state["steps_completed"].remove("expositor")
-                     save_state(state_path, state)
-                
-                success, stdout, stderr = run_agent("expositor", run_path)
-                state = load_state(state_path) # Reload state after agent run
-
-                # If still missing, write a hard fallback to prevent UI loop
-                if not report_check_path.exists():
-                    print(f"[ORCHESTRATOR] ❌ CRITICAL: Emergency expositor run failed to produce report. Writing fallback.")
-                    try:
-                        with open(report_check_path, "w", encoding="utf-8") as f:
-                            f.write(f"""# Analysis Report (System Fallback)
-Confidence Score: 0.1
-Data Quality Score: 0.0
-Status: Failed
-Mode: Diagnostic
-
-## System Notice: Critical Failure
-The system could not generate a final report due to an internal processing error.
-
-### Diagnostics
-- **Component**: Expositor Agent
-- **Status**: Failed to execute
-- **Error Trace**:
-```
-{stderr if stderr else "No stderr captured"}
-```
-
-### Recommended Action
-Please retry the analysis with a smaller dataset or check the system logs for 'Orchestrator' errors.
-""")
-                    except Exception as e:
-                         print(f"[ORCHESTRATOR] Failed to write fallback report: {e}")
+            print(f"[ORCHESTRATOR] Pipeline completion detected. Enforcing report existence...")
             
+            # ABSOLUTE ENFORCEMENT - This blocks until report exists or fails
+            report_verified = enforce_report_existence(run_path, max_wait=30)
+            
+            if not report_verified:
+                # CRITICAL FAILURE - Report enforcer could not guarantee report
+                print(f"[ORCHESTRATOR] ❌ CRITICAL: Report enforcer failed. Blocking completion.")
+                state["status"] = "failed"
+                state["failure_reason"] = "CRITICAL: Report generation failed after all retries"
+                update_history(state, "Report enforcer blocked completion - no valid report", returncode=1)
+                save_state(state_path, state)
+                _record_final_status(run_path, "failed", reason="report_enforcer_block")
+                break
+            
+            # Report verified - safe to complete
+            print(f"[ORCHESTRATOR] ✓ Report verified. Pipeline completion authorized.")
             final_status = state.get("status", "unknown")
             _record_final_status(run_path, final_status)
             print(f"Pipeline finished with status: {state['status']}")
