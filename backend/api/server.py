@@ -803,6 +803,35 @@ async def get_artifact(run_id: str, artifact_name: str):
         
     return data
 
+@app.get("/run/{run_id}/enhanced-analytics", tags=["Artifacts"])
+async def get_enhanced_analytics(run_id: str):
+    """Get the enhanced analytics object for a run."""
+    _validate_run_id(run_id)
+    
+    run_path = DATA_DIR / "runs" / run_id
+    state = StateManager(str(run_path))
+    
+    analytics = state.read("enhanced_analytics")
+    if not analytics:
+        # Check if run is complete first
+        status = state.read("status")
+        if status not in ["completed", "complete", "complete_with_errors"]:
+             raise HTTPException(status_code=404, detail="Analytics not generated yet (run in progress)")
+             
+        # If complete but missing, return empty structure (Safe Mode)
+        return {
+            "quality_metrics": {"available": False},
+            "business_intelligence": {"available": False},
+            "feature_importance": {"available": False},
+            "correlations": {"available": False} 
+        }
+        
+    return analytics
+    if not data:
+        raise HTTPException(status_code=404, detail=f"Artifact '{artifact_name}' not found")
+        
+    return data
+
 
 @app.get("/run/{run_id}/enhanced-analytics", tags=["Artifacts"])
 async def get_enhanced_analytics(run_id: str):
