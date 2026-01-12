@@ -3,6 +3,7 @@ import json
 import time
 import subprocess
 import sys
+import traceback
 import threading
 import shutil
 from datetime import datetime
@@ -290,6 +291,16 @@ def run_agent(agent_name, run_path):
         )
         return False, "", f"Agent execution timed out. This may indicate a large dataset or processing issue."
     except Exception as e:
+        # --- OPERATION GLASS HOUSE: FORCE LOGGING ---
+        print(f"\n{'='*80}", file=sys.stderr, flush=True)
+        print(f"[CRITICAL FAILURE] Agent '{agent_name}' CRASHED", file=sys.stderr, flush=True)
+        print(f"[CRITICAL FAILURE] Run Path: {run_path}", file=sys.stderr, flush=True)
+        print(f"[CRITICAL FAILURE] Error: {str(e)}", file=sys.stderr, flush=True)
+        print(f"[CRITICAL FAILURE] Traceback follows:", file=sys.stderr, flush=True)
+        print(f"{'-'*80}", file=sys.stderr, flush=True)
+        traceback.print_exc(file=sys.stderr)
+        print(f"{'='*80}\n", file=sys.stderr, flush=True)
+        
         from utils.logging import log_error
         log_error(
             f"Failed to execute agent {agent_name}",
@@ -312,6 +323,13 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
     config = PerformanceConfig()
     print(f"[RUN] Run ID: {run_id}")
     print(f"[RUN] Run Path: {run_path}")
+    
+    # OPERATION GLASS HOUSE: Path Verification
+    run_path_obj = Path(run_path)
+    print(f"[ORCHESTRATOR] 🔍 TARGET RUN DIR: {run_path_obj.resolve()}", file=sys.stderr, flush=True)
+    print(f"[ORCHESTRATOR] 🔍 Exists? {run_path_obj.exists()}", file=sys.stderr, flush=True)
+    print(f"[ORCHESTRATOR] 🔍 Is Directory? {run_path_obj.is_dir()}", file=sys.stderr, flush=True)
+
     
     # 2. Ingest Data (fast vs full). Respect fast_mode in run_config; default to fast for large files.
     if not os.path.exists(data_path):
