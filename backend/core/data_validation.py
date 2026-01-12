@@ -27,7 +27,7 @@ def _detect_target(df: pd.DataFrame, run_config: Dict, schema_map: Optional[Dict
     # simple heuristic: look for revenue/amount/value columns
     for col in df.columns:
         low = col.lower()
-        if any(token in low for token in ["revenue", "amount", "value", "target", "label", "score"]):
+        if any(token in low for token in ["revenue", "amount", "value", "target", "label", "score", "price", "cost", "profit"]):
             return col
     return None
 
@@ -111,7 +111,8 @@ def validate_dataset(df: pd.DataFrame, run_config: Dict, schema_map: Optional[Di
     mode = "insight" if allow_insights and not blocked else "limitations"
 
     # Determine confidence label based on failures
-    failed = [k for k, v in checks.items() if not v["ok"]]
+    # Fix: Don't penalize confidence for observational data (causal_context)
+    failed = [k for k, v in checks.items() if not v["ok"] and k != "causal_context"]
     confidence_score = max(0.1, 1 - (len(failed) * 0.15))
 
     report = {

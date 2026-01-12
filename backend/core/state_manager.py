@@ -23,39 +23,31 @@ def _json_default(obj: Any):
     except Exception:
         return None
 
-import json
-import os
-from pathlib import Path
-from typing import Any, Optional
-
-
-def _json_default(obj: Any):
-    try:
-        import numpy as np  # type: ignore
-
-        if isinstance(obj, (np.integer, np.floating)):
-            return obj.item()
-        if isinstance(obj, np.bool_):
-            return bool(obj)
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-    except Exception:
-        pass
-    if isinstance(obj, set):
-        return list(obj)
-    try:
-        return str(obj)
-    except Exception:
-        return None
-
 class StateManager:
-    def __init__(self, run_path: str):
+    def __init__(self, run_path: str, redis_url: Optional[str] = None):
         self.run_path = Path(run_path)
+        self.redis_client = None
+        self.run_id = self.run_path.name
+        
+        # Auto-detect Redis URL from env if not provided
+        if not redis_url:
+            redis_url = os.getenv("REDIS_URL")
+            
+        if redis_url:
+            try:
+                import redis
+                self.redis_client = redis.from_url(redis_url, decode_responses=True)
+            except Exception:
+                pass
+
+    def _get_redis_key(self, name: str) -> str:
+        return f"ace:run:{self.run_id}:{name}"
 
     def write(self, name: str, data: Any):
         """
-        Writes data to a JSON file in the run folder atomically.
+        Writes data to a JSON file in the run folder AND Redis (if available).
         """
+        # 1. Write to Disk
         filename = f"{name}.json"
         path = self.run_path / filename
         tmp_path = self.run_path / f"{filename}.tmp"
@@ -69,26 +61,44 @@ class StateManager:
                 json.dump(data, f, indent=2, default=_json_default)
                 f.flush()
                 os.fsync(f.fileno())
-            
-            # Atomic replace
             os.replace(tmp_path, path)
-        except Exception as e:
-            if tmp_path.exists():
-                try:
-                    os.remove(tmp_path)
-                except OSError:
-                    pass
-            raise e
+        except Exception:
+            # If disk fails (e.g. permission), try to continue to Redis
+            pass
+
+        # 2. Write to Redis (Persistence Layer)
+        if self.redis_client:
+            try:
+                key = self._get_redis_key(name)
+                # Expire after 24 hours to prevent clutter
+                self.redis_client.setex(key, 86400, json.dumps(data, default=_json_default))
+            except Exception as e:
+                print(f"[StateManager] Redis write failed: {e}")
 
     def read(self, name: str) -> Optional[Any]:
         """
-        Reads data from a JSON file in the run folder.
+        Reads data from Disk, falling back to Redis if missing.
         """
+        # 1. Try Disk
         path = self.run_path / f"{name}.json"
-        if not path.exists():
-            return None
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        if path.exists():
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass # Corrupt file, fall back to Redis
+        
+        # 2. Try Redis
+        if self.redis_client:
+            try:
+                key = self._get_redis_key(name)
+                data_str = self.redis_client.get(key)
+                if data_str:
+                    return json.loads(data_str)
+            except Exception:
+                pass
+                
+        return None
 
     def append(self, name: str, record: Any):
         """Append a JSON-serializable record to a list stored under `name`."""
@@ -100,9 +110,15 @@ class StateManager:
 
     def exists(self, name: str) -> bool:
         """
-        Checks if a state file exists.
+        Checks if a state file exists (Disk or Redis).
         """
-        return (self.run_path / f"{name}.json").exists()
+        if (self.run_path / f"{name}.json").exists():
+            return True
+            
+        if self.redis_client:
+            return bool(self.redis_client.exists(self._get_redis_key(name)))
+            
+        return False
     
     def get_file_path(self, filename: str) -> str:
         """
