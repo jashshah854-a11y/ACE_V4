@@ -1,5 +1,7 @@
 import os
 from pathlib import Path
+from typing import List
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # ============================================================================
 # LAW 1: ABSOLUTE ANCHORING - Single Source of Truth
@@ -21,44 +23,65 @@ QUALITY_THRESHOLD = 0.1  # Was 0.5
 # Expand keywords to detect value in Steam/Gaming datasets
 BUSINESS_KEYWORDS = [
     'revenue', 'price', 'cost', 'profit', 'budget', 'sales', 
-    'ltv', 'value', 'recommendations', 'review'
+    'ltv', 'value', 'recommendations', 'review', 'churn', 
+    'customer', 'amount', 'qty'
 ]
 
-print(f"[CONFIG] ⚓ GLOBAL DATA_DIR ANCHORED: {DATA_DIR}", flush=True)
-print(f"[CONFIG] 🔓 GOVERNANCE THRESHOLD: {QUALITY_THRESHOLD}", flush=True)
+# ============================================================================
+# Settings Class - Complete Pydantic Configuration
+# ============================================================================
+class Settings(BaseSettings):
+    """Application configuration settings with Pydantic validation"""
 
-# ============================================================================
-# Backward Compatibility - Complete Settings Object
-# ============================================================================
-class _Settings:
-    """Complete settings object for backward compatibility"""
-    
-    # Core settings
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra="ignore"
+    )
+
+    # API Configuration
     ace_api_base_url: str = "http://localhost:8001"
     port: int = 8001
+
+    # CORS Settings
     allowed_origins: str = "http://localhost:5173,http://localhost:3000"
+
+    # Upload Limits (fixed AttributeError)
     max_upload_size_mb: int = 600
+    
+    # Agent Execution Tuning
     base_agent_timeout: int = 600
     timeout_per_mb: int = 5
+
+    # Governance
+    quality_threshold: float = QUALITY_THRESHOLD
     
     @property
-    def data_dir(self):
-        return str(DATA_DIR)
-    
-    @property
-    def allowed_origins_list(self):
+    def allowed_origins_list(self) -> List[str]:
         """Parse comma-separated origins into a list."""
         origins = [origin.strip() for origin in self.allowed_origins.split(",")]
         return [o for o in origins if o]
-    
+
     @property
-    def max_upload_size_bytes(self):
-        """Convert MB to bytes."""
+    def max_upload_size_bytes(self) -> int:
+        """Convert MB to bytes - fixes AttributeError."""
         return self.max_upload_size_mb * 1024 * 1024
-    
-    def get_runs_dir(self):
+
+    @property
+    def data_dir(self) -> str:
+        """Return string path for backward compatibility."""
+        return str(DATA_DIR)
+
+    def get_runs_dir(self) -> Path:
+        """Get absolute path to runs directory."""
         runs_dir = DATA_DIR / "runs"
         runs_dir.mkdir(parents=True, exist_ok=True)
         return runs_dir
 
-settings = _Settings()
+
+# Instantiate the settings
+settings = Settings()
+
+print(f"[CONFIG] ⚓ GLOBAL DATA_DIR ANCHORED: {DATA_DIR}", flush=True)
+print(f"[CONFIG] 🔓 GOVERNANCE THRESHOLD: {QUALITY_THRESHOLD}", flush=True)
+print(f"[CONFIG] ✅ Upload Limit: {settings.max_upload_size_mb}MB ({settings.max_upload_size_bytes} bytes)", flush=True)
