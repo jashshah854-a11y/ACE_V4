@@ -23,31 +23,7 @@ def _json_default(obj: Any):
     except Exception:
         return None
 
-import json
-import os
-from pathlib import Path
-from typing import Any, Optional
-
-
-def _json_default(obj: Any):
-    try:
-        import numpy as np  # type: ignore
-
-        if isinstance(obj, (np.integer, np.floating)):
-            return obj.item()
-        if isinstance(obj, np.bool_):
-            return bool(obj)
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-    except Exception:
-        pass
-    if isinstance(obj, set):
-        return list(obj)
-    try:
-        return str(obj)
-    except Exception:
-        return None
-
+class StateManager:
     def __init__(self, run_path: str, redis_url: Optional[str] = None):
         self.run_path = Path(run_path)
         self.redis_client = None
