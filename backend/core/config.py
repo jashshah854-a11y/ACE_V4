@@ -1,64 +1,44 @@
 import os
 from pathlib import Path
-from typing import List
-from pydantic_settings import BaseSettings, SettingsConfigDict
-
-
-class Settings(BaseSettings):
-    """Application configuration settings."""
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        case_sensitive=False,
-        extra="ignore"
-    )
-
-    ace_api_base_url: str = "http://localhost:8001"
-    port: int = 8001
-
-    allowed_origins: str = "http://localhost:5173,http://localhost:3000"
-    max_upload_size_mb: int = 600
-
-    # Agent execution tuning
-    base_agent_timeout: int = 600
-    timeout_per_mb: int = 5
-
-    # Data Directory Configuration
-    # Anchored relative to backend/core -> backend/data
-    # This ensures consistency regardless of CWD
-    data_dir: str = str(Path(__file__).parent.parent / "data")
-
-    @property
-    def allowed_origins_list(self) -> List[str]:
-        """Parse comma-separated origins into a list."""
-        origins = [origin.strip() for origin in self.allowed_origins.split(",")]
-        return [o for o in origins if o]
-
-    @property
-    def max_upload_size_bytes(self) -> int:
-        """Convert MB to bytes."""
-        return self.max_upload_size_mb * 1024 * 1024
-
-    def get_runs_dir(self) -> Path:
-        """Get absolute path to runs directory."""
-        path = Path(self.data_dir) / "runs"
-        path.mkdir(parents=True, exist_ok=True)
-        return path
-
-
-
-
-settings = Settings()
 
 # ============================================================================
-# LAW 1: ABSOLUTE ANCHORING - Single Source of Truth for Data Directory
+# LAW 1: ABSOLUTE ANCHORING - Single Source of Truth
 # ============================================================================
-# Resolve to backend/data regardless of CWD or execution context
-# This prevents "Split Brain" filesystem issues between Worker and API Server
-BACKEND_DIR = Path(__file__).resolve().parent.parent  # Points to backend/
+# Resolve to the project root (assuming config.py is in backend/core/)
+BASE_DIR = Path(__file__).resolve().parent.parent.parent  # Project root
+BACKEND_DIR = BASE_DIR / "backend"
 DATA_DIR = BACKEND_DIR / "data"
 
-# Ensure the directory exists
+# Ensure the physical path exists immediately
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-print(f"[CONFIG] ⚓ Unified DATA_DIR anchored at: {DATA_DIR}", flush=True)
+# ============================================================================
+# LAW 5: LIBERAL GOVERNANCE - Relax Quality Thresholds
+# ============================================================================
+# Lower threshold to allow "Predictive Mode" on messy data
+QUALITY_THRESHOLD = 0.1  # Was 0.5
+
+# Expand keywords to detect value in Steam/Gaming datasets
+BUSINESS_KEYWORDS = [
+    'revenue', 'price', 'cost', 'profit', 'budget', 'sales', 
+    'ltv', 'value', 'recommendations', 'review'
+]
+
+print(f"[CONFIG] ⚓ GLOBAL DATA_DIR ANCHORED: {DATA_DIR}", flush=True)
+print(f"[CONFIG] 🔓 GOVERNANCE THRESHOLD: {QUALITY_THRESHOLD}", flush=True)
+
+# ============================================================================
+# Backward Compatibility - Minimal Settings Object
+# ============================================================================
+class _Settings:
+    """Minimal settings object for backward compatibility"""
+    @property
+    def data_dir(self):
+        return str(DATA_DIR)
+    
+    def get_runs_dir(self):
+        runs_dir = DATA_DIR / "runs"
+        runs_dir.mkdir(parents=True, exist_ok=True)
+        return runs_dir
+
+settings = _Settings()
