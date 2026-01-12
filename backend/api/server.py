@@ -1548,6 +1548,21 @@ async def simulate_scenario(run_id: str, request: SimulationRequest):
         )
 
 
+@app.get("/health", tags=["Health"])
+async def health_check():
+    """
+    Health check endpoint for Railway/uptime monitoring.
+    """
+    return {"status": "ok", "service": "ACE-V4-Backend", "version": "4.0.0"}
+
+# --- Legacy / Alias Routes to fix Frontend 404s ---
+
+@app.get("/run/{run_id}/governed_report", tags=["Report"])
+async def get_governed_report(run_id: str):
+    """Alias for standard report to satisfy frontend request."""
+    return await get_report(run_id)
+
+
 if __name__ == "__main__":
     import uvicorn
     import os
