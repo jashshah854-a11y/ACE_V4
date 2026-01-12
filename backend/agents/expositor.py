@@ -148,11 +148,21 @@ class Expositor:
 
 
         lines.append("## Run Metadata")
-        lines.append(f"- **Run ID:** `{run_id}`")
-        lines.append(f"- **Generated:** {date_str}")
-        lines.append(f"- **Dataset Quality Score:** {quality_score}")
-        lines.append(f"- **Data Confidence:** {confidence_score if confidence_score is not None else 'n/a'} ({confidence_label})")
-        lines.append("")
+        # CRITICAL FIX: Frontend expects JSON in this section, not Markdown
+        import json
+        row_count = self.state.read("dataset_identity_card", {}).get("row_count", 0)
+        col_count = self.state.read("dataset_identity_card", {}).get("column_count", 0)
+        
+        metadata_json = {
+            "run_id": str(run_id),
+            "generated": date_str,
+            "quality_score": quality_score, # Valid float from previous fix
+            "confidence": confidence_score if confidence_score is not None else 1.0,
+            "row_count": row_count,
+            "column_count": col_count
+        }
+        lines.append(json.dumps(metadata_json, indent=2))
+        lines.append("") # Spacing
 
         # Confidence & Governance
         lines.append("## Confidence & Governance")
