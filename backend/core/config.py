@@ -46,4 +46,19 @@ class Settings(BaseSettings):
         return path
 
 
+
+
 settings = Settings()
+
+# ============================================================================
+# LAW 1: ABSOLUTE ANCHORING - Single Source of Truth for Data Directory
+# ============================================================================
+# Resolve to backend/data regardless of CWD or execution context
+# This prevents "Split Brain" filesystem issues between Worker and API Server
+BACKEND_DIR = Path(__file__).resolve().parent.parent  # Points to backend/
+DATA_DIR = BACKEND_DIR / "data"
+
+# Ensure the directory exists
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+print(f"[CONFIG] ⚓ Unified DATA_DIR anchored at: {DATA_DIR}", flush=True)

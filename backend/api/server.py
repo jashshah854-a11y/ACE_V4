@@ -96,14 +96,10 @@ async def startup_event():
 # FORCE REBUILD 2026-01-05T02:28:00
 
 
-# Ensure data directory exists
-# Ensure data directory exists
-# Fix: Anchor DATA_DIR to absolute path relative to project root (backend/)
-# This prevents CWD mismatch (e.g. running from api/ vs backend/)
-DATA_DIR = Path(settings.data_dir)
-DATA_DIR.mkdir(exist_ok=True, parents=True)
+# LAW 1: Import Unified DATA_DIR from config (Single Source of Truth)
+from core.config import DATA_DIR
 
-print(f"🚀 SERVER STARTING - VERSION: REDIS_FALLBACK_V3 - DATA_DIR: {DATA_DIR.absolute()}")
+print(f"🚀 SERVER STARTING - VERSION: UNIFIED_ANCHOR_V4 - DATA_DIR: {DATA_DIR.absolute()}")
 try:
     sys.path.append(str(Path(__file__).parent.parent))
     import jobs.redis_queue
@@ -798,35 +794,6 @@ async def get_artifact(run_id: str, artifact_name: str):
     state = StateManager(str(run_path))
     
     data = state.read(artifact_name)
-    if not data:
-        raise HTTPException(status_code=404, detail=f"Artifact '{artifact_name}' not found")
-        
-    return data
-
-@app.get("/run/{run_id}/enhanced-analytics", tags=["Artifacts"])
-async def get_enhanced_analytics(run_id: str):
-    """Get the enhanced analytics object for a run."""
-    _validate_run_id(run_id)
-    
-    run_path = DATA_DIR / "runs" / run_id
-    state = StateManager(str(run_path))
-    
-    analytics = state.read("enhanced_analytics")
-    if not analytics:
-        # Check if run is complete first
-        status = state.read("status")
-        if status not in ["completed", "complete", "complete_with_errors"]:
-             raise HTTPException(status_code=404, detail="Analytics not generated yet (run in progress)")
-             
-        # If complete but missing, return empty structure (Safe Mode)
-        return {
-            "quality_metrics": {"available": False},
-            "business_intelligence": {"available": False},
-            "feature_importance": {"available": False},
-            "correlations": {"available": False} 
-        }
-        
-    return analytics
     if not data:
         raise HTTPException(status_code=404, detail=f"Artifact '{artifact_name}' not found")
         
