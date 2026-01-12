@@ -45,8 +45,13 @@ class Expositor:
         confidence_score = confidence_report.get("data_confidence")
         confidence_label = confidence_report.get("confidence_label", "unknown")
         confidence_reasons = confidence_report.get("reasons", [])
+        
+        # Import governance flags
+        from core.config import MIN_CONFIDENCE_FOR_INSIGHTS, ENABLE_DRIFT_BLOCKING
+        
+        # LIBERALIZED: Use configurable minimum confidence threshold
         hard_confidence_block = (
-            (confidence_score is not None and confidence_score <= 0.05)
+            (confidence_score is not None and confidence_score <= MIN_CONFIDENCE_FOR_INSIGHTS)
             or confidence_label == "low"
         )
         validation_mode = validation.get("mode", "unknown")
