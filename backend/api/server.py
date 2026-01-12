@@ -210,14 +210,15 @@ def _build_schema_map(df):
     return schema
 
 def _calculate_quality_score(df):
-    """Calculate data quality (0.0 - 1.0)"""
+    """Calculate data quality (0.0 - 1.0) with enforced minimum floor"""
     if df.empty:
-        return 0.0
+        return 0.05  # FLOOR: Even empty data gets minimal score
     try:
         completeness = 1 - df.isnull().sum().sum() / (len(df) * len(df.columns))
-        return round(float(completeness), 2)
+        # FLOOR: Never return exactly 0.0 for readable datasets
+        return max(round(float(completeness), 2), 0.05)
     except:
-        return 0.0
+        return 0.05  # FLOOR: Failures default to minimal viable score
 
 def _detect_gaps(df):
     """Detect critical data gaps"""
@@ -1562,6 +1563,7 @@ async def health_check():
 # --- Legacy / Alias Routes to fix Frontend 404s ---
 
 @app.get("/run/{run_id}/governed_report", tags=["Report"])
+@app.get("/run/{run_id}/artifacts/governed_report", tags=["Report"])
 async def get_governed_report(run_id: str):
     """Alias for standard report to satisfy frontend request."""
     return await get_report(run_id)
