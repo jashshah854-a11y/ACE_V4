@@ -15,6 +15,24 @@ from core.env import ensure_windows_cpu_env
 ensure_windows_cpu_env()
 
 from core.pipeline_map import PIPELINE_SEQUENCE, PIPELINE_DESCRIPTIONS
+
+# --- PROTOCOL 1000: FORCE EXPOSITOR INCLUSION ---
+# Ensure expositor is ALWAYS in the execution sequence
+if "expositor" not in PIPELINE_SEQUENCE:
+    print("[ORCHESTRATOR] ⚠️ 'expositor' missing from PIPELINE_SEQUENCE. FORCING INCLUSION.", file=sys.stderr, flush=True)
+    # This shouldn't happen, but if it does, we fix it at runtime
+    PIPELINE_SEQUENCE.append("expositor")
+
+# Double-check: Ensure expositor is the LAST step
+if PIPELINE_SEQUENCE[-1] != "expositor":
+    print(f"[ORCHESTRATOR] ⚠️ 'expositor' is not the final step (current: {PIPELINE_SEQUENCE[-1]}). Reordering...", file=sys.stderr, flush=True)
+    if "expositor" in PIPELINE_SEQUENCE:
+        PIPELINE_SEQUENCE.remove("expositor")
+    PIPELINE_SEQUENCE.append("expositor")
+
+print(f"[ORCHESTRATOR] 📋 Final Pipeline Sequence: {PIPELINE_SEQUENCE}", file=sys.stderr, flush=True)
+# ------------------------------------------------
+
 from core.run_utils import create_run_folder
 from core.state_manager import StateManager
 from core.data_guardrails import is_agent_allowed, append_limitation
