@@ -1,12 +1,20 @@
-// SMART ENVIRONMENT DETECTION
-// Priority: 1. Environment Var, 2. Production Flag, 3. Localhost Fallback
-export const API_BASE = import.meta.env.VITE_ACE_API_BASE_URL ||
+// IRON DOME: Environment Detection Protocol
+// Prevents "Build Trap" where production builds query localhost
+export const API_BASE =
+  import.meta.env.VITE_ACE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
-  (import.meta.env.PROD ? "https://ace-v4-production.up.railway.app" : "http://localhost:8000");
+  (import.meta.env.PROD
+    ? (window.location.hostname === "localhost" ? "http://localhost:8000" : "https://ace-v4-production.up.railway.app")
+    : "http://localhost:8000");
+
+// Defense in Depth: If running in a container, localhost is almost always wrong
+if (typeof window !== "undefined" && window.location.protocol === "https:" && API_BASE.includes("http://localhost")) {
+  console.error("[IRON DOME] ⚠️ SECURITY ALERT: HTTPS origin detected but API targeted localhost. Blocking likely failure.");
+}
 
 // Debug Log to confirm connection target in Console
-console.log("[ACE NETWORK] 🚀 Connecting to Backend at:", API_BASE);
-console.log("[ACE NETWORK] 📊 Environment Mode:", import.meta.env.PROD ? "PRODUCTION" : "DEVELOPMENT");
+console.log("[IRON DOME] 🚀 Active Backend Target:", API_BASE);
+console.log("[IRON DOME] 📊 Mode:", import.meta.env.MODE);
 
 // LAW 3: DEFENSIVE PARSING - Content-Type Validation
 // Prevents "Unexpected token" errors by checking response type before parsing
