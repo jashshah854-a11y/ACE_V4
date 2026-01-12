@@ -28,13 +28,33 @@ print(f"[CONFIG] ⚓ GLOBAL DATA_DIR ANCHORED: {DATA_DIR}", flush=True)
 print(f"[CONFIG] 🔓 GOVERNANCE THRESHOLD: {QUALITY_THRESHOLD}", flush=True)
 
 # ============================================================================
-# Backward Compatibility - Minimal Settings Object
+# Backward Compatibility - Complete Settings Object
 # ============================================================================
 class _Settings:
-    """Minimal settings object for backward compatibility"""
+    """Complete settings object for backward compatibility"""
+    
+    # Core settings
+    ace_api_base_url: str = "http://localhost:8001"
+    port: int = 8001
+    allowed_origins: str = "http://localhost:5173,http://localhost:3000"
+    max_upload_size_mb: int = 600
+    base_agent_timeout: int = 600
+    timeout_per_mb: int = 5
+    
     @property
     def data_dir(self):
         return str(DATA_DIR)
+    
+    @property
+    def allowed_origins_list(self):
+        """Parse comma-separated origins into a list."""
+        origins = [origin.strip() for origin in self.allowed_origins.split(",")]
+        return [o for o in origins if o]
+    
+    @property
+    def max_upload_size_bytes(self):
+        """Convert MB to bytes."""
+        return self.max_upload_size_mb * 1024 * 1024
     
     def get_runs_dir(self):
         runs_dir = DATA_DIR / "runs"
