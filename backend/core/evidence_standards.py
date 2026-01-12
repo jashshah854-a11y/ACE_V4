@@ -18,7 +18,8 @@ import json
 
 
 # Quality threshold for predictive vs descriptive mode
-QUALITY_THRESHOLD = 0.5
+# LOWERED v4.1: Liberalized to allow exploratory insights on messy data (Steam/Gaming datasets)
+QUALITY_THRESHOLD = 0.1
 
 # Severity levels for claims
 SeverityLevel = Literal["info", "warning", "critical"]
