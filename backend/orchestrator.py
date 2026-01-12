@@ -690,13 +690,23 @@ def main_loop(run_path):
             allow_insights = validation.get("allow_insights", False)
             
             # Block only if validation failed AND insights are not allowed AND force_run is not set
+            # Block only if validation failed AND insights are not allowed AND force_run is not set
             if not validation.get("can_proceed", False) and not allow_insights and not force_run:
-                state["status"] = "complete_with_errors"
-                state["next_step"] = "blocked"
-                update_history(state, "Data validation failed; pipeline blocked", returncode=1)
+                # STABILITY FIX: Don't block completely. Jump to Expositor to generate a proper "Rejection Report".
+                # This ensures the UI has a valid report and "enhanced_analytics" state (even if empty).
+                update_history(state, "Data validation failed; jumping to Final Report", returncode=1)
+                
+                state["status"] = "running" # Keep running so we can execute Expositor
+                state["current_step"] = "expositor"
+                state["next_step"] = "expositor"
+                
+                # Mark intermediate steps as skipped
+                for step in PIPELINE_SEQUENCE:
+                    if PIPELINE_SEQUENCE.index(step) > PIPELINE_SEQUENCE.index("validator") and step != "expositor":
+                         state["steps"].setdefault(step, {})["status"] = "skipped"
+                         
                 save_state(state_path, state)
-                _record_final_status(run_path, "complete_with_errors", reason="data_validation_block")
-                continue  # Block the pipeline and skip to next iteration
+                continue
             elif not validation.get("can_proceed", False) and allow_insights:
                 # Allow continuation with warnings when insights are allowed
                 update_history(state, "Validation warnings present but insights allowed; continuing", returncode=0)
