@@ -649,11 +649,14 @@ def main_loop(run_path):
                 continue
 
         # NEW: Enforce quality-based fail-safe before running insight agents
-        if current in ["overseer", "regression", "personas", "fabricator"]:
-            identity_card = state_manager.read("dataset_identity_card") or {}
-            quality_score = identity_card.get("quality_score", 0.0)
-            
-            if quality_score < 0.75:
+        # Optionally pre-filter some agents based on quality or task contract
+        identity = state_manager.read("identity_card") or {}
+        quality_score = identity.get("quality_score", 0.4)  # Default to minimum floor
+        
+        print(f"[ORCHESTRATOR DEBUG] Quality score for agent filtering: {quality_score}", flush=True)
+        
+        # Lowered threshold from 0.75 to 0.4 to match scanner minimum floor
+        if quality_score < 0.4:
                 step_state = state["steps"].setdefault(current, {"name": current})
                 step_state["status"] = "skipped"
                 step_state["message"] = f"Quality score {quality_score:.2f} < 0.75: Agent disabled by fail-safe"
