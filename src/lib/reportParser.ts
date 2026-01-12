@@ -105,38 +105,68 @@ export function extractMetrics(markdown: string): ReportMetrics {
 
     const metrics: ReportMetrics = {};
 
+    // 1. Try to extract from JSON Metadata block (New V4 Standard)
     try {
-        // Extract Data Quality Score (handles both percentage and decimal)
-        const qualityMatch = markdown.match(/(?:data(?:set)?\s*quality(?:\s*score)?)[:\s]*(\d+(?:\.\d+)?)/i);
-        if (qualityMatch) {
-            const value = parseFloat(qualityMatch[1]);
-            const score = value <= 1 ? Math.round(value * 100) : value;
+        const jsonMatch = markdown.match(/##\s*Run Metadata\s+```json\s*([\s\S]*?)\s*```/i);
+        if (jsonMatch && jsonMatch[1]) {
+            const metadata = JSON.parse(jsonMatch[1]);
 
-            if (!isNaN(score) && score >= 0 && score <= 100) {
-                metrics.dataQualityScore = score;
-            } else {
-                console.warn('Invalid data quality score extracted:', score);
+            // Map JSON fields to ReportMetrics
+            if (metadata.quality_score !== undefined) {
+                metrics.dataQualityScore = Number(metadata.quality_score);
             }
+            if (metadata.confidence !== undefined) {
+                // Handle confidence object or number
+                if (typeof metadata.confidence === 'object' && metadata.confidence.score) {
+                    metrics.confidenceLevel = Number(metadata.confidence.score) * 100;
+                } else if (typeof metadata.confidence === 'number') {
+                    metrics.confidenceLevel = Number(metadata.confidence) * 100;
+                }
+            }
+            if (metadata.row_count !== undefined) {
+                metrics.recordsProcessed = Number(metadata.row_count);
+            }
+            // If we found quality score in JSON, we trust it more than regex
         }
-    } catch (error) {
-        console.warn('Failed to extract data quality score:', error);
+    } catch (e) {
+        console.warn('Failed to parse JSON metadata block:', e);
+    }
+
+    // 2. Fallback / Supplement with Regex extraction (Backward Compatibility)
+    if (metrics.dataQualityScore === undefined) {
+        try {
+            // Extract Data Quality Score (handles both percentage and decimal)
+            const qualityMatch = markdown.match(/(?:data(?:set)?\s*quality(?:\s*score)?)[:\s]*(\d+(?:\.\d+)?)/i);
+            if (qualityMatch) {
+                const value = parseFloat(qualityMatch[1]);
+                const score = value <= 1 ? Math.round(value * 100) : value;
+
+                if (!isNaN(score) && score >= 0 && score <= 100) {
+                    metrics.dataQualityScore = score;
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to extract data quality score via regex:', error);
+        }
     }
 
     // Extract Records Processed - look for cluster sizes or record counts
-    const sizeMatches = markdown.matchAll(/\*\*Size:\*\*\s*(\d+(?:,\d{3})*)/gi);
-    let totalRecords = 0;
-    for (const match of sizeMatches) {
-        totalRecords += parseInt(match[1].replace(/,/g, ''));
-    }
-    if (totalRecords > 0) {
-        metrics.recordsProcessed = totalRecords;
-    }
+    if (metrics.recordsProcessed === undefined) {
+        const sizeMatches = markdown.matchAll(/\*\*Size:\*\*\s*(\d+(?:,\d{3})*)/gi);
+        let totalRecords = 0;
+        for (const match of sizeMatches) {
+            totalRecords += parseInt(match[1].replace(/,/g, ''));
+        }
+        if (totalRecords > 0) {
+            metrics.recordsProcessed = totalRecords;
+        }
 
-    // Fallback to other record patterns
-    if (!metrics.recordsProcessed) {
-        const recordsMatch = markdown.match(/(?:records?|rows?)[:\s]+(?:processed|analyzed)?[:\s]*(\d+(?:,\d{3})*)/i);
-        if (recordsMatch) {
-            metrics.recordsProcessed = parseInt(recordsMatch[1].replace(/,/g, ''));
+        // Fallback to other record patterns
+        if (!metrics.recordsProcessed) {
+            const recordsMatch = markdown.match(/(?:records?|rows?)[:\s]+(?:processed|analyzed)?[:\s]*(\d+(?:,\d{3})*)/i);
+            if (recordsMatch) {
+                metrics.recordsProcessed = parseInt(recordsMatch[1].replace(/,/g, ''));
+            }
         }
     }
 
