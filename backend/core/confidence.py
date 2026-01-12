@@ -19,12 +19,25 @@ def compute_data_confidence(identity_card: Dict, validation_report: Dict, drift_
         score -= 0.15
         reasons.append("Elevated average null rate.")
 
+
+    # Import drift blocking flag
+    from core.config import ENABLE_DRIFT_BLOCKING
+    
+    # LIBERALIZED: Apply penalty based on drift severity and flag
     if drift_status == "block":
-        score -= 0.4
-        reasons.append("Blocking drift detected.")
+        if ENABLE_DRIFT_BLOCKING:
+            # Original behavior: zero out confidence
+            score -= 0.4
+            reasons.append("Blocking drift detected.")
+        else:
+            # NEW: Apply minor penalty but keep score viable (>0.1 for insights)
+            score -= 0.15  # Reduced penalty
+            reasons.append("Drift detected (Non-Blocking)")
+            print(f"[CONFIDENCE] ⚠️ Drift detected but ENABLE_DRIFT_BLOCKING=False. Applying reduced penalty (-0.15 instead of -0.4)", flush=True)
     elif drift_status == "warn":
         score -= 0.15
         reasons.append("Drift warnings present.")
+
 
     # Validation checks
     checks = (validation_report or {}).get("checks", {})
