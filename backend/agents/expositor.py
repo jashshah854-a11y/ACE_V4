@@ -134,7 +134,18 @@ class Expositor:
             quality_score = 0.4
             print(f"[EXPOSITOR WARNING] Quality score unavailable, using minimum floor: {quality_score}", flush=True)
         
+        # CRITICAL: Ensure JSON-safe numeric value (fix for "No number after minus sign" error)
+        try:
+            quality_score = float(quality_score)
+            # Replace NaN or negative values
+            if quality_score != quality_score or quality_score < 0:  # NaN check
+                quality_score = 0.4
+        except (ValueError, TypeError):
+            print(f"[EXPOSITOR ERROR] Invalid quality score format: {quality_score}, using fallback", flush=True)
+            quality_score = 0.4
+        
         print(f"[EXPOSITOR DEBUG] Quality score for report: {quality_score}", flush=True)
+
 
         lines.append("## Run Metadata")
         lines.append(f"- **Run ID:** `{run_id}`")
