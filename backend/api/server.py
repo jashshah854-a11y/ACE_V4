@@ -890,6 +890,10 @@ async def get_diagnostics(run_id: str):
         "identity": identity,
         "confidence": confidence,
         "reasons": reasons,
+        # CRITICAL FIX: Frontend expects data_quality.score here
+        "data_quality": {
+            "score": state.read("schema_scan_output", {}).get("quality_score", 0.4)
+        }
     }
 
 @app.get("/run/{run_id}/model-artifacts", tags=["Artifacts"])
