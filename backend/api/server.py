@@ -100,8 +100,8 @@ async def startup_event():
 # Ensure data directory exists
 # Fix: Anchor DATA_DIR to absolute path relative to project root (backend/)
 # This prevents CWD mismatch (e.g. running from api/ vs backend/)
-DATA_DIR = Path(__file__).parent.parent / "data"
-DATA_DIR.mkdir(exist_ok=True)
+DATA_DIR = Path(settings.data_dir)
+DATA_DIR.mkdir(exist_ok=True, parents=True)
 
 print(f"🚀 SERVER STARTING - VERSION: REDIS_FALLBACK_V3 - DATA_DIR: {DATA_DIR.absolute()}")
 try:
