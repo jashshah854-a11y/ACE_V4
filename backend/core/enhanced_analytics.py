@@ -260,7 +260,7 @@ class EnhancedAnalytics:
         metrics = {"evidence": {}}
 
         # Try to find value-related columns
-        value_col = self._find_column_by_role(['revenue', 'value', 'amount', 'sales', 'total'])
+        value_col = self._find_column_by_role(['revenue', 'value', 'amount', 'sales', 'total', 'price', 'cost', 'profit', 'budget'])
         time_col = self._find_column_by_role(['date', 'time', 'timestamp', 'created', 'month'])
 
         if value_col:
