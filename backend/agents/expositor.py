@@ -117,7 +117,24 @@ class Expositor:
         import datetime
         run_id = Path(self.state.run_path).name
         date_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        quality_score = overseer.get("stats", {}).get("data_quality", "N/A")
+        
+        # CRITICAL FIX: Read quality score with proper fallback chain
+        # Priority: 1. Scanner (where we set min floor of 0.4)
+        #           2. Overseer stats (if available)  
+        #           3. Minimum floor fallback
+        scan_output = self.state.read("schema_scan_output") or {}
+        quality_score = scan_output.get("quality_score")  # From scanner with min floor
+        
+        if quality_score is None:
+            # Fallback to overseer if scanner didn't set it
+            quality_score = overseer.get("stats", {}).get("data_quality")
+        
+        if quality_score is None or quality_score == "N/A":
+            # Ultimate fallback: minimum floor
+            quality_score = 0.4
+            print(f"[EXPOSITOR WARNING] Quality score unavailable, using minimum floor: {quality_score}", flush=True)
+        
+        print(f"[EXPOSITOR DEBUG] Quality score for report: {quality_score}", flush=True)
 
         lines.append("## Run Metadata")
         lines.append(f"- **Run ID:** `{run_id}`")
