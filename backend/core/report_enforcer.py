@@ -209,6 +209,30 @@ For detailed logs, check the orchestrator state and individual agent artifacts.
         report_path.parent.mkdir(parents=True, exist_ok=True)
         with open(report_path, 'w', encoding='utf-8') as f:
             f.write(fallback_content)
+            
+        # ------------------------------------------------------------------
+        # V4 STABILITY PATCH: Ensure Analytics State Exists
+        # If we fallback, the API needs 'enhanced_analytics' to not 404.
+        # ------------------------------------------------------------------
+        try:
+             # Lazy import to avoid circular dependencies at top level
+            from core.state_manager import StateManager
+            
+            # Initialize StateManager (detects REDIS_URL from env automatically)
+            state = StateManager(str(run_path))
+            
+            # Write Safe Mode / Empty Analytics
+            state.write("enhanced_analytics", {
+                "quality_metrics": {"available": False, "reason": "Timeout Fallback"},
+                "business_intelligence": {"available": False},
+                "feature_importance": {"available": False},
+                "correlations": {"available": False},
+                "fallback_mode": "timeout"
+            })
+            print(f"[REPORT_ENFORCER] ✓ Fallback analytics verified in state/Redis")
+        except Exception as state_err:
+            print(f"[REPORT_ENFORCER] ⚠️ Could not write fallback analytics: {state_err}")
+        # ------------------------------------------------------------------
         
         # Verify it was written
         if report_path.exists() and report_path.stat().st_size >= MIN_REPORT_SIZE:
