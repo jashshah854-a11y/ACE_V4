@@ -254,17 +254,41 @@ def run_agent(agent_name, run_path):
     # Calculate dynamic timeout based on data size
     agent_timeout = calculate_agent_timeout(run_path, agent_name)
     
+    # OPERATION GLASS HOUSE: Forensic Subprocess Wrapper
+    print(f"[ORCHESTRATOR] 🚀 Launching Agent: {agent_name}...", file=sys.stderr, flush=True)
 
     try:
+        # FORCE CAPTURE of both STDOUT and STDERR to expose hidden failures
         result = subprocess.run(
             [sys.executable, agent_script, run_path],
-            capture_output=True,
-            text=True,
+            capture_output=True,    # CRITICAL: Grab stdout/stderr
+            text=True,              # CRITICAL: Decode to string
             env=env,
             timeout=min(agent_timeout, timeout)  # use the tighter of the two
         )
 
+        # Check return code manually (not using check=True to handle stderr better)
         if result.returncode != 0:
+            # 🚨 THE SMOKING GUN REVEALED 🚨
+            print(f"\n{'='*80}", file=sys.stderr, flush=True)
+            print(f"🛑 CRITICAL AGENT FAILURE: {agent_name}", file=sys.stderr, flush=True)
+            print(f"🛑 EXIT CODE: {result.returncode}", file=sys.stderr, flush=True)
+            print(f"{'-'*80}", file=sys.stderr, flush=True)
+            
+            # PRINT THE HIDDEN TRACEBACK
+            if result.stderr:
+                print(f"🔍 AGENT STDERR (The Root Cause):", file=sys.stderr, flush=True)
+                print(result.stderr, file=sys.stderr, flush=True)
+            else:
+                print(f"⚠️ NO STDERR CAPTURED (Process died instantly)", file=sys.stderr, flush=True)
+            
+            if result.stdout:
+                print(f"{'-'*80}", file=sys.stderr, flush=True)
+                print(f"📋 AGENT STDOUT:", file=sys.stderr, flush=True)
+                print(result.stdout, file=sys.stderr, flush=True)
+                
+            print(f"{'='*80}\n", file=sys.stderr, flush=True)
+            
             from utils.logging import log_error
             log_error(
                 f"Agent {agent_name} failed with code {result.returncode}",
@@ -274,9 +298,9 @@ def run_agent(agent_name, run_path):
             )
 
             sanitized_stderr = result.stderr[:500] if result.stderr else ""
-
             return False, result.stdout, sanitized_stderr
         else:
+            # Success case
             from utils.logging import log_ok
             log_ok(f"Agent {agent_name} completed", agent=agent_name, run_path=run_path)
             return True, result.stdout, result.stderr
