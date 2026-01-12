@@ -477,7 +477,24 @@ def main_loop(run_path):
         # The pipeline SHALL NOT complete without a physical final_report.md
         # Using Report Enforcer module for absolute path verification
         if state.get("status") in {"complete", "complete_with_errors", "failed"}:
-            from core.report_enforcer import enforce_report_existence
+            # --- PROTOCOL 1100: PREVENT PREMATURE COMPLETION ---
+            # Ensure expositor has run before allowing pipeline to complete
+            expositor_completed = "expositor" in state.get("steps_completed", [])
+            
+            if not expositor_completed:
+                print(f"[ORCHESTRATOR] ⚠️ Protocol 1100: Pipeline marked {state['status']} but EXPOSITOR hasn't run. FORCING CONTINUATION.", file=sys.stderr, flush=True)
+                # Override status back to running
+                state["status"] = "running"
+                state["current_step"] = "expositor"
+                state["next_step"] = "expositor"
+                save_state(state_path, state)
+                # Don't break - continue to expositor
+            else:
+                # Expositor has run - safe to complete
+                # STABILITY LAW 1: ABSOLUTE REPORT ENFORCEMENT
+                # The pipeline SHALL NOT complete without a physical final_report.md
+                # Using Report Enforcer module for absolute path verification
+                from core.report_enforcer import enforce_report_existence
             
             print(f"[ORCHESTRATOR] Pipeline completion detected. Enforcing report existence...")
             
