@@ -516,25 +516,38 @@ def main_loop(run_path):
         # Honor validation guardrails (skip blocked agents rather than hallucinate)
         validation_report = state_manager.read("validation_report") or {}
         blocked = set(validation_report.get("blocked_agents") or [])
-        if blocked and current in blocked:
-            step_state = state["steps"].setdefault(current, {"name": current})
-            step_state["status"] = "skipped"
-            step_state["message"] = "Skipped by validation guard"
-            state["steps"][current] = step_state
-            state["steps_completed"].append(current)
-            update_history(state, f"{current} skipped due to validation guard")
-            save_state(state_path, state)
-
-            idx = PIPELINE_SEQUENCE.index(current)
-            if idx + 1 < len(PIPELINE_SEQUENCE):
-                state["current_step"] = PIPELINE_SEQUENCE[idx + 1]
-                state["next_step"] = PIPELINE_SEQUENCE[idx + 1]
+        
+        # CRITICAL OVERRIDE: Check if drift blocking is disabled
+        from core.config import ENABLE_DRIFT_BLOCKING
+        
+        if current in blocked:
+            # Check if this is a drift-related block
+            drift_notes = [note for note in validation_report.get("notes", []) if "drift" in note.lower()]
+            
+            if drift_notes and not ENABLE_DRIFT_BLOCKING:
+                # Drift block but blocking is disabled - PROCEED
+                print(f"[ORCHESTRATOR] ⚠️ Agent '{current}' blocked by drift, but ENABLE_DRIFT_BLOCKING={ENABLE_DRIFT_BLOCKING}. PROCEEDING.", file=sys.stderr, flush=True)
+                # Don't skip - continue to agent execution
             else:
-                state["status"] = "complete_with_errors"
-                state["next_step"] = "complete"
-                update_history(state, "Pipeline completed with validation skips")
-            save_state(state_path, state)
-            continue
+                # Non-drift block OR drift blocking is enabled - SKIP
+                step_state = state["steps"].setdefault(current, {"name": current})
+                step_state["status"] = "skipped"
+                step_state["message"] = "Skipped by validation guard"
+                state["steps"][current] = step_state
+                state["steps_completed"].append(current)
+                update_history(state, f"{current} skipped due to validation guard")
+                save_state(state_path, state)
+
+                idx = PIPELINE_SEQUENCE.index(current)
+                if idx + 1 < len(PIPELINE_SEQUENCE):
+                    state["current_step"] = PIPELINE_SEQUENCE[idx + 1]
+                    state["next_step"] = PIPELINE_SEQUENCE[idx + 1]
+                else:
+                    state["status"] = "complete_with_errors"
+                    state["next_step"] = "complete"
+                    update_history(state, "Pipeline completed with validation skips")
+                save_state(state_path, state)
+                continue
         
         # Check if we already did this step (resume logic)
         if current in state["steps_completed"]:
