@@ -850,7 +850,7 @@ async def get_evidence_sample(run_id: str, rows: int = 5):
     sample = df.head(rows).to_dict(orient="records")
     return {"rows": sample, "row_count": len(sample)}
 
-# REMOVED: Plural route - diagnostics available in run status
+@app.get("/run/{run_id}/diagnostics", tags=["Run"])
 async def get_diagnostics(run_id: str):
     """
     Return Safe Mode / validation diagnostics for a run.
@@ -892,7 +892,7 @@ async def get_diagnostics(run_id: str):
         "reasons": reasons,
     }
 
-# REMOVED: Plural route - use /run/{run_id}/artifacts if needed
+@app.get("/run/{run_id}/model-artifacts", tags=["Artifacts"])
 async def get_model_artifacts(run_id: str):
     """
     Return model transparency artifacts (feature importances/coefficients) if available.
