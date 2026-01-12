@@ -17,8 +17,14 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 # ============================================================================
 # LAW 5: LIBERAL GOVERNANCE - Relax Quality Thresholds
 # ============================================================================
-# Lower threshold to allow "Predictive Mode" on messy data
-QUALITY_THRESHOLD = 0.1  # Was 0.5
+# LOWERED to 5% - Accept almost any data
+QUALITY_THRESHOLD = 0.05  # Was 0.5, then 0.1, now 0.05
+
+# DISABLE drift as a blocker - allow analyses on changed/sampled data
+ENABLE_DRIFT_BLOCKING = False
+
+# Allow insights even with low confidence
+MIN_CONFIDENCE_FOR_INSIGHTS = 0.1
 
 # Expand keywords to detect value in Steam/Gaming datasets
 BUSINESS_KEYWORDS = [
