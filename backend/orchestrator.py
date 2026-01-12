@@ -9,8 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 # Add project root to path
-sys.path.append(str(Path(__file__).parent))
-
+sys.path.append(str(Path(__file__).parent.resolve()))
 from core.env import ensure_windows_cpu_env
 ensure_windows_cpu_env()
 
