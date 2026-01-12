@@ -96,14 +96,10 @@ async def startup_event():
 # FORCE REBUILD 2026-01-05T02:28:00
 
 
-# Ensure data directory exists
-# Ensure data directory exists
-# Fix: Anchor DATA_DIR to absolute path relative to project root (backend/)
-# This prevents CWD mismatch (e.g. running from api/ vs backend/)
-DATA_DIR = Path(__file__).parent.parent / "data"
-DATA_DIR.mkdir(exist_ok=True)
+# LAW 1: Import Unified DATA_DIR from config (Single Source of Truth)
+from core.config import DATA_DIR
 
-print(f"🚀 SERVER STARTING - VERSION: REDIS_FALLBACK_V3 - DATA_DIR: {DATA_DIR.absolute()}")
+print(f"🚀 SERVER STARTING - VERSION: UNIFIED_ANCHOR_V4 - DATA_DIR: {DATA_DIR.absolute()}")
 try:
     sys.path.append(str(Path(__file__).parent.parent))
     import jobs.redis_queue
@@ -854,7 +850,7 @@ async def get_evidence_sample(run_id: str, rows: int = 5):
     sample = df.head(rows).to_dict(orient="records")
     return {"rows": sample, "row_count": len(sample)}
 
-# REMOVED: Plural route - diagnostics available in run status
+@app.get("/run/{run_id}/diagnostics", tags=["Run"])
 async def get_diagnostics(run_id: str):
     """
     Return Safe Mode / validation diagnostics for a run.
@@ -896,7 +892,7 @@ async def get_diagnostics(run_id: str):
         "reasons": reasons,
     }
 
-# REMOVED: Plural route - use /run/{run_id}/artifacts if needed
+@app.get("/run/{run_id}/model-artifacts", tags=["Artifacts"])
 async def get_model_artifacts(run_id: str):
     """
     Return model transparency artifacts (feature importances/coefficients) if available.
@@ -1550,6 +1546,21 @@ async def simulate_scenario(run_id: str, request: SimulationRequest):
                 "message": "Simulation failed. Please check parameters."
             }
         )
+
+
+@app.get("/health", tags=["Health"])
+async def health_check():
+    """
+    Health check endpoint for Railway/uptime monitoring.
+    """
+    return {"status": "ok", "service": "ACE-V4-Backend", "version": "4.0.0"}
+
+# --- Legacy / Alias Routes to fix Frontend 404s ---
+
+@app.get("/run/{run_id}/governed_report", tags=["Report"])
+async def get_governed_report(run_id: str):
+    """Alias for standard report to satisfy frontend request."""
+    return await get_report(run_id)
 
 
 if __name__ == "__main__":

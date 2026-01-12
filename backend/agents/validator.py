@@ -44,12 +44,20 @@ class Validator:
 
         report = validate_dataset(df, run_config, schema_map, data_type)
 
-        # Apply drift gating
-        if drift_status == "block":
+        # Import drift blocking flag
+        from core.config import ENABLE_DRIFT_BLOCKING
+        
+        # Apply drift gating ONLY if enabled
+        if drift_status == "block" and ENABLE_DRIFT_BLOCKING:
             report["mode"] = "limitations"
             report["allow_insights"] = False
             report["notes"].append("Profile/sample drift at block level; insights disabled.")
             report["blocked_agents"] = sorted(set(report.get("blocked_agents", [])) | {"overseer", "regression", "personas", "fabricator"})
+        elif drift_status == "block" and not ENABLE_DRIFT_BLOCKING:
+            # Log the drift but don't block
+            report["notes"].append("⚠️ Drift detected but blocking is DISABLED. Proceeding with analysis.")
+            print("[VALIDATOR] ⚠️ Blocking drift detected but ENABLE_DRIFT_BLOCKING=False. Allowing insights.", flush=True)
+
         elif drift_status == "warn":
             report["notes"].append("Profile/sample drift warning; proceed with caution.")
 

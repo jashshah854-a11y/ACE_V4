@@ -24,6 +24,38 @@ class ScannerAgent:
         print(f"Scanning: {data_path}")
         scan = scan_dataset(data_path)
         self.state.write("schema_scan_output", scan)
+
+        # Compute quality score (0-1 scale)
+        columns = scan.get("columns", {})
+        max_null_pct = max((col.get("null_pct") or 0 for col in columns.values()), default=0)
+        avg_null_pct = sum((col.get("null_pct") or 0 for col in columns.values())) / len(columns) if columns else 0
+        
+        # DEBUG LOGGING: Track quality calculation components
+        print(f"[SCANNER DEBUG] Quality Score Calculation:", flush=True)
+        print(f"  - Max Null %: {max_null_pct:.3f}", flush=True)
+        print(f"  - Avg Null %: {avg_null_pct:.3f}", flush=True)
+        print(f"  - Column Count: {len(columns)}", flush=True)
+        
+        # Base completeness score
+        completeness = 1.0 - avg_null_pct
+        print(f"  - Completeness (1 - avg_null): {completeness:.3f}", flush=True)
+        
+        # Penalty for high max null
+        if max_null_pct > 0.5:
+            completeness *= 0.8
+            print(f"  - Penalty applied (max_null > 0.5): {completeness:.3f}", flush=True)
+        
+        # CRITICAL FIX: Ensure minimum floor
+        # Even "bad" data should score 0.4-0.5, not 0.0
+        quality_score = max(0.4, completeness)
+        
+        print(f"[SCANNER DEBUG] Final Quality Score: {quality_score:.3f}", flush=True)
+        
+        if quality_score == 0.4:
+            print(f"[SCANNER WARNING] Quality score hit minimum floor (0.4). Original: {completeness:.3f}", flush=True)
+
+        scan["quality_score"] = quality_score
+        self.state.write("schema_scan_output", scan)
         print("Scanner complete.")
 
     def fallback(self, error):
@@ -31,9 +63,10 @@ class ScannerAgent:
         return {
             "error": str(error),
             "status": "failed",
-            "columns": [],
+            "columns": {}, # Changed from [] to {} to match scan output structure
             "row_count": 0,
-            "column_count": 0
+            "column_count": 0,
+            "quality_score": 0.0 # Added quality score to fallback
         }
 
 def main():

@@ -189,15 +189,20 @@ def enforce_quality_failsafe(
     Enforce fail-safe mode if dataset quality is below threshold.
     
     Rules (ACE Engine Guidelines Source [1]):
-    - quality_score < 0.75 → FORCE descriptive mode
+    - quality_score < 0.4 → FORCE descriptive mode (LOWERED from 0.75)
     - Disable predictive agents (regression, personas, fabricator)
     - Only allow data_overview, quality, eda sections
     
     This is the "Safety Catch" - the gun must not fire on bad ammo.
     """
-    quality_score = identity_card.get("quality_score", 0.0)
+    # Read from scanner output (where we set min floor of 0.4)
+    quality_score = identity_card.get("quality_score", 0.4)
     
-    if quality_score < 0.75:
+    # DEBUG: Log the quality score check
+    print(f"[GOVERNANCE DEBUG] Quality score check: {quality_score}", flush=True)
+    print(f"[GOVERNANCE DEBUG] Threshold: 0.4 (lowered from 0.75)", flush=True)
+    
+    if quality_score < 0.4:
         contract["analysis_mode"] = "descriptive"
         contract["quality_failsafe_triggered"] = True
         

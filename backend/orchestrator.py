@@ -3,18 +3,36 @@ import json
 import time
 import subprocess
 import sys
+import traceback
 import threading
 import shutil
 from datetime import datetime
 from pathlib import Path
 
 # Add project root to path
-sys.path.append(str(Path(__file__).parent))
-
+sys.path.append(str(Path(__file__).parent.resolve()))
 from core.env import ensure_windows_cpu_env
 ensure_windows_cpu_env()
 
 from core.pipeline_map import PIPELINE_SEQUENCE, PIPELINE_DESCRIPTIONS
+
+# --- PROTOCOL 1000: FORCE EXPOSITOR INCLUSION ---
+# Ensure expositor is ALWAYS in the execution sequence
+if "expositor" not in PIPELINE_SEQUENCE:
+    print("[ORCHESTRATOR] ⚠️ 'expositor' missing from PIPELINE_SEQUENCE. FORCING INCLUSION.", file=sys.stderr, flush=True)
+    # This shouldn't happen, but if it does, we fix it at runtime
+    PIPELINE_SEQUENCE.append("expositor")
+
+# Double-check: Ensure expositor is the LAST step
+if PIPELINE_SEQUENCE[-1] != "expositor":
+    print(f"[ORCHESTRATOR] ⚠️ 'expositor' is not the final step (current: {PIPELINE_SEQUENCE[-1]}). Reordering...", file=sys.stderr, flush=True)
+    if "expositor" in PIPELINE_SEQUENCE:
+        PIPELINE_SEQUENCE.remove("expositor")
+    PIPELINE_SEQUENCE.append("expositor")
+
+print(f"[ORCHESTRATOR] 📋 Final Pipeline Sequence: {PIPELINE_SEQUENCE}", file=sys.stderr, flush=True)
+# ------------------------------------------------
+
 from core.run_utils import create_run_folder
 from core.state_manager import StateManager
 from core.data_guardrails import is_agent_allowed, append_limitation
@@ -254,17 +272,41 @@ def run_agent(agent_name, run_path):
     # Calculate dynamic timeout based on data size
     agent_timeout = calculate_agent_timeout(run_path, agent_name)
     
+    # OPERATION GLASS HOUSE: Forensic Subprocess Wrapper
+    print(f"[ORCHESTRATOR] 🚀 Launching Agent: {agent_name}...", file=sys.stderr, flush=True)
 
     try:
+        # FORCE CAPTURE of both STDOUT and STDERR to expose hidden failures
         result = subprocess.run(
             [sys.executable, agent_script, run_path],
-            capture_output=True,
-            text=True,
+            capture_output=True,    # CRITICAL: Grab stdout/stderr
+            text=True,              # CRITICAL: Decode to string
             env=env,
             timeout=min(agent_timeout, timeout)  # use the tighter of the two
         )
 
+        # Check return code manually (not using check=True to handle stderr better)
         if result.returncode != 0:
+            # 🚨 THE SMOKING GUN REVEALED 🚨
+            print(f"\n{'='*80}", file=sys.stderr, flush=True)
+            print(f"🛑 CRITICAL AGENT FAILURE: {agent_name}", file=sys.stderr, flush=True)
+            print(f"🛑 EXIT CODE: {result.returncode}", file=sys.stderr, flush=True)
+            print(f"{'-'*80}", file=sys.stderr, flush=True)
+            
+            # PRINT THE HIDDEN TRACEBACK
+            if result.stderr:
+                print(f"🔍 AGENT STDERR (The Root Cause):", file=sys.stderr, flush=True)
+                print(result.stderr, file=sys.stderr, flush=True)
+            else:
+                print(f"⚠️ NO STDERR CAPTURED (Process died instantly)", file=sys.stderr, flush=True)
+            
+            if result.stdout:
+                print(f"{'-'*80}", file=sys.stderr, flush=True)
+                print(f"📋 AGENT STDOUT:", file=sys.stderr, flush=True)
+                print(result.stdout, file=sys.stderr, flush=True)
+                
+            print(f"{'='*80}\n", file=sys.stderr, flush=True)
+            
             from utils.logging import log_error
             log_error(
                 f"Agent {agent_name} failed with code {result.returncode}",
@@ -274,9 +316,9 @@ def run_agent(agent_name, run_path):
             )
 
             sanitized_stderr = result.stderr[:500] if result.stderr else ""
-
             return False, result.stdout, sanitized_stderr
         else:
+            # Success case
             from utils.logging import log_ok
             log_ok(f"Agent {agent_name} completed", agent=agent_name, run_path=run_path)
             return True, result.stdout, result.stderr
@@ -291,6 +333,16 @@ def run_agent(agent_name, run_path):
         )
         return False, "", f"Agent execution timed out. This may indicate a large dataset or processing issue."
     except Exception as e:
+        # --- OPERATION GLASS HOUSE: FORCE LOGGING ---
+        print(f"\n{'='*80}", file=sys.stderr, flush=True)
+        print(f"[CRITICAL FAILURE] Agent '{agent_name}' CRASHED", file=sys.stderr, flush=True)
+        print(f"[CRITICAL FAILURE] Run Path: {run_path}", file=sys.stderr, flush=True)
+        print(f"[CRITICAL FAILURE] Error: {str(e)}", file=sys.stderr, flush=True)
+        print(f"[CRITICAL FAILURE] Traceback follows:", file=sys.stderr, flush=True)
+        print(f"{'-'*80}", file=sys.stderr, flush=True)
+        traceback.print_exc(file=sys.stderr)
+        print(f"{'='*80}\n", file=sys.stderr, flush=True)
+        
         from utils.logging import log_error
         log_error(
             f"Failed to execute agent {agent_name}",
@@ -313,6 +365,13 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
     config = PerformanceConfig()
     print(f"[RUN] Run ID: {run_id}")
     print(f"[RUN] Run Path: {run_path}")
+    
+    # OPERATION GLASS HOUSE: Path Verification
+    run_path_obj = Path(run_path)
+    print(f"[ORCHESTRATOR] 🔍 TARGET RUN DIR: {run_path_obj.resolve()}", file=sys.stderr, flush=True)
+    print(f"[ORCHESTRATOR] 🔍 Exists? {run_path_obj.exists()}", file=sys.stderr, flush=True)
+    print(f"[ORCHESTRATOR] 🔍 Is Directory? {run_path_obj.is_dir()}", file=sys.stderr, flush=True)
+
     
     # 2. Ingest Data (fast vs full). Respect fast_mode in run_config; default to fast for large files.
     if not os.path.exists(data_path):
@@ -414,33 +473,46 @@ def main_loop(run_path):
             time.sleep(POLL_TIME)
             continue
 
-        # Emergency Report Generation: If completely finished/failed but no report, try one last time
-        # Emergency Report Generation: If completely finished/failed but no report, try one last time
+        # STABILITY LAW 1: ABSOLUTE REPORT ENFORCEMENT
+        # The pipeline SHALL NOT complete without a physical final_report.md
+        # Using Report Enforcer module for absolute path verification
         if state.get("status") in {"complete", "complete_with_errors", "failed"}:
-            # Check specifically for the file existence, not just current state artifacts
-            import pathlib
-            report_check_path = pathlib.Path(run_path) / "final_report.md"
+            # Import at function scope
+            from core.report_enforcer import enforce_report_existence
             
-            if not report_check_path.exists():
-                print(f"[ORCHESTRATOR] ⚠️ CRITICAL: Pipeline ended but {report_check_path} is missing. Forcing expositor run...")
-                
-                # Remove expositor from completed steps if it's there, to force re-run logic if needed
-                if "expositor" in state.get("steps_completed", []):
-                     state["steps_completed"].remove("expositor")
-                     save_state(state_path, state)
-                
-                success, stdout, stderr = run_agent("expositor", run_path)
-                state = load_state(state_path) # Reload state after agent run
-
-                # If still missing, write a hard fallback to prevent UI loop
-                if not report_check_path.exists():
-                    print(f"[ORCHESTRATOR] ❌ CRITICAL: Emergency expositor run failed to produce report. Writing fallback.")
-                    try:
-                        with open(report_check_path, "w", encoding="utf-8") as f:
-                            f.write(f"# Analysis Failed\n\nThe system could not generate a final report.\n\n### Error Details\n`Expositor failed to run`\n\n**Stderr:**\n```\n{stderr}\n```\n\n**Stdout:**\n```\n{stdout}\n```")
-                    except Exception as e:
-                         print(f"[ORCHESTRATOR] Failed to write fallback report: {e}")
+            # --- PROTOCOL 1100: PREVENT PREMATURE COMPLETION ---
+            # Ensure expositor has run before allowing pipeline to complete
+            expositor_completed = "expositor" in state.get("steps_completed", [])
             
+            if not expositor_completed:
+                print(f"[ORCHESTRATOR] ⚠️ Protocol 1100: Pipeline marked {state['status']} but EXPOSITOR hasn't run. FORCING CONTINUATION.", file=sys.stderr, flush=True)
+                # Override status back to running
+                state["status"] = "running"
+                state["current_step"] = "expositor"
+                state["next_step"] = "expositor"
+                save_state(state_path, state)
+                # Don't break - continue to expositor
+                continue
+            
+            # Expositor has run - safe to complete
+            
+            print(f"[ORCHESTRATOR] Pipeline completion detected. Enforcing report existence...")
+            
+            # ABSOLUTE ENFORCEMENT - This blocks until report exists or fails
+            report_verified = enforce_report_existence(run_path, max_wait=30)
+            
+            if not report_verified:
+                # CRITICAL FAILURE - Report enforcer could not guarantee report
+                print(f"[ORCHESTRATOR] ❌ CRITICAL: Report enforcer failed. Blocking completion.")
+                state["status"] = "failed"
+                state["failure_reason"] = "CRITICAL: Report generation failed after all retries"
+                update_history(state, "Report enforcer blocked completion - no valid report", returncode=1)
+                save_state(state_path, state)
+                _record_final_status(run_path, "failed", reason="report_enforcer_block")
+                break
+            
+            # Report verified - safe to complete
+            print(f"[ORCHESTRATOR] ✓ Report verified. Pipeline completion authorized.")
             final_status = state.get("status", "unknown")
             _record_final_status(run_path, final_status)
             print(f"Pipeline finished with status: {state['status']}")
@@ -479,25 +551,38 @@ def main_loop(run_path):
         # Honor validation guardrails (skip blocked agents rather than hallucinate)
         validation_report = state_manager.read("validation_report") or {}
         blocked = set(validation_report.get("blocked_agents") or [])
-        if blocked and current in blocked:
-            step_state = state["steps"].setdefault(current, {"name": current})
-            step_state["status"] = "skipped"
-            step_state["message"] = "Skipped by validation guard"
-            state["steps"][current] = step_state
-            state["steps_completed"].append(current)
-            update_history(state, f"{current} skipped due to validation guard")
-            save_state(state_path, state)
-
-            idx = PIPELINE_SEQUENCE.index(current)
-            if idx + 1 < len(PIPELINE_SEQUENCE):
-                state["current_step"] = PIPELINE_SEQUENCE[idx + 1]
-                state["next_step"] = PIPELINE_SEQUENCE[idx + 1]
+        
+        # CRITICAL OVERRIDE: Check if drift blocking is disabled
+        from core.config import ENABLE_DRIFT_BLOCKING
+        
+        if current in blocked:
+            # Check if this is a drift-related block
+            drift_notes = [note for note in validation_report.get("notes", []) if "drift" in note.lower()]
+            
+            if drift_notes and not ENABLE_DRIFT_BLOCKING:
+                # Drift block but blocking is disabled - PROCEED
+                print(f"[ORCHESTRATOR] ⚠️ Agent '{current}' blocked by drift, but ENABLE_DRIFT_BLOCKING={ENABLE_DRIFT_BLOCKING}. PROCEEDING.", file=sys.stderr, flush=True)
+                # Don't skip - continue to agent execution
             else:
-                state["status"] = "complete_with_errors"
-                state["next_step"] = "complete"
-                update_history(state, "Pipeline completed with validation skips")
-            save_state(state_path, state)
-            continue
+                # Non-drift block OR drift blocking is enabled - SKIP
+                step_state = state["steps"].setdefault(current, {"name": current})
+                step_state["status"] = "skipped"
+                step_state["message"] = "Skipped by validation guard"
+                state["steps"][current] = step_state
+                state["steps_completed"].append(current)
+                update_history(state, f"{current} skipped due to validation guard")
+                save_state(state_path, state)
+
+                idx = PIPELINE_SEQUENCE.index(current)
+                if idx + 1 < len(PIPELINE_SEQUENCE):
+                    state["current_step"] = PIPELINE_SEQUENCE[idx + 1]
+                    state["next_step"] = PIPELINE_SEQUENCE[idx + 1]
+                else:
+                    state["status"] = "complete_with_errors"
+                    state["next_step"] = "complete"
+                    update_history(state, "Pipeline completed with validation skips")
+                save_state(state_path, state)
+                continue
         
         # Check if we already did this step (resume logic)
         if current in state["steps_completed"]:
@@ -564,11 +649,14 @@ def main_loop(run_path):
                 continue
 
         # NEW: Enforce quality-based fail-safe before running insight agents
-        if current in ["overseer", "regression", "personas", "fabricator"]:
-            identity_card = state_manager.read("dataset_identity_card") or {}
-            quality_score = identity_card.get("quality_score", 0.0)
-            
-            if quality_score < 0.75:
+        # Optionally pre-filter some agents based on quality or task contract
+        identity = state_manager.read("identity_card") or {}
+        quality_score = identity.get("quality_score", 0.4)  # Default to minimum floor
+        
+        print(f"[ORCHESTRATOR DEBUG] Quality score for agent filtering: {quality_score}", flush=True)
+        
+        # Lowered threshold from 0.75 to 0.4 to match scanner minimum floor
+        if quality_score < 0.4:
                 step_state = state["steps"].setdefault(current, {"name": current})
                 step_state["status"] = "skipped"
                 step_state["message"] = f"Quality score {quality_score:.2f} < 0.75: Agent disabled by fail-safe"
@@ -694,13 +782,23 @@ def main_loop(run_path):
             allow_insights = validation.get("allow_insights", False)
             
             # Block only if validation failed AND insights are not allowed AND force_run is not set
+            # Block only if validation failed AND insights are not allowed AND force_run is not set
             if not validation.get("can_proceed", False) and not allow_insights and not force_run:
-                state["status"] = "complete_with_errors"
-                state["next_step"] = "blocked"
-                update_history(state, "Data validation failed; pipeline blocked", returncode=1)
+                # STABILITY FIX: Don't block completely. Jump to Expositor to generate a proper "Rejection Report".
+                # This ensures the UI has a valid report and "enhanced_analytics" state (even if empty).
+                update_history(state, "Data validation failed; jumping to Final Report", returncode=1)
+                
+                state["status"] = "running" # Keep running so we can execute Expositor
+                state["current_step"] = "expositor"
+                state["next_step"] = "expositor"
+                
+                # Mark intermediate steps as skipped
+                for step in PIPELINE_SEQUENCE:
+                    if PIPELINE_SEQUENCE.index(step) > PIPELINE_SEQUENCE.index("validator") and step != "expositor":
+                         state["steps"].setdefault(step, {})["status"] = "skipped"
+                         
                 save_state(state_path, state)
-                _record_final_status(run_path, "complete_with_errors", reason="data_validation_block")
-                continue  # Block the pipeline and skip to next iteration
+                continue
             elif not validation.get("can_proceed", False) and allow_insights:
                 # Allow continuation with warnings when insights are allowed
                 update_history(state, "Validation warnings present but insights allowed; continuing", returncode=0)

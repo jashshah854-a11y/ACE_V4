@@ -41,6 +41,7 @@ const App = () => (
               <Route path="/pipeline" element={<Pipeline />} />
               <Route path="/lab" element={<LabPage />} />
               <Route path="/lab/:runId" element={<LabPage />} />
+              <Route path="/logs/:runId" element={<Pipeline />} /> {/* Fallback to Pipeline view for logs */}
               <Route path="/demo/pipeline-status" element={<DemoPipelineStatus />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
