@@ -65,6 +65,7 @@ export interface ReportDataResult {
   outOfScopeDimensions: string[];
   scoredSections: Array<ReturnType<typeof extractSections>[number] & { importance: number }>;
   profile?: { columns: Record<string, any>; numericColumns: string[] };
+  governanceWarnings: string[];
 
   // External data
   enhancedAnalytics: any;
@@ -75,6 +76,29 @@ export interface ReportDataResult {
 }
 
 const MIN_IMPORTANCE = 0.05;
+
+const TIME_TOKENS = [
+  "date",
+  "time",
+  "day",
+  "week",
+  "month",
+  "quarter",
+  "year",
+  "period",
+  "timestamp"
+];
+
+function hasTemporalToken(value: string): boolean {
+  const lower = value.toLowerCase();
+  return TIME_TOKENS.some((token) => lower.includes(token));
+}
+
+function isTemporalMeta(meta: any): boolean {
+  const dtype = String(meta?.dtype ?? meta?.type ?? '').toLowerCase();
+  return hasTemporalToken(dtype);
+}
+
 interface IdentityProfilePayload {
   columns: Record<string, any>;
   numericColumns?: string[];
@@ -333,19 +357,10 @@ export function useReportData(
 
   const limitationsMode = useMemo(() => {
     if (governedReport?.mode === "limitations") return true;
-    const lower = content.toLowerCase();
-    const signals = [
-      "mode: limitations",
-      "insights suppressed",
-      "suppressed due to confidence",
-      "suppressed due to contract",
-      "suppressed due to validation",
-    ];
-    const hasSignal = signals.some((sig) => lower.includes(sig));
-    const metricLowConfidence = typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel <= 5;
+    if (isFallbackReport) return true;
     const governedLowConfidence = typeof governedConfidence === "number" && governedConfidence < confidenceThreshold;
-    return hasSignal || metricLowConfidence || governedLowConfidence || isFallbackReport;
-  }, [content, metrics.confidenceLevel, governedReport?.mode, governedConfidence, confidenceThreshold, isFallbackReport]);
+    return governedLowConfidence;
+  }, [governedReport?.mode, governedConfidence, confidenceThreshold, isFallbackReport]);
 
   const safeMode = useMemo(
     () =>
@@ -362,27 +377,32 @@ export function useReportData(
   );
 
   const shouldEmitInsights = useMemo(
-    () => !isFallbackReport && !limitationsMode && (typeof metrics.confidenceLevel !== "number" || metrics.confidenceLevel >= confidenceThreshold),
-    [limitationsMode, metrics.confidenceLevel, confidenceThreshold, isFallbackReport]
+    () =>
+      !isFallbackReport &&
+      !limitationsMode &&
+      identitySafeMode !== true &&
+      (typeof metrics.confidenceLevel !== "number" || metrics.confidenceLevel >= confidenceThreshold),
+    [limitationsMode, identitySafeMode, metrics.confidenceLevel, confidenceThreshold, isFallbackReport]
   );
 
+
   const hasTimeField = useMemo(() => {
-    if (identityColumns) {
-      const names = Object.keys(identityColumns);
-      if (names.some((name) => name.toLowerCase().includes("date") || name.toLowerCase().includes("time"))) {
-        return true;
-      }
+    if (identityColumns && Object.keys(identityColumns).length) {
+      const entryMatch = Object.entries(identityColumns).some(([name, meta]) =>
+        (name ? hasTemporalToken(name) : false) || isTemporalMeta(meta)
+      );
+      if (entryMatch) return true;
     }
     const schemaColumns = diagnostics?.identity?.schema?.columns;
     if (Array.isArray(schemaColumns)) {
       const match = schemaColumns.some((col: any) => {
-        const name = String(col?.name || col?.column || "").toLowerCase();
-        return name.includes("date") || name.includes("time");
+        const label = String(col?.name || col?.column || "");
+        return hasTemporalToken(label) || isTemporalMeta(col);
       });
       if (match) return true;
     }
     const lower = content.toLowerCase();
-    return lower.includes("date") || lower.includes("time");
+    return TIME_TOKENS.some((token) => lower.includes(token));
   }, [identityColumns, diagnostics?.identity?.schema?.columns, content]);
 
   // Sections
@@ -510,10 +530,25 @@ export function useReportData(
     [identityPayload?.summary, enhancedAnalytics?.quality_metrics, diagnostics?.confidence, metrics.totalRows, metrics.confidenceLevel]
   );
 
+
   const profile = useMemo(() => {
     if (!identityColumns) return undefined;
     return { columns: identityColumns, numericColumns: derivedNumericColumns };
   }, [identityColumns, derivedNumericColumns]);
+
+  const governanceWarnings = useMemo(() => {
+    const warnings = new Set<string>();
+    if (Array.isArray(diagnostics?.reasons)) {
+      diagnostics?.reasons.forEach((reason: string) => warnings.add(reason));
+    }
+    if (identitySafeMode) {
+      warnings.add('Safe Mode active: backend limited advanced insight agents.');
+    }
+    if (!hasTimeField) {
+      warnings.add('Time coverage unknown; add a date or time field to unlock trend insights.');
+    }
+    return Array.from(warnings);
+  }, [diagnostics?.reasons, hasTimeField, identitySafeMode]);
 
   const highlights = useMemo(() => {
     const chips: { label: string; tone: "default" | "warn" | "ok" }[] = [];
@@ -606,6 +641,7 @@ export function useReportData(
     primaryQuestion,
     outOfScopeDimensions,
     scoredSections,
+    governanceWarnings,
     enhancedAnalytics,
     analyticsLoading,
     diagnostics,

@@ -355,6 +355,18 @@ const ExecutivePulse = () => {
                         {/* NEW: Story Header & Metrics */}
                         <StoryHeadline data={storyData} />
 
+                        {reportData.governanceWarnings?.length ? (
+                          <div className="mb-6 space-y-2">
+                            {reportData.governanceWarnings.slice(0, 3).map((warning, idx) => (
+                              <LimitationBanner
+                                key={`gov-warning-${idx}`}
+                                message={warning}
+                                severity={warning.toLowerCase().includes('safe mode') ? 'critical' : 'warning'}
+                              />
+                            ))}
+                          </div>
+                        ) : null}
+
                         {/* New: Advanced Controls */}
                         <div className="flex justify-center mb-8">
                           <StoryControlBar data={storyData} />

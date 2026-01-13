@@ -245,27 +245,30 @@ export default function SimulationControls({
                             )}
 
                             {/* Action Area */}
-                            {scenarios.length > 0 && (
-                                <div className="flex justify-end pt-2">
-                                    <button
-                                        onClick={runSimulation}
-                                        disabled={isSimulating}
-                                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 shadow-sm shadow-purple-200 dark:shadow-none"
-                                    >
-                                        {isSimulating ? (
-                                            <>
-                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                Running Simulation...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Play className="w-4 h-4 fill-current" />
-                                                Run Simulation
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            )}
+                            <div className="flex flex-col gap-2 justify-end pt-2">
+                                <button
+                                    onClick={runSimulation}
+                                    disabled={scenarios.length === 0 || isSimulating}
+                                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 shadow-sm shadow-purple-200 dark:shadow-none"
+                                >
+                                    {isSimulating ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            Running Simulation...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Play className="w-4 h-4 fill-current" />
+                                            Run Simulation
+                                        </>
+                                    )}
+                                </button>
+                                {scenarios.length === 0 && (
+                                    <p className="text-xs text-muted-foreground text-center">
+                                        Add at least one modification to enable simulation.
+                                    </p>
+                                )}
+                            </div>
 
                             {error && (
                                 <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded-lg border border-red-100 dark:border-red-800/50 flex items-center gap-2">
