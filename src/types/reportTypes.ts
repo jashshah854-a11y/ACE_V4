@@ -50,19 +50,56 @@ export interface ReportDataResult {
     syntheticTimeColumn?: string;
 
     // External data
-    enhancedAnalytics: EnhancedAnalyticsData; // Use specific type
+    enhancedAnalytics: EnhancedAnalyticsData | null;
     analyticsLoading: boolean;
     diagnostics: any;
     modelArtifacts: any;
     viewModel: ReportViewModel;
 }
 
+export interface CorrelationPair {
+    feature1: string;
+    feature2: string;
+    pearson: number;
+    spearman: number;
+    strength?: string;
+    direction?: string;
+}
+
+export interface FeatureImportanceItem {
+    feature: string;
+    importance: number;
+}
+
 export interface EnhancedAnalyticsData {
+    mode?: string;
+    data_freshness?: string;
     business_intelligence?: BusinessIntelligence;
-    feature_importance?: FeatureImportance;
-    quality_metrics?: any;
-    correlation_analysis?: any;
-    distribution_analysis?: any;
+    feature_importance?: {
+        available: boolean;
+        feature_importance?: FeatureImportanceItem[];
+        target?: string;
+        task_type?: string;
+        insights?: string[];
+    };
+    quality_metrics?: {
+        available?: boolean;
+        overall_completeness?: number;
+        total_records?: number;
+        columns?: Record<string, any>;
+        insights?: string[];
+    } | null;
+    correlation_analysis?: {
+        available: boolean;
+        strong_correlations?: CorrelationPair[];
+        total_correlations?: number;
+        insights?: string[];
+    };
+    distribution_analysis?: {
+        available: boolean;
+        distributions?: Record<string, any>;
+        insights?: string[];
+    };
 }
 
 export interface BusinessIntelligence {

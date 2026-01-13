@@ -35,6 +35,8 @@ import { InsightBlock } from "@/components/report/InsightBlock";
 import { SignalWidget } from "@/components/trust/SignalWidget";
 import { LimitationBanner } from "@/components/report/LimitationBanner";
 import { SafeIcon } from "@/components/ui/SafeIcon";
+import { TopDriversCard } from "@/components/report/analytics/TopDriversCard";
+import { CorrelationInsightsCard } from "@/components/report/analytics/CorrelationInsightsCard";
 import { useSimulation } from "@/context/SimulationContext";
 import { cn } from "@/lib/utils";
 import { translateTechnicalTerm } from "@/lib/dataTypeMapping";
@@ -377,6 +379,14 @@ const ExecutivePulse = () => {
                         </div>
 
                         <MetricCardGrid metrics={storyData.metricCards} />
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <TopDriversCard
+                            data={reportData.enhancedAnalytics?.feature_importance}
+                            safeMode={reportData.safeMode}
+                          />
+                          <CorrelationInsightsCard data={reportData.enhancedAnalytics?.correlation_analysis} />
+                        </div>
 
                         {/* NEW: Persona Deck (Horizontal Scroll) */}
                         {reportData.personas && reportData.personas.length > 0 && (
