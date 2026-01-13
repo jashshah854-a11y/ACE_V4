@@ -9,6 +9,7 @@ import { getFriendlyName, getFocusArea, COLUMN_FOCUS_MAP } from "@/lib/dataTypeM
 interface DatasetUnderstandingProps {
     profile: DatasetProfile;
     onProceed: () => void;
+    onCustomize?: () => void;
     className?: string;
 }
 

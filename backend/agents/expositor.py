@@ -150,8 +150,8 @@ class Expositor:
         lines.append("## Run Metadata")
         # CRITICAL FIX: Frontend expects JSON in this section, not Markdown
         import json
-        row_count = self.state.read("dataset_identity_card", {}).get("row_count", 0)
-        col_count = self.state.read("dataset_identity_card", {}).get("column_count", 0)
+        row_count = self.state.read("dataset_identity_card").get("row_count", 0)
+        col_count = self.state.read("dataset_identity_card").get("column_count", 0)
         
         metadata_json = {
             "run_id": str(run_id),

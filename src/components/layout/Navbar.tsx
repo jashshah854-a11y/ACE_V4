@@ -6,7 +6,7 @@ import { useTaskContext } from "@/context/TaskContext";
 
 export const Navbar = () => {
   const location = useLocation();
-  const { taskContract } = useTaskContext();
+  const { primaryQuestion } = useTaskContext();
 
   const isPulse = location.pathname.includes("/report");
   const isUpload = location.pathname === "/" || location.pathname === "/upload";
@@ -14,7 +14,6 @@ export const Navbar = () => {
   const isSafeMode = false; // logic placeholder
 
   const reportsHref = "/reports";
-  const primaryQuestion = taskContract?.primaryQuestion;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">

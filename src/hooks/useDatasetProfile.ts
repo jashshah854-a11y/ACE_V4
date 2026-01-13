@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { API_BASE } from "./api-client";
+import { API_BASE } from "@/lib/api-client";
 
 export interface DatasetProfile {
     profile_id: string;
