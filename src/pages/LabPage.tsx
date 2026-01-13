@@ -49,13 +49,7 @@ const LabPage = () => {
     if (reportQuery.isLoading) return <div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin" /></div>;
 
     // Extract numeric columns for simulation
-    const numericColumns = reportData?.profile?.columns
-        ? Object.entries(reportData.profile.columns)
-            .filter(([_, col]: [string, any]) =>
-                col.dtype && (col.dtype.includes('int') || col.dtype.includes('float'))
-            )
-            .map(([name]) => name)
-        : [];
+    const numericColumns = reportData?.profile?.numericColumns ?? [];
 
     return (
         <div className="min-h-screen bg-background">

@@ -58,6 +58,7 @@ export function ensureSafeReport(data: Partial<ReportDataResult> | null | undefi
         },
         runContext: { ...createSafeDefaults().runContext, ...data.runContext },
         narrativeSummary: { ...createSafeDefaults().narrativeSummary, ...data.narrativeSummary },
+        profile: data.profile || createSafeDefaults().profile,
     };
 }
 
@@ -112,6 +113,7 @@ function createSafeDefaults(): ReportDataResult {
         analyticsLoading: false,
         diagnostics: null,
         modelArtifacts: null,
-        viewModel: SAFE_VIEW_MODEL
+        viewModel: SAFE_VIEW_MODEL,
+        profile: { columns: {}, numericColumns: [] }
     };
 }

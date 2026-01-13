@@ -7,7 +7,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import IntelligenceCanvas from "@/components/canvas/IntelligenceCanvas"; // [NEW CANVAS]
+import { IntelligenceCanvas } from "@/components/intelligence/IntelligenceCanvas";
 import { PipelineStatus } from "@/components/report/PipelineStatus";
 import { FileText, Plus, Search, AlertCircle, Loader2, CheckCircle2, History, ChevronDown } from "lucide-react";
 import { getReport, API_BASE } from "@/lib/api-client";

@@ -104,7 +104,11 @@ export function transformToStory(runData: BackendRunData | null | undefined): St
     } catch (e) { console.warn("Date parse error", e); }
 
     // Extract brief (3 bullets) logic - Mocking or parsing lists if available
-    const dataQualityScore = runData.diagnostics?.data_quality?.score ?? 0;
+    const rawDataQualityScore = runData.diagnostics?.data_quality?.score ?? 0;
+    const normalizedDataQuality = typeof rawDataQualityScore === 'number'
+        ? (rawDataQualityScore > 1 ? rawDataQualityScore : rawDataQualityScore * 100)
+        : 0;
+    const dataQualityRatio = normalizedDataQuality / 100;
 
     // Filter out system validation messages from the brief to reduce redundancy
     const contentBullets = sentences.slice(2, 5).filter(s =>
@@ -113,8 +117,8 @@ export function transformToStory(runData: BackendRunData | null | undefined): St
     );
 
     const executiveBrief = [
-        `Analysis Status: ${dataQualityScore > 0.5 ? "Complete" : "Limitations Applied"}`,
-        `Data Quality Score: ${(dataQualityScore * 100).toFixed(0)}%`,
+        `Analysis Status: ${dataQualityRatio > 0.5 ? "Complete" : "Limitations Applied"}`,
+        `Data Quality Score: ${normalizedDataQuality.toFixed(0)}%`,
         ...contentBullets
     ].slice(0, 3);
 
@@ -132,7 +136,11 @@ export function transformToStory(runData: BackendRunData | null | undefined): St
         if (metadataSection?.content) {
             // Attempt to parse JSON content from the metadata section
             try {
-                const parsed = JSON.parse(metadataSection.content);
+                let metadataPayload = metadataSection.content.trim();
+                if (metadataPayload.startsWith('```')) {
+                    metadataPayload = metadataPayload.replace(/^```json/iu, '').replace(/```$/u, '').trim();
+                }
+                const parsed = JSON.parse(metadataPayload);
                 const result = MetadataSchema.safeParse(parsed);
                 if (result.success) {
                     rowCount = result.data.row_count || 0;
@@ -155,18 +163,20 @@ export function transformToStory(runData: BackendRunData | null | undefined): St
     // Quality Score
     metrics.push({
         label: "Data Clarity",
-        value: `${(dataQualityScore * 100).toFixed(0)}%`,
-        status: dataQualityScore > 0.8 ? "success" : (dataQualityScore > 0.5 ? "warning" : "risk"),
-        trend: dataQualityScore > 0.8 ? "up" : "neutral",
+        value: `${normalizedDataQuality.toFixed(0)}%`,
+        status: dataQualityRatio > 0.8 ? "success" : (dataQualityRatio > 0.5 ? "warning" : "risk"),
+        trend: dataQualityRatio > 0.8 ? "up" : "neutral",
         icon: Shield
     });
 
     // Confidence
-    const confidence = runData.confidence_score || 0;
+    const rawConfidence = runData.confidence_score || 0;
+    const normalizedConfidence = rawConfidence > 1 ? rawConfidence : rawConfidence * 100;
+    const confidenceRatio = normalizedConfidence / 100;
     metrics.push({
         label: "AI Confidence",
-        value: `${(confidence * 100).toFixed(0)}%`,
-        status: confidence > 0.8 ? "success" : "warning",
+        value: `${normalizedConfidence.toFixed(0)}%`,
+        status: confidenceRatio > 0.8 ? "success" : "warning",
         icon: Brain
     });
 
@@ -233,8 +243,8 @@ export function transformToStory(runData: BackendRunData | null | undefined): St
         sections: storySections,
         executiveBrief,
         meta: {
-            dataQuality: dataQualityScore,
-            confidence: confidence,
+            dataQuality: dataQualityRatio,
+            confidence: confidenceRatio,
             runId: runData.run_id,
             date: dateStr
         }
@@ -264,29 +274,103 @@ export function filterSuppressedSections(sections: any[]) {
 }
 
 export function transformAPIResponse(data: any): ReportViewModel {
-    // Adapter to convert useReportData's internal format to StoryViewData
-    // This is a simplified mapping to satisfy the build and provide basic legacy support
+    const normalizedConfidence = typeof data?.confidenceValue === 'number'
+        ? data.confidenceValue
+        : typeof data?.metrics?.confidenceLevel === 'number'
+            ? data.metrics.confidenceLevel
+            : 0;
+    const normalizedDataQuality = typeof data?.metrics?.dataQualityScore === 'number'
+        ? data.metrics.dataQualityScore
+        : typeof data?.dataQualityValue === 'number'
+            ? data.dataQualityValue
+            : 0;
 
-    return {
-        headline: data.decisionSummary || "Report Analysis",
-        subheadline: data.primaryQuestion || "Key insights from your data.",
-        metricCards: [], // data.metrics could be mapped here if needed
-        sections: (data.sections || []).map((s: any) => ({
-            id: s.id || "section",
-            title: s.title || "Section",
-            content: s.content || "",
-            sentiment: "neutral",
-            type: "narrative"
+    const pseudoRun: BackendRunData = {
+        run_id: data.runId || 'legacy',
+        created_at: new Date().toISOString(),
+        confidence_score: normalizedConfidence / 100,
+        sections: (data.sections || []).map((s: any, index: number) => ({
+            id: s.id || `section-${index}`,
+            title: s.title || `Section ${index + 1}`,
+            type: (s.type as string) || 'narrative',
+            content: s.content || ''
         })),
-        executiveBrief: [],
-        meta: {
-            dataQuality: 0,
-            confidence: data.confidenceValue || 0,
-            runId: "legacy",
-            date: new Date().toLocaleDateString()
-        },
-        traceability: {
-            textSegments: []
+        diagnostics: {
+            data_quality: { score: normalizedDataQuality / 100 }
         }
+    } as BackendRunData;
+
+    const story = transformToStory(pseudoRun);
+
+    const metricCards: MetricCardData[] = [];
+    if (typeof normalizedDataQuality === 'number' && !Number.isNaN(normalizedDataQuality)) {
+        const ratio = normalizedDataQuality / 100;
+        metricCards.push({
+            label: 'Data Clarity',
+            value: `${normalizedDataQuality.toFixed(0)}%`,
+            status: ratio > 0.8 ? 'success' : ratio > 0.5 ? 'warning' : 'risk',
+            trend: ratio > 0.8 ? 'up' : 'neutral',
+            icon: Shield
+        });
+    }
+    if (typeof normalizedConfidence === 'number' && !Number.isNaN(normalizedConfidence)) {
+        const ratio = normalizedConfidence / 100;
+        metricCards.push({
+            label: 'AI Confidence',
+            value: `${normalizedConfidence.toFixed(0)}%`,
+            status: ratio > 0.8 ? 'success' : 'warning',
+            icon: Brain
+        });
+    }
+    if (typeof data?.metrics?.recordsProcessed === 'number') {
+        metricCards.push({
+            label: 'Records Processed',
+            value: data.metrics.recordsProcessed.toLocaleString(),
+            status: 'neutral',
+            icon: Activity
+        });
+    }
+    if (typeof data?.metrics?.anomalyCount === 'number') {
+        metricCards.push({
+            label: 'Anomalies',
+            value: data.metrics.anomalyCount.toLocaleString(),
+            status: data.metrics.anomalyCount > 0 ? 'warning' : 'success',
+            icon: AlertTriangle
+        });
+    }
+
+    if (metricCards.length) {
+        story.metricCards = metricCards;
+    }
+
+    const executiveBriefEntries: string[] = [];
+    if (data.executiveBrief?.purpose) executiveBriefEntries.push(data.executiveBrief.purpose);
+    if (Array.isArray(data.executiveBrief?.keyFindings)) {
+        executiveBriefEntries.push(...data.executiveBrief.keyFindings);
+    }
+    if (data.executiveBrief?.recommendedAction) {
+        executiveBriefEntries.push(`Action: ${data.executiveBrief.recommendedAction}`);
+    }
+    if (executiveBriefEntries.length) {
+        story.executiveBrief = executiveBriefEntries.filter(Boolean).slice(0, 3);
+    }
+
+    if (data.decisionSummary) {
+        story.headline = data.decisionSummary;
+    } else if (data.heroInsight?.keyInsight) {
+        story.headline = data.heroInsight.keyInsight;
+    }
+
+    if (data.primaryQuestion) {
+        story.subheadline = data.primaryQuestion;
+    }
+
+    story.meta = {
+        dataQuality: normalizedDataQuality / 100,
+        confidence: normalizedConfidence / 100,
+        runId: pseudoRun.run_id,
+        date: story.meta.date || new Date().toLocaleDateString()
     };
+
+    return story;
 }

@@ -43,6 +43,11 @@ export function AskAce({ reportData }: AskAceProps) {
         if (!data) return "I'm having trouble accessing the report data directly. Try asking again in a moment.";
 
         const lowerQ = query.toLowerCase();
+        const analyzedRows = typeof data.metrics?.recordsProcessed === 'number'
+            ? data.metrics.recordsProcessed.toLocaleString()
+            : (typeof data.identityStats?.rows === 'number'
+                ? data.identityStats.rows.toLocaleString()
+                : 'the');
 
         // 1. High-level Summary
         if (lowerQ.includes("summary") || lowerQ.includes("overview") || lowerQ.includes("tell me about")) {
@@ -71,7 +76,7 @@ export function AskAce({ reportData }: AskAceProps) {
 
         // 4. Data Quality / Reliability
         if (lowerQ.includes("quality") || lowerQ.includes("confidence") || lowerQ.includes("trust")) {
-            const score = Math.round((data.metrics?.dataQualityScore || 0) * 100);
+            const score = Math.round(data.metrics?.dataQualityScore ?? 0);
             return `The data quality score is ${score}%. ${score > 80 ? "This is excellent and reliable." : "Proceed with some caution."}`;
         }
 
@@ -89,7 +94,7 @@ export function AskAce({ reportData }: AskAceProps) {
             "That's an interesting question. Based on the metrics, I recommend looking at the 'Narrative Insights' section for more detail.",
             "I'm focusing on the key drivers right now. Try asking about 'risks' or 'data quality'.",
             "I can help you interpret the Executive Brief. Would you like a summary?",
-            `I've analyzed ${data.metrics?.totalRows?.toLocaleString() || 'the'} rows of data. What specifically do you need to know?`
+            `I've analyzed ${analyzedRows} rows of data. What specifically do you need to know?`
         ];
         return fallbacks[Math.floor(Math.random() * fallbacks.length)];
     };

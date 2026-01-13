@@ -115,8 +115,8 @@ export function IntelligenceCanvas({ runId, className }: IntelligenceCanvasProps
         }
 
         // Match: Correlations / Relationships
-        if (analytics.correlations?.strong_correlations) {
-            const corr = analytics.correlations.strong_correlations.find((c: any) =>
+        if (analytics.correlation_analysis?.strong_correlations) {
+            const corr = analytics.correlation_analysis?.strong_correlations.find((c: any) =>
                 claimText.includes(c.feature1.toLowerCase()) && claimText.includes(c.feature2.toLowerCase())
             );
 

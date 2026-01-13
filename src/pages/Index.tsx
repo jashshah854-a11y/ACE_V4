@@ -5,6 +5,7 @@ import { Upload, Sparkles, ArrowRight, CheckCircle2, Loader2 } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/layout/Navbar";
 import { submitRun, previewDataset, DatasetIdentity } from "@/lib/api-client";
+import { saveRecentReport } from "@/lib/localStorage";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { DatasetUnderstanding } from "@/components/upload/DatasetUnderstanding";
@@ -118,7 +119,6 @@ const Index = () => {
 
       const result = await submitRun(file, taskIntent);
 
-      const { saveRecentReport } = await import("@/lib/localStorage");
       saveRecentReport(result.run_id, undefined, file.name);
 
 

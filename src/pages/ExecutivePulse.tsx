@@ -1,7 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { transformToStory } from "@/lib/reportViewModel";
 import { StoryHeadline } from "@/components/report/story/StoryHeadline";
 import { MetricCardGrid } from "@/components/report/story/MetricCardGrid";
 import { SentimentBlock } from "@/components/report/story/SentimentBlock";
@@ -70,6 +69,7 @@ const ExecutivePulse = () => {
 
   const { data: governedReport } = useGovernedReport(activeRun);
   const reportData = useReportData(reportQuery.data || "", activeRun, "strict", governedReport);
+  const storyData = reportData.viewModel;
   const { setSafeMode } = useSimulation();
 
   // Sync Safe Mode state
@@ -353,14 +353,14 @@ const ExecutivePulse = () => {
                     ) : (
                       <div className="max-w-3xl mx-auto animate-fade-in-up">
                         {/* NEW: Story Header & Metrics */}
-                        <StoryHeadline data={transformToStory(reportData)} />
+                        <StoryHeadline data={storyData} />
 
                         {/* New: Advanced Controls */}
                         <div className="flex justify-center mb-8">
-                          <StoryControlBar data={transformToStory(reportData)} />
+                          <StoryControlBar data={storyData} />
                         </div>
 
-                        <MetricCardGrid metrics={transformToStory(reportData).metricCards} />
+                        <MetricCardGrid metrics={storyData.metricCards} />
 
                         {/* NEW: Persona Deck (Horizontal Scroll) */}
                         {reportData.personas && reportData.personas.length > 0 && (
@@ -379,7 +379,7 @@ const ExecutivePulse = () => {
 
                         {/* NEW: Editorial Section Loop */}
                         <div className="space-y-12">
-                          {transformToStory(reportData).sections.map((section, idx) => {
+                          {storyData.sections.map((section, idx) => {
                             if (section.type === "recommendation" && section.listItems && section.listItems.length > 0) {
                               return (
                                 <ActionChecklist
@@ -471,7 +471,7 @@ const ExecutivePulse = () => {
       </main>
 
       {/* Strategy Simulator CTA */}
-      {reportData && reportData.profile?.columns && (
+      {reportData.profile?.numericColumns?.length ? (
         <section className="py-12 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border-y border-border/40">
           <div className="container px-4 max-w-4xl text-center">
             <div className="w-16 h-16 rounded-2xl bg-purple-600/10 flex items-center justify-center mx-auto mb-6">
@@ -487,7 +487,7 @@ const ExecutivePulse = () => {
             </Button>
           </div>
         </section>
-      )}
+      ) : null}
 
       <AskAce reportData={reportData} />
       <Footer />

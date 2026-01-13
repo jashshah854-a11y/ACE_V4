@@ -63,6 +63,7 @@ export interface ReportDataResult {
   primaryQuestion?: string;
   outOfScopeDimensions: string[];
   scoredSections: Array<ReturnType<typeof extractSections>[number] & { importance: number }>;
+  profile?: { columns: Record<string, any>; numericColumns: string[] };
 
   // External data
   enhancedAnalytics: any;
@@ -410,6 +411,30 @@ export function useReportData(
     [enhancedAnalytics?.quality_metrics, diagnostics?.confidence, metrics.totalRows, metrics.confidenceLevel]
   );
 
+  const profile = useMemo(() => {
+    const rawColumns =
+      diagnostics?.identity?.columns ||
+      diagnostics?.identity?.schema?.columns ||
+      enhancedAnalytics?.quality_metrics?.columns ||
+      null;
+    if (!rawColumns) return undefined;
+
+    const entries = Array.isArray(rawColumns)
+      ? rawColumns.map((col: any, index: number) => [col?.name || col?.column || `column_${index}`, col])
+      : Object.entries(rawColumns as Record<string, any>);
+
+    const columnMap = Array.isArray(rawColumns) ? Object.fromEntries(entries) : (rawColumns as Record<string, any>);
+
+    const numericColumns = entries
+      .filter(([, col]) => {
+        const dtype = String(col?.dtype || col?.type || '').toLowerCase();
+        return dtype.includes('int') || dtype.includes('float') || dtype.includes('double') || dtype.includes('decimal');
+      })
+      .map(([name]) => name);
+
+    return { columns: columnMap, numericColumns };
+  }, [diagnostics?.identity, enhancedAnalytics?.quality_metrics]);
+
   const highlights = useMemo(() => {
     const chips: { label: string; tone: "default" | "warn" | "ok" }[] = [];
     if (heroInsight?.title) chips.push({ label: `Top insight: ${heroInsight.title}`, tone: "default" });
@@ -430,9 +455,6 @@ export function useReportData(
 
   // Compute View Model
   const viewModel = useMemo(() => {
-    // We construct a temporary result object to pass to the transformer
-    // This avoids circular dependency or complex refactoring for now
-    // In a real refactor, we would compute this *after* all hooks, but inside useReportData
     const tempResult = {
       metrics,
       confidenceValue,
@@ -440,11 +462,14 @@ export function useReportData(
       limitationsMode,
       primaryQuestion,
       decisionSummary,
+      executiveBrief,
+      heroInsight,
+      runId,
       evidenceSections: evidenceSections || [],
       sections,
     };
     return transformAPIResponse(tempResult);
-  }, [metrics, confidenceValue, safeMode, limitationsMode, primaryQuestion, decisionSummary, evidenceSections, sections]);
+  }, [metrics, confidenceValue, safeMode, limitationsMode, primaryQuestion, decisionSummary, executiveBrief, heroInsight, evidenceSections, sections, runId]);
 
 
 
@@ -492,5 +517,6 @@ export function useReportData(
     diagnostics,
     modelArtifacts,
     viewModel,
+    profile,
   });
 }

@@ -45,6 +45,7 @@ export interface ReportDataResult {
     primaryQuestion?: string;
     outOfScopeDimensions: string[];
     scoredSections: any[];
+    profile?: ReportProfile;
 
     // External data
     enhancedAnalytics: EnhancedAnalyticsData; // Use specific type
@@ -98,4 +99,16 @@ export interface FeatureImportance {
         rank: number;
     }>;
     insights?: string[];
+}
+
+export interface ReportProfile {
+    columns: Record<string, ColumnProfile>;
+    numericColumns: string[];
+}
+
+export interface ColumnProfile {
+    dtype?: string;
+    type?: string;
+    null_pct?: number;
+    [key: string]: any;
 }
