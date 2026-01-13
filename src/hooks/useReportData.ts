@@ -1,4 +1,4 @@
-﻿import { useMemo } from "react";
+import { useMemo } from "react";
 import {
   extractMetrics,
   extractSections,
@@ -12,6 +12,7 @@ import {
 import { extractHeroInsight, generateMondayActions, extractSegmentData } from "@/lib/insightExtractors";
 import { extractExecutiveBrief, extractConclusion } from "@/lib/narrativeExtractors";
 import { useEnhancedAnalytics } from "@/hooks/useEnhancedAnalytics";
+import { useRemoteArtifact } from "@/hooks/useRemoteArtifact";
 import { getSyntheticTimeColumn } from "@/lib/timelineHelper";
 import { useDiagnostics } from "@/hooks/useDiagnostics";
 import { useModelArtifacts } from "@/hooks/useModelArtifacts";
@@ -236,6 +237,7 @@ export function useReportData(
   const { data: diagnostics } = useDiagnostics(runId);
   const { data: modelArtifacts } = useModelArtifacts(runId);
   const { data: identityPayload } = useRemoteArtifact<IdentityApiResponse>(runId, "identity");
+  const { data: timelineSelection } = useRemoteArtifact<{ column?: string }>(runId, "timeline");
 
   const identityCard = identityPayload?.identity || diagnostics?.identity || null;
   const identitySafeMode = identityPayload?.summary?.is_safe_mode ?? identityCard?.is_safe_mode;
@@ -262,7 +264,12 @@ export function useReportData(
       .map(([name]) => name);
   }, [identityPayload?.profile?.numericColumns, identityColumns]);
 
-  const syntheticTimeColumn = useMemo(() => (runId ? getSyntheticTimeColumn(runId) : undefined), [runId]);
+  const syntheticTimeColumn = useMemo(() => {
+    if (timelineSelection?.column) {
+      return timelineSelection.column;
+    }
+    return runId ? getSyntheticTimeColumn(runId) : undefined;
+  }, [timelineSelection?.column, runId]);
 
   // DETECT FALLBACK / ERROR REPORT
   const isFallbackReport = useMemo(() => {

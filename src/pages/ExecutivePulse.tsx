@@ -371,7 +371,7 @@ const ExecutivePulse = () => {
                         ) : null}
 
                         {!reportData.hasTimeField && reportData.profile?.columns ? (
-                          <TimelineHelper profile={reportData.profile} runId={activeRun} />
+                          <TimelineHelper profile={reportData.profile} runId={activeRun} initialColumn={reportData.syntheticTimeColumn} />
                         ) : null}
                         {/* New: Advanced Controls */}
                         <div className="flex justify-center mb-8">

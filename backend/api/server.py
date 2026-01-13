@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Form
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -14,6 +14,7 @@ import re
 import logging
 import threading
 from pathlib import Path
+from datetime import datetime
 from typing import Any, Dict, Optional, List
 
 # Add project root to path
@@ -79,17 +80,17 @@ async def startup_event():
         
         logger.info(f"[API] Initializing Redis queue (URL: {redis_url[:25]}...)")
         job_queue = RedisJobQueue(redis_url)
-        logger.info("[API] âœ… Redis queue initialized successfully")
+        logger.info("[API] ✅ Redis queue initialized successfully")
         
         # Start background worker thread
         logger.info("[API] Starting background worker thread...")
         from jobs.worker import worker_loop
         worker_thread = threading.Thread(target=worker_loop, daemon=True, name="ACE-Worker")
         worker_thread.start()
-        logger.info("[API] âœ… Background worker started successfully")
+        logger.info("[API] ✅ Background worker started successfully")
         
     except Exception as e:
-        logger.exception("[API] âŒ CRITICAL: Failed to initialize Redis queue or worker")
+        logger.exception("[API] ❌ CRITICAL: Failed to initialize Redis queue or worker")
         logger.error(f"[API] Error: {e}")
         logger.error("[API] Job queue will not be available - /run endpoint will return 503")
         # Don't raise - let app start but /run will return 503
@@ -100,13 +101,13 @@ async def startup_event():
 # LAW 1: Import Unified DATA_DIR from config (Single Source of Truth)
 from core.config import DATA_DIR
 
-print(f"ðŸš€ SERVER STARTING - VERSION: UNIFIED_ANCHOR_V4 - DATA_DIR: {DATA_DIR.absolute()}")
+print(f"🚀 SERVER STARTING - VERSION: UNIFIED_ANCHOR_V4 - DATA_DIR: {DATA_DIR.absolute()}")
 try:
     sys.path.append(str(Path(__file__).parent.parent))
     import jobs.redis_queue
-    print("âœ… jobs.redis_queue import verified")
+    print("✅ jobs.redis_queue import verified")
 except ImportError as e:
-    print(f"âŒ CRITICAL: jobs.redis_queue import failed: {e}")
+    print(f"❌ CRITICAL: jobs.redis_queue import failed: {e}")
 
 
 # OPERATION UNSINKABLE - Layer 1: The Gatekeeper
@@ -206,6 +207,14 @@ def _ensure_identity_card(state: StateManager, run_path: Path) -> Dict[str, Any]
         logger.warning(f"[IDENTITY] Unable to rebuild identity artifacts: {exc}")
 
     return {}
+
+
+class TimelineSelection(BaseModel):
+    column: Optional[str] = None
+
+
+def _iso_now():
+    return datetime.utcnow().isoformat(timespec='seconds') + 'Z'
 
 
 def _safe_upload_path(original_name: str) -> Path:
@@ -417,7 +426,7 @@ async def preview_dataset(file: UploadFile = File(...)):
             "critical_gaps": ["ANALYSIS_FAILED"],
             "detected_capabilities": [],
             "warnings": [
-                f"âš ï¸ Safe Mode: Analysis failed - {str(e)[:200]}",
+                f"⚠️ Safe Mode: Analysis failed - {str(e)[:200]}",
                 "The system could not fully analyze this file.",
                 "You can still proceed, but insights will be limited."
             ],
@@ -787,7 +796,7 @@ async def get_report(request: Request, run_id: str, format: str = "markdown"):
                 fallback_content = (
                     f"# Analysis Report ({status})\n\n"
                     f"**Run ID:** `{run_id}`\n\n"
-                    f"> âš ï¸ **System Notice:** The final report generation step encountered an issue, but the analysis pipeline finished.\n\n"
+                    f"> ⚠️ **System Notice:** The final report generation step encountered an issue, but the analysis pipeline finished.\n\n"
                     f"## Status Overview\n"
                     f"- **Status:** {status}\n"
                     f"- **Created:** {created_at}\n"
@@ -898,6 +907,31 @@ async def get_evidence_sample(run_id: str, rows: int = 5):
 
     sample = df.head(rows).to_dict(orient="records")
     return {"rows": sample, "row_count": len(sample)}
+
+
+
+@app.get("/run/{run_id}/timeline", tags=["Run"])
+async def get_timeline_selection(run_id: str):
+    """Return the synthetic timeline selection for a run."""
+    _validate_run_id(run_id)
+    run_path = DATA_DIR / "runs" / run_id
+    state = StateManager(str(run_path))
+    payload = state.read("synthetic_timeline") or {}
+    return {
+        'column': payload.get("column"),
+        'updated_at': payload.get("updated_at")
+    }
+
+
+@app.post("/run/{run_id}/timeline", tags=["Run"])
+async def set_timeline_selection(run_id: str, selection: TimelineSelection):
+    """Persist synthetic timeline column selection for a run."""
+    _validate_run_id(run_id)
+    run_path = DATA_DIR / "runs" / run_id
+    state = StateManager(str(run_path))
+    record = {"column": selection.column, "updated_at": _iso_now()}
+    state.write("synthetic_timeline", record)
+    return record
 
 @app.get("/run/{run_id}/diagnostics", tags=["Run"])
 async def get_diagnostics(run_id: str):
@@ -1104,7 +1138,7 @@ async def get_key_insights(run_id: str):
         warnings.append(f"Moderate data quality ({quality:.1%}) - consider data cleaning")
     
     if r2 is not None and r2 < 0.5:
-        warnings.append(f"Low predictive power (RÂ² = {r2:.2f}) - model may not be reliable")
+        warnings.append(f"Low predictive power (R² = {r2:.2f}) - model may not be reliable")
     
     if silhouette < 0.3 and k > 1:
         warnings.append(f"Weak cluster separation (silhouette = {silhouette:.2f})")
@@ -1116,9 +1150,9 @@ async def get_key_insights(run_id: str):
         strengths.append(f"Good data quality ({quality:.1%})")
     
     if r2 is not None and r2 > 0.8:
-        strengths.append(f"Strong predictive correlation (RÂ² = {r2:.2f})")
+        strengths.append(f"Strong predictive correlation (R² = {r2:.2f})")
     elif r2 is not None and r2 > 0.6:
-        strengths.append(f"Moderate predictive correlation (RÂ² = {r2:.2f})")
+        strengths.append(f"Moderate predictive correlation (R² = {r2:.2f})")
     
     if k >= 3 and silhouette > 0.5:
         strengths.append(f"Clear segmentation with {k} distinct patterns (silhouette = {silhouette:.2f})")
