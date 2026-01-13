@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 import time
 import subprocess
@@ -19,18 +19,18 @@ from core.pipeline_map import PIPELINE_SEQUENCE, PIPELINE_DESCRIPTIONS
 # --- PROTOCOL 1000: FORCE EXPOSITOR INCLUSION ---
 # Ensure expositor is ALWAYS in the execution sequence
 if "expositor" not in PIPELINE_SEQUENCE:
-    print("[ORCHESTRATOR] ⚠️ 'expositor' missing from PIPELINE_SEQUENCE. FORCING INCLUSION.", file=sys.stderr, flush=True)
+    print("[ORCHESTRATOR] âš ï¸ 'expositor' missing from PIPELINE_SEQUENCE. FORCING INCLUSION.", file=sys.stderr, flush=True)
     # This shouldn't happen, but if it does, we fix it at runtime
     PIPELINE_SEQUENCE.append("expositor")
 
 # Double-check: Ensure expositor is the LAST step
 if PIPELINE_SEQUENCE[-1] != "expositor":
-    print(f"[ORCHESTRATOR] ⚠️ 'expositor' is not the final step (current: {PIPELINE_SEQUENCE[-1]}). Reordering...", file=sys.stderr, flush=True)
+    print(f"[ORCHESTRATOR] âš ï¸ 'expositor' is not the final step (current: {PIPELINE_SEQUENCE[-1]}). Reordering...", file=sys.stderr, flush=True)
     if "expositor" in PIPELINE_SEQUENCE:
         PIPELINE_SEQUENCE.remove("expositor")
     PIPELINE_SEQUENCE.append("expositor")
 
-print(f"[ORCHESTRATOR] 📋 Final Pipeline Sequence: {PIPELINE_SEQUENCE}", file=sys.stderr, flush=True)
+print(f"[ORCHESTRATOR] ðŸ“‹ Final Pipeline Sequence: {PIPELINE_SEQUENCE}", file=sys.stderr, flush=True)
 # ------------------------------------------------
 
 from core.run_utils import create_run_folder
@@ -48,6 +48,7 @@ from jobs.progress import ProgressTracker
 POLL_TIME = 0.5  # seconds
 MAX_STEP_ATTEMPTS = 3
 RETRY_BACKOFF = 2
+GOVERNANCE_REFRESH_STEPS = {"scanner", "type_identifier", "interpreter", "validator"}
 
 
 def _record_final_status(run_path: str, status: str, **extra):
@@ -273,7 +274,7 @@ def run_agent(agent_name, run_path):
     agent_timeout = calculate_agent_timeout(run_path, agent_name)
     
     # OPERATION GLASS HOUSE: Forensic Subprocess Wrapper
-    print(f"[ORCHESTRATOR] 🚀 Launching Agent: {agent_name}...", file=sys.stderr, flush=True)
+    print(f"[ORCHESTRATOR] ðŸš€ Launching Agent: {agent_name}...", file=sys.stderr, flush=True)
 
     try:
         # FORCE CAPTURE of both STDOUT and STDERR to expose hidden failures
@@ -287,22 +288,22 @@ def run_agent(agent_name, run_path):
 
         # Check return code manually (not using check=True to handle stderr better)
         if result.returncode != 0:
-            # 🚨 THE SMOKING GUN REVEALED 🚨
+            # ðŸš¨ THE SMOKING GUN REVEALED ðŸš¨
             print(f"\n{'='*80}", file=sys.stderr, flush=True)
-            print(f"🛑 CRITICAL AGENT FAILURE: {agent_name}", file=sys.stderr, flush=True)
-            print(f"🛑 EXIT CODE: {result.returncode}", file=sys.stderr, flush=True)
+            print(f"ðŸ›‘ CRITICAL AGENT FAILURE: {agent_name}", file=sys.stderr, flush=True)
+            print(f"ðŸ›‘ EXIT CODE: {result.returncode}", file=sys.stderr, flush=True)
             print(f"{'-'*80}", file=sys.stderr, flush=True)
             
             # PRINT THE HIDDEN TRACEBACK
             if result.stderr:
-                print(f"🔍 AGENT STDERR (The Root Cause):", file=sys.stderr, flush=True)
+                print(f"ðŸ” AGENT STDERR (The Root Cause):", file=sys.stderr, flush=True)
                 print(result.stderr, file=sys.stderr, flush=True)
             else:
-                print(f"⚠️ NO STDERR CAPTURED (Process died instantly)", file=sys.stderr, flush=True)
+                print(f"âš ï¸ NO STDERR CAPTURED (Process died instantly)", file=sys.stderr, flush=True)
             
             if result.stdout:
                 print(f"{'-'*80}", file=sys.stderr, flush=True)
-                print(f"📋 AGENT STDOUT:", file=sys.stderr, flush=True)
+                print(f"ðŸ“‹ AGENT STDOUT:", file=sys.stderr, flush=True)
                 print(result.stdout, file=sys.stderr, flush=True)
                 
             print(f"{'='*80}\n", file=sys.stderr, flush=True)
@@ -368,9 +369,9 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
     
     # OPERATION GLASS HOUSE: Path Verification
     run_path_obj = Path(run_path)
-    print(f"[ORCHESTRATOR] 🔍 TARGET RUN DIR: {run_path_obj.resolve()}", file=sys.stderr, flush=True)
-    print(f"[ORCHESTRATOR] 🔍 Exists? {run_path_obj.exists()}", file=sys.stderr, flush=True)
-    print(f"[ORCHESTRATOR] 🔍 Is Directory? {run_path_obj.is_dir()}", file=sys.stderr, flush=True)
+    print(f"[ORCHESTRATOR] ðŸ” TARGET RUN DIR: {run_path_obj.resolve()}", file=sys.stderr, flush=True)
+    print(f"[ORCHESTRATOR] ðŸ” Exists? {run_path_obj.exists()}", file=sys.stderr, flush=True)
+    print(f"[ORCHESTRATOR] ðŸ” Is Directory? {run_path_obj.is_dir()}", file=sys.stderr, flush=True)
 
     
     # 2. Ingest Data (fast vs full). Respect fast_mode in run_config; default to fast for large files.
@@ -485,7 +486,7 @@ def main_loop(run_path):
             expositor_completed = "expositor" in state.get("steps_completed", [])
             
             if not expositor_completed:
-                print(f"[ORCHESTRATOR] ⚠️ Protocol 1100: Pipeline marked {state['status']} but EXPOSITOR hasn't run. FORCING CONTINUATION.", file=sys.stderr, flush=True)
+                print(f"[ORCHESTRATOR] âš ï¸ Protocol 1100: Pipeline marked {state['status']} but EXPOSITOR hasn't run. FORCING CONTINUATION.", file=sys.stderr, flush=True)
                 # Override status back to running
                 state["status"] = "running"
                 state["current_step"] = "expositor"
@@ -503,7 +504,7 @@ def main_loop(run_path):
             
             if not report_verified:
                 # CRITICAL FAILURE - Report enforcer could not guarantee report
-                print(f"[ORCHESTRATOR] ❌ CRITICAL: Report enforcer failed. Blocking completion.")
+                print(f"[ORCHESTRATOR] âŒ CRITICAL: Report enforcer failed. Blocking completion.")
                 state["status"] = "failed"
                 state["failure_reason"] = "CRITICAL: Report generation failed after all retries"
                 update_history(state, "Report enforcer blocked completion - no valid report", returncode=1)
@@ -512,7 +513,7 @@ def main_loop(run_path):
                 break
             
             # Report verified - safe to complete
-            print(f"[ORCHESTRATOR] ✓ Report verified. Pipeline completion authorized.")
+            print(f"[ORCHESTRATOR] âœ“ Report verified. Pipeline completion authorized.")
             final_status = state.get("status", "unknown")
             _record_final_status(run_path, final_status)
             print(f"Pipeline finished with status: {state['status']}")
@@ -561,7 +562,7 @@ def main_loop(run_path):
             
             if drift_notes and not ENABLE_DRIFT_BLOCKING:
                 # Drift block but blocking is disabled - PROCEED
-                print(f"[ORCHESTRATOR] ⚠️ Agent '{current}' blocked by drift, but ENABLE_DRIFT_BLOCKING={ENABLE_DRIFT_BLOCKING}. PROCEEDING.", file=sys.stderr, flush=True)
+                print(f"[ORCHESTRATOR] âš ï¸ Agent '{current}' blocked by drift, but ENABLE_DRIFT_BLOCKING={ENABLE_DRIFT_BLOCKING}. PROCEEDING.", file=sys.stderr, flush=True)
                 # Don't skip - continue to agent execution
             else:
                 # Non-drift block OR drift blocking is enabled - SKIP
@@ -650,7 +651,7 @@ def main_loop(run_path):
 
         # NEW: Enforce quality-based fail-safe before running insight agents
         # Optionally pre-filter some agents based on quality or task contract
-        identity = state_manager.read("identity_card") or {}
+        identity = state_manager.read("dataset_identity_card") or {}
         quality_score = identity.get("quality_score", 0.4)  # Default to minimum floor
         
         print(f"[ORCHESTRATOR DEBUG] Quality score for agent filtering: {quality_score}", flush=True)
@@ -710,8 +711,8 @@ def main_loop(run_path):
 
         finalize_step(state, current, success, stdout, stderr)
 
-        # Refresh governance artifacts after type identification or validation updates
-        if success and current in {"type_identifier", "validator"}:
+        # Refresh governance artifacts whenever upstream schema context changes
+        if success and current in GOVERNANCE_REFRESH_STEPS:
             try:
                 rebuild_governance_artifacts(StateManager(run_path))
             except Exception as e:
@@ -882,4 +883,8 @@ if __name__ == "__main__":
     new_run_id, new_run_path = orchestrate_new_run(args.data)
     if new_run_path:
         main_loop(new_run_path)
+
+
+
+
 

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Form
+﻿from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Form
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -14,7 +14,7 @@ import re
 import logging
 import threading
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
@@ -32,6 +32,7 @@ from core.task_contract import parse_task_intent, TaskIntentValidationError
 from api.contextual_intelligence import AskRequest, process_ask_query
 from core.simulation import SimulationEngine
 from core.enhanced_analytics import EnhancedAnalytics
+from core.governance import rebuild_governance_artifacts
 import pandas as pd
 
 # Set up logging
@@ -78,17 +79,17 @@ async def startup_event():
         
         logger.info(f"[API] Initializing Redis queue (URL: {redis_url[:25]}...)")
         job_queue = RedisJobQueue(redis_url)
-        logger.info("[API] ✅ Redis queue initialized successfully")
+        logger.info("[API] âœ… Redis queue initialized successfully")
         
         # Start background worker thread
         logger.info("[API] Starting background worker thread...")
         from jobs.worker import worker_loop
         worker_thread = threading.Thread(target=worker_loop, daemon=True, name="ACE-Worker")
         worker_thread.start()
-        logger.info("[API] ✅ Background worker started successfully")
+        logger.info("[API] âœ… Background worker started successfully")
         
     except Exception as e:
-        logger.exception("[API] ❌ CRITICAL: Failed to initialize Redis queue or worker")
+        logger.exception("[API] âŒ CRITICAL: Failed to initialize Redis queue or worker")
         logger.error(f"[API] Error: {e}")
         logger.error("[API] Job queue will not be available - /run endpoint will return 503")
         # Don't raise - let app start but /run will return 503
@@ -99,13 +100,13 @@ async def startup_event():
 # LAW 1: Import Unified DATA_DIR from config (Single Source of Truth)
 from core.config import DATA_DIR
 
-print(f"🚀 SERVER STARTING - VERSION: UNIFIED_ANCHOR_V4 - DATA_DIR: {DATA_DIR.absolute()}")
+print(f"ðŸš€ SERVER STARTING - VERSION: UNIFIED_ANCHOR_V4 - DATA_DIR: {DATA_DIR.absolute()}")
 try:
     sys.path.append(str(Path(__file__).parent.parent))
     import jobs.redis_queue
-    print("✅ jobs.redis_queue import verified")
+    print("âœ… jobs.redis_queue import verified")
 except ImportError as e:
-    print(f"❌ CRITICAL: jobs.redis_queue import failed: {e}")
+    print(f"âŒ CRITICAL: jobs.redis_queue import failed: {e}")
 
 
 # OPERATION UNSINKABLE - Layer 1: The Gatekeeper
@@ -158,6 +159,53 @@ def _validate_upload(file: UploadFile) -> None:
             status_code=400,
             detail=f"Invalid MIME type: {file.content_type}"
         )
+
+
+def _normalize_columns(columns: Any) -> Dict[str, Any]:
+    if isinstance(columns, dict):
+        return columns
+    normalized: Dict[str, Any] = {}
+    if isinstance(columns, list):
+        for idx, col in enumerate(columns):
+            if not isinstance(col, dict):
+                continue
+            name = col.get("name") or col.get("column") or f"column_{idx}"
+            if not name:
+                continue
+            normalized[str(name)] = col
+    return normalized
+
+
+def _is_numeric_dtype(meta: Dict[str, Any]) -> bool:
+    dtype = str(meta.get("dtype") or meta.get("type") or "").lower()
+    numeric_tokens = ("int", "float", "double", "decimal", "number")
+    return any(token in dtype for token in numeric_tokens)
+
+
+def _ensure_identity_card(state: StateManager, run_path: Path) -> Dict[str, Any]:
+    identity = state.read("dataset_identity_card")
+    if isinstance(identity, dict) and identity:
+        return identity
+
+    card_path = Path(run_path) / "artifacts" / "dataset_identity_card.json"
+    if card_path.exists():
+        try:
+            with open(card_path, "r", encoding="utf-8") as f:
+                identity = json.load(f)
+                state.write("dataset_identity_card", identity)
+                return identity
+        except Exception as exc:
+            logger.warning(f"[IDENTITY] Failed to load dataset_identity_card.json: {exc}")
+
+    try:
+        rebuild_governance_artifacts(state)
+        identity = state.read("dataset_identity_card")
+        if isinstance(identity, dict):
+            return identity
+    except Exception as exc:
+        logger.warning(f"[IDENTITY] Unable to rebuild identity artifacts: {exc}")
+
+    return {}
 
 
 def _safe_upload_path(original_name: str) -> Path:
@@ -369,7 +417,7 @@ async def preview_dataset(file: UploadFile = File(...)):
             "critical_gaps": ["ANALYSIS_FAILED"],
             "detected_capabilities": [],
             "warnings": [
-                f"⚠️ Safe Mode: Analysis failed - {str(e)[:200]}",
+                f"âš ï¸ Safe Mode: Analysis failed - {str(e)[:200]}",
                 "The system could not fully analyze this file.",
                 "You can still proceed, but insights will be limited."
             ],
@@ -739,7 +787,7 @@ async def get_report(request: Request, run_id: str, format: str = "markdown"):
                 fallback_content = (
                     f"# Analysis Report ({status})\n\n"
                     f"**Run ID:** `{run_id}`\n\n"
-                    f"> ⚠️ **System Notice:** The final report generation step encountered an issue, but the analysis pipeline finished.\n\n"
+                    f"> âš ï¸ **System Notice:** The final report generation step encountered an issue, but the analysis pipeline finished.\n\n"
                     f"## Status Overview\n"
                     f"- **Status:** {status}\n"
                     f"- **Created:** {created_at}\n"
@@ -861,19 +909,12 @@ async def get_diagnostics(run_id: str):
     state = StateManager(str(run_path))
 
     validation = state.read("validation_report") or {}
-    identity = state.read("dataset_identity_card") or {}
+    identity = _ensure_identity_card(state, run_path)
     confidence = state.read("confidence_report") or {}
     mode = state.read("run_mode") or "strict"
 
-    has_time = False
-    if isinstance(identity, dict):
-        cols = []
-        if "columns" in identity:
-            cols = identity.get("columns") or []
-        if "fields" in identity:
-            cols.extend([f.get("name") for f in identity.get("fields") if isinstance(f, dict) and f.get("name")])
-        cols = [c for c in cols if c]
-        has_time = any("date" in c.lower() or "time" in c.lower() for c in cols)
+    columns = _normalize_columns(identity.get("columns") or identity.get("fields") or {})
+    has_time = any("date" in name.lower() or "time" in name.lower() for name in columns.keys())
 
     reasons = []
     if validation.get("mode") == "limitations":
@@ -885,6 +926,10 @@ async def get_diagnostics(run_id: str):
     if confidence.get("confidence_label") == "low":
         reasons.append("Confidence: low")
 
+    schema_scan = state.read("schema_scan_output")
+    if not isinstance(schema_scan, dict):
+        schema_scan = {}
+
     return {
         "mode": mode,
         "validation": validation,
@@ -893,9 +938,43 @@ async def get_diagnostics(run_id: str):
         "reasons": reasons,
         # CRITICAL FIX: Frontend expects data_quality.score here
         "data_quality": {
-            "score": state.read("schema_scan_output").get("quality_score", 0.4)
+            "score": schema_scan.get("quality_score", 0.4)
         }
     }
+
+@app.get("/run/{run_id}/identity", tags=["Run"])
+async def get_identity_card(run_id: str):
+    """Return the dataset identity card and normalized schema profile for a run."""
+    _validate_run_id(run_id)
+    run_path = DATA_DIR / "runs" / run_id
+    state = StateManager(str(run_path))
+
+    identity = _ensure_identity_card(state, run_path)
+    if not identity:
+        raise HTTPException(status_code=404, detail="Identity card not found")
+
+    columns = _normalize_columns(identity.get("columns") or identity.get("fields") or {})
+    numeric_columns = [name for name, meta in columns.items() if _is_numeric_dtype(meta)]
+
+    summary = {
+        "row_count": identity.get("row_count"),
+        "column_count": identity.get("column_count"),
+        "critical_gap_score": identity.get("critical_gap_score"),
+        "is_safe_mode": identity.get("is_safe_mode"),
+        "drift_status": identity.get("drift_status"),
+        "quality": identity.get("quality"),
+        "data_type": identity.get("data_type"),
+    }
+
+    return {
+        "identity": identity,
+        "profile": {
+            "columns": columns,
+            "numericColumns": numeric_columns,
+        },
+        "summary": summary,
+    }
+
 
 @app.get("/run/{run_id}/model-artifacts", tags=["Artifacts"])
 async def get_model_artifacts(run_id: str):
@@ -1018,7 +1097,7 @@ async def get_key_insights(run_id: str):
         warnings.append(f"Moderate data quality ({quality:.1%}) - consider data cleaning")
     
     if r2 is not None and r2 < 0.5:
-        warnings.append(f"Low predictive power (R² = {r2:.2f}) - model may not be reliable")
+        warnings.append(f"Low predictive power (RÂ² = {r2:.2f}) - model may not be reliable")
     
     if silhouette < 0.3 and k > 1:
         warnings.append(f"Weak cluster separation (silhouette = {silhouette:.2f})")
@@ -1030,9 +1109,9 @@ async def get_key_insights(run_id: str):
         strengths.append(f"Good data quality ({quality:.1%})")
     
     if r2 is not None and r2 > 0.8:
-        strengths.append(f"Strong predictive correlation (R² = {r2:.2f})")
+        strengths.append(f"Strong predictive correlation (RÂ² = {r2:.2f})")
     elif r2 is not None and r2 > 0.6:
-        strengths.append(f"Moderate predictive correlation (R² = {r2:.2f})")
+        strengths.append(f"Moderate predictive correlation (RÂ² = {r2:.2f})")
     
     if k >= 3 and silhouette > 0.5:
         strengths.append(f"Clear segmentation with {k} distinct patterns (silhouette = {silhouette:.2f})")
@@ -1576,3 +1655,8 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 8001))
     # Use direct module reference since we're running from project root
     uvicorn.run("backend.api.server:app", host="0.0.0.0", port=port, reload=False)
+
+
+
+
+

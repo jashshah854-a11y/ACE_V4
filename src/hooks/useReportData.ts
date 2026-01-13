@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+﻿import { useMemo } from "react";
 import {
   extractMetrics,
   extractSections,
@@ -14,6 +14,7 @@ import { extractExecutiveBrief, extractConclusion } from "@/lib/narrativeExtract
 import { useEnhancedAnalytics } from "@/hooks/useEnhancedAnalytics";
 import { useDiagnostics } from "@/hooks/useDiagnostics";
 import { useModelArtifacts } from "@/hooks/useModelArtifacts";
+import { useRemoteArtifact } from "@/hooks/useRemoteArtifact";
 import type { GovernedReport, TaskContractSnapshot } from "@/hooks/useGovernedReport";
 import { transformAPIResponse, ReportViewModel, filterSuppressedSections } from "@/lib/reportViewModel";
 import { ensureSafeReport } from "@/lib/ReportGuard";
@@ -74,6 +75,47 @@ export interface ReportDataResult {
 }
 
 const MIN_IMPORTANCE = 0.05;
+interface IdentityProfilePayload {
+  columns: Record<string, any>;
+  numericColumns?: string[];
+}
+
+interface IdentityApiResponse {
+  identity?: Record<string, any>;
+  profile?: IdentityProfilePayload;
+  summary?: {
+    row_count?: number;
+    column_count?: number;
+    critical_gap_score?: number;
+    is_safe_mode?: boolean;
+    drift_status?: string;
+    quality?: Record<string, any>;
+    data_type?: Record<string, any>;
+  };
+}
+
+function normalizeColumnMap(raw: any): Record<string, any> | undefined {
+  if (!raw) return undefined;
+  if (Array.isArray(raw)) {
+    const map: Record<string, any> = {};
+    raw.forEach((col: any, index: number) => {
+      if (!col || typeof col !== "object") return;
+      const name = col.name || col.column || column_;
+      if (!name) return;
+      map[name] = col;
+    });
+    return map;
+  }
+  if (typeof raw === "object") {
+    return raw as Record<string, any>;
+  }
+  return undefined;
+}
+
+function isNumericColumn(meta: any): boolean {
+  const dtype = String(meta?.dtype ?? meta?.type ?? "").toLowerCase();
+  return ["int", "float", "double", "decimal", "number"].some((token) => dtype.includes(token));
+}
 
 function parseImportanceFromContent(content: string, index: number) {
   const importanceMatch = content.match(/importance(?:\s*score)?[:\s]+(\d+(?:\.\d+)?)/i);
@@ -168,6 +210,32 @@ export function useReportData(
   const { data: enhancedAnalytics, loading: analyticsLoading } = useEnhancedAnalytics(runId);
   const { data: diagnostics } = useDiagnostics(runId);
   const { data: modelArtifacts } = useModelArtifacts(runId);
+  const { data: identityPayload } = useRemoteArtifact<IdentityApiResponse>(runId, "identity");
+
+  const identityCard = identityPayload?.identity || diagnostics?.identity || null;
+  const identitySafeMode = identityPayload?.summary?.is_safe_mode ?? identityCard?.is_safe_mode;
+
+  const identityColumns = useMemo(() => {
+    if (identityPayload?.profile?.columns) {
+      return identityPayload.profile.columns;
+    }
+    const rawColumns =
+      diagnostics?.identity?.columns ||
+      diagnostics?.identity?.schema?.columns ||
+      enhancedAnalytics?.quality_metrics?.columns ||
+      null;
+    return normalizeColumnMap(rawColumns);
+  }, [identityPayload?.profile?.columns, diagnostics?.identity, enhancedAnalytics?.quality_metrics]);
+
+  const derivedNumericColumns = useMemo(() => {
+    if (identityPayload?.profile?.numericColumns?.length) {
+      return identityPayload.profile.numericColumns as string[];
+    }
+    if (!identityColumns) return [] as string[];
+    return Object.entries(identityColumns)
+      .filter(([, col]) => isNumericColumn(col))
+      .map(([name]) => name);
+  }, [identityPayload?.profile?.numericColumns, identityColumns]);
 
   // DETECT FALLBACK / ERROR REPORT
   const isFallbackReport = useMemo(() => {
@@ -283,9 +351,9 @@ export function useReportData(
     () =>
       limitationsMode ||
       (typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel < confidenceThreshold) ||
-      (diagnostics?.dataset_identity?.is_safe_mode === true) ||
+      identitySafeMode === true ||
       isFallbackReport,
-    [limitationsMode, metrics.confidenceLevel, confidenceThreshold, diagnostics?.dataset_identity?.is_safe_mode, isFallbackReport]
+    [limitationsMode, metrics.confidenceLevel, confidenceThreshold, identitySafeMode, isFallbackReport]
   );
 
   const hideActions = useMemo(
@@ -299,9 +367,23 @@ export function useReportData(
   );
 
   const hasTimeField = useMemo(() => {
+    if (identityColumns) {
+      const names = Object.keys(identityColumns);
+      if (names.some((name) => name.toLowerCase().includes("date") || name.toLowerCase().includes("time"))) {
+        return true;
+      }
+    }
+    const schemaColumns = diagnostics?.identity?.schema?.columns;
+    if (Array.isArray(schemaColumns)) {
+      const match = schemaColumns.some((col: any) => {
+        const name = String(col?.name || col?.column || "").toLowerCase();
+        return name.includes("date") || name.includes("time");
+      });
+      if (match) return true;
+    }
     const lower = content.toLowerCase();
     return lower.includes("date") || lower.includes("time");
-  }, [content]);
+  }, [identityColumns, diagnostics?.identity?.schema?.columns, content]);
 
   // Sections
   const taskContractSection = useMemo(
@@ -414,36 +496,24 @@ export function useReportData(
 
   const identityStats = useMemo(
     () => ({
-      rows: enhancedAnalytics?.quality_metrics?.total_records ?? metrics.totalRows ?? "n/a",
-      completeness: enhancedAnalytics?.quality_metrics?.overall_completeness,
+      rows:
+        identityPayload?.summary?.row_count ??
+        enhancedAnalytics?.quality_metrics?.total_records ??
+        metrics.totalRows ??
+        "n/a",
+      completeness:
+        identityPayload?.summary?.quality?.avg_null_pct !== undefined
+          ? 1 - Number(identityPayload.summary.quality.avg_null_pct)
+          : enhancedAnalytics?.quality_metrics?.overall_completeness,
       confidence: diagnostics?.confidence?.data_confidence ?? metrics.confidenceLevel ?? "n/a",
     }),
-    [enhancedAnalytics?.quality_metrics, diagnostics?.confidence, metrics.totalRows, metrics.confidenceLevel]
+    [identityPayload?.summary, enhancedAnalytics?.quality_metrics, diagnostics?.confidence, metrics.totalRows, metrics.confidenceLevel]
   );
 
   const profile = useMemo(() => {
-    const rawColumns =
-      diagnostics?.identity?.columns ||
-      diagnostics?.identity?.schema?.columns ||
-      enhancedAnalytics?.quality_metrics?.columns ||
-      null;
-    if (!rawColumns) return undefined;
-
-    const entries = Array.isArray(rawColumns)
-      ? rawColumns.map((col: any, index: number) => [col?.name || col?.column || `column_${index}`, col])
-      : Object.entries(rawColumns as Record<string, any>);
-
-    const columnMap = Array.isArray(rawColumns) ? Object.fromEntries(entries) : (rawColumns as Record<string, any>);
-
-    const numericColumns = entries
-      .filter(([, col]) => {
-        const dtype = String(col?.dtype || col?.type || '').toLowerCase();
-        return dtype.includes('int') || dtype.includes('float') || dtype.includes('double') || dtype.includes('decimal');
-      })
-      .map(([name]) => name);
-
-    return { columns: columnMap, numericColumns };
-  }, [diagnostics?.identity, enhancedAnalytics?.quality_metrics]);
+    if (!identityColumns) return undefined;
+    return { columns: identityColumns, numericColumns: derivedNumericColumns };
+  }, [identityColumns, derivedNumericColumns]);
 
   const highlights = useMemo(() => {
     const chips: { label: string; tone: "default" | "warn" | "ok" }[] = [];
@@ -530,3 +600,5 @@ export function useReportData(
     profile,
   });
 }
+
+
