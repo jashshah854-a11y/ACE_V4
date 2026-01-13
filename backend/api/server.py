@@ -1564,9 +1564,9 @@ async def health_check():
 
 @app.get("/run/{run_id}/governed_report", tags=["Report"])
 @app.get("/run/{run_id}/artifacts/governed_report", tags=["Report"])
-async def get_governed_report(run_id: str):
+async def get_governed_report(request: Request, run_id: str):
     """Alias for standard report to satisfy frontend request."""
-    return await get_report(run_id)
+    return await get_report(request, run_id)
 
 
 if __name__ == "__main__":
