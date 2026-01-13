@@ -538,6 +538,7 @@ export function useReportData(
     const tempResult = {
       metrics,
       confidenceValue,
+      dataQualityValue,
       safeMode,
       limitationsMode,
       primaryQuestion,
@@ -549,7 +550,20 @@ export function useReportData(
       sections,
     };
     return transformAPIResponse(tempResult);
-  }, [metrics, confidenceValue, safeMode, limitationsMode, primaryQuestion, decisionSummary, executiveBrief, heroInsight, evidenceSections, sections, runId]);
+  }, [
+    metrics,
+    confidenceValue,
+    dataQualityValue,
+    safeMode,
+    limitationsMode,
+    primaryQuestion,
+    decisionSummary,
+    executiveBrief,
+    heroInsight,
+    evidenceSections,
+    sections,
+    runId,
+  ]);
 
 
 
