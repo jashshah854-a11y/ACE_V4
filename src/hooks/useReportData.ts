@@ -12,6 +12,7 @@ import {
 import { extractHeroInsight, generateMondayActions, extractSegmentData } from "@/lib/insightExtractors";
 import { extractExecutiveBrief, extractConclusion } from "@/lib/narrativeExtractors";
 import { useEnhancedAnalytics } from "@/hooks/useEnhancedAnalytics";
+import { getSyntheticTimeColumn } from "@/lib/timelineHelper";
 import { useDiagnostics } from "@/hooks/useDiagnostics";
 import { useModelArtifacts } from "@/hooks/useModelArtifacts";
 import { useRemoteArtifact } from "@/hooks/useRemoteArtifact";
@@ -261,6 +262,8 @@ export function useReportData(
       .map(([name]) => name);
   }, [identityPayload?.profile?.numericColumns, identityColumns]);
 
+  const syntheticTimeColumn = useMemo(() => (runId ? getSyntheticTimeColumn(runId) : undefined), [runId]);
+
   // DETECT FALLBACK / ERROR REPORT
   const isFallbackReport = useMemo(() => {
     const lower = content.toLowerCase();
@@ -387,6 +390,7 @@ export function useReportData(
 
 
   const hasTimeField = useMemo(() => {
+    if (syntheticTimeColumn) return true;
     if (identityColumns && Object.keys(identityColumns).length) {
       const entryMatch = Object.entries(identityColumns).some(([name, meta]) =>
         (name ? hasTemporalToken(name) : false) || isTemporalMeta(meta)
@@ -403,7 +407,7 @@ export function useReportData(
     }
     const lower = content.toLowerCase();
     return TIME_TOKENS.some((token) => lower.includes(token));
-  }, [identityColumns, diagnostics?.identity?.schema?.columns, content]);
+  }, [syntheticTimeColumn, identityColumns, diagnostics?.identity?.schema?.columns, content]);
 
   // Sections
   const taskContractSection = useMemo(
@@ -544,11 +548,13 @@ export function useReportData(
     if (identitySafeMode) {
       warnings.add('Safe Mode active: backend limited advanced insight agents.');
     }
-    if (!hasTimeField) {
+    if (syntheticTimeColumn) {
+      warnings.add(`Timeline helper active: using ${syntheticTimeColumn} for trend analysis.`);
+    } else if (!hasTimeField) {
       warnings.add('Time coverage unknown; add a date or time field to unlock trend insights.');
     }
     return Array.from(warnings);
-  }, [diagnostics?.reasons, hasTimeField, identitySafeMode]);
+  }, [diagnostics?.reasons, hasTimeField, identitySafeMode, syntheticTimeColumn]);
 
   const highlights = useMemo(() => {
     const chips: { label: string; tone: "default" | "warn" | "ok" }[] = [];
@@ -648,6 +654,7 @@ export function useReportData(
     modelArtifacts,
     viewModel,
     profile,
+    syntheticTimeColumn,
   });
 }
 

@@ -47,6 +47,7 @@ export interface ReportDataResult {
     scoredSections: any[];
     profile?: ReportProfile;
     governanceWarnings: string[];
+    syntheticTimeColumn?: string;
 
     // External data
     enhancedAnalytics: EnhancedAnalyticsData; // Use specific type
