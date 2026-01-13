@@ -1,16 +1,16 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import type { ReportProfile } from "@/types/reportTypes";
-import { setSyntheticTimeColumn } from "@/lib/timelineHelper";
+import { getSyntheticTimeColumn, setSyntheticTimeColumn } from "@/lib/timelineHelper";
+import { API_BASE } from "@/lib/api-client";
 
 interface TimelineHelperProps {
   profile?: ReportProfile;
   runId: string;
+  initialColumn?: string;
 }
 
-export function TimelineHelper({ profile, runId }: TimelineHelperProps) {
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+export function TimelineHelper({ profile, runId, initialColumn }: TimelineHelperProps) {
   const columns = useMemo(() => {
     if (!profile?.columns) return [] as Array<{ name: string; description?: string }>;
     return Object.entries(profile.columns).map(([name, meta]) => ({
@@ -19,27 +19,56 @@ export function TimelineHelper({ profile, runId }: TimelineHelperProps) {
     }));
   }, [profile?.columns]);
 
-  const [selection, setSelection] = useState<string>(columns[0]?.name || "");
+  const storedColumn = useMemo(() => initialColumn || (runId ? getSyntheticTimeColumn(runId) : undefined), [initialColumn, runId]);
+
+  const [selection, setSelection] = useState<string>(storedColumn || columns[0]?.name || "");
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fallback = storedColumn || columns[0]?.name || "";
+    setSelection(fallback);
+  }, [storedColumn, columns]);
 
   if (!columns.length) return null;
 
-  const handleApply = () => {
-    if (!selection) return;
-    setSaving(true);
-    setSyntheticTimeColumn(runId, selection);
-    setMessage(`Timeline helper activated for ${selection}. Refreshing...`);
-    setTimeout(() => {
-      window.location.reload();
-    }, 600);
+  const persistTimeline = async (column?: string) => {
+    const response = await fetch(`${API_BASE}/run/${runId}/timeline`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ column } as { column?: string }),
+    });
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(detail || "Failed to save timeline selection");
+    }
+    setSyntheticTimeColumn(runId, column);
+    return response.json();
   };
 
-  const handleClear = () => {
+  const handleApply = async () => {
+    if (!selection) return;
     setSaving(true);
-    setSyntheticTimeColumn(runId, undefined);
-    setMessage('Timeline helper cleared. Refreshing...');
-    setTimeout(() => {
-      window.location.reload();
-    }, 600);
+    try {
+      await persistTimeline(selection);
+      setMessage(`Timeline helper activated for ${selection}. Refreshing...`);
+      setTimeout(() => window.location.reload(), 600);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Unable to save timeline selection");
+      setSaving(false);
+    }
+  };
+
+  const handleClear = async () => {
+    setSaving(true);
+    try {
+      await persistTimeline(undefined);
+      setMessage('Timeline helper cleared. Refreshing...');
+      setTimeout(() => window.location.reload(), 600);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Unable to clear timeline selection");
+      setSaving(false);
+    }
   };
 
   return (
