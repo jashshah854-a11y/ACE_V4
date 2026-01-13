@@ -113,7 +113,10 @@ export function extractMetrics(markdown: string): ReportMetrics {
 
             // Map JSON fields to ReportMetrics
             if (metadata.quality_score !== undefined) {
-                metrics.dataQualityScore = Number(metadata.quality_score);
+                const parsedQuality = Number(metadata.quality_score);
+                if (!Number.isNaN(parsedQuality)) {
+                    metrics.dataQualityScore = parsedQuality > 1 ? parsedQuality : parsedQuality * 100;
+                }
             }
             if (metadata.confidence !== undefined) {
                 // Handle confidence object or number
