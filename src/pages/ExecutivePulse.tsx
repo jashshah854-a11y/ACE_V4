@@ -39,6 +39,7 @@ import { useSimulation } from "@/context/SimulationContext";
 import { cn } from "@/lib/utils";
 import { translateTechnicalTerm } from "@/lib/dataTypeMapping";
 import SimulationControls from "@/components/report/SimulationControls";
+import { TimelineHelper } from "@/components/report/TimelineHelper";
 
 const ExecutivePulse = () => {
   const [searchParams] = useSearchParams();
@@ -367,6 +368,9 @@ const ExecutivePulse = () => {
                           </div>
                         ) : null}
 
+                        {!reportData.hasTimeField && reportData.profile?.columns ? (
+                          <TimelineHelper profile={reportData.profile} runId={activeRun} />
+                        ) : null}
                         {/* New: Advanced Controls */}
                         <div className="flex justify-center mb-8">
                           <StoryControlBar data={storyData} />
