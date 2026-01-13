@@ -46,6 +46,7 @@ export interface ReportDataResult {
     outOfScopeDimensions: string[];
     scoredSections: any[];
     profile?: ReportProfile;
+    governanceWarnings: string[];
 
     // External data
     enhancedAnalytics: EnhancedAnalyticsData; // Use specific type

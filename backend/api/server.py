@@ -914,7 +914,14 @@ async def get_diagnostics(run_id: str):
     mode = state.read("run_mode") or "strict"
 
     columns = _normalize_columns(identity.get("columns") or identity.get("fields") or {})
-    has_time = any("date" in name.lower() or "time" in name.lower() for name in columns.keys())
+    time_tokens = ("date", "time", "day", "week", "month", "quarter", "year", "period", "timestamp")
+
+    def _column_has_time(name: str, meta: dict | None) -> bool:
+        label = (name or '').lower()
+        dtype = str((meta or {}).get('dtype') or (meta or {}).get('type') or '').lower()
+        return any(token in label for token in time_tokens) or any(token in dtype for token in time_tokens)
+
+    has_time = any(_column_has_time(name, meta if isinstance(meta, dict) else None) for name, meta in columns.items())
 
     reasons = []
     if validation.get("mode") == "limitations":

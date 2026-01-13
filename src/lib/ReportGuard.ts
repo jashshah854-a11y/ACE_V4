@@ -109,6 +109,7 @@ function createSafeDefaults(): ReportDataResult {
         primaryQuestion: "",
         outOfScopeDimensions: [],
         scoredSections: [],
+        governanceWarnings: [],
         enhancedAnalytics: null,
         analyticsLoading: false,
         diagnostics: null,
