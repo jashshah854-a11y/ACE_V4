@@ -349,6 +349,16 @@ export async function simulateScenario(runId: string, request: SimulationRequest
     }];
   }
 
+  if (request.modifications && request.modifications.length > 0) {
+    const first = request.modifications[0];
+    if (!request.target_column) {
+      request.target_column = first.target_column;
+    }
+    if (!request.modification_factor) {
+      request.modification_factor = first.modification_factor;
+    }
+  }
+
   const response = await fetch(`${API_BASE}/run/${runId}/simulate`, {
     method: "POST",
     headers: {

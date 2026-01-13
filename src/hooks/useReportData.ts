@@ -242,16 +242,26 @@ export function useReportData(
   // Computed values
   const confidenceValue = useMemo(() => {
     if (governedConfidence !== undefined) return governedConfidence;
-    if (typeof metrics.confidenceLevel === "number") return metrics.confidenceLevel;
+    if (typeof metrics.confidenceLevel === "number") return Number(metrics.confidenceLevel);
     if (Number.isFinite(Number(metrics.confidenceLevel))) return Number(metrics.confidenceLevel);
+    const diagConfidence = diagnostics?.confidence?.data_confidence;
+    if (typeof diagConfidence === "number") {
+      return diagConfidence > 1 ? diagConfidence : diagConfidence * 100;
+    }
     return undefined;
-  }, [governedConfidence, metrics.confidenceLevel]);
+  }, [governedConfidence, metrics.confidenceLevel, diagnostics?.confidence?.data_confidence]);
 
   const dataQualityValue = useMemo(() => {
-    if (typeof metrics.dataQualityScore === "number") return metrics.dataQualityScore;
+    if (typeof metrics.dataQualityScore === "number") return Number(metrics.dataQualityScore);
     if (Number.isFinite(Number(metrics.dataQualityScore))) return Number(metrics.dataQualityScore);
+    const diagScore = diagnostics?.data_quality && typeof diagnostics.data_quality === 'number'
+      ? diagnostics.data_quality
+      : diagnostics?.data_quality?.score;
+    if (typeof diagScore === "number") {
+      return diagScore > 1 ? diagScore : diagScore * 100;
+    }
     return undefined;
-  }, [metrics.dataQualityScore]);
+  }, [metrics.dataQualityScore, diagnostics?.data_quality]);
 
   const limitationsMode = useMemo(() => {
     if (governedReport?.mode === "limitations") return true;
