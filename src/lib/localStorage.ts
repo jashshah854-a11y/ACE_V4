@@ -181,3 +181,92 @@ export function isStorageAvailable(): boolean {
         return false;
     }
 }
+
+
+// Diagnostics cache helpers -------------------------------------------------
+
+const DIAGNOSTICS_CACHE_PREFIX = 'ace.diagnostics.';
+
+export interface DiagnosticsCachePayload {
+    reasons?: string[];
+    validation?: { notes?: string[] };
+    confidence?: { reasons?: string[] };
+    cachedAt?: string;
+    [key: string]: any;
+}
+
+function getDiagnosticsStorage() {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    return window.localStorage;
+}
+
+function diagnosticsKey(runId: string) {
+    return `${DIAGNOSTICS_CACHE_PREFIX}${runId}`;
+}
+
+export function setDiagnosticsCache(runId: string, payload: DiagnosticsCachePayload | null) {
+    if (!runId) return;
+    const storage = getDiagnosticsStorage();
+    if (!storage) return;
+
+    const key = diagnosticsKey(runId);
+    try {
+        if (!payload) {
+            storage.removeItem(key);
+            return;
+        }
+        const enriched = {
+            ...payload,
+            cachedAt: payload.cachedAt || new Date().toISOString(),
+        };
+        storage.setItem(key, JSON.stringify(enriched));
+    } catch (error) {
+        console.warn('Failed to cache diagnostics:', error);
+    }
+}
+
+export function getDiagnosticsCache(runId: string): DiagnosticsCachePayload | null {
+    if (!runId) return null;
+    const storage = getDiagnosticsStorage();
+    if (!storage) return null;
+
+    try {
+        const raw = storage.getItem(diagnosticsKey(runId));
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (error) {
+        console.warn('Failed to read diagnostics cache:', error);
+        return null;
+    }
+}
+
+export function removeDiagnosticsCache(runId: string) {
+    if (!runId) return;
+    const storage = getDiagnosticsStorage();
+    if (!storage) return;
+    try {
+        storage.removeItem(diagnosticsKey(runId));
+    } catch (error) {
+        console.warn('Failed to clear diagnostics cache:', error);
+    }
+}
+
+export function extractDiagnosticsNotes(payload?: DiagnosticsCachePayload | null): string[] {
+    if (!payload) return [];
+    const notes: string[] = [];
+    const push = (value: unknown) => {
+        if (typeof value !== 'string') return;
+        const trimmed = value.trim();
+        if (!trimmed) return;
+        if (!notes.includes(trimmed)) {
+            notes.push(trimmed);
+        }
+    };
+
+    payload.reasons?.forEach(push);
+    payload.validation?.notes?.forEach(push);
+    payload.confidence?.reasons?.forEach(push);
+
+    return notes;
+}

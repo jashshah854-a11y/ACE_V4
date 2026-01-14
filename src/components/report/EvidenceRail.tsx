@@ -1,10 +1,12 @@
 import React from 'react';
-import { X, Send, Sparkles, CheckCircle } from 'lucide-react';
+import { X, Send, Sparkles, CheckCircle, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ReportDataResult } from '@/types/reportTypes';
 import { BusinessPulse } from './business/BusinessPulse';
 import { PredictiveDriversChart } from './predictive/PredictiveDriversChart';
 import SimulationControls from './SimulationControls';
+import { focusGuidance } from "@/lib/guidanceFocus";
+import { GuidanceOverlay } from "@/components/report/GuidanceOverlay";
 
 interface EvidenceRailProps {
     isOpen: boolean;
@@ -157,13 +159,25 @@ export default function EvidenceRail({ isOpen, onClose, activeEvidence, data, ru
                                     Raw metrics & mathematical proof
                                 </p>
                             </div>
-                            <button
-                                onClick={onClose}
-                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                                aria-label="Close evidence rail"
-                            >
-                                <X className="w-5 h-5 text-gray-500" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {data.guidanceNotes?.length ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => focusGuidance("rail")}
+                                        className="hidden sm:inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                                    >
+                                        <HelpCircle className="h-3.5 w-3.5" />
+                                        Diagnostics
+                                    </button>
+                                ) : null}
+                                <button
+                                    onClick={onClose}
+                                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                                    aria-label="Close evidence rail"
+                                >
+                                    <X className="w-5 h-5 text-gray-500" />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Contextual Suggestion Chips */}
@@ -189,6 +203,12 @@ export default function EvidenceRail({ isOpen, onClose, activeEvidence, data, ru
                                 </div>
                             </div>
                         )}
+
+                        {data.guidanceNotes?.length ? (
+                            <div className="px-6 pt-4">
+                                <GuidanceOverlay notes={data.guidanceNotes} context="rail" limit={3} className="!mb-4" />
+                            </div>
+                        ) : null}
 
                         {/* Content */}
                         <div className="p-6" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
@@ -300,3 +320,8 @@ export default function EvidenceRail({ isOpen, onClose, activeEvidence, data, ru
         </AnimatePresence>
     );
 }
+
+
+
+
+

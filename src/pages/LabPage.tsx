@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -10,9 +10,36 @@ import { getReport } from "@/lib/api-client";
 import { Loader2, Beaker, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { GuidanceOverlay } from "@/components/report/GuidanceOverlay";
+import { getRecentReports, extractDiagnosticsNotes, getDiagnosticsCache } from "@/lib/localStorage";
 
 const LabPage = () => {
     const { runId } = useParams<{ runId: string }>();
+    const [recentRuns, setRecentRuns] = useState(() => getRecentReports());
+    const [recentHints, setRecentHints] = useState<Record<string, string[]>>({});
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const refresh = () => setRecentRuns(getRecentReports());
+        refresh();
+        window.addEventListener('focus', refresh);
+        window.addEventListener('storage', refresh);
+        return () => {
+            window.removeEventListener('focus', refresh);
+            window.removeEventListener('storage', refresh);
+        };
+    }, []);
+
+    useEffect(() => {
+        const map: Record<string, string[]> = {};
+        recentRuns.forEach((run) => {
+            const notes = extractDiagnosticsNotes(getDiagnosticsCache(run.runId));
+            if (notes.length) {
+                map[run.runId] = notes;
+            }
+        });
+        setRecentHints(map);
+    }, [recentRuns]);
 
     const reportQuery = useQuery({
         queryKey: ["lab-report", runId],
@@ -41,6 +68,48 @@ const LabPage = () => {
                             View Reports to Select <ArrowLeft className="w-4 h-4 rotate-180" />
                         </Button>
                     </Link>
+
+                    {recentRuns.length > 0 ? (
+                        <div
+                            className="mt-10 w-full max-w-3xl text-left"
+                            data-guidance-context="global"
+                        >
+                            <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Recent runs</p>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                {recentRuns.slice(0, 4).map((run) => {
+                                    const hint = recentHints[run.runId]?.[0];
+                                    return (
+                                        <Link
+                                            key={run.runId}
+                                            to={`/lab/${run.runId}`}
+                                            className="rounded-2xl border border-border/50 bg-card/70 px-4 py-3 text-left shadow-sm transition hover:border-purple-300 hover:bg-white"
+                                        >
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                <code className="font-mono">{run.runId.slice(0, 8)}</code>
+                                                {run.createdAt ? (
+                                                    <>
+                                                        <span>•</span>
+                                                        <span className="truncate">{run.createdAt}</span>
+                                                    </>
+                                                ) : null}
+                                            </div>
+                                            <p className="text-sm font-semibold text-foreground truncate">
+                                                {run.title || "Analysis Report"}
+                                            </p>
+                                            <p className={`text-xs mt-1 line-clamp-2 ${hint ? "text-amber-800" : "text-muted-foreground/80"}`}>
+                                                {hint || "Diagnostics pending…"}
+                                            </p>
+                                            <span className="text-[10px] uppercase tracking-widest text-purple-600 font-semibold">Enter Lab ?</span>
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground mt-8 max-w-xl mx-auto">
+                            Once you run an analysis, it will appear here so you can jump into Strategy Lab with the proper trust context.
+                        </p>
+                    )}
                 </main>
                 <Footer />
             </div>
@@ -50,6 +119,18 @@ const LabPage = () => {
 
     // Extract numeric columns for simulation
     const numericColumns = reportData?.profile?.numericColumns ?? [];
+    const inlineHint = useMemo(() => {
+        if (reportData?.guidanceNotes?.length) {
+            const first = reportData.guidanceNotes[0];
+            if (typeof first === 'string') return first;
+            return first?.message || first?.id || null;
+        }
+        if (runId) {
+            const hints = extractDiagnosticsNotes(getDiagnosticsCache(runId));
+            if (hints.length) return hints[0];
+        }
+        return null;
+    }, [reportData?.guidanceNotes, runId]);
 
     return (
         <div className="min-h-screen bg-background">
@@ -70,6 +151,10 @@ const LabPage = () => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-1 space-y-6">
+                        {reportData.guidanceNotes?.length ? (
+                            <GuidanceOverlay notes={reportData.guidanceNotes} context="global" />
+                        ) : null}
+
                         {/* Left Panel: Controls */}
                         <div className="border border-border/40 rounded-xl p-6 bg-card">
                             <h3 className="font-semibold mb-4">Simulation Parameters</h3>
@@ -85,6 +170,20 @@ const LabPage = () => {
                     <div className="lg:col-span-2">
                         {/* Right Panel: Simulation Area */}
                         <div className="bg-card border border-border/40 rounded-xl p-6 min-h-[600px]">
+                            {inlineHint ? (
+                                <div className="mb-5 inline-flex w-full items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 px-3 py-2 text-sm text-amber-900"
+                                     data-guidance-context="global">
+                                    <Lightbulb className="h-4 w-4 mt-0.5 text-amber-600" />
+                                    <div>
+                                        <p className="text-xs uppercase tracking-wide text-amber-600">Diagnostics Hint</p>
+                                        <p className="text-sm">{inlineHint}</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="mb-5 text-xs text-muted-foreground/70">
+                                    Diagnostics guidance will appear here after the report finishes running.
+                                </div>
+                            )}
                             {numericColumns.length > 0 ? (
                                 <SimulationControls
                                     runId={runId}
@@ -105,3 +204,4 @@ const LabPage = () => {
 };
 
 export default LabPage;
+

@@ -48,6 +48,7 @@ export interface ReportDataResult {
     profile?: ReportProfile;
     governanceWarnings: string[];
     syntheticTimeColumn?: string;
+    guidanceNotes: GuidanceNote[];
 
     // External data
     enhancedAnalytics: EnhancedAnalyticsData | null;
@@ -55,6 +56,15 @@ export interface ReportDataResult {
     diagnostics: any;
     modelArtifacts: any;
     viewModel: ReportViewModel;
+}
+
+export type GuidanceSeverity = "info" | "warning" | "critical";
+
+export interface GuidanceNote {
+    id: string;
+    message: string;
+    severity: GuidanceSeverity;
+    source?: string;
 }
 
 export interface CorrelationPair {

@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ThinkingView } from "@/components/thinking/ThinkingView";
-import { Home, ChevronRight, Upload, AlertCircle } from "lucide-react";
+import { Home, ChevronRight, Upload, AlertCircle, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getRunStatus, type RunState } from "@/lib/api-client";
 import { PipelineVisualizer } from "@/components/report/PipelineVisualizer";
+import { useDiagnostics } from "@/hooks/useDiagnostics";
+
+import { getDiagnosticsCache, removeDiagnosticsCache, extractDiagnosticsNotes, type DiagnosticsCachePayload } from "@/lib/localStorage";
 
 // Vercel Build Fix: Forced State Refresh
 // Wrapper component to poll run state and pass to Visualizer
@@ -82,10 +85,33 @@ function ThinkingViewWithPolling({ runId, onComplete }: { runId: string; onCompl
 export default function Pipeline() {
   const { runId } = useParams<{ runId: string }>();
   const navigate = useNavigate();
+  const { data: diagnostics } = useDiagnostics(runId);
+  const [guidanceNotes, setGuidanceNotes] = useState<string[]>([]);
+
+  const clearDiagnosticsCache = useCallback(() => {
+    if (!runId) return;
+    removeDiagnosticsCache(runId);
+  }, [runId]);
+
+  const refreshGuidanceNotes = useCallback(() => {
+    if (!runId) {
+      setGuidanceNotes([]);
+      return;
+    }
+    const payload: DiagnosticsCachePayload | null = diagnostics
+      ? (diagnostics as unknown as DiagnosticsCachePayload)
+      : getDiagnosticsCache(runId);
+    setGuidanceNotes(extractDiagnosticsNotes(payload));
+  }, [diagnostics, runId]);
+
+  useEffect(() => {
+    refreshGuidanceNotes();
+  }, [refreshGuidanceNotes]);
 
   const handleComplete = () => {
     // Navigate to report when analysis completes
     if (runId) {
+      clearDiagnosticsCache();
       navigate(`/report/summary?run=${runId}`);
     }
   };
@@ -161,6 +187,26 @@ export default function Pipeline() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
+        <div
+          data-guidance-context="global"
+          className="mb-6 inline-flex max-w-2xl items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900"
+        >
+          <Lightbulb className="h-4 w-4 mt-0.5" />
+          <div>
+            <p className="font-semibold">Trust guidance lives in Executive Pulse</p>
+            {guidanceNotes.length ? (
+              <ul className="mt-1 space-y-1 text-xs text-amber-700">
+                {guidanceNotes.slice(0, 3).map((note, idx) => (
+                  <li key={`pipeline-guidance-${idx}`}>- {note}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-amber-700">
+                When Safe Mode triggers, the global banner will jump to this card even before the report opens.
+              </p>
+            )}
+          </div>
+        </div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -183,3 +229,13 @@ export default function Pipeline() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+

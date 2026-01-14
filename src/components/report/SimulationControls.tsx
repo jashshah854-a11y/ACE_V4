@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Sliders, RotateCcw, Zap, Plus, X, Play } from 'lucide-react';
+import { Sliders, RotateCcw, Zap, Plus, X, Play, Lightbulb } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { simulateScenario, SimulationResult, Modification } from '@/lib/api-client';
 
@@ -7,12 +7,14 @@ interface SimulationControlsProps {
     runId: string;
     availableColumns: string[];
     onSimulationResult?: (result: SimulationResult | null) => void;
+    hint?: string | null;
 }
 
 export default function SimulationControls({
     runId,
     availableColumns,
-    onSimulationResult
+    onSimulationResult,
+    hint
 }: SimulationControlsProps) {
     const [exploreMode, setExploreMode] = useState(false);
 
@@ -147,6 +149,26 @@ export default function SimulationControls({
                     </button>
                 </div>
             </div>
+
+            {hint ? (
+                <div
+                    data-guidance-context="global"
+                    className="mx-6 mt-2 mb-2 inline-flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs sm:text-sm text-amber-900"
+                >
+                    <Lightbulb className="h-4 w-4 mt-0.5 text-amber-600" />
+                    <div>
+                        <p className="text-[10px] uppercase tracking-wide text-amber-600">Diagnostics Hint</p>
+                        <p className="text-sm">{hint}</p>
+                    </div>
+                </div>
+            ) : (
+                <div
+                    data-guidance-context="global"
+                    className="mx-6 mt-2 mb-2 text-[11px] text-gray-500 dark:text-gray-400"
+                >
+                    Diagnostics guidance will appear here after the report finishes running.
+                </div>
+            )}
 
             <AnimatePresence>
                 {exploreMode && (

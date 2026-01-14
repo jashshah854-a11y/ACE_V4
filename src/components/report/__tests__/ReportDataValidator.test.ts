@@ -15,6 +15,8 @@ function createValidReportData(overrides: Partial<ReportDataResult> = {}): Repor
       keyInsight: 'Test insight',
       description: 'Test description'
     },
+    governanceWarnings: [],
+    guidanceNotes: [],
     confidenceValue: 85,
     dataQualityValue: 80,
     sections: [{ title: 'Section 1', content: 'Content' }],

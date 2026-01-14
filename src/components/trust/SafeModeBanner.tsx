@@ -1,9 +1,26 @@
-import { AlertTriangle, ShieldAlert } from "lucide-react";
+import { useCallback } from "react";
+import { ShieldAlert } from "lucide-react";
 import { useSimulation } from "@/context/SimulationContext";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { focusGuidance } from "@/lib/guidanceFocus";
 
 export function SimulationSafeModeBanner() {
     const { simulationState } = useSimulation();
+    const { toast } = useToast();
+
+    const handleWhyClick = useCallback(() => {
+        focusGuidance("global", {
+            requireMatch: true,
+            onMissing: () => {
+                toast({
+                    title: "Open a report to view diagnostics",
+                    description: "Head to Executive Pulse or Strategy Lab to review the data health guidance.",
+                    variant: "destructive",
+                });
+            }
+        });
+    }, [toast]);
 
     if (!simulationState.safe_mode) return null;
 
@@ -25,10 +42,7 @@ export function SimulationSafeModeBanner() {
                 variant="ghost"
                 size="sm"
                 className="text-xs hover:bg-amber-200 text-amber-800 underline underline-offset-4"
-                onClick={() => {
-                    // Placeholder for "View Audit" action -> Phase 4
-                    console.log("View Audit clicked");
-                }}
+                onClick={handleWhyClick}
             >
                 Why?
             </Button>

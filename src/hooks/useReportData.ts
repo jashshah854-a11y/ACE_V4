@@ -18,6 +18,7 @@ import { useDiagnostics } from "@/hooks/useDiagnostics";
 import { useModelArtifacts } from "@/hooks/useModelArtifacts";
 import { useRemoteArtifact } from "@/hooks/useRemoteArtifact";
 import type { GovernedReport, TaskContractSnapshot } from "@/hooks/useGovernedReport";
+import type { GuidanceNote, GuidanceSeverity } from "@/types/reportTypes";
 import { transformAPIResponse, ReportViewModel, filterSuppressedSections } from "@/lib/reportViewModel";
 import { ensureSafeReport } from "@/lib/ReportGuard";
 
@@ -68,6 +69,7 @@ export interface ReportDataResult {
   scoredSections: Array<ReturnType<typeof extractSections>[number] & { importance: number }>;
   profile?: { columns: Record<string, any>; numericColumns: string[] };
   governanceWarnings: string[];
+  guidanceNotes: GuidanceNote[];
 
   // External data
   enhancedAnalytics: any;
@@ -563,6 +565,52 @@ export function useReportData(
     return Array.from(warnings);
   }, [diagnostics?.reasons, hasTimeField, identitySafeMode, syntheticTimeColumn]);
 
+  const guidanceNotes = useMemo(() => {
+    const notes: GuidanceNote[] = [];
+    const seen = new Set<string>();
+
+    const register = (message?: string, severity: GuidanceSeverity = "info", source?: string) => {
+      if (!message) return;
+      const normalized = message.trim();
+      if (!normalized) return;
+      const key = `${severity}:${source || ""}:${normalized}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      notes.push({ id: key, message: normalized, severity, source });
+    };
+
+    const validationNotes = diagnostics?.validation?.notes;
+    if (Array.isArray(validationNotes)) {
+      validationNotes.forEach((note) => register(note, "warning", "Validation"));
+    }
+
+    const diagReasons = diagnostics?.reasons;
+    if (Array.isArray(diagReasons)) {
+      diagReasons.forEach((reason) => {
+        const lower = reason?.toLowerCase() || "";
+        const severity: GuidanceSeverity = lower.includes("safe mode") || lower.includes("prohibited")
+          ? "critical"
+          : "warning";
+        register(reason, severity, "Diagnostics");
+      });
+    }
+
+    const confidenceReasons = diagnostics?.confidence?.reasons;
+    if (Array.isArray(confidenceReasons)) {
+      confidenceReasons.forEach((reason) => register(reason, "info", "Confidence"));
+    }
+
+    if (!hasTimeField && !syntheticTimeColumn) {
+      register('Time coverage unknown; add a date or time field to unlock trend tools.', "warning", "Timeline");
+    }
+
+    if (syntheticTimeColumn) {
+      register(`Trend analysis currently uses ${syntheticTimeColumn} as a synthetic timeline.`, "info", "Timeline");
+    }
+
+    return notes;
+  }, [diagnostics, hasTimeField, syntheticTimeColumn]);
+
   const highlights = useMemo(() => {
     const chips: { label: string; tone: "default" | "warn" | "ok" }[] = [];
     if (heroInsight?.title) chips.push({ label: `Top insight: ${heroInsight.title}`, tone: "default" });
@@ -662,6 +710,7 @@ export function useReportData(
     viewModel,
     profile,
     syntheticTimeColumn,
+    guidanceNotes,
   });
 }
 
