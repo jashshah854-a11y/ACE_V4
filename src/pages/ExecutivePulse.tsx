@@ -54,18 +54,30 @@ const ExecutivePulse = () => {
   const initialRun = searchParams.get("run") || recentReports[0]?.runId || "";
   const [runInput, setRunInput] = useState(initialRun);
   const [activeRun, setActiveRun] = useState(initialRun);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const refreshRecents = () => setRecentReports(getRecentReports());
-    refreshRecents();
-    window.addEventListener("focus", refreshRecents);
-    window.addEventListener("storage", refreshRecents);
-    return () => {
-      window.removeEventListener("focus", refreshRecents);
-      window.removeEventListener("storage", refreshRecents);
-    };
-  }, []);
-
+  useEffect(() => {
+
+    if (typeof window === "undefined") return;
+
+    const refreshRecents = () => setRecentReports(getRecentReports());
+
+    refreshRecents();
+
+    window.addEventListener("focus", refreshRecents);
+
+    window.addEventListener("storage", refreshRecents);
+
+    return () => {
+
+      window.removeEventListener("focus", refreshRecents);
+
+      window.removeEventListener("storage", refreshRecents);
+
+    };
+
+  }, []);
+
+
+
   useEffect(() => {
     const map: Record<string, string[]> = {};
     recentReports.forEach((report) => {
@@ -101,6 +113,22 @@ const ExecutivePulse = () => {
   const reportData = useReportData(reportQuery.data || "", activeRun, "strict", governedReport);
   const storyData = reportData.viewModel;
   const { setSafeMode } = useSimulation();
+
+  const primaryGuidance = useMemo(() => {
+    if (Array.isArray(reportData.guidanceNotes) && reportData.guidanceNotes.length) {
+      return reportData.guidanceNotes[0];
+    }
+    const fallback = recentReportHints[activeRun]?.[0];
+    if (fallback) {
+      return {
+        id: `cached-${activeRun}`,
+        message: fallback,
+        severity: "warning" as const,
+        source: "Diagnostics",
+      };
+    }
+    return null;
+  }, [reportData.guidanceNotes, recentReportHints, activeRun]);
 
   // Sync Safe Mode state
   useEffect(() => {
