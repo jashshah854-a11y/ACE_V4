@@ -2,7 +2,6 @@ import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { StoryHeadline } from "@/components/report/story/StoryHeadline";
-import { MetricCardGrid } from "@/components/report/story/MetricCardGrid";
 import { SentimentBlock } from "@/components/report/story/SentimentBlock";
 import { ActionChecklist } from "@/components/report/story/ActionChecklist";
 import { PersonaDeck } from "@/components/report/story/PersonaDeck";
@@ -45,6 +44,9 @@ import SimulationControls from "@/components/report/SimulationControls";
 import { TimelineHelper } from "@/components/report/TimelineHelper";
 import { GuidanceOverlay } from "@/components/report/GuidanceOverlay";
 import { focusGuidance } from "@/lib/guidanceFocus";
+import { useTaskContext } from "@/context/TaskContext";
+import { CuratedKpiPanel } from "@/components/report/story/CuratedKpiPanel";
+import { useCuratedKpis } from "@/hooks/useCuratedKpis";
 
 const ExecutivePulse = () => {
   const [searchParams] = useSearchParams();
@@ -112,9 +114,28 @@ const ExecutivePulse = () => {
   const { data: governedReport } = useGovernedReport(activeRun);
   const reportData = useReportData(reportQuery.data || "", activeRun, "strict", governedReport);
   const storyData = reportData.viewModel;
+  const { kpis: curatedKpis, loading: kpiLoading, sourceLabel: kpiSourceLabel } = useCuratedKpis(activeRun, {
+    confidenceValue: reportData.confidenceValue,
+    dataQualityValue: reportData.dataQualityValue,
+    identityStats: reportData.identityStats,
+    metrics: reportData.metrics,
+    personas: reportData.personas,
+    clusterMetrics: reportData.clusterMetrics,
+  });
   const { setSafeMode } = useSimulation();
 
-  const primaryGuidance = useMemo(() => {
+  const { updateTaskContract } = useTaskContext();
+
+  useEffect(() => {
+    if (reportData.primaryQuestion || reportData.successCriteria) {
+      updateTaskContract({
+        primaryQuestion: reportData.primaryQuestion,
+        successCriteria: reportData.successCriteria,
+      });
+    }
+  }, [reportData.primaryQuestion, reportData.successCriteria, updateTaskContract]);
+
+  const guidanceHint = useMemo(() => {
     if (Array.isArray(reportData.guidanceNotes) && reportData.guidanceNotes.length) {
       return reportData.guidanceNotes[0];
     }
@@ -429,6 +450,11 @@ const ExecutivePulse = () => {
                     {reportData.taskContractSummary && (
                       <p className="text-xs text-muted-foreground whitespace-pre-line">{reportData.taskContractSummary}</p>
                     )}
+                    {reportData.successCriteria && (
+                      <p className="text-xs text-emerald-700 dark:text-emerald-300 whitespace-pre-line">
+                        <span className="font-semibold">Success Signal:</span> {reportData.successCriteria}
+                      </p>
+                    )}
                   </header>
 
                   {viewMode === "story" ? (
@@ -439,14 +465,14 @@ const ExecutivePulse = () => {
                         {/* NEW: Story Header & Metrics */}
                         <StoryHeadline data={storyData} />
 
-                        {primaryGuidance ? (
+                        {guidanceHint ? (
                           <button
                             type="button"
                             onClick={() => focusGuidance("global")}
                             className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 shadow-sm hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                           >
                             <Lightbulb className="h-3.5 w-3.5" />
-                            <span className="line-clamp-2 text-left">{primaryGuidance.message}</span>
+                            <span className="line-clamp-2 text-left">{guidanceHint.message}</span>
                           </button>
                         ) : null}
 
@@ -474,7 +500,11 @@ const ExecutivePulse = () => {
                           <StoryControlBar data={storyData} />
                         </div>
 
-                        <MetricCardGrid metrics={storyData.metricCards} />
+                        <CuratedKpiPanel
+                          kpis={curatedKpis}
+                          loading={kpiLoading && curatedKpis.length === 0}
+                          sourceLabel={kpiSourceLabel}
+                        />
 
                         <div className="grid gap-4 md:grid-cols-2">
                           <TopDriversCard
@@ -591,6 +621,44 @@ const ExecutivePulse = () => {
           )}
         </div>
       </main>
+
+      {reportData.governedInsights.length > 0 && (
+        <section className="mt-10">
+          <div className="rounded-2xl border border-border/40 bg-card shadow-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Evidence Rail</p>
+                <h3 className="text-lg font-semibold">Traceable Findings</h3>
+              </div>
+              <span className="text-xs text-muted-foreground">{reportData.governedInsights.length} objects</span>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {reportData.governedInsights.slice(0, 4).map((insight) => (
+                <div
+                  key={insight.id}
+                  className="rounded-xl border border-border/30 bg-muted/30 p-4 space-y-2"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-foreground line-clamp-2">{insight.claim || 'Evidence-backed insight'}</p>
+                    {insight.confidence !== undefined && (
+                      <span className="text-[11px] text-emerald-700 dark:text-emerald-300">{insight.confidence.toFixed(0)}%</span>
+                    )}
+                  </div>
+                  {insight.evidence?.title && (
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">{insight.evidence.title}</p>
+                  )}
+                  {insight.columns?.length ? (
+                    <p className="text-[11px] text-muted-foreground">Fields: {insight.columns.slice(0, 3).join(', ')}{insight.columns.length > 3 ? '...' : ''}</p>
+                  ) : null}
+                  {insight.evidence?.scope && (
+                    <p className="text-[11px] text-muted-foreground/80">Scope: {insight.evidence.scope}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Strategy Simulator CTA */}
       {reportData.profile?.numericColumns?.length ? (

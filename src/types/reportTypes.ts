@@ -161,3 +161,43 @@ export interface ColumnProfile {
     null_pct?: number;
     [key: string]: any;
 }
+
+export interface CuratedKpiArtifactEntry {
+    id?: string;
+    label: string;
+    value?: number;
+    display_value?: string;
+    unit?: string;
+    delta_value?: number;
+    delta_pct?: number;
+    delta_label?: string;
+    description?: string;
+    confidence?: number;
+    status?: "success" | "warning" | "risk" | "neutral";
+    trend?: "up" | "down" | "flat";
+    source_columns?: string[];
+    format?: "currency" | "percent" | "integer" | "decimal";
+}
+
+export interface CuratedKpiArtifact {
+    generated_at?: string;
+    source?: string;
+    summary?: string;
+    primary?: CuratedKpiArtifactEntry[];
+    supporting?: CuratedKpiArtifactEntry[];
+    kpis?: CuratedKpiArtifactEntry[];
+}
+
+export interface CuratedKpiCardData {
+    id: string;
+    label: string;
+    value: string;
+    status?: "success" | "warning" | "risk" | "neutral";
+    trend?: "up" | "down" | "flat";
+    deltaLabel?: string;
+    description?: string;
+    confidenceLabel?: string;
+    sourceColumns?: string[];
+    origin?: "artifact" | "fallback";
+}
+
