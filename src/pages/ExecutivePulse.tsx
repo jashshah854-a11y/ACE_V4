@@ -20,7 +20,8 @@ import {
   Sparkles,
   BarChart3,
   TrendingUp,
-  Zap
+  Zap,
+  Lightbulb
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -28,7 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { getReport } from "@/lib/api-client";
-import { getRecentReports } from "@/lib/localStorage";
+import { getRecentReports, getDiagnosticsCache, extractDiagnosticsNotes } from "@/lib/localStorage";
 import { useReportData } from "@/hooks/useReportData";
 import { useGovernedReport } from "@/hooks/useGovernedReport";
 import { InsightBlock } from "@/components/report/InsightBlock";
@@ -42,14 +43,40 @@ import { cn } from "@/lib/utils";
 import { translateTechnicalTerm } from "@/lib/dataTypeMapping";
 import SimulationControls from "@/components/report/SimulationControls";
 import { TimelineHelper } from "@/components/report/TimelineHelper";
+import { GuidanceOverlay } from "@/components/report/GuidanceOverlay";
+import { focusGuidance } from "@/lib/guidanceFocus";
 
 const ExecutivePulse = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const recentReports = getRecentReports();
+  const [recentReports, setRecentReports] = useState(() => getRecentReports());
+  const [recentReportHints, setRecentReportHints] = useState<Record<string, string[]>>({});
   const initialRun = searchParams.get("run") || recentReports[0]?.runId || "";
   const [runInput, setRunInput] = useState(initialRun);
   const [activeRun, setActiveRun] = useState(initialRun);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const refreshRecents = () => setRecentReports(getRecentReports());
+    refreshRecents();
+    window.addEventListener("focus", refreshRecents);
+    window.addEventListener("storage", refreshRecents);
+    return () => {
+      window.removeEventListener("focus", refreshRecents);
+      window.removeEventListener("storage", refreshRecents);
+    };
+  }, []);
+
+  useEffect(() => {
+    const map: Record<string, string[]> = {};
+    recentReports.forEach((report) => {
+      const notes = extractDiagnosticsNotes(getDiagnosticsCache(report.runId));
+      if (notes.length) {
+        map[report.runId] = notes;
+      }
+    });
+    setRecentReportHints(map);
+  }, [recentReports]);
+
   const [viewMode, setViewMode] = useState<"story" | "technical">("story");
 
   const reportQuery = useQuery({
@@ -201,17 +228,43 @@ const ExecutivePulse = () => {
                   <SafeIcon icon={FileText} className="w-5 h-5 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
+
                   <p className="font-medium text-sm truncate">{report.title || "Analysis Report"}</p>
+
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
+
                     <code className="font-mono">{report.runId.slice(0, 8)}</code>
+
                     {report.createdAt && (
+
                       <>
-                        <span>•</span>
+
+                        <span>?</span>
+
                         <span className="truncate">{report.createdAt}</span>
+
                       </>
+
                     )}
+
                   </div>
+
+                  {recentReportHints[report.runId]?.length ? (
+
+                    <p className="text-[11px] text-amber-800 mt-1 line-clamp-2">
+
+                      {recentReportHints[report.runId][0]}
+
+                    </p>
+
+                  ) : (
+
+                    <p className="text-[11px] text-muted-foreground/80 mt-1">Diagnostics pending?</p>
+
+                  )}
+
                 </div>
+
                 <SafeIcon icon={ArrowRight} className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
               </motion.button>
             ))}
@@ -358,6 +411,17 @@ const ExecutivePulse = () => {
                         {/* NEW: Story Header & Metrics */}
                         <StoryHeadline data={storyData} />
 
+                        {primaryGuidance ? (
+                          <button
+                            type="button"
+                            onClick={() => focusGuidance("global")}
+                            className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 shadow-sm hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                          >
+                            <Lightbulb className="h-3.5 w-3.5" />
+                            <span className="line-clamp-2 text-left">{primaryGuidance.message}</span>
+                          </button>
+                        ) : null}
+
                         {reportData.governanceWarnings?.length ? (
                           <div className="mb-6 space-y-2">
                             {reportData.governanceWarnings.slice(0, 3).map((warning, idx) => (
@@ -368,6 +432,10 @@ const ExecutivePulse = () => {
                               />
                             ))}
                           </div>
+                        ) : null}
+
+                        {reportData.guidanceNotes?.length ? (
+                          <GuidanceOverlay notes={reportData.guidanceNotes} context="global" />
                         ) : null}
 
                         {!reportData.hasTimeField && reportData.profile?.columns ? (
@@ -522,3 +590,14 @@ const ExecutivePulse = () => {
 };
 
 export default ExecutivePulse;
+
+
+
+
+
+
+
+
+
+
+

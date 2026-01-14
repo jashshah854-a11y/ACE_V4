@@ -110,6 +110,7 @@ function createSafeDefaults(): ReportDataResult {
         outOfScopeDimensions: [],
         scoredSections: [],
         governanceWarnings: [],
+        guidanceNotes: [],
         syntheticTimeColumn: undefined,
         enhancedAnalytics: null,
         analyticsLoading: false,

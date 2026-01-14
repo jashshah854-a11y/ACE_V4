@@ -1,11 +1,11 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, Sparkles, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { Upload, Sparkles, ArrowRight, CheckCircle2, Loader2, Lightbulb, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/layout/Navbar";
 import { submitRun, previewDataset, DatasetIdentity } from "@/lib/api-client";
-import { saveRecentReport } from "@/lib/localStorage";
+import { saveRecentReport, getRecentReports, extractDiagnosticsNotes, getDiagnosticsCache } from "@/lib/localStorage";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { DatasetUnderstanding } from "@/components/upload/DatasetUnderstanding";
@@ -56,6 +56,24 @@ const Index = () => {
   const [identity, setIdentity] = useState<DatasetIdentity | null>(null);
   const [profile, setProfile] = useState<DatasetProfile | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [recentRuns, setRecentRuns] = useState(() => getRecentReports());
+  const [recentHints, setRecentHints] = useState<Record<string, string[]>>({});
+
+  const refreshRecentRuns = useCallback(() => {
+    setRecentRuns(getRecentReports());
+  }, []);
+
+  useEffect(() => {
+    const map: Record<string, string[]> = {};
+    recentRuns.forEach((run) => {
+      const notes = extractDiagnosticsNotes(getDiagnosticsCache(run.runId));
+      if (notes.length) {
+        map[run.runId] = notes;
+      }
+    });
+    setRecentHints(map);
+  }, [recentRuns]);
+
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -120,7 +138,7 @@ const Index = () => {
       const result = await submitRun(file, taskIntent);
 
       saveRecentReport(result.run_id, undefined, file.name);
-
+      refreshRecentRuns();
 
 
       // ... inside handleContractSubmit success block ...
@@ -173,6 +191,60 @@ const Index = () => {
                 <p className="text-lg md:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
                   Upload your data. The <span className="text-teal-600 dark:text-teal-400 font-medium">Sentry</span> verifies integrity, and the <span className="text-teal-600 dark:text-teal-400 font-medium">Overseer</span> orchestrates the analysis.
                 </p>
+
+                <div
+                  data-guidance-context="global"
+                  className="mt-8 inline-flex max-w-2xl items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm font-medium text-amber-900 shadow-sm"
+                >
+                  <Lightbulb className="h-5 w-5" />
+                  <div className="text-left">
+                    <p className="font-semibold">Diagnostics guidance lives here</p>
+                    <p className="text-xs text-amber-700">
+                      Launch an analysis run and ACE will populate this space with trust + governance fixes.
+                    </p>
+                  </div>
+                </div>
+                {recentRuns.length > 0 && (
+                  <div
+                    className="mt-10 w-full text-left"
+                    data-guidance-context="global"
+                  >
+                    <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-slate-500 mb-3">
+                      <span>Recent runs</span>
+                      <button
+                        type="button"
+                        className="text-xs font-semibold text-teal-600 hover:text-teal-500"
+                        onClick={() => navigate("/reports")}
+                      >
+                        View reports
+                      </button>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {recentRuns.slice(0, 3).map((run) => {
+                        const hint = recentHints[run.runId]?.[0];
+                        return (
+                          <button
+                            key={run.runId}
+                            type="button"
+                            onClick={() => navigate(`/reports?run=${run.runId}`)}
+                            className="rounded-2xl border border-border/40 bg-white/80 px-4 py-3 text-left shadow-sm transition hover:border-teal-200 hover:bg-white"
+                          >
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <FileText className="h-3.5 w-3.5 text-teal-500" />
+                              <code className="font-mono text-sm text-slate-900">{run.runId.slice(0, 8)}</code>
+                            </div>
+                            <p className="text-sm font-semibold text-slate-900 mt-2 line-clamp-1">
+                              {run.title || "Analysis Report"}
+                            </p>
+                            <p className={`text-xs mt-1 line-clamp-2 ${hint ? "text-amber-800" : "text-muted-foreground"}`}>
+                              {hint || "Diagnostics will populate once this run completes."}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -316,6 +388,16 @@ const Index = () => {
                   <p className="text-slate-500">
                     ACE is initializing the analysis pipeline...
                   </p>
+                  <div
+                    data-guidance-context="global"
+                    className="mt-6 inline-flex max-w-md items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-left text-sm text-amber-900"
+                  >
+                    <Lightbulb className="h-4 w-4 mt-0.5" />
+                    <div>
+                      <p className="font-semibold">Diagnostics will land in Executive Pulse</p>
+                      <p className="text-xs text-amber-700">Keep this tab open so the Safe Mode button can scroll here when guidance is ready.</p>
+                    </div>
+                  </div>
                 </motion.div>
               )}
             </div>
@@ -327,3 +409,5 @@ const Index = () => {
 };
 
 export default Index;
+
+

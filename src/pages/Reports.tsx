@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 
@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { IntelligenceCanvas } from "@/components/intelligence/IntelligenceCanvas";
 import { PipelineStatus } from "@/components/report/PipelineStatus";
-import { FileText, Plus, Search, AlertCircle, Loader2, CheckCircle2, History, ChevronDown } from "lucide-react";
+import { FileText, Plus, Search, AlertCircle, Loader2, CheckCircle2, History, ChevronDown, Lightbulb } from "lucide-react";
 import { getReport, API_BASE } from "@/lib/api-client";
-import { getRecentReports, saveRecentReport, validateAndCleanRecentReports, removeRecentReport } from "@/lib/localStorage";
+import { getRecentReports, saveRecentReport, validateAndCleanRecentReports, removeRecentReport, getDiagnosticsCache, removeDiagnosticsCache, extractDiagnosticsNotes } from "@/lib/localStorage";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,57 +33,76 @@ const Reports = () => {
   const [runInput, setRunInput] = useState(initialRunId);
   const [activeRunId, setActiveRunId] = useState(initialRunId);
   const [hasValidated, setHasValidated] = useState(false);
+  const [diagnosticHints, setDiagnosticHints] = useState<Record<string, string[]>>({});
 
-  // Validation State
-  const [isValidating, setIsValidating] = useState(false);
-  const [isValid, setIsValid] = useState<boolean | null>(null);
-
-  // Validate Run ID format (simple regex)
-  useEffect(() => {
-    const validate = async () => {
-      if (!runInput) {
-        setIsValid(null);
-        return;
-      }
-      setIsValidating(true);
-      // Simulate check (or could regex check activeRunId format if standardized)
-      await new Promise(resolve => setTimeout(resolve, 600));
-      setIsValid(runInput.length >= 8); // Simple length check for visual feedback
-      setIsValidating(false);
-    };
-
-    const timeout = setTimeout(validate, 500);
-    return () => clearTimeout(timeout);
-  }, [runInput]);
-
-  // Validate and clean localStorage on mount
-  useEffect(() => {
-    const cleanupInvalidRuns = async () => {
-      await validateAndCleanRecentReports(API_BASE);
-      setHasValidated(true);
-
-      // If the initial run ID was cleaned, clear it
-      if (initialRunId) {
-        const updatedRecent = getRecentReports();
-        const stillExists = updatedRecent.some(r => r.runId === initialRunId);
-        if (!stillExists) {
-          setActiveRunId("");
-          setRunInput("");
-        }
-      }
-    };
-    cleanupInvalidRuns();
+  const loadDiagnosticsForRun = useCallback((run?: string) => {
+    if (!run) return undefined;
+    const payload = getDiagnosticsCache(run);
+    const notes = extractDiagnosticsNotes(payload);
+    return notes.length ? notes : undefined;
   }, []);
 
+  const clearDiagnosticsCache = useCallback((run?: string) => {
+    if (!run) return;
+    removeDiagnosticsCache(run);
+    setDiagnosticHints((prev) => {
+      if (!prev[run]) return prev;
+      const next = { ...prev };
+      delete next[run];
+      return next;
+    });
+  }, []);
+
+  const refreshDiagnosticHints = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const map: Record<string, string[]> = {};
+    const runs = new Set<string>();
+    getRecentReports().forEach((r) => runs.add(r.runId));
+    if (activeRunId) runs.add(activeRunId);
+    runs.forEach((run) => {
+      const notes = loadDiagnosticsForRun(run);
+      if (notes?.length) {
+        map[run] = notes;
+      }
+    });
+    setDiagnosticHints(map);
+  }, [activeRunId, loadDiagnosticsForRun]);
   useEffect(() => {
-    if (runFromUrl) {
-      setRunInput(runFromUrl);
-      setActiveRunId(runFromUrl);
-    }
-  }, [runFromUrl]);
+    refreshDiagnosticHints();
+  }, [refreshDiagnosticHints]);
+
 
   const [lastKnownContent, setLastKnownContent] = useState<string | undefined>();
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
+  const showGuidancePlaceholder = !activeRunId;
+  const activeGuidanceNotes = activeRunId ? diagnosticHints[activeRunId] : undefined;
+  const guidanceBanner = activeGuidanceNotes?.length ? (
+    <div
+      data-guidance-context="global"
+      className="mb-6 inline-flex max-w-3xl items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900"
+    >
+      <Lightbulb className="h-4 w-4 mt-0.5" />
+      <div>
+        <p className="font-semibold">Latest diagnostics for {activeRunId}</p>
+        <ul className="mt-1 space-y-1 text-xs text-amber-700">
+          {activeGuidanceNotes.slice(0, 3).map((note, idx) => (
+            <li key={'reports-guidance-' + idx}>- {note}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  ) : showGuidancePlaceholder ? (
+    <div
+      data-guidance-context="global"
+      className="mb-6 inline-flex max-w-3xl items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900"
+    >
+      <Lightbulb className="h-4 w-4 mt-0.5" />
+      <div>
+        <p className="font-semibold">Connect a run to capture diagnostics</p>
+        <p className="text-xs text-amber-700">Launch an analysis and the Safe Mode card will show up here automatically.</p>
+      </div>
+    </div>
+  ) : null;
 
   const reportQuery = useQuery<string | undefined>({
     queryKey: ["final-report", activeRunId],
@@ -143,12 +162,16 @@ const Reports = () => {
   const handleLoadReport = () => {
     const sanitized = runInput.trim();
     if (!sanitized) return;
+    clearDiagnosticsCache(sanitized);
     setActiveRunId(sanitized);
+    refreshDiagnosticHints();
   };
 
   const handleRecentSelect = (runId: string) => {
     setRunInput(runId);
     setActiveRunId(runId);
+    clearDiagnosticsCache(runId);
+    refreshDiagnosticHints();
   };
 
   const handlePipelineComplete = () => {
@@ -206,6 +229,8 @@ const Reports = () => {
             </Button>
           </div>
 
+          {guidanceBanner}
+
           <div className="space-y-8">
             {/* Search Section (Legacy Wrapper for Home) */}
             <div className="rounded-xl border bg-card p-6 shadow-sm">
@@ -240,6 +265,9 @@ const Reports = () => {
                             <div className="flex flex-col gap-0.5">
                               <span className="font-mono font-medium">{r.runId}</span>
                               <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">{r.label || "Untitled Run"}</span>
+                              {diagnosticHints[r.runId]?.length ? (
+                                <span className="text-[10px] text-amber-700 truncate max-w-[200px]">{diagnosticHints[r.runId][0]}</span>
+                              ) : null}
                             </div>
                           </DropdownMenuItem>
                         ))
@@ -286,3 +314,9 @@ const Reports = () => {
 };
 
 export default Reports;
+
+
+
+
+
+
