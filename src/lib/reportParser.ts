@@ -3,6 +3,7 @@
  */
 
 import { MetricsSchema, ProgressMetricsSchema, ClusterMetricsSchema, type Metrics } from './reportSchema';
+import type { EnhancedAnalyticsData } from './enhancedAnalyticsTypes';
 
 /**
  * Clean up technical identifiers from text to make it user-friendly
@@ -447,4 +448,230 @@ export function extractClusterMetrics(markdown: string): ClusterMetrics | null {
         dataQuality: qualityMatch ? parseFloat(qualityMatch[1]) : 1,
         clusters,
     };
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Three-Panel Insight Canvas Helpers
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * Extract the "Governing Thought" — the declarative headline for the narrative
+ * Looks for the first H1 or H2 that isn't a metadata section
+ */
+export function extractGoverningThought(markdown: string): string {
+    if (!markdown) return "Intelligence Report";
+
+    const sections = extractSections(markdown);
+
+    // Skip metadata sections
+    const metadataSections = ['run metadata', 'confidence & governance', 'validation & guardrails'];
+
+    for (const section of sections) {
+        const lowerTitle = section.title.toLowerCase();
+
+        // Skip metadata sections
+        if (metadataSections.some(meta => lowerTitle.includes(meta))) {
+            continue;
+        }
+
+        // Look for declarative statements (questions, insights, summaries)
+        if (section.level === 1 || section.level === 2) {
+            // Prefer "Executive Summary" or similar high-level sections
+            if (lowerTitle.includes('summary') || lowerTitle.includes('overview')) {
+                // Extract first sentence from content as governing thought
+                const firstSentence = section.content.split(/[.!?]/)[0]?.trim();
+                if (firstSentence && firstSentence.length > 10 && firstSentence.length < 150) {
+                    return firstSentence;
+                }
+            }
+
+            // Otherwise use the section title itself if it's descriptive
+            if (section.title.length > 10 && section.title.length < 100) {
+                return section.title;
+            }
+        }
+    }
+
+    return "Intelligence Report";
+}
+
+/**
+ * SCQA Block Structure
+ * Situation-Complication-Question-Answer framework for narrative storytelling
+ */
+export interface SCQABlock {
+    situation: string;      // Historical baseline, context
+    complication: string;   // Anomalies, issues, challenges
+    question: string;       // Implicit question being answered
+    answer: string;         // Strategic response, recommendation
+}
+
+/**
+ * Parse markdown sections into SCQA story blocks
+ * Maps report sections to the Pyramid Principle structure
+ */
+export function parseSCQABlocks(markdown: string): SCQABlock[] {
+    if (!markdown) return [];
+
+    const sections = extractSections(markdown);
+    const blocks: SCQABlock[] = [];
+
+    // Map sections to SCQA components
+    let currentBlock: Partial<SCQABlock> = {};
+
+    for (const section of sections) {
+        const lowerTitle = section.title.toLowerCase();
+
+        // Situation: Executive Summary, Data Type, Overview
+        if (lowerTitle.includes('summary') || lowerTitle.includes('overview') || lowerTitle.includes('data type')) {
+            currentBlock.situation = section.content.trim();
+        }
+
+        // Complication: Anomalies, Validation Issues, Limitations
+        else if (lowerTitle.includes('anomal') || lowerTitle.includes('limitation') || lowerTitle.includes('issue')) {
+            currentBlock.complication = section.content.trim();
+        }
+
+        // Answer: Business Intelligence, Recommendations, Insights
+        else if (lowerTitle.includes('business') || lowerTitle.includes('insight') || lowerTitle.includes('recommendation')) {
+            currentBlock.answer = section.content.trim();
+
+            // Complete the block
+            if (currentBlock.situation || currentBlock.complication) {
+                blocks.push({
+                    situation: currentBlock.situation || '',
+                    complication: currentBlock.complication || '',
+                    question: '', // Implicit from context
+                    answer: currentBlock.answer || '',
+                });
+                currentBlock = {};
+            }
+        }
+    }
+
+    return blocks;
+}
+
+/**
+ * Evidence Object for click-to-verify lineage
+ */
+export interface EvidenceObject {
+    id: string;
+    type: 'business_pulse' | 'predictive_drivers' | 'correlation' | 'distribution' | 'quality';
+    claim: string;
+    proof: {
+        sql?: string;
+        python?: string;
+        rawData: any;
+    };
+    lineage: {
+        sourceTable: string;
+        transformations: string[];
+    };
+}
+
+/**
+ * Extract evidence objects from enhanced analytics
+ * Generates structured proof objects for click-to-verify interactions
+ */
+export function extractEvidenceObjects(
+    markdown: string,
+    enhancedAnalytics: EnhancedAnalyticsData | null | undefined
+): EvidenceObject[] {
+    const evidence: EvidenceObject[] = [];
+
+    if (!enhancedAnalytics) return evidence;
+
+    // Business Pulse Evidence
+    if (enhancedAnalytics.business_intelligence?.value_metrics) {
+        const vm = enhancedAnalytics.business_intelligence.value_metrics;
+        const valueCol = enhancedAnalytics.business_intelligence.evidence?.value_column || 'value';
+
+        evidence.push({
+            id: 'total-value',
+            type: 'business_pulse',
+            claim: `Total Value: $${vm.total_value?.toLocaleString() || 0}`,
+            proof: {
+                python: `df['${valueCol}'].sum()`,
+                rawData: { total_value: vm.total_value, avg_value: vm.avg_value, median_value: vm.median_value },
+            },
+            lineage: {
+                sourceTable: 'active_dataset',
+                transformations: ['sum aggregation'],
+            },
+        });
+
+        evidence.push({
+            id: 'avg-value',
+            type: 'business_pulse',
+            claim: `Average Value: $${vm.avg_value?.toLocaleString() || 0}`,
+            proof: {
+                python: `df['${valueCol}'].mean()`,
+                rawData: vm,
+            },
+            lineage: {
+                sourceTable: 'active_dataset',
+                transformations: ['mean aggregation'],
+            },
+        });
+    }
+
+    // Correlation Evidence
+    if (enhancedAnalytics.correlation_analysis?.strong_correlations) {
+        enhancedAnalytics.correlation_analysis.strong_correlations.slice(0, 10).forEach((corr: any, index: number) => {
+            evidence.push({
+                id: `corr-${index}`,
+                type: 'correlation',
+                claim: `${corr.feature1} ↔ ${corr.feature2}: ${corr.pearson?.toFixed(3)}`,
+                proof: {
+                    python: `df[['${corr.feature1}', '${corr.feature2}']].corr(method='pearson')`,
+                    rawData: corr,
+                },
+                lineage: {
+                    sourceTable: 'active_dataset',
+                    transformations: ['pearson correlation'],
+                },
+            });
+        });
+    }
+
+    // Quality Metrics Evidence
+    if (enhancedAnalytics.quality_metrics) {
+        const qm = enhancedAnalytics.quality_metrics;
+
+        evidence.push({
+            id: 'completeness',
+            type: 'quality',
+            claim: `Data Completeness: ${qm.overall_completeness?.toFixed(1)}%`,
+            proof: {
+                python: `(df.notna().sum().sum() / (df.shape[0] * df.shape[1])) * 100`,
+                rawData: qm,
+            },
+            lineage: {
+                sourceTable: 'active_dataset',
+                transformations: ['completeness calculation'],
+            },
+        });
+    }
+
+    // Feature Importance Evidence
+    if (enhancedAnalytics.feature_importance?.feature_importance) {
+        enhancedAnalytics.feature_importance.feature_importance.slice(0, 5).forEach((feat: any, index: number) => {
+            evidence.push({
+                id: `feature-${index}`,
+                type: 'predictive_drivers',
+                claim: `${feat.feature}: ${feat.importance?.toFixed(3)} importance`,
+                proof: {
+                    python: `# Random Forest Feature Importance\nmodel.feature_importances_[${index}]`,
+                    rawData: feat,
+                },
+                lineage: {
+                    sourceTable: 'active_dataset',
+                    transformations: ['feature engineering', 'random forest training', 'importance extraction'],
+                },
+            });
+        });
+    }
+
+    return evidence;
 }

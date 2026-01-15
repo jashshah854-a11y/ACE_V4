@@ -1,0 +1,295 @@
+/**
+ * Typography System — Lab & Library Ritual
+ * 
+ * Three distinct voices:
+ * 1. The Narrator (Serif) — Interpretations and governing thoughts
+ * 2. The UI (Sans-Serif) — Labels, buttons, and interface elements
+ * 3. The Data (Monospace) — Raw metrics, code, and mathematical proof
+ */
+
+/* Import Fonts from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* CSS Custom Properties for Typography Ritual */
+:root {
+  /* Font Families */
+  --font-narrator: 'Merriweather', Georgia, serif;
+  --font-ui: 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-data: 'JetBrains Mono', 'Courier New', monospace;
+  
+  /* Semantic Color Architecture */
+  --color-authority: #163E93;        /* Deep Navy - stability, primary text anchors */
+  --color-action: #005eb8;           /* Electric Blue - focal points, interactive links */
+  --color-quality-high: #22c55e;     /* Green - high quality badge */
+  --color-quality-medium: #f59e0b;   /* Amber - medium quality badge */
+  --color-quality-low: #ef4444;      /* Red - low quality badge */
+  
+  /* Lab Aesthetics (Terminal Style) */
+  --color-lab-bg: #020617;           /* Slate-950 - terminal background */
+  --color-lab-text: #4ade80;         /* Green-400 - terminal text */
+  --color-lab-accent: #22d3ee;       /* Cyan-400 - interactive elements */
+  
+  /* Breathing Room */
+  --spacing-breathe: 10%;
+  --spacing-breathe-sm: 5%;
+  
+  /* Typography Scale */
+  --text-governing-thought: 2.25rem; /* 36px - H1 headlines */
+  --text-section-header: 1.875rem;   /* 30px - H2 section headers */
+  --text-narrative-body: 1.125rem;   /* 18px - readable body text */
+  --text-ui-base: 0.875rem;          /* 14px - UI labels */
+  --text-data-mono: 0.8125rem;       /* 13px - monospace data */
+  
+  /* Line Heights */
+  --line-height-narrator: 1.75;      /* Comfortable reading */
+  --line-height-ui: 1.5;             /* Standard UI */
+  --line-height-data: 1.4;           /* Compact data display */
+  
+  /* Optimal Reading Line Length */
+  --max-line-length: 65ch;
+}
+
+/* Typography Utility Classes */
+
+/* The Voice of the Narrator (Serif) */
+.voice-narrator {
+  font-family: var(--font-narrator);
+  line-height: var(--line-height-narrator);
+}
+
+.governing-thought {
+  font-family: var(--font-narrator);
+  font-size: var(--text-governing-thought);
+  font-weight: 900;
+  line-height: 1.2;
+  color: var(--color-authority);
+  letter-spacing: -0.02em;
+}
+
+.narrative-body {
+  font-family: var(--font-narrator);
+  font-size: var(--text-narrative-body);
+  line-height: var(--line-height-narrator);
+  max-width: var(--max-line-length);
+}
+
+/* The Voice of the UI (Sans-Serif) */
+.voice-ui {
+  font-family: var(--font-ui);
+  line-height: var(--line-height-ui);
+}
+
+.ui-label {
+  font-family: var(--font-ui);
+  font-size: var(--text-ui-base);
+  font-weight: 500;
+}
+
+/* The Voice of the Data (Monospace) */
+.voice-data {
+  font-family: var(--font-data);
+  line-height: var(--line-height-data);
+  letter-spacing: -0.02em;
+}
+
+.data-metric {
+  font-family: var(--font-data);
+  font-size: var(--text-data-mono);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Lab Aesthetics */
+.lab-terminal {
+  font-family: var(--font-data);
+  background-color: var(--color-lab-bg);
+  color: var(--color-lab-text);
+  line-height: var(--line-height-data);
+}
+
+.lab-accent {
+  color: var(--color-lab-accent);
+}
+
+/* Subtractive Design Utilities */
+.data-ink-optimized {
+  /* Remove non-data ink from visualizations */
+  --recharts-grid-stroke: transparent;
+  box-shadow: none !important;
+  border: none;
+}
+
+.data-ink-optimized .recharts-cartesian-grid-horizontal line,
+.data-ink-optimized .recharts-cartesian-grid-vertical line {
+  stroke: transparent;
+}
+
+/* Remove 3D effects and shadows from charts */
+.no-chart-decoration {
+  filter: none !important;
+  box-shadow: none !important;
+}
+
+.no-chart-decoration * {
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+/* Breathing Room Utilities */
+.breathe {
+  padding: var(--spacing-breathe);
+}
+
+.breathe-x {
+  padding-left: var(--spacing-breathe);
+  padding-right: var(--spacing-breathe);
+}
+
+.breathe-y {
+  padding-top: var(--spacing-breathe);
+  padding-bottom: var(--spacing-breathe);
+}
+
+.breathe-sm {
+  padding: var(--spacing-breathe-sm);
+}
+
+/* Prevent content from touching viewport edges */
+.safe-margins {
+  margin-left: var(--spacing-breathe);
+  margin-right: var(--spacing-breathe);
+}
+
+/* SCQA Story Block Styling */
+.scqa-situation {
+  font-family: var(--font-narrator);
+  color: rgb(71, 85, 105); /* slate-600 */
+}
+
+.scqa-complication {
+  font-family: var(--font-narrator);
+  font-weight: 700;
+  color: var(--color-quality-medium);
+  border-left: 4px solid var(--color-quality-medium);
+  padding-left: 1rem;
+}
+
+.scqa-answer {
+  font-family: var(--font-narrator);
+  font-weight: 700;
+  color: var(--color-action);
+  border-left: 4px solid var(--color-action);
+  padding-left: 1rem;
+}
+
+/* Interactive Claims (Click-to-Verify) */
+.claim-interactive {
+  color: var(--color-action);
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  transition: all 0.2s ease;
+}
+
+.claim-interactive:hover {
+  text-decoration-style: solid;
+  color: var(--color-authority);
+}
+
+.claim-indicator {
+  font-size: 0.75rem;
+  vertical-align: super;
+  margin-left: 0.125rem;
+  color: var(--color-action);
+}
+
+/* Evidence Card Highlight Animation */
+@keyframes evidence-highlight {
+  0%, 100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: rgba(34, 211, 238, 0.2); /* cyan-400 with opacity */
+  }
+}
+
+.evidence-highlighted {
+  animation: evidence-highlight 1.5s ease-in-out;
+  border-color: var(--color-lab-accent) !important;
+}
+
+/* Quality Badge Styles */
+.quality-badge-high {
+  background-color: rgb(220, 252, 231); /* green-100 */
+  color: var(--color-quality-high);
+  border: 1px solid var(--color-quality-high);
+}
+
+.quality-badge-medium {
+  background-color: rgb(254, 243, 199); /* amber-100 */
+  color: var(--color-quality-medium);
+  border: 1px solid var(--color-quality-medium);
+}
+
+.quality-badge-low {
+  background-color: rgb(254, 226, 226); /* red-100 */
+  color: var(--color-quality-low);
+  border: 1px solid var(--color-quality-low);
+}
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: dark) {
+  .quality-badge-high {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: #4ade80; /* green-400 */
+  }
+  
+  .quality-badge-medium {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: #fbbf24; /* amber-400 */
+  }
+  
+  .quality-badge-low {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: #f87171; /* red-400 */
+  }
+  
+  .scqa-situation {
+    color: rgb(148, 163, 184); /* slate-400 */
+  }
+}
+
+/* Responsive Typography Adjustments */
+@media (max-width: 768px) {
+  :root {
+    --text-governing-thought: 1.875rem; /* 30px on mobile */
+    --text-section-header: 1.5rem;      /* 24px on mobile */
+    --text-narrative-body: 1rem;        /* 16px on mobile */
+    --spacing-breathe: 5%;              /* Reduce breathing room on mobile */
+  }
+}
+
+/* Print Styles */
+@media print {
+  .voice-narrator,
+  .narrative-body {
+    font-family: Georgia, serif;
+  }
+  
+  .voice-ui {
+    font-family: Arial, sans-serif;
+  }
+  
+  .voice-data {
+    font-family: 'Courier New', monospace;
+  }
+  
+  /* Ensure good contrast for printing */
+  .lab-terminal {
+    background-color: white;
+    color: black;
+    border: 1px solid #ccc;
+  }
+}
