@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Zap, RotateCcw, Plus, X, Play, Lightbulb, Activity, Sliders } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { simulateScenario, SimulationResult, Modification } from '@/lib/api-client';
@@ -288,7 +288,7 @@ export default function SimulationControls({
                                         <div className="space-y-2 font-mono text-xs">
                                             {thinkingSteps.map((step) => (
                                                 <div key={step} className="flex items-center gap-2 text-slate-200">
-                                                    <Activity className=\"h-3.5 w-3.5\" style={{ color: ACTION_COLOR }} />
+                                                    <Activity className="h-3.5 w-3.5" style={{ color: ACTION_COLOR }} />
                                                     <span>{step}</span>
                                                 </div>
                                             ))}
@@ -303,7 +303,7 @@ export default function SimulationControls({
                                         className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4"
                                     >
                                         <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-400">
-                                            <Sliders className=\"h-4 w-4\" style={{ color: ACTION_COLOR }} />
+                                            <Sliders className="h-4 w-4" style={{ color: ACTION_COLOR }} />
                                             Projected Impact
                                         </div>
                                         {simulationResult.delta.churn_risk && (
@@ -360,7 +360,7 @@ function DeltaRow({ label, original, simulated, delta, improved }: { label: stri
             <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">{label}</p>
             <div className="flex items-center gap-3 font-mono text-sm">
                 <span className="text-slate-300">{original}</span>
-                <span className="text-slate-500">→</span>
+                <span className="text-slate-500">?</span>
                 <span className="font-bold text-white">{simulated}</span>
                 <span
                     className={`rounded-full px-2 py-0.5 text-[11px] ${
@@ -373,3 +373,4 @@ function DeltaRow({ label, original, simulated, delta, improved }: { label: stri
         </div>
     );
 }
+
