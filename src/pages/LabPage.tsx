@@ -49,6 +49,19 @@ const LabPage = () => {
 
     const { data: governedReport } = useGovernedReport(runId || "");
     const reportData = useReportData(reportQuery.data || "", runId || "", "strict", governedReport);
+    const inlineHint = useMemo(() => {
+        if (reportData?.guidanceNotes?.length) {
+            const first = reportData.guidanceNotes[0];
+            if (typeof first === 'string') return first;
+            return first?.message || first?.id || null;
+        }
+        if (runId) {
+            const hints = extractDiagnosticsNotes(getDiagnosticsCache(runId));
+            if (hints.length) return hints[0];
+        }
+        return null;
+    }, [reportData?.guidanceNotes, runId]);
+
 
     // Safe handling for missing runId
     if (!runId) {
@@ -88,7 +101,7 @@ const LabPage = () => {
                                                 <code className="font-mono">{run.runId.slice(0, 8)}</code>
                                                 {run.createdAt ? (
                                                     <>
-                                                        <span>•</span>
+                                                        <span>â€¢</span>
                                                         <span className="truncate">{run.createdAt}</span>
                                                     </>
                                                 ) : null}
@@ -97,7 +110,7 @@ const LabPage = () => {
                                                 {run.title || "Analysis Report"}
                                             </p>
                                             <p className={`text-xs mt-1 line-clamp-2 ${hint ? "text-amber-800" : "text-muted-foreground/80"}`}>
-                                                {hint || "Diagnostics pending…"}
+                                                {hint || "Diagnostics pendingâ€¦"}
                                             </p>
                                             <span className="text-[10px] uppercase tracking-widest text-purple-600 font-semibold">Enter Lab ?</span>
                                         </Link>
@@ -119,19 +132,6 @@ const LabPage = () => {
 
     // Extract numeric columns for simulation
     const numericColumns = reportData?.profile?.numericColumns ?? [];
-    const inlineHint = useMemo(() => {
-        if (reportData?.guidanceNotes?.length) {
-            const first = reportData.guidanceNotes[0];
-            if (typeof first === 'string') return first;
-            return first?.message || first?.id || null;
-        }
-        if (runId) {
-            const hints = extractDiagnosticsNotes(getDiagnosticsCache(runId));
-            if (hints.length) return hints[0];
-        }
-        return null;
-    }, [reportData?.guidanceNotes, runId]);
-
     return (
         <div className="min-h-screen bg-background">
             <Navbar />
@@ -204,4 +204,3 @@ const LabPage = () => {
 };
 
 export default LabPage;
-

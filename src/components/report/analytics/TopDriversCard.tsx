@@ -1,13 +1,14 @@
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, Info } from "lucide-react";
 import type { EnhancedAnalyticsData } from "@/types/reportTypes";
 import { cn } from "@/lib/utils";
 
 interface TopDriversCardProps {
   data?: EnhancedAnalyticsData["feature_importance"];
   safeMode?: boolean;
+  onViewEvidence?: () => void;
 }
 
-export function TopDriversCard({ data, safeMode }: TopDriversCardProps) {
+export function TopDriversCard({ data, safeMode, onViewEvidence }: TopDriversCardProps) {
   if (!data?.available || !Array.isArray(data.feature_importance) || data.feature_importance.length === 0) {
     return null;
   }
@@ -25,7 +26,19 @@ export function TopDriversCard({ data, safeMode }: TopDriversCardProps) {
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Top Drivers</p>
           <h3 className="text-lg font-semibold text-foreground">{data.target || "Primary outcome"}</h3>
         </div>
-        <TrendingUp className="w-5 h-5 text-purple-500" />
+        <div className="flex items-center gap-3">
+          {onViewEvidence && (
+            <button
+              type="button"
+              onClick={onViewEvidence}
+              className="rounded-full border border-border/50 p-1 text-muted-foreground hover:text-action"
+              aria-label="View feature importance source"
+            >
+              <Info className="w-4 h-4" />
+            </button>
+          )}
+          <TrendingUp className="w-5 h-5 text-purple-500" />
+        </div>
       </div>
 
       <div className="space-y-3">

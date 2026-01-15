@@ -16,68 +16,17 @@ import { useRemoteArtifact } from "@/hooks/useRemoteArtifact";
 import { getSyntheticTimeColumn } from "@/lib/timelineHelper";
 import { useDiagnostics } from "@/hooks/useDiagnostics";
 import { useModelArtifacts } from "@/hooks/useModelArtifacts";
-import { useRemoteArtifact } from "@/hooks/useRemoteArtifact";
 import type { GovernedReport, TaskContractSnapshot } from "@/hooks/useGovernedReport";
-import type { GuidanceNote, GuidanceSeverity } from "@/types/reportTypes";
-import { transformAPIResponse, ReportViewModel, filterSuppressedSections } from "@/lib/reportViewModel";
+import type {
+  ReportDataResult,
+  GuidanceNote,
+  GuidanceSeverity,
+  EvidenceSummary,
+  GovernedInsightSummary,
+} from "@/types/reportTypes";
+import { transformAPIResponse, filterSuppressedSections } from "@/lib/reportViewModel";
 import { ensureSafeReport } from "@/lib/ReportGuard";
-
-export interface ReportDataResult {
-  // Core extracted data
-  metrics: ReturnType<typeof extractMetrics>;
-  progressMetrics: ReturnType<typeof extractProgressMetrics>;
-  sections: ReturnType<typeof extractSections>;
-  segmentData: any;
-  compositionData: any;
-  measurableSegments: any[];
-  clusterMetrics: ReturnType<typeof parseClusterMetrics>;
-  personas: ReturnType<typeof extractPersonas>;
-  outcomeModel: ReturnType<typeof extractOutcomeModel>;
-  anomalies: ReturnType<typeof extractAnomalies>;
-
-  // Narrative components
-  executiveBrief: ReturnType<typeof extractExecutiveBrief>;
-  conclusion: ReturnType<typeof extractConclusion>;
-  heroInsight: ReturnType<typeof extractHeroInsight>;
-  mondayActions: ReturnType<typeof generateMondayActions>;
-  segmentComparisonData: ReturnType<typeof extractSegmentData>;
-  keyTakeaways: string[];
-
-  // Computed values
-  confidenceValue: number | undefined;
-  dataQualityValue: number | undefined;
-  limitationsMode: boolean;
-  safeMode: boolean;
-  hideActions: boolean;
-  shouldEmitInsights: boolean;
-  hasTimeField: boolean;
-
-  // Sections
-  taskContractSection: any;
-  decisionSection: any;
-  decisionSummary: string | undefined;
-  taskContractSummary: string | undefined;
-  filteredSections: any[];
-  evidenceSections: any[];
-  uncertaintySignals: string[];
-  narrativeSummary: { wins: string[]; risks: string[]; meaning: string[] };
-  runContext: { mode: string; freshness: string; scopeLimits: string[] };
-  identityStats: { rows: any; completeness: any; confidence: any };
-  highlights: { label: string; tone: "default" | "warn" | "ok" }[];
-  primaryQuestion?: string;
-  outOfScopeDimensions: string[];
-  scoredSections: Array<ReturnType<typeof extractSections>[number] & { importance: number }>;
-  profile?: { columns: Record<string, any>; numericColumns: string[] };
-  governanceWarnings: string[];
-  guidanceNotes: GuidanceNote[];
-
-  // External data
-  enhancedAnalytics: any;
-  analyticsLoading: boolean;
-  diagnostics: any;
-  modelArtifacts: any;
-  viewModel: ReportViewModel;
-}
+import { assembleNarrative, type NarrativeModule } from "@/lib/meaningAssembler";
 
 const MIN_IMPORTANCE = 0.05;
 
@@ -92,6 +41,33 @@ const TIME_TOKENS = [
   "period",
   "timestamp"
 ];
+
+interface EvidenceSummary {
+  id: string;
+  title: string;
+  method?: string;
+  columns: string[];
+  confidence?: number;
+  scope?: string;
+  sourceCode?: string;
+  dataSource?: string;
+  sourceNotes?: string;
+  raw?: any;
+}
+
+interface GovernedInsightSummary {
+  id: string;
+  claim?: string;
+  agent?: string;
+  severity?: string;
+  metricName?: string;
+  evidenceId?: string;
+  columns?: string[];
+  confidence?: number;
+  impact?: string;
+  evidence?: EvidenceSummary;
+}
+
 
 function hasTemporalToken(value: string): boolean {
   const lower = value.toLowerCase();
@@ -171,6 +147,17 @@ function extractPrimaryQuestion(taskContract?: string, decisionCopy?: string) {
   return firstLine?.replace(/^[-*#\d.\)\s]+/, "").trim();
 }
 
+function extractSuccessCriteria(taskContract?: string, decisionCopy?: string) {
+  const corpus = taskContract || decisionCopy || "";
+  if (!corpus) return undefined;
+  const match = corpus.match(/success\s+(?:criteria|signal)[^:]*:\s*(.+)/i);
+  if (match) {
+    return match[1].split("\n")[0]?.trim();
+  }
+  const candidate = corpus.split("\n").find((line) => line.toLowerCase().includes("success"));
+  return candidate?.replace(/^[-*#\d.\)\s]+/, "").trim();
+}
+
 function extractOutOfScope(contractCopy?: string) {
   if (!contractCopy) return [];
   const lines = contractCopy.split("\n");
@@ -234,6 +221,21 @@ export function useReportData(
   const governedConfidence = normalizeConfidence(governedReport?.confidence?.data_confidence);
   const contractConfidenceThreshold = normalizeConfidence(contractSnapshot?.confidence_threshold);
   const confidenceThreshold = contractConfidenceThreshold ?? (confidenceMode === "strict" ? 90 : 60);
+
+  const evidenceMap = useMemo(() => normalizeEvidenceMap(governedReport?.evidence), [governedReport?.evidence]);
+  const evidenceScopeMap = useMemo(() => {
+    const scopeIndex: Record<string, EvidenceSummary> = {};
+    Object.values(evidenceMap).forEach((entry) => {
+      if (entry?.scope) {
+        scopeIndex[entry.scope] = entry;
+      }
+    });
+    return scopeIndex;
+  }, [evidenceMap]);
+  const governedInsights = useMemo(
+    () => normalizeGovernedInsights(governedReport?.insights, evidenceMap),
+    [governedReport?.insights, evidenceMap]
+  );
 
   const { data: enhancedAnalytics, loading: analyticsLoading } = useEnhancedAnalytics(runId);
   const { data: diagnostics } = useDiagnostics(runId);
@@ -305,10 +307,21 @@ export function useReportData(
     [segmentData]
   );
 
-  const clusterMetrics = useMemo(() => parseClusterMetrics(content), [content]);
-  const personas = useMemo(() => extractPersonas(content), [content]);
+  const rawClusterMetrics = useMemo(() => parseClusterMetrics(content), [content]);
+  const rawPersonas = useMemo(() => extractPersonas(content), [content]);
   const outcomeModel = useMemo(() => extractOutcomeModel(content), [content]);
   const anomalies = useMemo(() => extractAnomalies(content), [content]);
+
+  const clusteringEvidenceId = evidenceScopeMap.clustering?.id;
+  const clusterMetrics = useMemo(() => {
+    if (!rawClusterMetrics || !clusteringEvidenceId) return rawClusterMetrics;
+    return { ...rawClusterMetrics, evidenceId: clusteringEvidenceId };
+  }, [rawClusterMetrics, clusteringEvidenceId]);
+
+  const personas = useMemo(() => {
+    if (!rawPersonas?.length || !clusteringEvidenceId) return rawPersonas;
+    return rawPersonas.map((persona) => ({ ...persona, evidenceId: clusteringEvidenceId }));
+  }, [rawPersonas, clusteringEvidenceId]);
 
   // Narrative components
   const executiveBrief = useMemo(() => {
@@ -439,6 +452,10 @@ export function useReportData(
     () => contractSnapshot?.primary_question || extractPrimaryQuestion(taskContractSection?.content, decisionSection?.content),
     [contractSnapshot?.primary_question, taskContractSection?.content, decisionSection?.content]
   );
+  const successCriteria = useMemo(
+    () => contractSnapshot?.success_criteria || extractSuccessCriteria(taskContractSection?.content, decisionSection?.content),
+    [contractSnapshot?.success_criteria, taskContractSection?.content, decisionSection?.content]
+  );
   const outOfScopeDimensions = useMemo(() => {
     const structured = (contractSnapshot?.out_of_scope_dimensions && contractSnapshot.out_of_scope_dimensions.length
       ? contractSnapshot.out_of_scope_dimensions
@@ -448,6 +465,14 @@ export function useReportData(
     }
     return extractOutOfScope(taskContractSection?.content);
   }, [contractSnapshot?.out_of_scope_dimensions, contractSnapshot?.scope_exclusions, taskContractSection?.content]) || [];
+
+  const scopeLocks = useMemo(() => {
+    if (!outOfScopeDimensions?.length) return [];
+    return outOfScopeDimensions.map((dimension) => ({
+      dimension,
+      reason: "Excluded by Task Contract",
+    }));
+  }, [outOfScopeDimensions]);
 
   const filteredSections = useMemo(
     () => {
@@ -468,6 +493,11 @@ export function useReportData(
       return filterSuppressedSections(basicFilter);
     },
     [sections, hasTimeField]
+  );
+
+  const narrativeAssembly = useMemo(() =>
+    assembleNarrative(scoredSections, { heroInsight, primaryQuestion, successCriteria }),
+    [scoredSections, heroInsight, primaryQuestion, successCriteria]
   );
 
   const evidenceSections = useMemo(
@@ -638,6 +668,7 @@ export function useReportData(
       safeMode,
       limitationsMode,
       primaryQuestion,
+      successCriteria,
       decisionSummary,
       executiveBrief,
       heroInsight,
@@ -653,6 +684,7 @@ export function useReportData(
     safeMode,
     limitationsMode,
     primaryQuestion,
+    successCriteria,
     decisionSummary,
     executiveBrief,
     heroInsight,
@@ -700,9 +732,14 @@ export function useReportData(
     identityStats: identityStats || { rows: "n/a", completeness: undefined, confidence: "n/a" },
     highlights: highlights || [],
     primaryQuestion,
+    successCriteria,
     outOfScopeDimensions,
     scoredSections,
     governanceWarnings,
+    scopeLocks,
+    governingThought: narrativeAssembly.governingThought,
+    narrativeModules: narrativeAssembly.primary,
+    appendixModules: narrativeAssembly.appendix,
     enhancedAnalytics,
     analyticsLoading,
     diagnostics,
@@ -711,7 +748,65 @@ export function useReportData(
     profile,
     syntheticTimeColumn,
     guidanceNotes,
+    evidenceMap,
+    governedInsights,
   });
 }
 
+
+
+
+function normalizeEvidenceMap(raw?: Record<string, any> | null | undefined): Record<string, EvidenceSummary> {
+  if (!raw) return {};
+  const entries = Object.entries(raw);
+  if (!entries.length) return {};
+
+  return entries.reduce<Record<string, EvidenceSummary>>((acc, [evidenceId, record]) => {
+    const payload = record || {};
+    const evidence = (payload.evidence ?? payload) as Record<string, any>;
+    const title = (payload.claim as string) || (evidence.metric as string) || `Evidence ${evidenceId}`;
+    const columns = Array.isArray(evidence.source_columns) ? (evidence.source_columns as string[]) : [];
+    const method = (evidence.methodology as string) || (payload.method as string);
+    const confidence = normalizeEvidenceConfidence((payload.confidence as number) ?? (evidence.confidence as number));
+
+    acc[evidenceId] = {
+      id: evidenceId,
+      title,
+      method,
+      columns,
+      confidence,
+      scope: payload.scope as string | undefined,
+      sourceCode: typeof evidence.source_code === 'string' ? (evidence.source_code as string) : undefined,
+      dataSource: typeof evidence.data_source === 'string' ? (evidence.data_source as string) : undefined,
+      sourceNotes: typeof evidence.source_notes === 'string' ? (evidence.source_notes as string) : undefined,
+      raw: payload,
+    };
+    return acc;
+  }, {});
+}
+
+function normalizeGovernedInsights(raw?: any[] | null, evidenceMap: Record<string, EvidenceSummary> = {}): GovernedInsightSummary[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((insight, index) => {
+    const evidenceId = insight?.evidence_ref || insight?.evidence_id;
+    return {
+      id: insight?.id || evidenceId || `insight-${index}`,
+      claim: insight?.claim,
+      agent: insight?.agent,
+      severity: insight?.severity,
+      metricName: insight?.metric_name || insight?.metric,
+      columns: insight?.columns_used || insight?.columns || [],
+      confidence: normalizeEvidenceConfidence(insight?.confidence),
+      impact: insight?.impact,
+      evidenceId,
+      evidence: evidenceId ? evidenceMap[evidenceId] : undefined,
+    };
+  });
+}
+
+function normalizeEvidenceConfidence(value?: number) {
+  if (typeof value !== 'number') return undefined;
+  if (value > 1) return Number(value);
+  return Number((value * 100).toFixed(1));
+}
 

@@ -60,6 +60,9 @@ class ExplainableLinearRegression(IExplainableModel):
             computation_method="Linear Regression",
             result_statistic={"r2": self.score_, "residual_std": self.residual_std_},
             confidence_level=max(0.0, min(0.99, (self.score_ + 1) / 2)) * 100,
+            source_code=f"LinearRegression()\n.fit(df[{', '.join(self.columns)}], target)",
+            data_source="governed_feature_frame",
+            source_notes="Trained on sanitized feature matrix within ModelSelector.",
         )
 
     def get_feature_importance(self) -> List[FeatureImportanceEntry]:
@@ -113,6 +116,9 @@ class ExplainableLogisticRegression(IExplainableModel):
             computation_method="Logistic Regression",
             result_statistic={"accuracy": self.score_},
             confidence_level=max(0.0, min(0.99, (self.score_ + 1) / 2)) * 100,
+            source_code=f"LogisticRegression(max_iter=500)\n.fit(df[{', '.join(self.columns)}], target)",
+            data_source="governed_feature_frame",
+            source_notes="Classification run using white-box logistic regression.",
         )
 
     def get_feature_importance(self) -> List[FeatureImportanceEntry]:
@@ -168,6 +174,9 @@ class ExplainableDecisionTree(IExplainableModel):
             computation_method=f"Decision Tree ({self.task})",
             result_statistic={"score": self.score_},
             confidence_level=max(0.0, min(0.99, (self.score_ + 1) / 2)) * 100,
+            source_code=f"DecisionTree{self.task.title()}(max_depth=4)\n.fit(df[{', '.join(self.columns)}], target)",
+            data_source="governed_feature_frame",
+            source_notes="Explainable depth-limited tree executed under ModelSelector.",
         )
 
     def get_feature_importance(self) -> List[FeatureImportanceEntry]:
@@ -215,6 +224,9 @@ class ExplainableKMeans(IExplainableModel):
             computation_method=f"KMeans (k={self.model.n_clusters})",
             result_statistic=stats,
             confidence_level=confidence,
+            source_code=f"KMeans(n_clusters={self.model.n_clusters}).fit(df[{', '.join(self.columns)}])",
+            data_source="cluster_feature_frame",
+            source_notes="Auto-K selection run inside universal clustering engine.",
         )
 
     def get_feature_importance(self) -> List[FeatureImportanceEntry]:

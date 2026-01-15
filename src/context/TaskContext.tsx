@@ -2,6 +2,8 @@ import { createContext, ReactNode, useContext, useState, useCallback, useMemo } 
 
 interface TaskContractState {
   primaryQuestion?: string;
+  successCriteria?: string;
+  decisionContext?: string;
   outOfScopeDimensions: string[];
 }
 
@@ -12,6 +14,8 @@ interface TaskContextValue extends TaskContractState {
 
 const DEFAULT_STATE: TaskContractState = {
   primaryQuestion: undefined,
+  successCriteria: undefined,
+  decisionContext: undefined,
   outOfScopeDimensions: [],
 };
 
@@ -28,21 +32,22 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (!stored) {
-        return DEFAULT_STATE; // If nothing stored, return default
+        return DEFAULT_STATE;
       }
 
       let parsed: any;
       try {
         parsed = JSON.parse(stored);
       } catch (e) {
-        console.error('Failed to parse task contract from localStorage:', e);
-        localStorage.removeItem(STORAGE_KEY); // Clear corrupted data
-        return DEFAULT_STATE; // Return default if parsing fails
+        console.error("Failed to parse task contract from localStorage:", e);
+        localStorage.removeItem(STORAGE_KEY);
+        return DEFAULT_STATE;
       }
 
-      // Original validation logic, applied to the parsed object
       return {
         primaryQuestion: typeof parsed?.primaryQuestion === "string" ? parsed.primaryQuestion : undefined,
+        successCriteria: typeof parsed?.successCriteria === "string" ? parsed.successCriteria : undefined,
+        decisionContext: typeof parsed?.decisionContext === "string" ? parsed.decisionContext : undefined,
         outOfScopeDimensions: Array.isArray(parsed?.outOfScopeDimensions)
           ? parsed.outOfScopeDimensions.filter((entry: unknown): entry is string => typeof entry === "string")
           : [],
@@ -65,9 +70,11 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const updateTaskContract = useCallback((payload: Partial<TaskContractState>) => {
     persist({
       primaryQuestion: payload.primaryQuestion ?? state.primaryQuestion,
+      successCriteria: payload.successCriteria ?? state.successCriteria,
+      decisionContext: payload.decisionContext ?? state.decisionContext,
       outOfScopeDimensions: payload.outOfScopeDimensions ?? state.outOfScopeDimensions,
     });
-  }, [persist, state.primaryQuestion, state.outOfScopeDimensions]);
+  }, [persist, state.primaryQuestion, state.successCriteria, state.decisionContext, state.outOfScopeDimensions]);
 
   const resetTaskContract = useCallback(() => {
     persist(DEFAULT_STATE);

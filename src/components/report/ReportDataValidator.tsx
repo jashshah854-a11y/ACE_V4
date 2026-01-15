@@ -24,8 +24,21 @@ interface ValidationResult {
   };
 }
 
-function validateReportData(data: ReportDataResult, content: string): ValidationResult {
+function validateReportData(
+  rawData: ReportDataResult | null | undefined,
+  content: string
+): ValidationResult {
   const issues: ValidationIssue[] = [];
+  const data = rawData ?? ({} as ReportDataResult);
+
+  if (!rawData) {
+    issues.push({
+      field: "data",
+      severity: "error",
+      message: "No report data available",
+      suggestion: "Ensure the analysis run produced report artifacts",
+    });
+  }
 
   // Check if content exists
   if (!content || content.trim().length === 0) {

@@ -12,6 +12,7 @@
     --font-narrative: "Merriweather", serif;
     --font-mono: "JetBrains Mono", monospace;
     --font-display: "Inter Tight", sans-serif;
+    --action-color: #005eb8;
     
     /* Glass Monolith Palette */
     --glass-charcoal: 220 15% 7%;        /* #0F1115 - Deep Charcoal */
@@ -23,6 +24,10 @@
 }
 
 @layer utilities {
+  .text-action {
+    color: var(--action-color);
+  }
+
   .prose-narrative {
     font-family: var(--font-narrative);
     font-size: 1.125rem;

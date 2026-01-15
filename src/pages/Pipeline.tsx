@@ -56,6 +56,7 @@ function ThinkingViewWithPolling({ runId, onComplete }: { runId: string; onCompl
     return (
       <div className="space-y-8">
         <PipelineVisualizer runState={runState} />
+        <NeuralReasoningStream steps={runState.steps} />
         <div className="text-center animate-fade-in-up">
           <p className="text-teal-600 font-medium mb-4">Analysis Finalized. Preparing Report...</p>
           <Button
@@ -73,10 +74,47 @@ function ThinkingViewWithPolling({ runId, onComplete }: { runId: string; onCompl
   return (
     <div className="space-y-4">
       <PipelineVisualizer runState={runState} />
+      <NeuralReasoningStream steps={runState.steps} />
       <div className="text-center">
         <p className="text-xs text-muted-foreground font-mono opacity-50">
           Debug: {runId} is {runState.status}
         </p>
+      </div>
+    </div>
+  );
+}
+
+
+function NeuralReasoningStream({ steps }: { steps?: PipelineStep[] }) {
+  if (!steps || steps.length === 0) {
+    return null;
+  }
+  const STATUS_COPY: Record<string, string> = {
+    pending: "Queued for analysis",
+    running: "Listening to your data",
+    completed: "Logged",
+    failed: "Requires attention",
+  };
+  return (
+    <div className="mt-6 rounded-2xl border border-border/40 bg-card/60 p-4">
+      <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground mb-3">Reasoning Stream</p>
+      <div className="space-y-2">
+        {steps.map((step) => {
+          const status = step.status || "pending";
+          const isDone = status === "completed";
+          const isRunning = status === "running";
+          return (
+            <div key={`${step.name}-${status}`} className="flex items-center gap-3">
+              {isDone && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+              {isRunning && !isDone && <Loader2 className="h-4 w-4 text-action animate-spin" />}
+              {!isDone && !isRunning && <span className="h-2 w-2 rounded-full bg-muted-foreground" />}
+              <div>
+                <p className="text-sm font-medium">{step.name}</p>
+                <p className="text-xs text-muted-foreground">{STATUS_COPY[status] || "Tracking"}</p>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -145,10 +183,9 @@ export default function Pipeline() {
                     <AlertCircle className="w-8 h-8 text-destructive" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold mb-2">No Analysis Found</h2>
+                    <h2 className="text-xl font-semibold mb-2">There is nothing to learn yet.</h2>
                     <p className="text-muted-foreground mb-6">
-                      It looks like you navigated here without starting an analysis.
-                      Please upload a file to begin.
+                      There is no active story for ACE to interpret yet. Begin by uploading a dataset so the Overseer can listen.
                     </p>
                   </div>
                   <Button asChild>

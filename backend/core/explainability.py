@@ -18,6 +18,9 @@ class EvidenceObject:
     confidence_level: float
     data_confidence: Optional[float] = None
     limitations: List[str] = field(default_factory=list)
+    source_code: Optional[str] = None
+    data_source: Optional[str] = None
+    source_notes: Optional[str] = None
 
     def validate(self) -> None:
         if not self.columns_used:

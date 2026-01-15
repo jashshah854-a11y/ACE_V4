@@ -9,11 +9,12 @@ import { saveRecentReport, getRecentReports, extractDiagnosticsNotes, getDiagnos
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { DatasetUnderstanding } from "@/components/upload/DatasetUnderstanding";
-import { TaskContractInput } from "@/components/upload/TaskContractInput";
+import { OverseerInterview, TaskContract } from "@/components/upload/OverseerInterview";
 import { DatasetProfile } from "@/hooks/useDatasetProfile";
 import { BackgroundMesh } from "@/components/ui/BackgroundMesh";
 import { AceLogo } from "@/components/ui/AceLogo";
 import { ConfettiExplosion } from "@/components/ui/ConfettiExplosion";
+import { useTaskContext } from "@/context/TaskContext";
 
 type AnalysisStage = "upload" | "scanning" | "identity" | "contract" | "processing";
 
@@ -58,6 +59,8 @@ const Index = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [recentRuns, setRecentRuns] = useState(() => getRecentReports());
   const [recentHints, setRecentHints] = useState<Record<string, string[]>>({});
+  const { updateTaskContract } = useTaskContext();
+
 
   const refreshRecentRuns = useCallback(() => {
     setRecentRuns(getRecentReports());
@@ -120,19 +123,22 @@ const Index = () => {
     }
   };
 
-  const handleContractSubmit = async (userIntent: string) => {
-    if (!file) return;
+  const handleContractSubmit = async (contract: TaskContract) => {
+    if (!file || !identity) return;
 
     setStage("processing");
     try {
+      const strictMode = contract.forbiddenClaims.includes("strict_mode");
       const taskIntent = {
-        primaryQuestion: userIntent,
-        decisionContext: userIntent, // Mapping full intent to context as well
+        primaryQuestion: contract.primaryQuestion,
+        decisionContext: contract.decisionContext,
         requiredOutputType: "diagnostic" as const,
-        successCriteria: "Derived from user intent",
-        constraints: "", // Clean slate
-        confidenceThreshold: 80,
+        successCriteria: contract.successCriteria,
+        constraints: contract.forbiddenClaims.join(", "),
+        confidenceThreshold: strictMode ? 92 : 85,
         confidenceAcknowledged: true,
+        forbidden_claims: contract.forbiddenClaims,
+        strict_mode: strictMode,
       };
 
       const result = await submitRun(file, taskIntent);
@@ -140,13 +146,17 @@ const Index = () => {
       saveRecentReport(result.run_id, undefined, file.name);
       refreshRecentRuns();
 
+      updateTaskContract({
+        primaryQuestion: contract.primaryQuestion,
+        successCriteria: contract.successCriteria,
+        decisionContext: contract.decisionContext,
+      });
 
-      // ... inside handleContractSubmit success block ...
       toast.success("Mission Started", {
         description: "The Overseer has authorized this analysis run.",
       });
       setShowConfetti(true);
-      setTimeout(() => navigate(`/pipeline/${result.run_id}`), 1500); // Delay navigation to show confetti
+      setTimeout(() => navigate(`/pipeline/${result.run_id}`), 1500);
     } catch (error) {
       toast.error("Mission Aborted", {
         description: "Failed to submit analysis contract.",
@@ -295,7 +305,7 @@ const Index = () => {
                       </div>
                       <div className="space-y-3">
                         <h3 className="text-2xl font-serif font-medium text-slate-900 dark:text-slate-100">
-                          {isDragging ? "Drop to Initialize" : "Drop your dataset here"}
+                          {isDragging ? "Drop to Initialize" : "Drop your story here"}
                         </h3>
                         <p className="text-slate-500 font-sans tracking-wide text-sm uppercase">
                           CSV • Excel • Parquet
@@ -321,10 +331,10 @@ const Index = () => {
                 >
                   <Loader2 className="w-16 h-16 text-teal-500 animate-spin mb-8" />
                   <h2 className="text-2xl font-mono font-bold text-slate-900 dark:text-slate-100 mb-2">
-                    SENTRY SCAN INITIATED
+                    Listening to your data
                   </h2>
                   <p className="text-slate-500 font-mono text-sm animate-pulse">
-                    Verifying schema integrity...
+                    Mapping schema & freshness signals...
                   </p>
                 </motion.div>
               )}
@@ -347,22 +357,22 @@ const Index = () => {
 
                   <DatasetUnderstanding
                     profile={profile}
-                    onProceed={() => handleContractSubmit("Run a comprehensive analysis of this dataset, identifying key drivers, anomalies, and segments.")}
+                    onProceed={() => setStage("contract")}
                     onCustomize={() => setStage("contract")}
                   />
                 </motion.div>
               )}
 
               {/* STAGE 4: OVERSEER CONTRACT (PREMIUM UI) */}
-              {stage === "contract" && profile && (
+              {stage === "contract" && profile && identity && (
                 <motion.div
                   key="contract"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                 >
-                  <TaskContractInput
-                    profile={profile}
+                  <OverseerInterview
+                    identity={identity}
                     onSubmit={handleContractSubmit}
                     onBack={() => setStage("identity")}
                   />
@@ -383,10 +393,10 @@ const Index = () => {
                     <CheckCircle2 className="absolute inset-0 m-auto w-8 h-8 text-teal-500" />
                   </div>
                   <h2 className="text-2xl font-serif font-bold text-slate-900 dark:text-slate-100 mb-2">
-                    Contract Approved
+                    Neural refinery warming up
                   </h2>
                   <p className="text-slate-500">
-                    ACE is initializing the analysis pipeline...
+                    ACE is spinning up the Neural Pulse and prepping the evidence rail...
                   </p>
                   <div
                     data-guidance-context="global"
