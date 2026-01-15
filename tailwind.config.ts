@@ -1,4 +1,6 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
+import tailwindcssTypography from "@tailwindcss/typography";
 
 export default {
   darkMode: ["class"],
@@ -22,6 +24,10 @@ export default {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         serif: ['Playfair Display', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
+        // Typography Ritual Extensions
+        narrator: ['Merriweather', 'Georgia', 'serif'],
+        ui: ['Inter', 'Roboto', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        data: ['JetBrains Mono', 'Courier New', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -79,6 +85,23 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Semantic Color Architecture for Three-Panel Canvas
+        authority: '#163E93',        // Deep Navy - stability, primary text anchors
+        action: '#005eb8',           // Electric Blue - focal points, interactive links
+        quality: {
+          high: '#22c55e',           // Green - high quality badge
+          medium: '#f59e0b',         // Amber - medium quality badge
+          low: '#ef4444',            // Red - low quality badge
+        },
+        lab: {
+          bg: '#020617',             // Slate-950 - terminal background
+          text: '#4ade80',           // Green-400 - terminal text
+          accent: '#22d3ee',         // Cyan-400 - interactive elements
+        },
+      },
+      spacing: {
+        breathe: '10%',              // Breathing room for content
+        'breathe-sm': '5%',          // Smaller breathing room for mobile
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -111,5 +134,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
+  plugins: [tailwindcssAnimate, tailwindcssTypography],
 } satisfies Config;
