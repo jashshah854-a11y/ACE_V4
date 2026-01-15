@@ -3,6 +3,13 @@ import hashlib
 import duckdb
 import polars as pl
 
+import sys
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core.csv_defaults import POLARS_CSV_KWARGS
+
 
 def sha256_file(path: str, chunk_size: int = 8 * 1024 * 1024) -> str:
     """
@@ -22,7 +29,12 @@ def build_sample_csv(path: str, n_rows: int) -> pl.DataFrame:
     """
     Read a small sample using polars without rewriting the file.
     """
-    return pl.read_csv(path, n_rows=n_rows, infer_schema_length=min(n_rows, 2000))
+    return pl.read_csv(
+        path,
+        n_rows=n_rows,
+        infer_schema_length=min(n_rows, 2000),
+        **POLARS_CSV_KWARGS,
+    )
 
 
 def csv_to_parquet_duckdb(csv_path: str, parquet_path: str) -> None:
