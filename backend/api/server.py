@@ -183,6 +183,23 @@ def _is_numeric_dtype(meta: Dict[str, Any]) -> bool:
     return any(token in dtype for token in numeric_tokens)
 
 
+def _store_enhanced_analytics_fallback(run_path: Path, mode: str = "auto_heal") -> None:
+    """Write a placeholder enhanced_analytics artifact so downstream routes do not 404."""
+    try:
+        state = StateManager(str(run_path))
+        placeholder = {
+            "quality_metrics": {"available": False, "reason": "Report fallback"},
+            "business_intelligence": {"available": False},
+            "feature_importance": {"available": False},
+            "correlations": {"available": False},
+            "fallback_mode": mode,
+        }
+        state.write("enhanced_analytics", placeholder)
+        logger.info(f"[AUTO-HEAL] Stored fallback enhanced_analytics payload ({mode}) for {run_path}")
+    except Exception as err:
+        logger.warning(f"[AUTO-HEAL] Unable to persist fallback analytics: {err}")
+
+
 def _ensure_identity_card(state: StateManager, run_path: Path) -> Dict[str, Any]:
     identity = state.read("dataset_identity_card")
     if isinstance(identity, dict) and identity:
@@ -811,7 +828,8 @@ async def get_report(request: Request, run_id: str, format: str = "markdown"):
                 # Write the fallback to disk so it sticks
                 with open(report_path, "w", encoding="utf-8") as f:
                     f.write(fallback_content)
-                
+
+                _store_enhanced_analytics_fallback(run_path, mode="auto_heal")
                 logger.info(f"[AUTO-HEAL] Fallback report created at {report_path}")
         except Exception as e:
             logger.error(f"[AUTO-HEAL] Failed to generate fallback: {e}")
