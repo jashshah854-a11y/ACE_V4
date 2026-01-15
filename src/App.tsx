@@ -13,6 +13,7 @@ import DemoPipelineStatus from "./pages/DemoPipelineStatus";
 import NotFound from "./pages/NotFound";
 import FoundersLetter from "./pages/FoundersLetter";
 import ReportPage from "./pages/ReportPage";
+import RunSummaryPage from "./pages/RunSummaryPage";
 import LandingPage from "./pages/LandingPage";
 import LabPage from "./pages/LabPage";
 import { SimulationSafeModeBanner } from "@/components/trust/SafeModeBanner";
@@ -34,8 +35,8 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/app" element={<ExecutivePulse />} />
               <Route path="/report/summary" element={<ExecutivePulse />} />
-              {/* ADDED: Route for the new wide report viewer */}
-              <Route path="/report/:runId" element={<ReportPage />} />
+              {/* NEW: Simplified Run Overview */}
+              <Route path="/report/:runId" element={<RunSummaryPage />} />
               <Route path="/upload" element={<Index />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/pipeline/:runId" element={<Pipeline />} />
