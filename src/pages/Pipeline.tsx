@@ -86,7 +86,8 @@ function ThinkingViewWithPolling({ runId, onComplete }: { runId: string; onCompl
 
 
 function NeuralReasoningStream({ steps }: { steps?: PipelineStep[] }) {
-  if (!steps || steps.length === 0) {
+  const normalizedSteps = Array.isArray(steps) ? steps : [];
+  if (normalizedSteps.length === 0) {
     return null;
   }
   const STATUS_COPY: Record<string, string> = {
@@ -99,7 +100,7 @@ function NeuralReasoningStream({ steps }: { steps?: PipelineStep[] }) {
     <div className="mt-6 rounded-2xl border border-border/40 bg-card/60 p-4">
       <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground mb-3">Reasoning Stream</p>
       <div className="space-y-2">
-        {steps.map((step) => {
+        {normalizedSteps.map((step) => {
           const status = step.status || "pending";
           const isDone = status === "completed";
           const isRunning = status === "running";
