@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+﻿import { useMemo } from "react";
 import { useRemoteArtifact } from "@/hooks/useRemoteArtifact";
 import type { CuratedKpiArtifact, CuratedKpiArtifactEntry, CuratedKpiCardData } from "@/types/reportTypes";
 
@@ -68,8 +68,9 @@ function normalizeArtifactKpis(payload?: CuratedKpiArtifact | null): CuratedKpiC
       const value = entry.display_value ?? formatValue(entry.value, entry.unit, entry.format);
       return {
         id: entry.id || `artifact-kpi-${index}`,
+        evidenceId: entry.evidence_id ?? entry.id,
         label: entry.label,
-        value: value ?? "�",
+        value: value ?? "—",
         status: entry.status,
         trend: entry.trend ?? deriveTrend(entry.delta_pct ?? entry.delta_value),
         deltaLabel: entry.delta_label ?? formatDelta(entry.delta_pct, entry.delta_value, entry.unit),

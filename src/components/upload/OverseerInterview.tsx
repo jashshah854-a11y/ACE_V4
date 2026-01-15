@@ -13,6 +13,7 @@ export interface TaskContract {
     decisionContext: string;
     forbiddenClaims: string[];
     primaryQuestion: string;
+    successCriteria: string;
 }
 
 interface OverseerInterviewProps {
@@ -35,6 +36,7 @@ export function OverseerInterview({ identity, onSubmit, onBack, className }: Ove
     const [decisionContext, setDecisionContext] = useState("");
     const [forbiddenClaims, setForbiddenClaims] = useState<string[]>([]);
     const [primaryQuestion, setPrimaryQuestion] = useState("");
+    const [successCriteria, setSuccessCriteria] = useState("");
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     // Initialize constraints based on identity capabilities
@@ -93,12 +95,16 @@ export function OverseerInterview({ identity, onSubmit, onBack, className }: Ove
     const validate = (): boolean => {
         const newErrors: Record<string, string> = {};
 
-        if (!decisionContext.trim() || decisionContext.length < 10) {
-            newErrors.decisionContext = "Please describe the decision context (min 10 chars)";
+        if (!decisionContext.trim() || decisionContext.trim().length < 25) {
+            newErrors.decisionContext = "Describe the decision context with at least ~25 characters.";
         }
 
-        if (!primaryQuestion.trim()) {
-            newErrors.primaryQuestion = "Please provide a primary question";
+        if (!successCriteria.trim() || successCriteria.trim().length < 20) {
+            newErrors.successCriteria = "Spell out the success signal so the team knows when to stop.";
+        }
+
+        if (!primaryQuestion.trim() || primaryQuestion.trim().length < 20) {
+            newErrors.primaryQuestion = "Make the primary question specific (min ~20 characters).";
         }
 
         setErrors(newErrors);
@@ -115,6 +121,7 @@ export function OverseerInterview({ identity, onSubmit, onBack, className }: Ove
             decisionContext: decisionContext.trim(),
             forbiddenClaims,
             primaryQuestion: primaryQuestion.trim(),
+            successCriteria: successCriteria.trim(),
         });
     };
 
@@ -152,6 +159,30 @@ export function OverseerInterview({ identity, onSubmit, onBack, className }: Ove
                     {errors.decisionContext && (
                         <p className="text-sm text-red-600 font-sans mt-1">
                             {errors.decisionContext}
+                        </p>
+                    )}
+                </div>
+
+                {/* Question 1b: Success Criteria */}
+                <div className="space-y-3">
+                    <h3 className="text-xl text-slate-900 dark:text-slate-100 font-medium">
+                        What does success look like?
+                    </h3>
+                    <p className="font-sans text-sm text-slate-500">
+                        Define the measurable signal that tells us we answered the question.
+                    </p>
+                    <Textarea
+                        value={successCriteria}
+                        onChange={(e) => setSuccessCriteria(e.target.value)}
+                        placeholder="e.g., 'Reduce churn by confirming which segment drives >15% of attrition'"
+                        className={cn(
+                            "min-h-[100px] font-sans text-base leading-relaxed p-4 bg-slate-50 dark:bg-slate-900",
+                            errors.successCriteria && "border-red-500 ring-red-500/20"
+                        )}
+                    />
+                    {errors.successCriteria && (
+                        <p className="text-sm text-red-600 font-sans mt-1">
+                            {errors.successCriteria}
                         </p>
                     )}
                 </div>
@@ -201,7 +232,7 @@ export function OverseerInterview({ identity, onSubmit, onBack, className }: Ove
                     </div>
                 </div>
 
-                {/* Question 3: Success Criteria */}
+                {/* Question 3: Primary Question */}
                 <div className="space-y-3">
                     <h3 className="text-xl text-slate-900 dark:text-slate-100 font-medium">
                         What is the primary question you need answered?

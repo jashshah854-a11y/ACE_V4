@@ -6,7 +6,7 @@ import { useTaskContext } from "@/context/TaskContext";
 
 export const Navbar = () => {
   const location = useLocation();
-  const { primaryQuestion } = useTaskContext();
+  const { primaryQuestion, successCriteria } = useTaskContext();
 
   const isPulse = location.pathname.includes("/report");
   const isUpload = location.pathname === "/" || location.pathname === "/upload";
@@ -21,7 +21,7 @@ export const Navbar = () => {
         <div className="flex h-12 items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group">
-            <AceLogo size="sm" mode="full" className="text-teal-600 dark:text-teal-400" />
+            <DataQuill size={36} className="drop-shadow" />
           </Link>
 
           {/* Navigation */}
@@ -64,13 +64,35 @@ export const Navbar = () => {
               <FileText className="w-4 h-4" />
               Reports
             </Link>
-          </div>
+             <Link
+              to=\"/about\"
+              className={cn(
+                \"px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2\",
+                location.pathname.includes(\"/about\")
+                  ? \"bg-navy-900 text-white shadow-sm\"
+                  : \"text-muted-foreground hover:text-foreground hover:bg-muted/50\"
+              )}
+            >
+              <Sparkles className=\"w-4 h-4\" />
+              About
+            </Link>
+         </div>
         </div>
 
-        {primaryQuestion && (
-          <div className="text-xs text-muted-foreground truncate" title={primaryQuestion}>
-            <span className="font-semibold text-foreground mr-1">Primary Decision:</span>
-            {primaryQuestion}
+        {(primaryQuestion || successCriteria) && (
+          <div className="text-xs text-muted-foreground truncate flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
+            {primaryQuestion && (
+              <span className="truncate" title={primaryQuestion}>
+                <span className="font-semibold text-foreground mr-1">Primary Decision:</span>
+                {primaryQuestion}
+              </span>
+            )}
+            {successCriteria && (
+              <span className="truncate text-emerald-700 dark:text-emerald-300" title={successCriteria}>
+                <span className="font-semibold text-foreground mr-1">Success Signal:</span>
+                {successCriteria}
+              </span>
+            )}
           </div>
         )}
       </div>

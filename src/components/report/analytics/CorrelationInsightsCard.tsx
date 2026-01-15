@@ -1,11 +1,12 @@
-import { Activity } from "lucide-react";
+import { Activity, Info } from "lucide-react";
 import type { EnhancedAnalyticsData } from "@/types/reportTypes";
 
 interface CorrelationInsightsCardProps {
   data?: EnhancedAnalyticsData["correlation_analysis"];
+  onViewEvidence?: () => void;
 }
 
-export function CorrelationInsightsCard({ data }: CorrelationInsightsCardProps) {
+export function CorrelationInsightsCard({ data, onViewEvidence }: CorrelationInsightsCardProps) {
   if (!data?.available || !Array.isArray(data.strong_correlations) || data.strong_correlations.length === 0) {
     return null;
   }
@@ -24,7 +25,19 @@ export function CorrelationInsightsCard({ data }: CorrelationInsightsCardProps) 
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Behavior Watchlist</p>
           <h3 className="text-lg font-semibold text-foreground">Significant relationships</h3>
         </div>
-        <Activity className="w-5 h-5 text-emerald-500" />
+        <div className="flex items-center gap-3">
+          {onViewEvidence && (
+            <button
+              type="button"
+              onClick={onViewEvidence}
+              className="rounded-full border border-border/50 p-1 text-muted-foreground hover:text-action"
+              aria-label="View correlation source"
+            >
+              <Info className="w-4 h-4" />
+            </button>
+          )}
+          <Activity className="w-5 h-5 text-emerald-500" />
+        </div>
       </div>
 
       <div className="space-y-3">

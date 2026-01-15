@@ -1,31 +1,48 @@
-import { StoryViewData } from "@/lib/reportViewModel";
+﻿import { StoryViewData } from "@/lib/reportViewModel";
 import { Sparkles } from "lucide-react";
+import { ReactNode } from "react";
 
 interface StoryHeadlineProps {
     data: StoryViewData;
+    onHighlight?: () => void;
 }
 
-export function StoryHeadline({ data }: StoryHeadlineProps) {
+const NUMBER_PATTERN = /(\d[\d.,]*(?:%|x|M|K)?)/gi;
+
+export function StoryHeadline({ data, onHighlight }: StoryHeadlineProps) {
+    const emphasize = (text: string): ReactNode => {
+        if (!onHighlight) return text;
+        const segments = text.split(NUMBER_PATTERN);
+        return segments.map((segment, idx) => {
+            if (!segment) return null;
+            const isNumber = idx % 2 === 1;
+            if (!isNumber) return <span key={`seg-${idx}`}>{segment}</span>;
+            return (
+                <button
+                    key={`num-${idx}`}
+                    type="button"
+                    onClick={onHighlight}
+                    className="text-action underline decoration-dotted decoration-transparent hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--action-color)]"
+                >
+                    {segment}
+                </button>
+            );
+        });
+    };
+
     return (
         <div className="mb-6 relative">
-            {/* Date / ID Tag */}
             <div className="flex items-center gap-2 mb-3 text-xs font-mono tracking-wider text-muted-foreground uppercase opacity-70">
                 <span>{data.meta.date}</span>
-                <span>•</span>
+                <span>·</span>
                 <span>Run {data.meta.runId}</span>
             </div>
-
-            {/* Main Headline - Reduced Size by ~50% */}
             <h1 className="text-2xl md:text-3xl lg:text-4xl font-serif font-bold text-foreground leading-tight mb-4">
-                {data.headline}
+                {emphasize(data.headline)}
             </h1>
-
-            {/* Subheadline / Lede */}
             <p className="text-lg text-muted-foreground font-serif leading-relaxed max-w-4xl border-l-4 border-teal-500 pl-4 my-4">
-                {data.subheadline}
+                {emphasize(data.subheadline)}
             </p>
-
-            {/* Executive Brief Box - Compact */}
             {data.executiveBrief.length > 0 && (
                 <div className="bg-muted/30 border border-border/50 rounded-lg p-4 mt-4">
                     <div className="flex items-center gap-2 mb-2 text-teal-600 dark:text-teal-400 font-semibold uppercase tracking-wide text-[10px]">

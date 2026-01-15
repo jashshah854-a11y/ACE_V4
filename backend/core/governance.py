@@ -45,6 +45,26 @@ def _load_json_if_exists(path: str) -> Dict:
         return json.load(f)
 
 
+
+def _bundle_evidence(insights: List[Dict[str, Any]], registry: Dict[str, Any]) -> Dict[str, Any]:
+    """Return only evidence entries that back the surviving insights."""
+    if not registry or not insights:
+        return {}
+
+    referenced: set[str] = set()
+    for insight in insights:
+        evidence_id = insight.get("evidence_ref") or insight.get("evidence_id")
+        if evidence_id:
+            referenced.add(str(evidence_id))
+
+    bundle: Dict[str, Any] = {}
+    for evidence_id in referenced:
+        entry = registry.get(evidence_id)
+        if entry:
+            bundle[evidence_id] = entry
+    return bundle
+
+
 def rebuild_governance_artifacts(state_manager: StateManager, user_intent: Optional[Dict[str, Any]] = None) -> Dict[str, Dict]:
     """
     Rebuild identity card, task contract, and confidence report from current state.
@@ -125,6 +145,8 @@ def should_block_agent(agent: str, state_manager: StateManager) -> Tuple[bool, s
     required_sections = set(AGENT_SECTION_MAP.get(agent, []))
     allowed_sections = set(contract.get("allowed_sections", []))
     forbidden_sections = set(contract.get("forbidden_sections", []))
+    forbidden_analyses = set(contract.get("forbidden_analyses", []))
+    forbidden_claims = contract.get("forbidden_claims", {})
 
     if required_sections and not required_sections.issubset(allowed_sections):
         reasons.append("Task contract forbids required sections")
@@ -136,6 +158,15 @@ def should_block_agent(agent: str, state_manager: StateManager) -> Tuple[bool, s
         reasons.append("Predictive modeling out of scope for this task contract")
     if required_output == "predictive" and agent == "overseer":
         reasons.append("Predictive runs bypass exploratory clustering")
+
+    if agent == "regression" and "regression" in forbidden_analyses:
+        reasons.append("Regression forbidden by identity contract")
+    if agent == "overseer" and {"clustering", "segmentation"}.intersection(forbidden_analyses):
+        reasons.append("Segmentation disabled by identity contract")
+    if agent == "personas" and not forbidden_claims.get("allow_persona_segmentation", True):
+        reasons.append("Persona segmentation forbidden by contract")
+    if agent == "fabricator" and not forbidden_claims.get("allow_financial_insights", True):
+        reasons.append("Financial insights unsupported by dataset identity")
 
     if reasons:
         return True, "; ".join(reason for reason in reasons if reason)
@@ -157,6 +188,8 @@ def render_governed_report(state_manager: StateManager, insights_path: Path) -> 
     validation = state_manager.read("data_validation_report") or {}
     data_type = (state_manager.read("data_type_identification") or {}).get("primary_type")
     sentry = EvidenceSentry(state_manager)
+
+    evidence_registry = state_manager.read("evidence_registry") or {}
 
     contract_threshold = float(contract.get("confidence_threshold") or 0.0)
     data_conf_pct = confidence.get("data_confidence")
@@ -211,6 +244,8 @@ def render_governed_report(state_manager: StateManager, insights_path: Path) -> 
 
     report_mode = "limitations" if validation.get("mode") == "limitations" or confidence_blocked else "insight"
 
+    evidence_bundle = _bundle_evidence(insights, evidence_registry)
+
     report = {
         "mode": report_mode,
         "allowed_sections": list(allowed_sections),
@@ -219,6 +254,7 @@ def render_governed_report(state_manager: StateManager, insights_path: Path) -> 
         "limitations": limitations,
         "insights": insights,
         "task_contract": contract,
+        "evidence": evidence_bundle,
     }
 
     output_path = state_manager.run_path / "artifacts" / "governed_report.json"

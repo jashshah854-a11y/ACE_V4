@@ -173,6 +173,9 @@ def run_universal_clustering(df: pd.DataFrame, schema_map, fast_mode: bool = Fal
             result_statistic={"reason": str(exc)},
             confidence_level=25.0,
             limitations=["Complex clustering blocked by explainability policy"],
+            source_code="fallback_segmentation(df)  # half split by row order",
+            data_source="cluster_feature_frame",
+            source_notes="Governance downgraded segmentation to deterministic half split.",
         ).to_payload()
         return {
             "k": 1,

@@ -11,6 +11,7 @@ import ExecutivePulse from "./pages/ExecutivePulse";
 import Pipeline from "./pages/Pipeline";
 import DemoPipelineStatus from "./pages/DemoPipelineStatus";
 import NotFound from "./pages/NotFound";
+import FoundersLetter from "./pages/FoundersLetter";
 import ReportPage from "./pages/ReportPage";
 import LandingPage from "./pages/LandingPage";
 import LabPage from "./pages/LabPage";
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/pipeline" element={<Pipeline />} />
               <Route path="/lab" element={<LabPage />} />
               <Route path="/lab/:runId" element={<LabPage />} />
+              <Route path="/about" element={<FoundersLetter />} />
               <Route path="/logs/:runId" element={<Pipeline />} /> {/* Fallback to Pipeline view for logs */}
               <Route path="/demo/pipeline-status" element={<DemoPipelineStatus />} />
               <Route path="*" element={<NotFound />} />

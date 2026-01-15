@@ -6,9 +6,10 @@ import ReactMarkdown from "react-markdown";
 interface ActionChecklistProps {
     title: string;
     items: string[];
+    onViewEvidence?: () => void;
 }
 
-export function ActionChecklist({ title, items }: ActionChecklistProps) {
+export function ActionChecklist({ title, items, onViewEvidence }: ActionChecklistProps) {
     // Local state to track checked items (visual play only, not persisted yet)
     const [checkedState, setCheckedState] = useState<Record<number, boolean>>({});
 
@@ -24,10 +25,21 @@ export function ActionChecklist({ title, items }: ActionChecklistProps) {
 
     return (
         <div className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm">
-            <h3 className="text-xl font-sans font-bold text-foreground mb-6 flex items-center gap-2">
-                <span className="bg-teal-500 text-white w-6 h-6 rounded flex items-center justify-center text-xs">✓</span>
-                Recommended Actions
-            </h3>
+            <div className="flex items-center justify-between gap-4 mb-6">
+                <h3 className="text-xl font-sans font-bold text-foreground flex items-center gap-2">
+                    <span className="bg-teal-500 text-white w-6 h-6 rounded flex items-center justify-center text-xs">✓</span>
+                    Recommended Actions
+                </h3>
+                {onViewEvidence && (
+                    <button
+                        type="button"
+                        onClick={onViewEvidence}
+                        className="text-[11px] uppercase tracking-[0.35em] font-semibold text-[#005eb8]"
+                    >
+                        View Source
+                    </button>
+                )}
+            </div>
 
             <div className="space-y-4">
                 {items.map((item, idx) => {

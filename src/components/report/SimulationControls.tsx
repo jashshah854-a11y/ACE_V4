@@ -1,14 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Sliders, RotateCcw, Zap, Plus, X, Play, Lightbulb } from 'lucide-react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
+import { Zap, RotateCcw, Plus, X, Play, Lightbulb, Activity, Sliders } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { simulateScenario, SimulationResult, Modification } from '@/lib/api-client';
 
 interface SimulationControlsProps {
     runId: string;
     availableColumns: string[];
-    onSimulationResult?: (result: SimulationResult | null) => void;
+    onSimulationResult?: (result: SimulationResult | null, context?: { modifications: Modification[] }) => void;
     hint?: string | null;
 }
+
+const ACTION_COLOR = '#005eb8';
+const THINKING_STEPS = [
+    'Cloning dataset snapshot',
+    'Re-running KPI engines',
+    'Tracing governed impacts'
+];
 
 export default function SimulationControls({
     runId,
@@ -17,73 +24,75 @@ export default function SimulationControls({
     hint
 }: SimulationControlsProps) {
     const [exploreMode, setExploreMode] = useState(false);
-
-    // Multi-parameter state
     const [scenarios, setScenarios] = useState<Modification[]>([]);
-
-    // Current input state
     const [selectedColumn, setSelectedColumn] = useState<string>('');
     const [modificationFactor, setModificationFactor] = useState(1.0);
-
     const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
     const [isSimulating, setIsSimulating] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [thinkingSteps, setThinkingSteps] = useState<string[]>([]);
 
-    // Initial load
     useEffect(() => {
         if (availableColumns.length > 0 && !selectedColumn) {
             setSelectedColumn(availableColumns[0]);
         }
     }, [availableColumns, selectedColumn]);
 
-    // Handle Adding Scenario
+    useEffect(() => {
+        if (!isSimulating) {
+            const timeout = window.setTimeout(() => setThinkingSteps([]), 400);
+            return () => window.clearTimeout(timeout);
+        }
+        setThinkingSteps([]);
+        const timers = THINKING_STEPS.map((step, idx) =>
+            window.setTimeout(() => {
+                setThinkingSteps(prev => [...prev, step]);
+            }, idx * 600)
+        );
+        return () => timers.forEach(window.clearTimeout);
+    }, [isSimulating]);
+
     const addScenario = useCallback(() => {
         if (!selectedColumn || modificationFactor === 1.0) return;
-
         setScenarios(prev => {
-            // Remove existing for same column if exists
             const filtered = prev.filter(s => s.target_column !== selectedColumn);
-            return [...filtered, {
-                target_column: selectedColumn,
-                modification_factor: modificationFactor
-            }];
+            return [
+                ...filtered,
+                {
+                    target_column: selectedColumn,
+                    modification_factor: modificationFactor
+                }
+            ];
         });
-
-        // Reset factor but keep column for convenience
         setModificationFactor(1.0);
     }, [selectedColumn, modificationFactor]);
 
-    // Handle Removing Scenario
     const removeScenario = useCallback((column: string) => {
         setScenarios(prev => {
             const next = prev.filter(s => s.target_column !== column);
             if (next.length === 0) {
-                onSimulationResult?.(null);
                 setSimulationResult(null);
+                onSimulationResult?.(null, { modifications: [] });
             }
             return next;
         });
     }, [onSimulationResult]);
 
-    // Run Simulation (Triggered by button now, not debounce)
     const runSimulation = useCallback(async () => {
         if (scenarios.length === 0) return;
-
         try {
             setIsSimulating(true);
             setError(null);
-
             const result = await simulateScenario(runId, {
                 modifications: scenarios
             });
-
             setSimulationResult(result);
-            onSimulationResult?.(result);
+            onSimulationResult?.(result, { modifications: scenarios });
         } catch (err) {
             console.error('Simulation error:', err);
             setError(err instanceof Error ? err.message : 'Simulation failed');
             setSimulationResult(null);
-            onSimulationResult?.(null);
+            onSimulationResult?.(null, { modifications: [] });
         } finally {
             setIsSimulating(false);
         }
@@ -94,280 +103,273 @@ export default function SimulationControls({
         setModificationFactor(1.0);
         setSimulationResult(null);
         setError(null);
-        onSimulationResult?.(null);
+        onSimulationResult?.(null, { modifications: [] });
     }, [onSimulationResult]);
 
     const percentageChange = ((modificationFactor - 1) * 100).toFixed(0);
     const changeSign = modificationFactor > 1 ? '+' : '';
 
     return (
-        <div className="border-t border-gray-200 dark:border-gray-800 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20">
-            {/* Toggle Header */}
-            <div className="px-6 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Zap className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+        <div className="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-950 text-slate-100 shadow-2xl">
+            <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-cyan-400 via-blue-500 to-purple-600 animate-pulse" />
+            <div className="relative space-y-5 p-6">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
-                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                            Explore Mode
-                        </h3>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">
-                            Multi-Parameter What-If Simulation
-                        </p>
+                        <p className="text-[11px] uppercase tracking-[0.4em] text-slate-400">Neural Chamber</p>
+                        <h3 className="mt-1 font-serif text-2xl">What-If Cockpit</h3>
+                        <p className="text-sm text-slate-400">RAM-only scenarios that respect governance locks.</p>
                     </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    {exploreMode && scenarios.length > 0 && (
+                    <div className="flex items-center gap-3">
+                        {exploreMode && scenarios.length > 0 && (
+                            <button
+                                onClick={handleReset}
+                                className="inline-flex items-center gap-1 rounded-full border border-white/20 px-3 py-1 text-xs text-slate-200 hover:bg-white/5"
+                            >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                                Reset
+                            </button>
+                        )}
                         <button
-                            onClick={handleReset}
-                            className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-1"
+                            onClick={() => {
+                                setExploreMode(!exploreMode);
+                                if (exploreMode) handleReset();
+                            }}
+                            className="relative inline-flex h-6 w-12 items-center rounded-full border border-white/20 bg-white/10 transition"
+                            style={exploreMode ? { backgroundColor: ACTION_COLOR, borderColor: ACTION_COLOR } : undefined}
                         >
-                            <RotateCcw className="w-3 h-3" />
-                            Reset
+                            <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                    exploreMode ? 'translate-x-6' : 'translate-x-1'
+                                }`}
+                            />
                         </button>
-                    )}
-
-                    <button
-                        onClick={() => {
-                            setExploreMode(!exploreMode);
-                            if (exploreMode) handleReset();
-                        }}
-                        className={`
-                relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-                ${exploreMode
-                                ? 'bg-purple-600 dark:bg-purple-500'
-                                : 'bg-gray-300 dark:bg-gray-600'
-                            }
-              `}
-                    >
-                        <span
-                            className={`
-                  inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                  ${exploreMode ? 'translate-x-6' : 'translate-x-1'}
-                `}
-                        />
-                    </button>
-                </div>
-            </div>
-
-            {hint ? (
-                <div
-                    data-guidance-context="global"
-                    className="mx-6 mt-2 mb-2 inline-flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs sm:text-sm text-amber-900"
-                >
-                    <Lightbulb className="h-4 w-4 mt-0.5 text-amber-600" />
-                    <div>
-                        <p className="text-[10px] uppercase tracking-wide text-amber-600">Diagnostics Hint</p>
-                        <p className="text-sm">{hint}</p>
                     </div>
                 </div>
-            ) : (
-                <div
-                    data-guidance-context="global"
-                    className="mx-6 mt-2 mb-2 text-[11px] text-gray-500 dark:text-gray-400"
-                >
-                    Diagnostics guidance will appear here after the report finishes running.
-                </div>
-            )}
 
-            <AnimatePresence>
-                {exploreMode && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
+                {hint ? (
+                    <div
+                        data-guidance-context="global"
+                        className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200"
                     >
-                        <div className="px-6 pb-6 space-y-4">
+                        <Lightbulb className="mt-0.5 h-4 w-4" />
+                        <div>
+                            <p className="text-[10px] uppercase tracking-[0.4em] text-amber-300">Diagnostics Hint</p>
+                            <p>{hint}</p>
+                        </div>
+                    </div>
+                ) : (
+                    <p className="text-xs text-slate-500">Guidance will surface once diagnostics finish.</p>
+                )}
 
-                            {/* Input Controls */}
-                            <div className="flex flex-col md:flex-row gap-4 items-end bg-white/50 dark:bg-black/20 p-4 rounded-xl border border-gray-200 dark:border-gray-700/50">
-                                <div className="flex-1 space-y-2 w-full">
-                                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                                        Target Variable
-                                    </label>
-                                    <select
-                                        value={selectedColumn}
-                                        onChange={(e) => setSelectedColumn(e.target.value)}
-                                        className="w-full h-9 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:ring-purple-500"
+                <AnimatePresence initial={false}>
+                    {exploreMode && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                        >
+                            <div className="space-y-5 pt-2">
+                                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                                        <label className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Target Variable</label>
+                                        <select
+                                            value={selectedColumn}
+                                            onChange={(e) => setSelectedColumn(e.target.value)}
+                                            className="mt-2 w-full rounded-xl border border-white/10 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="" disabled>Select a column...</option>
+                                            {availableColumns.map((col) => (
+                                                <option key={col} value={col} className="bg-slate-900">{col}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                                        <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.3em] text-slate-400">
+                                            <span>Modification</span>
+                                            <span className="font-mono text-sm" style={{ color: ACTION_COLOR }}>
+                                                {changeSign}{percentageChange}%
+                                            </span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="0.5"
+                                            max="1.5"
+                                            step="0.05"
+                                            value={modificationFactor}
+                                            onChange={(e) => setModificationFactor(parseFloat(e.target.value))}
+                                            className="mt-3 w-full"
+                                            style={{ accentColor: ACTION_COLOR }}
+                                        />
+                                        <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                                            <span>-50%</span>
+                                            <span>0%</span>
+                                            <span>+50%</span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={addScenario}
+                                        disabled={!selectedColumn || modificationFactor === 1.0}
+                                        className="h-full rounded-2xl border border-dashed border-white/20 px-4 py-3 text-sm uppercase tracking-[0.3em] text-slate-300 transition hover:border-white/40 disabled:opacity-40"
                                     >
-                                        <option value="" disabled>Select a column...</option>
-                                        {availableColumns.map(col => (
-                                            <option key={col} value={col}>{col}</option>
-                                        ))}
-                                    </select>
+                                        <div className="flex h-full flex-col items-center justify-center gap-2">
+                                            <Plus className="h-5 w-5" />
+                                            Stage Input
+                                        </div>
+                                    </button>
                                 </div>
 
-                                <div className="flex-1 space-y-2 w-full">
-                                    <div className="flex justify-between">
-                                        <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                                            Modification Factor
-                                        </label>
-                                        <span className={`text-xs font-mono font-bold ${modificationFactor > 1 ? 'text-green-600' : modificationFactor < 1 ? 'text-red-500' : 'text-gray-500'}`}>
-                                            {changeSign}{percentageChange}%
-                                        </span>
-                                    </div>
-                                    <input
-                                        type="range"
-                                        min="0.5"
-                                        max="1.5"
-                                        step="0.05"
-                                        value={modificationFactor}
-                                        onChange={(e) => setModificationFactor(parseFloat(e.target.value))}
-                                        className="w-full accent-purple-600 cursor-pointer"
-                                    />
-                                    <div className="flex justify-between text-[10px] text-gray-400 font-mono">
-                                        <span>-50%</span>
-                                        <span>0%</span>
-                                        <span>+50%</span>
-                                    </div>
-                                </div>
-
-                                <button
-                                    onClick={addScenario}
-                                    disabled={!selectedColumn || modificationFactor === 1.0}
-                                    className="h-9 px-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                    <span className="hidden md:inline">Add</span>
-                                </button>
-                            </div>
-
-                            {/* Active Scenarios List */}
-                            {scenarios.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
-                                    {scenarios.map((scenario) => {
-                                        const pct = ((scenario.modification_factor - 1) * 100).toFixed(0);
-                                        const sign = scenario.modification_factor > 1 ? '+' : '';
-                                        const isPositive = scenario.modification_factor >= 1;
-
-                                        return (
-                                            <div
-                                                key={scenario.target_column}
-                                                className={`
-                                                    flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-lg border text-sm
-                                                    ${isPositive
-                                                        ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400'
-                                                        : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'
-                                                    }
-                                                `}
-                                            >
-                                                <span className="font-medium">{scenario.target_column}</span>
-                                                <span className="font-mono font-bold opacity-80">{sign}{pct}%</span>
-                                                <button
-                                                    onClick={() => removeScenario(scenario.target_column)}
-                                                    className="ml-1 p-0.5 hover:bg-black/5 rounded-full"
+                                {scenarios.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {scenarios.map((scenario) => {
+                                            const pct = ((scenario.modification_factor - 1) * 100).toFixed(0);
+                                            const sign = scenario.modification_factor > 1 ? '+' : '';
+                                            const isPositive = scenario.modification_factor >= 1;
+                                            return (
+                                                <div
+                                                    key={scenario.target_column}
+                                                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-mono ${
+                                                        isPositive
+                                                            ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200'
+                                                            : 'border-rose-400/40 bg-rose-500/10 text-rose-200'
+                                                    }`}
                                                 >
-                                                    <X className="w-3.5 h-3.5" />
-                                                </button>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
+                                                    <span className="font-sans text-xs uppercase tracking-wide">
+                                                        {scenario.target_column}
+                                                    </span>
+                                                    <span>{sign}{pct}%</span>
+                                                    <button
+                                                        onClick={() => removeScenario(scenario.target_column)}
+                                                        className="rounded-full bg-white/10 p-0.5 hover:bg-white/20"
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-slate-500">Stage at least one variable to unlock the cockpit.</p>
+                                )}
 
-                            {/* Action Area */}
-                            <div className="flex flex-col gap-2 justify-end pt-2">
-                                <button
-                                    onClick={runSimulation}
-                                    disabled={scenarios.length === 0 || isSimulating}
-                                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 shadow-sm shadow-purple-200 dark:shadow-none"
-                                >
-                                    {isSimulating ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                            Running Simulation...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Play className="w-4 h-4 fill-current" />
-                                            Run Simulation
-                                        </>
+                                <div className="flex flex-col gap-2 pt-1">
+                                    <button
+                                        onClick={runSimulation}
+                                        disabled={scenarios.length === 0 || isSimulating}
+                                        className="flex items-center justify-center gap-2 rounded-2xl px-4 py-3 font-semibold text-white shadow-lg transition disabled:opacity-40"
+                                        style={!isSimulating ? { backgroundColor: ACTION_COLOR, boxShadow: '0 15px 40px rgba(0,94,184,0.45)' } : { backgroundColor: ACTION_COLOR }}
+                                    >
+                                        {isSimulating ? (
+                                            <>
+                                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/50 border-t-white" />
+                                                Running Scenario
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Play className="h-4 w-4" />
+                                                Run Simulation
+                                            </>
+                                        )}
+                                    </button>
+                                    {scenarios.length === 0 && (
+                                        <p className="text-center text-xs text-slate-500">Add at least one modification to activate the cockpit.</p>
                                     )}
-                                </button>
-                                {scenarios.length === 0 && (
-                                    <p className="text-xs text-muted-foreground text-center">
-                                        Add at least one modification to enable simulation.
-                                    </p>
+                                </div>
+
+                                {error && (
+                                    <div className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                                        {error}
+                                    </div>
+                                )}
+
+                                {thinkingSteps.length > 0 && (
+                                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                                        <p className="text-[11px] uppercase tracking-[0.4em] text-slate-400 mb-3">Reasoning Stream</p>
+                                        <div className="space-y-2 font-mono text-xs">
+                                            {thinkingSteps.map((step) => (
+                                                <div key={step} className="flex items-center gap-2 text-slate-200">
+                                                    <Activity className=\"h-3.5 w-3.5\" style={{ color: ACTION_COLOR }} />
+                                                    <span>{step}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {simulationResult?.delta && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 12 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4"
+                                    >
+                                        <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-400">
+                                            <Sliders className=\"h-4 w-4\" style={{ color: ACTION_COLOR }} />
+                                            Projected Impact
+                                        </div>
+                                        {simulationResult.delta.churn_risk && (
+                                            <DeltaRow
+                                                label="Churn Risk"
+                                                original={`${simulationResult.delta.churn_risk.original.toFixed(1)}%`}
+                                                simulated={`${simulationResult.delta.churn_risk.simulated.toFixed(1)}%`}
+                                                delta={`${simulationResult.delta.churn_risk.delta.toFixed(1)}%`}
+                                                improved={simulationResult.delta.churn_risk.delta < 0}
+                                            />
+                                        )}
+                                        {simulationResult.delta.ghost_revenue && (
+                                            <DeltaRow
+                                                label="Ghost Revenue"
+                                                original={simulationResult.delta.ghost_revenue.original}
+                                                simulated={simulationResult.delta.ghost_revenue.simulated}
+                                                delta={simulationResult.delta.ghost_revenue.delta}
+                                                improved={simulationResult.delta.ghost_revenue.delta > 0}
+                                            />
+                                        )}
+                                        {scenarios.length > 0 && (
+                                            <div className="pt-3 text-xs text-slate-400">
+                                                <p className="uppercase tracking-[0.3em] text-slate-500">Inputs Tested</p>
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    {scenarios.map((scenario) => {
+                                                        const pct = ((scenario.modification_factor - 1) * 100).toFixed(0);
+                                                        const sign = scenario.modification_factor > 1 ? '+' : '';
+                                                        return (
+                                                            <span
+                                                                key={`delta-${scenario.target_column}`}
+                                                                className="rounded-full border border-white/15 px-2.5 py-1 text-[11px] font-mono"
+                                                            >
+                                                                {scenario.target_column}: {sign}{pct}%
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </motion.div>
                                 )}
                             </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+        </div>
+    );
+}
 
-                            {error && (
-                                <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded-lg border border-red-100 dark:border-red-800/50 flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                                    {error}
-                                </div>
-                            )}
-
-                            {/* Delta Visualization */}
-                            {simulationResult?.delta && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="p-4 bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800 rounded-lg"
-                                >
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <Sliders className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                                        <h4 className="text-xs font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide">
-                                            Projected Impact
-                                        </h4>
-                                    </div>
-
-                                    {/* Churn Risk Delta */}
-                                    {simulationResult.delta.churn_risk && (
-                                        <div className="space-y-1">
-                                            <p className="text-xs text-gray-600 dark:text-gray-400">Churn Risk</p>
-                                            <div className="flex items-center gap-3 font-mono text-sm">
-                                                <span className="text-gray-700 dark:text-gray-300">
-                                                    {simulationResult.delta.churn_risk.original.toFixed(1)}%
-                                                </span>
-                                                <span className="text-gray-400">→</span>
-                                                <span className="font-bold text-gray-900 dark:text-gray-100">
-                                                    {simulationResult.delta.churn_risk.simulated.toFixed(1)}%
-                                                </span>
-                                                <span className={`
-                        flex items-center gap-1 font-bold
-                        ${simulationResult.delta.churn_risk.delta < 0
-                                                        ? 'text-green-600 dark:text-green-400'
-                                                        : 'text-red-600 dark:text-red-400'}
-                      `}>
-                                                    {simulationResult.delta.churn_risk.delta < 0 ? '▼' : '▲'}
-                                                    {Math.abs(simulationResult.delta.churn_risk.delta).toFixed(1)}%
-                                                </span>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Ghost Revenue Delta */}
-                                    {simulationResult.delta.ghost_revenue && (
-                                        <div className="space-y-1 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                                            <p className="text-xs text-gray-600 dark:text-gray-400">Ghost Revenue Opportunities</p>
-                                            <div className="flex items-center gap-3 font-mono text-sm">
-                                                <span className="text-gray-700 dark:text-gray-300">
-                                                    {simulationResult.delta.ghost_revenue.original}
-                                                </span>
-                                                <span className="text-gray-400">→</span>
-                                                <span className="font-bold text-gray-900 dark:text-gray-100">
-                                                    {simulationResult.delta.ghost_revenue.simulated}
-                                                </span>
-                                                <span className={`
-                        font-bold
-                        ${simulationResult.delta.ghost_revenue.delta < 0
-                                                        ? 'text-red-600 dark:text-red-400'
-                                                        : 'text-green-600 dark:text-green-400'}
-                      `}>
-                                                    ({simulationResult.delta.ghost_revenue.delta > 0 ? '+' : ''}
-                                                    {simulationResult.delta.ghost_revenue.delta})
-                                                </span>
-                                            </div>
-                                        </div>
-                                    )}
-                                </motion.div>
-                            )}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+function DeltaRow({ label, original, simulated, delta, improved }: { label: string; original: string | number; simulated: string | number; delta: string | number; improved: boolean; }) {
+    return (
+        <div className="space-y-1">
+            <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">{label}</p>
+            <div className="flex items-center gap-3 font-mono text-sm">
+                <span className="text-slate-300">{original}</span>
+                <span className="text-slate-500">→</span>
+                <span className="font-bold text-white">{simulated}</span>
+                <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] ${
+                        improved ? 'bg-emerald-500/20 text-emerald-200' : 'bg-rose-500/20 text-rose-200'
+                    }`}
+                >
+                    {delta}
+                </span>
+            </div>
         </div>
     );
 }

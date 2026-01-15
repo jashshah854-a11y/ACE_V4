@@ -23,6 +23,7 @@ export interface GovernedReport {
   };
   limitations?: Array<{ agent?: string; message?: string; severity?: string }>;
   insights?: any[];
+  evidence?: Record<string, any>;
   task_contract?: TaskContractSnapshot;
 }
 

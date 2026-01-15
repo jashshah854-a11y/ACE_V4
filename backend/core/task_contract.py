@@ -90,15 +90,9 @@ def parse_task_intent(payload: Any) -> Dict[str, Any]:
     )
     constraints = _clean_text(payload.get("constraints"))
 
-    # Make validation optional - provide defaults if fields are empty
-    if not primary_question or len(primary_question) < 25:
-        primary_question = "Analyze dataset to identify patterns, trends, and actionable insights for business decision-making"
-    elif BANNED_FISHING_TERMS.search(primary_question):
-        # Only validate if user provided something - don't block on vague terms
-        pass  # Allow vague terms for now
-    
-    if not decision_context or len(decision_context) < 25:
-        decision_context = "General business intelligence and data exploration to support strategic planning and operational improvements"
+    _validate_clause("primary_question", primary_question)
+    _validate_clause("decision_context", decision_context)
+    _validate_clause("success_criteria", success_criteria or "", min_words=6)
 
     if required_output not in VALID_OUTPUT_TYPES:
         raise TaskIntentValidationError(
@@ -116,6 +110,22 @@ def parse_task_intent(payload: Any) -> Dict[str, Any]:
         threshold = 80.0
     threshold = max(50.0, min(99.0, threshold))
 
+    raw_claims = payload.get("forbidden_claims") or payload.get("forbiddenClaims") or []
+    if isinstance(raw_claims, str):
+        import json as _json
+        try:
+            raw_claims = _json.loads(raw_claims)
+        except _json.JSONDecodeError:
+            raw_claims = [part.strip() for part in raw_claims.split(",") if part.strip()]
+
+    forbidden_claims = []
+    if isinstance(raw_claims, (list, tuple, set)):
+        for entry in raw_claims:
+            if isinstance(entry, str) and entry.strip():
+                forbidden_claims.append(entry.strip())
+    forbidden_claims = list(dict.fromkeys(forbidden_claims))
+    strict_mode_requested = any(claim == "strict_mode" for claim in forbidden_claims)
+
     intent = {
         "primary_question": primary_question,
         "decision_context": decision_context,
@@ -124,6 +134,8 @@ def parse_task_intent(payload: Any) -> Dict[str, Any]:
         "constraints": constraints,
         "confidence_threshold": threshold,
         "out_of_scope_dimensions": exclusions,
+        "forbidden_claims": forbidden_claims,
+        "strict_mode": strict_mode_requested,
     }
     return intent
 
@@ -299,6 +311,7 @@ def build_task_contract(
 ) -> Dict[str, Any]:
     drift_status = (drift_status or "none").lower()
     router = select_task(identity_card.get("data_type"), has_target, target_is_binary)
+    capabilities = identity_card.get("capabilities") or {}
     contract: Dict[str, Any] = {
         "task": router["task"],
         "template": router["template"],
@@ -308,9 +321,12 @@ def build_task_contract(
         "limitations": [],
         "scope_inclusions": [],
         "scope_exclusions": [],
+        "capabilities": capabilities,
         "forbidden_claims": {
             "allow_causality": False,
             "allow_forecasting": drift_status not in {"block", "warn"},
+            "allow_financial_insights": True,
+            "allow_persona_segmentation": True,
         },
     }
 
@@ -332,7 +348,20 @@ def build_task_contract(
     
     # NEW: Derive forbidden analyses based on data capabilities
     contract["forbidden_analyses"] = derive_forbidden_analyses(identity_card)
-    
+
+    if not capabilities.get("has_financial_columns"):
+        contract["forbidden_claims"]["allow_financial_insights"] = False
+        contract["limitations"].append("Identity card: financial columns absent; revenue and budget claims disabled.")
+    if not capabilities.get("has_categorical"):
+        contract["forbidden_claims"]["allow_persona_segmentation"] = False
+        if "segmentation" not in contract["forbidden_analyses"]:
+            contract["forbidden_analyses"].append("segmentation")
+        contract["limitations"].append("Identity card: categorical coverage missing; persona segmentation disabled.")
+    if not capabilities.get("has_time_series"):
+        contract["forbidden_claims"]["allow_forecasting"] = False
+    if not capabilities.get("has_numeric") and "regression" not in contract["forbidden_analyses"]:
+        contract["forbidden_analyses"].append("regression")
+
     # NEW: Enforce quality-based fail-safe
     contract = enforce_quality_failsafe(identity_card, contract)
 
@@ -350,6 +379,16 @@ def build_task_contract(
                 "signed_at": datetime.utcnow().isoformat() + "Z",
             }
         )
+        user_claims = user_intent.get("forbidden_claims", []) or []
+        contract["user_forbidden_claims"] = user_claims
+        if "no_revenue_inference" in user_claims:
+            contract["forbidden_claims"]["allow_financial_insights"] = False
+        if "no_persona_segmentation" in user_claims:
+            contract["forbidden_claims"]["allow_persona_segmentation"] = False
+        if "no_causal_claims" in user_claims:
+            contract["forbidden_claims"]["allow_causality"] = False
+        if user_intent.get("strict_mode") or "strict_mode" in user_claims:
+            contract["confidence_threshold"] = max(float(contract.get("confidence_threshold", 80.0)), 90.0)
     else:
         contract.update(
             {
@@ -363,6 +402,7 @@ def build_task_contract(
                 "is_signed": False,
             }
         )
+        contract["user_forbidden_claims"] = []
 
     return contract
 

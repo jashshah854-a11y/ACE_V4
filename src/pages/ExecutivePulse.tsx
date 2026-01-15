@@ -1,6 +1,6 @@
-import { useMemo, useState, useEffect } from "react";
+﻿import { useMemo, useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { StoryHeadline } from "@/components/report/story/StoryHeadline";
 import { SentimentBlock } from "@/components/report/story/SentimentBlock";
 import { ActionChecklist } from "@/components/report/story/ActionChecklist";
@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { getReport } from "@/lib/api-client";
+import type { SimulationResult, Modification } from "@/lib/api-client";
 import { getRecentReports, getDiagnosticsCache, extractDiagnosticsNotes } from "@/lib/localStorage";
 import { useReportData } from "@/hooks/useReportData";
 import { useGovernedReport } from "@/hooks/useGovernedReport";
@@ -40,10 +41,11 @@ import { CorrelationInsightsCard } from "@/components/report/analytics/Correlati
 import { useSimulation } from "@/context/SimulationContext";
 import { cn } from "@/lib/utils";
 import { translateTechnicalTerm } from "@/lib/dataTypeMapping";
+import EvidenceRail from "@/components/report/EvidenceRail";
 import SimulationControls from "@/components/report/SimulationControls";
 import { TimelineHelper } from "@/components/report/TimelineHelper";
 import { GuidanceOverlay } from "@/components/report/GuidanceOverlay";
-import { focusGuidance } from "@/lib/guidanceFocus";
+import { focusGuidance, focusEvidenceSection } from "@/lib/guidanceFocus";
 import { useTaskContext } from "@/context/TaskContext";
 import { CuratedKpiPanel } from "@/components/report/story/CuratedKpiPanel";
 import { useCuratedKpis } from "@/hooks/useCuratedKpis";
@@ -56,6 +58,13 @@ const ExecutivePulse = () => {
   const initialRun = searchParams.get("run") || recentReports[0]?.runId || "";
   const [runInput, setRunInput] = useState(initialRun);
   const [activeRun, setActiveRun] = useState(initialRun);
+  const [simulationEvidence, setSimulationEvidence] = useState<{
+    result: SimulationResult | null;
+    modifications: Modification[];
+  }>({
+    result: null,
+    modifications: [],
+  });
   useEffect(() => {
 
     if (typeof window === "undefined") return;
@@ -114,6 +123,15 @@ const ExecutivePulse = () => {
   const { data: governedReport } = useGovernedReport(activeRun);
   const reportData = useReportData(reportQuery.data || "", activeRun, "strict", governedReport);
   const storyData = reportData.viewModel;
+  const evidenceScopeMap = useMemo(() => {
+    const scopeIndex: Record<string, string> = {};
+    Object.values(reportData.evidenceMap || {}).forEach((entry) => {
+      if (entry?.scope) {
+        scopeIndex[entry.scope] = entry.id;
+      }
+    });
+    return scopeIndex;
+  }, [reportData.evidenceMap]);
   const { kpis: curatedKpis, loading: kpiLoading, sourceLabel: kpiSourceLabel } = useCuratedKpis(activeRun, {
     confidenceValue: reportData.confidenceValue,
     dataQualityValue: reportData.dataQualityValue,
@@ -123,6 +141,30 @@ const ExecutivePulse = () => {
     clusterMetrics: reportData.clusterMetrics,
   });
   const { setSafeMode } = useSimulation();
+  const handleEvidenceFocus = useCallback(
+    ({ section, evidenceId }: { section: string; evidenceId?: string }) => {
+      const scopedEvidence = evidenceId ?? evidenceScopeMap[section];
+      focusEvidenceSection(section, scopedEvidence ? { evidenceId: scopedEvidence } : {});
+    },
+    [evidenceScopeMap],
+  );
+
+  const handleSimulationReport = useCallback(
+    (result: SimulationResult | null, context?: { modifications: Modification[] }) => {
+      setSimulationEvidence({
+        result,
+        modifications: context?.modifications ?? [],
+      });
+      if (result) {
+        focusEvidenceSection("business_intelligence");
+      }
+    },
+    [],
+  );
+
+  const businessEvidenceId = evidenceScopeMap["business_intelligence"];
+  const predictiveEvidenceId = evidenceScopeMap["feature_importance"];
+  const clusteringEvidenceId = evidenceScopeMap["clustering"];
 
   const { updateTaskContract } = useTaskContext();
 
@@ -155,6 +197,32 @@ const ExecutivePulse = () => {
   useEffect(() => {
     setSafeMode(reportData.safeMode);
   }, [reportData.safeMode, setSafeMode]);
+
+  const scqaModules = reportData.narrativeModules || [];
+  const scopeLocks = reportData.scopeLocks || [];
+  const profileMeta = (reportData.profile ?? {}) as Record<string, any>;
+  const identityRows =
+    typeof reportData.identityStats?.rows === "number"
+      ? reportData.identityStats.rows.toLocaleString()
+      : reportData.identityStats?.rows || "n/a";
+  const columnCount =
+    profileMeta.column_count ??
+    profileMeta.columnCount ??
+    (reportData.profile?.columns
+      ? Object.keys(reportData.profile.columns).length
+      : undefined);
+  const dataClarityPercent = Math.round(reportData.dataQualityValue || 0);
+  const aiConfidencePercent = Math.round(reportData.confidenceValue || 0);
+  const numericColumns = Array.isArray(reportData.profile?.numericColumns)
+    ? (reportData.profile?.numericColumns as string[])
+    : Array.isArray(profileMeta.numericColumns)
+      ? (profileMeta.numericColumns as string[])
+      : [];
+  const businessIntel = reportData.enhancedAnalytics?.business_intelligence;
+  const ghostRevenueRatio = businessIntel?.value_metrics?.value_concentration ?? 0;
+  const showGhostRevenue = ghostRevenueRatio > 0.45;
+  const zombieSegments = (businessIntel?.segment_value || []).filter((segment: any) => (segment.value_contribution_pct ?? 0) < 5);
+  const showZombieAlerts = zombieSegments.length > 0;
 
   const prioritizedSections = useMemo(() => {
     const ranked = [...(reportData.scoredSections || [])].sort((a, b) => b.importance - a.importance);
@@ -378,10 +446,9 @@ const ExecutivePulse = () => {
             <EmptyState />
           ) : (
             <>
+
               {/* Status Bar & Controls */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2 border-b border-border/40 mb-6">
-
-                {/* View Toggles */}
                 <div className="bg-muted/50 p-1 rounded-lg inline-flex self-start sm:self-auto">
                   <button
                     onClick={() => setViewMode("story")}
@@ -406,8 +473,6 @@ const ExecutivePulse = () => {
                     Technical
                   </button>
                 </div>
-
-                {/* Metadata Chips - Simplified in Story Mode */}
                 <div className="flex flex-wrap items-center gap-4 text-sm">
                   {viewMode === "technical" ? (
                     <>
@@ -438,125 +503,300 @@ const ExecutivePulse = () => {
                 />
               ) : null}
 
-              {/* Main Content */}
-              <section className="rounded-2xl border border-border/40 bg-card shadow-sm" style={{ maxHeight: "1080px" }}>
-                <div className="p-6 space-y-4 overflow-y-auto max-h-[1080px]">
-                  <header className="space-y-2">
-                    <p className="text-xs uppercase text-muted-foreground tracking-wide">Task Contract</p>
-                    <h2 className="text-xl font-semibold">{reportData.primaryQuestion || "Analysis in Progress"}</h2>
-                    {reportData.decisionSummary && (
-                      <p className="text-sm text-muted-foreground whitespace-pre-line">{reportData.decisionSummary}</p>
-                    )}
-                    {reportData.taskContractSummary && (
-                      <p className="text-xs text-muted-foreground whitespace-pre-line">{reportData.taskContractSummary}</p>
-                    )}
-                    {reportData.successCriteria && (
-                      <p className="text-xs text-emerald-700 dark:text-emerald-300 whitespace-pre-line">
-                        <span className="font-semibold">Success Signal:</span> {reportData.successCriteria}
-                      </p>
-                    )}
-                  </header>
-
-                  {viewMode === "story" ? (
-                    reportQuery.isLoading ? (
-                      <StorySkeleton />
-                    ) : (
-                      <div className="max-w-3xl mx-auto animate-fade-in-up">
-                        {/* NEW: Story Header & Metrics */}
-                        <StoryHeadline data={storyData} />
-
-                        {guidanceHint ? (
-                          <button
-                            type="button"
-                            onClick={() => focusGuidance("global")}
-                            className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 shadow-sm hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
-                          >
-                            <Lightbulb className="h-3.5 w-3.5" />
-                            <span className="line-clamp-2 text-left">{guidanceHint.message}</span>
-                          </button>
-                        ) : null}
-
-                        {reportData.governanceWarnings?.length ? (
-                          <div className="mb-6 space-y-2">
-                            {reportData.governanceWarnings.slice(0, 3).map((warning, idx) => (
-                              <LimitationBanner
-                                key={`gov-warning-${idx}`}
-                                message={warning}
-                                severity={warning.toLowerCase().includes('safe mode') ? 'critical' : 'warning'}
-                              />
+              {viewMode === "story" ? (
+                reportQuery.isLoading ? (
+                  <StorySkeleton />
+                ) : (
+                  <div className="grid gap-6 xl:grid-cols-[minmax(220px,0.28fr)_minmax(0,1fr)_minmax(280px,0.32fr)] 2xl:grid-cols-[300px_minmax(0,1fr)_360px]">
+                    <aside className="space-y-5 xl:sticky xl:top-32 self-start">
+                      <div className="rounded-3xl border border-border/40 bg-card/80 p-5 shadow-sm">
+                        <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Dataset Identity</p>
+                        <div className="mt-3 space-y-1">
+                          <p className="font-serif text-2xl text-foreground">{identityRows}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {columnCount ? `${columnCount} fields` : "Column scan active"}
+                          </p>
+                          <p className="text-[11px] font-mono text-muted-foreground/70">Run {activeRun.slice(0, 8)}</p>
+                        </div>
+                        <div className="mt-5 space-y-3 text-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Data Clarity</span>
+                            <span className="font-semibold">{dataClarityPercent}%</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">AI Confidence</span>
+                            <span className="font-semibold">{aiConfidencePercent}%</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="rounded-3xl border border-border/40 bg-card/80 p-5 shadow-sm">
+                        <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Trust Signals</p>
+                        <div className="mt-4 flex flex-col gap-4">
+                          <div className="flex items-center gap-3">
+                            <ConfidenceGauge value={reportData.confidenceValue || 0} size="sm" />
+                            <div>
+                              <p className="text-[10px] uppercase text-muted-foreground tracking-[0.3em]">System Confidence</p>
+                              <p className="text-sm font-semibold">{aiConfidencePercent}%</p>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase text-muted-foreground tracking-[0.3em]">Clarity Ruling</p>
+                            <p className="text-sm font-semibold text-foreground">{dataClarityPercent}% clean</p>
+                          </div>
+                        </div>
+                      </div>
+                      {(showGhostRevenue || showZombieAlerts) && (
+                        <div className="rounded-3xl border border-fuchsia-500/30 bg-fuchsia-500/10 p-5 shadow-sm text-sm text-fuchsia-100">
+                          <p className="text-[11px] uppercase tracking-[0.3em] text-fuchsia-200">Ghost & Zombie Watch</p>
+                          {showGhostRevenue && (
+                            <p className="mt-2">Ghost revenue concentration at {(ghostRevenueRatio * 100).toFixed(0)}% of value.</p>
+                          )}
+                          {showZombieAlerts && (
+                            <p className="mt-2">Zombie cohorts: {zombieSegments.slice(0, 2).map((seg: any) => seg.segment).join(', ')}{zombieSegments.length > 2 ? '...' : ''}</p>
+                          )}
+                        </div>
+                      )}
+                      {scopeLocks.length ? (
+                        <div className="rounded-3xl border border-amber-200/70 bg-amber-50 p-5 shadow-sm dark:bg-amber-950/10">
+                          <p className="text-[11px] uppercase tracking-[0.3em] text-amber-700">Scope Locks</p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {scopeLocks.map((lock, idx) => (
+                              <span
+                                key={`${lock.dimension}-${idx}`}
+                                className="rounded-full border border-amber-300 bg-white/80 px-3 py-1 text-[11px] font-semibold text-amber-800 dark:bg-transparent"
+                                title={lock.reason}
+                              >
+                                {lock.dimension}
+                              </span>
                             ))}
                           </div>
-                        ) : null}
+                        </div>
+                      ) : null}
+                      {guidanceHint ? (
+                        <button
+                          type="button"
+                          onClick={() => focusGuidance("global")}
+                          className="w-full inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 shadow-sm hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                        >
+                          <Lightbulb className="h-3.5 w-3.5" />
+                          <span className="line-clamp-2 text-left">{guidanceHint.message}</span>
+                        </button>
+                      ) : null}
+                    </aside>
+                    <section className="space-y-6">
+                      <div className="rounded-3xl border border-border/40 bg-gradient-to-br from-[#f8f5ef] via-white to-background p-6 shadow-sm">
+                        <p className="text-[11px] uppercase tracking-[0.4em] text-muted-foreground">Governing Thought</p>
+                        <h2 className="mt-3 font-serif text-3xl leading-snug text-foreground">
+                          {reportData.governingThought || storyData.heroInsight?.keyInsight || "Analysis in progress"}
+                        </h2>
+                        <div className="mt-4 grid gap-4 text-sm md:grid-cols-2">
+                          <div>
+                            <p className="text-[10px] uppercase text-muted-foreground tracking-[0.3em]">Primary Question</p>
+                            <p className="text-foreground">{reportData.primaryQuestion || "Awaiting contract"}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase text-muted-foreground tracking-[0.3em]">Success Criteria</p>
+                            <p className="text-foreground">{reportData.successCriteria || "No explicit win condition"}</p>
+                          </div>
+                        </div>
+                      </div>
 
-                        {reportData.guidanceNotes?.length ? (
-                          <GuidanceOverlay notes={reportData.guidanceNotes} context="global" />
-                        ) : null}
+                      {reportData.governanceWarnings?.length ? (
+                        <div className="space-y-2">
+                          {reportData.governanceWarnings.slice(0, 3).map((warning, idx) => (
+                            <LimitationBanner
+                              key={`gov-warning-${idx}`}
+                              message={warning}
+                              severity={warning.toLowerCase().includes('safe mode') ? 'critical' : 'warning'}
+                            />
+                          ))}
+                        </div>
+                      ) : null}
 
+                      {reportData.guidanceNotes?.length ? (
+                        <GuidanceOverlay notes={reportData.guidanceNotes} context="global" />
+                      ) : null}
+
+                      <div className="rounded-3xl border border-border/40 bg-card/70 p-6 shadow-sm space-y-6">
+                        <StoryHeadline data={storyData} onHighlight={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })} />
+                        <div className="flex justify-center">
+                          <StoryControlBar data={storyData} />
+                        </div>
                         {!reportData.hasTimeField && reportData.profile?.columns ? (
                           <TimelineHelper profile={reportData.profile} runId={activeRun} initialColumn={reportData.syntheticTimeColumn} />
                         ) : null}
-                        {/* New: Advanced Controls */}
-                        <div className="flex justify-center mb-8">
-                          <StoryControlBar data={storyData} />
-                        </div>
-
                         <CuratedKpiPanel
                           kpis={curatedKpis}
                           loading={kpiLoading && curatedKpis.length === 0}
                           sourceLabel={kpiSourceLabel}
+                          onViewEvidence={handleEvidenceFocus}
                         />
+                      </div>
 
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <TopDriversCard
-                            data={reportData.enhancedAnalytics?.feature_importance}
-                            safeMode={reportData.safeMode}
-                          />
-                          <CorrelationInsightsCard data={reportData.enhancedAnalytics?.correlation_analysis} />
+                      {scqaModules.length ? (
+                        <div className="space-y-4">
+                          {scqaModules.map((module) => (
+                            <div
+                              key={module.id}
+                              className="rounded-3xl border border-border/40 bg-card/80 p-5 shadow-sm"
+                            >
+                              <div className="flex items-center justify-between">
+                                <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">SCQA Block</p>
+                                <span className="text-xs text-muted-foreground">Priority {(module.importance * 100).toFixed(0)}%</span>
+                              </div>
+                              <h3 className="mt-2 font-serif text-2xl text-foreground">{module.title}</h3>
+                              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                {[
+                                  { label: "Situation", value: module.scqa.situation },
+                                  { label: "Complication", value: module.scqa.complication },
+                                  { label: "Question", value: module.scqa.question },
+                                  { label: "Answer", value: module.scqa.answer },
+                                ].map((item) => (
+                                  <div key={`${module.id}-${item.label}`} className="text-sm">
+                                    <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">{item.label}</p>
+                                    <p
+                                      className={cn(
+                                        "mt-1 text-foreground",
+                                        item.label === "Answer"
+                                          ? "font-serif text-xl"
+                                          : "text-sm text-muted-foreground/90",
+                                      )}
+                                      style={item.label === "Answer" ? { color: "var(--action-color, #005eb8)" } : undefined}
+                                    >
+                                      {item.value || "Pending"}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
                         </div>
+                      ) : null}
 
-                        {/* NEW: Persona Deck (Horizontal Scroll) */}
-                        {reportData.personas && reportData.personas.length > 0 && (
-                          <div className="animate-fade-in-up delay-200 section-persona">
-                            <PersonaDeck
-                              personas={reportData.personas.map((p: any) => ({
-                                id: p.name,
-                                label: p.name,
-                                description: p.description,
-                                size: `${p.percentage?.toFixed(0) || 0}%`,
-                                value: p.traits?.[0]
-                              }))}
-                            />
-                          </div>
-                        )}
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <TopDriversCard
+                          data={reportData.enhancedAnalytics?.feature_importance}
+                          safeMode={reportData.safeMode}
+                          onViewEvidence={
+                            reportData.enhancedAnalytics?.feature_importance || predictiveEvidenceId
+                              ? () =>
+                                  handleEvidenceFocus({
+                                    section: "feature_importance",
+                                    evidenceId:
+                                      reportData.enhancedAnalytics?.feature_importance?.evidence_id ||
+                                      predictiveEvidenceId,
+                                  })
+                              : undefined
+                          }
+                        />
+                        <CorrelationInsightsCard
+                          data={reportData.enhancedAnalytics?.correlation_analysis}
+                          onViewEvidence={
+                            reportData.enhancedAnalytics?.correlation_analysis && predictiveEvidenceId
+                              ? () =>
+                                  handleEvidenceFocus({
+                                    section: "feature_importance",
+                                    evidenceId: predictiveEvidenceId,
+                                  })
+                              : undefined
+                          }
+                        />
+                      </div>
 
-                        {/* NEW: Editorial Section Loop */}
-                        <div className="space-y-12">
-                          {storyData.sections.map((section, idx) => {
-                            if (section.type === "recommendation" && section.listItems && section.listItems.length > 0) {
-                              return (
-                                <ActionChecklist
-                                  key={idx}
-                                  title={section.title}
-                                  items={section.listItems}
-                                />
-                              );
+                      {reportData.personas && reportData.personas.length > 0 ? (
+                        <div className="animate-fade-in-up delay-200 section-persona">
+                          <PersonaDeck
+                            personas={reportData.personas.map((p: any) => ({
+                              id: p.name,
+                              label: p.name,
+                              description: p.description,
+                              size: `${p.percentage?.toFixed(0) || 0}%`,
+                              value: p.traits?.[0]
+                            }))}
+                            onViewEvidence={
+                              clusteringEvidenceId
+                                ? () =>
+                                    handleEvidenceFocus({
+                                      section: "business_intelligence",
+                                      evidenceId: clusteringEvidenceId,
+                                    })
+                                : undefined
                             }
+                          />
+                        </div>
+                      ) : null}
 
+                      <div className="space-y-12">
+                        {storyData.sections.map((section, idx) => {
+                          if (section.type === "recommendation" && section.listItems && section.listItems.length > 0) {
                             return (
-                              <SentimentBlock
+                              <ActionChecklist
                                 key={idx}
                                 title={section.title}
-                                sentiment={section.sentiment}
-                                impact={section.impact}
-                              >
-                                <ReactMarkdown>{section.content}</ReactMarkdown>
-                              </SentimentBlock>
+                                items={section.listItems}
+                                onViewEvidence={
+                                  businessEvidenceId
+                                    ? () =>
+                                        handleEvidenceFocus({
+                                          section: "business_intelligence",
+                                          evidenceId: businessEvidenceId,
+                                        })
+                                    : undefined
+                                }
+                              />
                             );
-                          })}
-                        </div>
+                          }
+
+                          return (
+                            <SentimentBlock
+                              key={idx}
+                              title={section.title}
+                              sentiment={section.sentiment}
+                              impact={section.impact}
+                            >
+                              <ReactMarkdown>{section.content}</ReactMarkdown>
+                            </SentimentBlock>
+                          );
+                        })}
                       </div>
-                    )) : (
-                    // Technical View (Original)
+                    </section>
+                    <aside className="space-y-5 xl:sticky xl:top-32 self-start">
+                      <EvidenceRail
+                        mode="inline"
+                        data={reportData}
+                        runId={activeRun}
+                        onFocusGuidance={() => focusGuidance("global")}
+                        simulationResult={simulationEvidence.result}
+                        simulationModifications={simulationEvidence.modifications}
+                      />
+                      <SimulationControls
+                        runId={activeRun}
+                        availableColumns={numericColumns}
+                        hint={guidanceHint ? guidanceHint.message : null}
+                        onSimulationResult={handleSimulationReport}
+                      />
+                    </aside>
+                  </div>
+                )
+              ) : (
+                <section className="rounded-2xl border border-border/40 bg-card shadow-sm" style={{ maxHeight: "1080px" }}>
+                  <div className="p-6 space-y-4 overflow-y-auto max-h-[1080px]">
+                    <header className="space-y-2">
+                      <p className="text-xs uppercase text-muted-foreground tracking-wide">Task Contract</p>
+                      <h2 className="text-xl font-semibold">{reportData.primaryQuestion || "Analysis in Progress"}</h2>
+                      {reportData.decisionSummary && (
+                        <p className="text-sm text-muted-foreground whitespace-pre-line">{reportData.decisionSummary}</p>
+                      )}
+                      {reportData.taskContractSummary && (
+                        <p className="text-xs text-muted-foreground whitespace-pre-line">{reportData.taskContractSummary}</p>
+                      )}
+                      {reportData.successCriteria && (
+                        <p className="text-xs text-emerald-700 dark:text-emerald-300 whitespace-pre-line">
+                          <span className="font-semibold">Success Signal:</span> {reportData.successCriteria}
+                        </p>
+                      )}
+                    </header>
+
                     <div className="space-y-4">
                       {prioritizedSections.primary.map((section, idx) => (
                         <InsightBlock
@@ -614,51 +854,16 @@ const ExecutivePulse = () => {
                         </Accordion>
                       )}
                     </div>
-                  )}
-                </div>
-              </section>
+                  </div>
+                </section>
+              )}
+
             </>
           )}
         </div>
       </main>
 
-      {reportData.governedInsights.length > 0 && (
-        <section className="mt-10">
-          <div className="rounded-2xl border border-border/40 bg-card shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Evidence Rail</p>
-                <h3 className="text-lg font-semibold">Traceable Findings</h3>
-              </div>
-              <span className="text-xs text-muted-foreground">{reportData.governedInsights.length} objects</span>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              {reportData.governedInsights.slice(0, 4).map((insight) => (
-                <div
-                  key={insight.id}
-                  className="rounded-xl border border-border/30 bg-muted/30 p-4 space-y-2"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-foreground line-clamp-2">{insight.claim || 'Evidence-backed insight'}</p>
-                    {insight.confidence !== undefined && (
-                      <span className="text-[11px] text-emerald-700 dark:text-emerald-300">{insight.confidence.toFixed(0)}%</span>
-                    )}
-                  </div>
-                  {insight.evidence?.title && (
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">{insight.evidence.title}</p>
-                  )}
-                  {insight.columns?.length ? (
-                    <p className="text-[11px] text-muted-foreground">Fields: {insight.columns.slice(0, 3).join(', ')}{insight.columns.length > 3 ? '...' : ''}</p>
-                  ) : null}
-                  {insight.evidence?.scope && (
-                    <p className="text-[11px] text-muted-foreground/80">Scope: {insight.evidence.scope}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+
 
       {/* Strategy Simulator CTA */}
       {reportData.profile?.numericColumns?.length ? (
@@ -686,6 +891,11 @@ const ExecutivePulse = () => {
 };
 
 export default ExecutivePulse;
+
+
+
+
+
 
 
 

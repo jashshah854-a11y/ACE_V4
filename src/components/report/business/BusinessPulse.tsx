@@ -1,14 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Users, AlertTriangle, DollarSign, Activity } from "lucide-react";
+import { TrendingUp, Users, AlertTriangle, DollarSign, Activity, Info } from "lucide-react";
 import { BusinessIntelligence } from "@/types/reportTypes";
 import { cn } from "@/lib/utils";
 
 interface BusinessPulseProps {
     data: BusinessIntelligence;
+    onViewEvidence?: () => void;
 }
 
-export function BusinessPulse({ data }: BusinessPulseProps) {
+export function BusinessPulse({ data, onViewEvidence }: BusinessPulseProps) {
     if (!data?.available) return null;
 
     const { value_metrics, clv_proxy, churn_risk, segment_value, insights } = data;
@@ -36,12 +37,25 @@ export function BusinessPulse({ data }: BusinessPulseProps) {
                     </p>
                 </div>
 
-                {insights && insights.length > 0 && (
-                    <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 max-w-xl text-sm text-blue-900 shadow-sm">
-                        <SparklesIcon className="w-4 h-4 inline mr-2 text-blue-600" />
-                        <span className="font-medium">{insights[0]}</span>
-                    </div>
-                )}
+                <div className="flex items-center gap-3 flex-wrap justify-end">
+                    {onViewEvidence && (
+                        <button
+                            type="button"
+                            onClick={onViewEvidence}
+                            className="inline-flex items-center gap-2 rounded-full border border-border/60 px-3 py-1 text-xs font-semibold text-muted-foreground hover:text-[#005eb8]"
+                        >
+                            <Info className="w-3.5 h-3.5" />
+                            View Source
+                        </button>
+                    )}
+
+                    {insights && insights.length > 0 && (
+                        <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 max-w-xl text-sm text-blue-900 shadow-sm">
+                            <SparklesIcon className="w-4 h-4 inline mr-2 text-blue-600" />
+                            <span className="font-medium">{insights[0]}</span>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* 2. Key Metrics Grid */}

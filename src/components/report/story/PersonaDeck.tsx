@@ -14,18 +14,30 @@ export interface Persona {
 interface PersonaDeckProps {
     personas: Persona[];
     className?: string;
+    onViewEvidence?: () => void;
 }
 
-export function PersonaDeck({ personas, className }: PersonaDeckProps) {
+export function PersonaDeck({ personas, className, onViewEvidence }: PersonaDeckProps) {
     if (!personas || personas.length === 0) return null;
 
     return (
         <div className={cn("space-y-4 mb-10", className)}>
-            <div className="flex items-center gap-2 px-1">
-                <Users className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                    Key Segments Identified
-                </h3>
+            <div className="flex items-center justify-between gap-3 px-1 flex-wrap">
+                <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                        Key Segments Identified
+                    </h3>
+                </div>
+                {onViewEvidence && (
+                    <button
+                        type="button"
+                        onClick={onViewEvidence}
+                        className="text-[11px] uppercase tracking-[0.35em] font-semibold text-[#005eb8]"
+                    >
+                        View Source
+                    </button>
+                )}
             </div>
 
             <div className="flex gap-4 overflow-x-auto pb-6 px-4 -mx-4 snap-x snap-mandatory no-scrollbar mask-gradient-right">

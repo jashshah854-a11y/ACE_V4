@@ -53,6 +53,9 @@ class Evidence(TypedDict, total=False):
         timestamp: When the analysis was performed
         statistical_significance: p-value or confidence interval
         additional_metrics: Supporting measurements
+        source_code: Reproducible SQL/Pandas snippet
+        data_source: Origin dataset or table name
+        source_notes: Additional lineage context
     """
     metric: str
     value: Union[float, int, str, bool]
@@ -62,6 +65,9 @@ class Evidence(TypedDict, total=False):
     timestamp: Optional[str]
     statistical_significance: Optional[float]
     additional_metrics: Optional[dict]
+    source_code: Optional[str]
+    data_source: Optional[str]
+    source_notes: Optional[str]
 
 
 class EvidenceObject(TypedDict, total=False):
@@ -105,7 +111,10 @@ def create_evidence(
     artifact_path: Optional[str] = None,
     agent: Optional[str] = None,
     statistical_significance: Optional[float] = None,
-    additional_metrics: Optional[dict] = None
+    additional_metrics: Optional[dict] = None,
+    source_code: Optional[str] = None,
+    data_source: Optional[str] = None,
+    source_notes: Optional[str] = None
 ) -> EvidenceObject:
     """
     Factory function to create a properly structured EvidenceObject.
@@ -155,6 +164,15 @@ def create_evidence(
         
     if additional_metrics is not None:
         evidence["additional_metrics"] = additional_metrics
+    
+    if source_code:
+        evidence["source_code"] = source_code.strip()
+    
+    if data_source:
+        evidence["data_source"] = data_source
+    
+    if source_notes:
+        evidence["source_notes"] = source_notes
     
     # Always add timestamp
     evidence["timestamp"] = datetime.utcnow().isoformat() + "Z"
@@ -229,6 +247,18 @@ def validate_evidence_object(obj: Any) -> tuple[bool, Optional[str]]:
     if not isinstance(evidence["source_columns"], list):
         return False, "evidence.source_columns must be a list"
     
+    if "source_code" in evidence and evidence["source_code"] is not None:
+        if not isinstance(evidence["source_code"], str):
+            return False, "evidence.source_code must be a string"
+
+    if "data_source" in evidence and evidence["data_source"] is not None:
+        if not isinstance(evidence["data_source"], str):
+            return False, "evidence.data_source must be a string"
+
+    if "source_notes" in evidence and evidence["source_notes"] is not None:
+        if not isinstance(evidence["source_notes"], str):
+            return False, "evidence.source_notes must be a string"
+
     if not evidence["source_columns"]:
         return False, "evidence.source_columns cannot be empty"
     
