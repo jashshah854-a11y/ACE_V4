@@ -38,10 +38,10 @@ export function normalizeKPIs(rawPayload: any): KPI[] {
         value: `${Math.round(confidence * 100)}%`,
         status: translateKPIStatus(confidence),
         meaning: confidence >= 0.7
-            ? 'High confidence in insights'
+            ? 'Suitable for planning and evaluation'
             : confidence >= 0.4
-                ? 'Moderate confidence; review limitations'
-                : 'Low confidence; insights may be unreliable',
+                ? 'Use for directional insight only'
+                : 'Exploratory results, not decision-ready',
     });
 
     // KPI 2: Data Clarity
@@ -52,7 +52,7 @@ export function normalizeKPIs(rawPayload: any): KPI[] {
         value: `${Math.round(quality * 100)}%`,
         status: translateKPIStatus(quality),
         meaning: quality >= 0.7
-            ? 'Data is clean and complete'
+            ? 'Schema is clean and complete'
             : quality >= 0.4
                 ? 'Some data quality issues detected'
                 : 'Significant data quality concerns',
@@ -66,10 +66,10 @@ export function normalizeKPIs(rawPayload: any): KPI[] {
         value: rows.toLocaleString(),
         status: rows >= 1000 ? 'good' : rows >= 100 ? 'warning' : 'bad',
         meaning: rows >= 1000
-            ? 'Sufficient data for reliable insights'
+            ? 'Sufficient sample for reliable insights'
             : rows >= 100
-                ? 'Limited data; insights may vary'
-                : 'Insufficient data for statistical reliability',
+                ? 'Limited sample, insights vary'
+                : 'Insufficient data for reliability',
     });
 
     // KPI 4 (optional): Features

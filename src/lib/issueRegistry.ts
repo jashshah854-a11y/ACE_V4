@@ -15,16 +15,16 @@ export const VALIDATION_ISSUES: Record<string, Omit<Issue, 'key'>> = {
         severity: 'critical',
         title: 'No outcome column detected',
         description: 'The dataset does not contain a clear target variable for prediction.',
-        whyItMatters: 'Without a target, we cannot build predictive models or generate strategic recommendations.',
-        howToFix: 'Add a column that represents the outcome you want to predict (e.g., "churned", "revenue", "converted").',
+        whyItMatters: 'Predictive modeling and strategic recommendations require an outcome column.',
+        howToFix: 'Add a column representing the outcome you want to predict (e.g., "churned", "revenue", "converted").',
     },
 
     missing_time_coverage: {
         severity: 'warning',
         title: 'No temporal data found',
         description: 'The dataset does not include date or time columns.',
-        whyItMatters: 'Time-based insights like trends, seasonality, and forecasts are unavailable.',
-        howToFix: 'Add a date or timestamp column to enable trend analysis.',
+        whyItMatters: 'Trend analysis, seasonality detection, and forecasting require time data.',
+        howToFix: 'Add a date or timestamp column to unlock time-based insights.',
     },
 
     observational_only: {
@@ -66,42 +66,42 @@ export const VALIDATION_ISSUES: Record<string, Omit<Issue, 'key'>> = {
 export const GOVERNANCE_BLOCKS: Record<string, Omit<Issue, 'key'>> = {
     segmentation_disabled: {
         severity: 'info',
-        title: 'Clustering unavailable',
-        description: 'Behavioral segmentation has been disabled for this run.',
-        whyItMatters: 'You will not see customer segments or personas.',
-        howToFix: 'Enable clustering in the task contract if needed.',
+        title: 'Clustering not available for this run',
+        description: 'Behavioral segmentation requires additional setup.',
+        whyItMatters: 'Customer segments and personas are not included in this analysis.',
+        howToFix: 'Contact support to enable clustering for future runs.',
     },
 
     outcome_modeling_disabled: {
         severity: 'warning',
-        title: 'Predictive modeling blocked',
-        description: 'Outcome modeling has been disabled due to data constraints.',
-        whyItMatters: 'You will not see predictions or risk scores.',
-        howToFix: 'Add a target column and ensure sufficient data quality.',
+        title: 'Predictive modeling not available',
+        description: 'Outcome modeling requires an outcome column and sufficient data quality.',
+        whyItMatters: 'Predictions and risk scores are not included in this analysis.',
+        howToFix: 'Add a target column and resolve data quality issues.',
     },
 
     strategy_lab_disabled: {
         severity: 'info',
-        title: 'Strategy Lab unavailable',
-        description: 'Persona generation and strategy recommendations are disabled.',
-        whyItMatters: 'You will not see actionable strategies or personas.',
-        howToFix: 'Enable the fabricator agent in the task contract.',
+        title: 'Strategy Lab not available for this run',
+        description: 'Persona generation and strategy recommendations require additional data.',
+        whyItMatters: 'Actionable strategies and personas are not included in this analysis.',
+        howToFix: 'Add behavioral and outcome data to unlock Strategy Lab.',
     },
 
     agent_regression_disabled: {
         severity: 'warning',
-        title: 'Regression agent blocked',
-        description: 'The regression agent was suppressed by governance rules.',
-        whyItMatters: 'Predictive insights are unavailable.',
-        howToFix: 'Review governance settings or improve data quality.',
+        title: 'Regression analysis not available',
+        description: 'Regression analysis requires setup adjustments.',
+        whyItMatters: 'Predictive insights are not included in this analysis.',
+        howToFix: 'Contact support to enable regression for future runs.',
     },
 
     agent_fabricator_disabled: {
         severity: 'info',
-        title: 'Fabricator agent blocked',
-        description: 'The fabricator agent was suppressed by governance rules.',
-        whyItMatters: 'Persona and strategy generation is unavailable.',
-        howToFix: 'Review governance settings or enable the agent.',
+        title: 'Persona generation not available',
+        description: 'Persona and strategy generation requires setup adjustments.',
+        whyItMatters: 'Personas and strategies are not included in this analysis.',
+        howToFix: 'Contact support to enable persona generation for future runs.',
     },
 };
 
