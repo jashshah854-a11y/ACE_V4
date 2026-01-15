@@ -506,7 +506,13 @@ function buildContractSuggestion(
       ? "trend health"
       : "customer retention";
 
-  const decisionContext = `We need a fast synthesis of ${focus} using ${rowCount.toLocaleString()} records across ${columnCount} tracked signals to guide the next sprint.`;
+  const decisionDecision = hasFinancial
+    ? "decide whether to adjust monetization levers this quarter"
+    : hasTime
+      ? "decide whether to accelerate investment where velocity is rising or intervene where it is fading"
+      : "decide which retention playbook to activate immediately";
+
+  const decisionContext = `Leadership needs to ${decisionDecision} by interrogating ${rowCount.toLocaleString()} records across ${columnCount} tracked signals in this dataset.`;
 
   const primaryQuestion = hasFinancial
     ? "Which customer or product segments are driving the biggest revenue swings?"
