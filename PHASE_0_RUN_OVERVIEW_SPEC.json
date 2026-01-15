@@ -1,0 +1,187 @@
+{
+    "phase": {
+        "id": 0,
+        "name": "Guardrails and Alignment",
+        "purpose": "Lock the story, scope, and success criteria so Phase 1 and Phase 2 do not drift into another log dump",
+        "primary_outcome": "A written and agreed run overview contract that defines what the page must answer, what it must not show by default, and how success is measured"
+    },
+    "narrative_contract": {
+        "primary_reading_path": {
+            "questions_in_order": [
+                "Is this run valid?",
+                "What did we learn?",
+                "What should we do next?"
+            ],
+            "rule": "Everything on the page must map to one of these, or it is hidden behind an expander"
+        },
+        "first_viewport_contract": {
+            "must_contain": [
+                "Run title and short run ID",
+                "Mode and status label",
+                "Trust and confidence summary",
+                "3 to 4 KPI tiles",
+                "One sentence executive summary",
+                "Primary next step CTA"
+            ],
+            "must_not_contain": [
+                "Raw JSON",
+                "Agent names or orchestration terms",
+                "Repeated SCQA blocks",
+                "Long diagnostics lists",
+                "Multiple executive summaries"
+            ]
+        }
+    },
+    "definition_of_done": {
+        "ten_second_scan_test": {
+            "user_can_answer": [
+                "Is it usable?",
+                "What is blocked?",
+                "Top 2-3 takeaways",
+                "Next action"
+            ],
+            "pass_fail_rules": [
+                "All answers are available without scrolling past the KPI row",
+                "Blocked features are visible as disabled with reason",
+                "Next action is a single primary CTA"
+            ]
+        },
+        "content_budgets": {
+            "executive_one_liner_max_chars": 140,
+            "executive_bullets_max_count": 4,
+            "total_default_bullets_max_count": 10,
+            "kpi_cards_count": "3-4",
+            "accordions_default_open": 0
+        },
+        "run_states": [
+            {
+                "state": "normal",
+                "meaning": "All core insights allowed and data passes minimum checks",
+                "hero_label": "Full analysis enabled"
+            },
+            {
+                "state": "limitations",
+                "meaning": "Run is valid but key capabilities are restricted due to missing data or governance",
+                "hero_label": "Limited analysis mode"
+            },
+            {
+                "state": "failed",
+                "meaning": "Run cannot be trusted due to critical errors or unreadable data",
+                "hero_label": "Run failed"
+            }
+        ]
+    },
+    "scope_and_non_goals": {
+        "in_scope": [
+            "Run summary page layout restructure",
+            "Copy rewrite and translation rules",
+            "Progressive disclosure for technical details",
+            "Component contracts and page hierarchy",
+            "A stable view model shape definition"
+        ],
+        "out_of_scope_initial_release": [
+            "Backend inference improvements",
+            "New modeling features",
+            "New scoring algorithms",
+            "New lab tools",
+            "Run comparison dashboards",
+            "New dataset upload flow changes"
+        ],
+        "backend_change_policy": {
+            "rule": "Phase 2 must work with the current API output, using a mapper in the UI layer",
+            "exception": "Additive fields are allowed only if they already exist in backend output but are unused"
+        }
+    },
+    "information_architecture": {
+        "page_sections_in_order": [
+            "Run Snapshot Hero",
+            "What this means for you",
+            "Key KPIs",
+            "Details accordions",
+            "Next steps and Lab access"
+        ],
+        "details_accordions": [
+            "Data quality and validation",
+            "Governance and limitations",
+            "Story of this run",
+            "Run metadata",
+            "Raw JSON"
+        ],
+        "cta_rules": [
+            {
+                "cta": "Open Strategy Lab",
+                "show_when": "allowed",
+                "otherwise": "disabled_with_reason"
+            },
+            {
+                "cta": "View Evidence Console",
+                "show_when": "allowed",
+                "otherwise": "disabled_with_reason"
+            },
+            {
+                "cta": "Fix dataset",
+                "show_when": "always",
+                "priority": "primary"
+            }
+        ]
+    },
+    "copy_policy": {
+        "forbidden_in_default_view": [
+            "overseer",
+            "fabricator",
+            "agent suppressed",
+            "identity contract",
+            "SCQA headings repeated",
+            "priority percent without explanation"
+        ],
+        "allowed_if_expanded_under_technical": [
+            "raw agent logs",
+            "full diagnostic payload",
+            "scoring breakdown details"
+        ],
+        "translation_pattern": {
+            "user_facing_title": "short plain label",
+            "what_it_means": "one sentence",
+            "impact": "one sentence",
+            "how_to_fix": "one sentence"
+        }
+    },
+    "visual_tokens": {
+        "status_tokens": {
+            "normal": {
+                "tone": "calm positive",
+                "badge": "success"
+            },
+            "limitations": {
+                "tone": "calm caution",
+                "badge": "warning"
+            },
+            "failed": {
+                "tone": "clear error",
+                "badge": "danger"
+            }
+        },
+        "usage_limits": [
+            "Only badges, icons, and thin card accents",
+            "No full card background fills for status"
+        ],
+        "card_rules": [
+            "Every card has a title",
+            "Every card has one primary value or statement",
+            "Every card has one meaning line",
+            "No card exceeds 6 lines in default state"
+        ]
+    },
+    "phase_0_checklist": {
+        "narrative_order_locked": true,
+        "first_viewport_contract_locked": true,
+        "definition_of_done_measurable": true,
+        "content_budgets_agreed": true,
+        "run_states_defined_with_labels": true,
+        "scope_boundaries_documented": true,
+        "section_ia_and_cta_rules_decided": true,
+        "copy_translation_policy_decided": true,
+        "visual_token_rules_decided": true,
+        "handoff_package_assembled": true
+    }
+}
