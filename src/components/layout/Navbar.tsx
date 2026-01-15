@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { AceLogo } from "@/components/ui/AceLogo";
+import { DataQuill } from "@/components/brand/DataQuill";
 import { Sparkles, FileText, Upload, Beaker } from "lucide-react";
 import { useTaskContext } from "@/context/TaskContext";
 
@@ -99,4 +100,5 @@ export const Navbar = () => {
     </nav>
   );
 };
+
 
