@@ -136,7 +136,12 @@ export function mapToRunSummaryViewModel(
     const confidence = rawPayload.confidence || rawPayload.data_confidence || 0;
     const trustLabel = translateConfidence(confidence);
 
-    // 7. Determine time coverage
+    // Updated trust guidance (Phase 3: Copy Precision)
+    const trustGuidance = {
+        high: 'Suitable for planning and evaluation',
+        moderate: 'Use for directional insight, not forecasts or commitments',
+        low: 'Results are exploratory only and should not inform decisions',
+    }[trustLabel];
     const hasTimeField = rawPayload.has_time_field || false;
     const timeCoverage = hasTimeField ? 'sufficient' : 'unknown';
 
@@ -180,11 +185,7 @@ export function mapToRunSummaryViewModel(
         trust: {
             score: confidence,
             label: trustLabel,
-            guidance: trustLabel === 'high'
-                ? 'Insights are reliable and actionable'
-                : trustLabel === 'moderate'
-                    ? 'Review limitations before taking action'
-                    : 'Insights may be unreliable; fix data issues first',
+            guidance: trustGuidance,
         },
 
         dataset: {
