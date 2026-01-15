@@ -5,6 +5,8 @@ from typing import Optional
 import pandas as pd
 import polars as pl
 
+from .csv_defaults import PANDAS_CSV_KWARGS, POLARS_CSV_KWARGS
+
 from ace_v4.performance.config import PerformanceConfig
 from ace_v4.performance.io import ChunkedCSVReader
 
@@ -45,11 +47,15 @@ def smart_load_dataset(
     if fast_mode or size_class == "large":
         rows_to_load = max_rows
         print(f"[DataLoader] Fast/large load ({file_size_mb:.1f} MB). Sampling {rows_to_load} rows.")
-        df = pl.read_csv(data_path, n_rows=rows_to_load).to_pandas()
+        df = pl.read_csv(
+            data_path,
+            n_rows=rows_to_load,
+            **POLARS_CSV_KWARGS,
+        ).to_pandas()
         print(f"[DataLoader] Loaded {len(df)} rows for analysis")
     else:
         print(f"[DataLoader] Loading full file ({file_size_mb:.1f} MB)")
-        df = reader.read_full(data_path)
+        df = reader.read_full(data_path, read_kwargs=dict(PANDAS_CSV_KWARGS))
         print(f"[DataLoader] Loaded {len(df)} rows")
 
     return df
