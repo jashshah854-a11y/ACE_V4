@@ -7,6 +7,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { QuickSummaryData } from '@/types/QuickSummaryTypes';
+import { SummaryCard } from '@/components/quick-summary/SummaryCard';
 
 export default function QuickSummaryView() {
     const { runId } = useParams<{ runId: string }>();
@@ -96,8 +97,8 @@ export default function QuickSummaryView() {
                                     key={index}
                                     onClick={() => setActiveQuestion(question)}
                                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${activeQuestion === question
-                                            ? 'bg-blue-100 text-blue-900 font-medium'
-                                            : 'text-gray-700 hover:bg-gray-100'
+                                        ? 'bg-blue-100 text-blue-900 font-medium'
+                                        : 'text-gray-700 hover:bg-gray-100'
                                         }`}
                                 >
                                     {question}
