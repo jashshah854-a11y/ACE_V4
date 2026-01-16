@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound";
 import FoundersLetter from "./pages/FoundersLetter";
 import ReportPage from "./pages/ReportPage";
 import RunSummaryPage from "./pages/RunSummaryPage";
+import QuickSummaryView from "./pages/QuickSummaryView";  // NEW: Quick View mode
 import LandingPage from "./pages/LandingPage";
 import LabPage from "./pages/LabPage";
 import { SimulationSafeModeBanner } from "@/components/trust/SafeModeBanner";
@@ -37,6 +38,8 @@ const App = () => (
               <Route path="/report/summary" element={<ExecutivePulse />} />
               {/* NEW: Simplified Run Overview */}
               <Route path="/report/:runId" element={<RunSummaryPage />} />
+              {/* NEW: Quick Summary View */}
+              <Route path="/summary/:runId" element={<QuickSummaryView />} />
               <Route path="/upload" element={<Index />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/pipeline/:runId" element={<Pipeline />} />
