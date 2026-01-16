@@ -15,6 +15,8 @@ import { BackgroundMesh } from "@/components/ui/BackgroundMesh";
 import { AceLogo } from "@/components/ui/AceLogo";
 import { ConfettiExplosion } from "@/components/ui/ConfettiExplosion";
 import { useTaskContext } from "@/context/TaskContext";
+import { QuickViewToggle } from "@/components/quick-summary/QuickViewToggle";
+import { AnalysisMode } from "@/types/QuickSummaryTypes";
 
 type AnalysisStage = "upload" | "scanning" | "identity" | "contract" | "processing";
 
@@ -59,6 +61,7 @@ const Index = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [recentRuns, setRecentRuns] = useState(() => getRecentReports());
   const [recentHints, setRecentHints] = useState<Record<string, string[]>>({});
+  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>('full'); // NEW: Quick View mode
   const { updateTaskContract } = useTaskContext();
 
 
@@ -156,7 +159,13 @@ const Index = () => {
         description: "The Overseer has authorized this analysis run.",
       });
       setShowConfetti(true);
-      setTimeout(() => navigate(`/pipeline/${result.run_id}`), 1500);
+
+      // Navigate based on selected mode
+      const targetRoute = analysisMode === 'summary'
+        ? `/summary/${result.run_id}`
+        : `/pipeline/${result.run_id}`;
+
+      setTimeout(() => navigate(targetRoute), 1500);
     } catch (error) {
       toast.error("Mission Aborted", {
         description: "Failed to submit analysis contract.",
@@ -354,6 +363,14 @@ const Index = () => {
                   >
                     ← Cancel & Re-upload
                   </Button>
+
+                  {/* Quick View Toggle */}
+                  <div className="mb-6">
+                    <QuickViewToggle
+                      mode={analysisMode}
+                      onModeChange={setAnalysisMode}
+                    />
+                  </div>
 
                   <DatasetUnderstanding
                     profile={profile}
