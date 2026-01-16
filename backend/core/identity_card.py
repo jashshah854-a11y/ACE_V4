@@ -23,6 +23,7 @@ def build_identity_card(
     data_type: Optional[Dict[str, Any]] = None,
     drift_report: Optional[Dict[str, Any]] = None,
     source_path: Optional[str] = None,
+    quality_score: Optional[float] = None,
 ) -> Dict[str, Any]:
     """Build a Dataset Identity Card (DIC) summarizing structure, quality, and domain."""
     columns = schema_profile.get("columns", {})
@@ -36,6 +37,10 @@ def build_identity_card(
         "quality": {},
         "drift_status": (drift_report or {}).get("status"),
     }
+    if quality_score is None:
+        quality_score = schema_profile.get("quality_score")
+    if quality_score is not None:
+        card["quality_score"] = quality_score
 
     # Quality: missing and distinct stats
     critical_gap_score = 0.0

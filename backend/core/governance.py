@@ -80,12 +80,19 @@ def rebuild_governance_artifacts(state_manager: StateManager, user_intent: Optio
     drift_report = _load_json_if_exists(ingestion_meta.get("drift_report", "")) if isinstance(ingestion_meta, dict) else {}
     data_type = state_manager.read("data_type_identification") or state_manager.read("data_type") or {}
 
-    identity_card = build_identity_card(schema_profile or {}, data_type or {}, drift_report or {}, source_path=str(ingestion_meta.get("source_path") or ingestion_meta.get("path") or ""))  # type: ignore[arg-type]
+    scan_output = state_manager.read("schema_scan_output") or {}
+    identity_card = build_identity_card(
+        schema_profile or {},
+        data_type or {},
+        drift_report or {},
+        source_path=str(ingestion_meta.get("source_path") or ingestion_meta.get("path") or ""),
+        quality_score=scan_output.get("quality_score"),
+    )  # type: ignore[arg-type]
     card_path = artifacts_dir / "dataset_identity_card.json"
     save_identity_card(card_path, identity_card)
     state_manager.write("dataset_identity_card", identity_card)
 
-    validation_report = state_manager.read("data_validation_report") or state_manager.read("validation_report") or {}
+    validation_report = state_manager.read("validation_report") or {}
     target_col = validation_report.get("target_column")
     has_target = bool(target_col)
     target_is_binary = bool(validation_report.get("target_is_binary"))
@@ -125,7 +132,7 @@ def should_block_agent(agent: str, state_manager: StateManager) -> Tuple[bool, s
         return True, "Missing identity card"
 
     contract = state_manager.read("task_contract") or {}
-    validation = state_manager.read("data_validation_report") or {}
+    validation = state_manager.read("validation_report") or {}
     confidence = state_manager.read("confidence_report") or {}
 
     reasons: List[str] = []
@@ -185,7 +192,7 @@ def render_governed_report(state_manager: StateManager, insights_path: Path) -> 
     allowed_sections = set(contract.get("allowed_sections", []))
     limitations = state_manager.read("limitations") or []
     confidence = state_manager.read("confidence_report") or {}
-    validation = state_manager.read("data_validation_report") or {}
+    validation = state_manager.read("validation_report") or {}
     data_type = (state_manager.read("data_type_identification") or {}).get("primary_type")
     sentry = EvidenceSentry(state_manager)
 

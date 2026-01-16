@@ -660,13 +660,13 @@ def main_loop(run_path):
         if quality_score < 0.4:
                 step_state = state["steps"].setdefault(current, {"name": current})
                 step_state["status"] = "skipped"
-                step_state["message"] = f"Quality score {quality_score:.2f} < 0.75: Agent disabled by fail-safe"
+                step_state["message"] = f"Quality score {quality_score:.2f} < 0.40: Agent disabled by fail-safe"
                 state["steps"][current] = step_state
                 state["steps_completed"].append(current)
                 
                 append_limitation(
                     state_manager,
-                    f"{current} disabled: Quality score {quality_score:.2f} below 0.75 threshold. "
+                    f"{current} disabled: Quality score {quality_score:.2f} below 0.40 threshold. "
                     f"Predictive analysis requires higher data quality to prevent hallucinations.",
                     agent=current,
                     severity="error"

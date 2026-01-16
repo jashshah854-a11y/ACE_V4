@@ -204,7 +204,7 @@ def check_validation_passed(state_manager) -> Tuple[bool, Optional[str]]:
     Check if data validation passed before allowing insight generation.
     Returns (can_proceed, reason_if_blocked)
     """
-    validation_report = state_manager.read("data_validation_report")
+    validation_report = state_manager.read("validation_report")
     
     if not validation_report:
         return True, None  # No validation yet, allow

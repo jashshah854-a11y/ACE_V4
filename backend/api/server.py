@@ -441,7 +441,7 @@ async def preview_dataset(file: UploadFile = File(...)):
             "schema_map": [],
             "quality_score": 0.0,
             "critical_gaps": ["ANALYSIS_FAILED"],
-            "detected_capabilities": [],
+            "detected_capabilities": {},
             "warnings": [
                 f"⚠️ Safe Mode: Analysis failed - {str(e)[:200]}",
                 "The system could not fully analyze this file.",
@@ -1544,21 +1544,24 @@ async def stream_ask_response(request: AskRequest):
         
         if not evidence:
             # Stream error
-            yield f'data: {{"type": "error", "content": "Evidence not found for run {request.run_id}"}}\n\n'
+            payload = {"type": "error", "content": f"Evidence not found for run {request.run_id}"}
+            yield f"data: {json.dumps(payload)}\n\n"
             return
         
         # Generate and stream reasoning steps
         steps = generate_reasoning_steps(request.query, request.evidence_type)
         
         for step in steps:
-            yield f'data: {{"type": "step", "content": "{step}"}}\n\n'
+            payload = {"type": "step", "content": step}
+            yield f"data: {json.dumps(payload)}\n\n"
             await asyncio.sleep(0.3)  # 300ms delay between steps
         
         # Build evidence context
         evidence_context = build_evidence_context(evidence, request.evidence_type)
         
         # Stream thinking indicator
-        yield f'data: {{"type": "thinking", "content": "Analyzing evidence..."}}\n\n'
+        payload = {"type": "thinking", "content": "Analyzing evidence..."}
+        yield f"data: {json.dumps(payload)}\n\n"
         await asyncio.sleep(0.5)
         
         # Generate response using Gemini (if available)
@@ -1589,27 +1592,32 @@ Rules:
                 words = response_text.split()
                 for i in range(0, len(words), 3):  # Stream 3 words at a time
                     chunk = " ".join(words[i:i+3])
-                    yield f'data: {{"type": "token", "content": "{chunk} "}}\n\n'
+                    payload = {"type": "token", "content": f"{chunk} "}
+                    yield f"data: {json.dumps(payload)}\n\n"
                     await asyncio.sleep(0.1)
             else:
                 # Fallback template response
                 response_text = f"Based on the evidence: {evidence_context[:200]}..."
-                yield f'data: {{"type": "token", "content": "{response_text}"}}\n\n'
+                payload = {"type": "token", "content": response_text}
+                yield f"data: {json.dumps(payload)}\n\n"
         
         except Exception as e:
             logger.error(f"[ASK-STREAM] Gemini error: {e}")
             # Fallback response
             response_text = "I encountered an issue generating a detailed response. Please try rephrasing your question."
-            yield f'data: {{"type": "token", "content": "{response_text}"}}\n\n'
+            payload = {"type": "token", "content": response_text}
+            yield f"data: {json.dumps(payload)}\n\n"
         
         # Stream completion
-        yield f'data: {{"type": "done", "content": {{"status": "complete"}}}}\n\n'
+        payload = {"type": "done", "content": {"status": "complete"}}
+        yield f"data: {json.dumps(payload)}\n\n"
         logger.info(f"[ASK-STREAM] Success - Stream completed")
         
     except Exception as e:
         # IRON DOME: Stream error but don't crash
         logger.error(f"[ASK-STREAM] Unexpected error: {e}", exc_info=True)
-        yield f'data: {{"type": "error", "content": "An error occurred: {str(e)}"}}\n\n'
+        payload = {"type": "error", "content": f"An error occurred: {str(e)}"}
+        yield f"data: {json.dumps(payload)}\n\n"
 
 
 @app.post("/api/ask/stream", tags=["Intelligence"])
@@ -1651,25 +1659,32 @@ async def stream_simulation_progress(run_id: str, request: SimulationRequest):
         logger.info(f"[SIMULATE-STREAM] Run: {run_id} | Column: {request.target_column} | Factor: {request.modification_factor}")
         
         # Step 1: Initialize
-        yield f'data: {{"type": "progress", "content": "Initializing simulation engine..."}}\n\n'
+        payload = {"type": "progress", "content": "Initializing simulation engine..."}
+        yield f"data: {json.dumps(payload)}\n\n"
         await asyncio.sleep(0.3)
         
         # Initialize simulation engine
         engine = SimulationEngine(run_id)
         
         # Step 2: Load dataset
-        yield f'data: {{"type": "progress", "content": "Loading original dataset..."}}\n\n'
+        payload = {"type": "progress", "content": "Loading original dataset..."}
+        yield f"data: {json.dumps(payload)}\n\n"
         await asyncio.sleep(0.3)
         
         df_original = engine.load_dataset()
         
         # Step 3: Clone dataset
-        yield f'data: {{"type": "progress", "content": "Cloning dataset to RAM (ephemeral copy)..."}}\n\n'
+        payload = {"type": "progress", "content": "Cloning dataset to RAM (ephemeral copy)..."}
+        yield f"data: {json.dumps(payload)}\n\n"
         await asyncio.sleep(0.3)
         
         # Step 4: Apply modification
         modification_pct = (request.modification_factor - 1) * 100
-        yield f'data: {{"type": "progress", "content": "Applying modification: {request.target_column} {modification_pct:+.1f}%..."}}\n\n'
+        payload = {
+            "type": "progress",
+            "content": f"Applying modification: {request.target_column} {modification_pct:+.1f}%...",
+        }
+        yield f"data: {json.dumps(payload)}\n\n"
         await asyncio.sleep(0.5)
         
         df_simulated = engine.apply_modification(
@@ -1679,20 +1694,23 @@ async def stream_simulation_progress(run_id: str, request: SimulationRequest):
         )
         
         # Step 5: Load original analytics
-        yield f'data: {{"type": "progress", "content": "Loading baseline analytics..."}}\n\n'
+        payload = {"type": "progress", "content": "Loading baseline analytics..."}
+        yield f"data: {json.dumps(payload)}\n\n"
         await asyncio.sleep(0.3)
         
         original_analytics = engine.load_original_analytics()
         
         # Step 6: Re-run analytics
-        yield f'data: {{"type": "progress", "content": "Re-running churn risk analysis on modified data..."}}\n\n'
+        payload = {"type": "progress", "content": "Re-running churn risk analysis on modified data..."}
+        yield f"data: {json.dumps(payload)}\n\n"
         await asyncio.sleep(0.5)
         
         analyzer = EnhancedAnalytics(df_simulated)
         simulated_bi = analyzer.compute_business_intelligence()
         
         # Step 7: Calculate delta
-        yield f'data: {{"type": "progress", "content": "Calculating delta (before vs after)..."}}\n\n'
+        payload = {"type": "progress", "content": "Calculating delta (before vs after)..."}
+        yield f"data: {json.dumps(payload)}\n\n"
         await asyncio.sleep(0.3)
         
         delta = engine.calculate_delta(
@@ -1704,7 +1722,11 @@ async def stream_simulation_progress(run_id: str, request: SimulationRequest):
         if delta.get('churn_risk'):
             delta_value = delta['churn_risk']['delta']
             direction = "decreased" if delta_value < 0 else "increased"
-            yield f'data: {{"type": "progress", "content": "Delta detected: Churn risk {direction} by {abs(delta_value):.1f}%"}}\n\n'
+            payload = {
+                "type": "progress",
+                "content": f"Delta detected: Churn risk {direction} by {abs(delta_value):.1f}%",
+            }
+            yield f"data: {json.dumps(payload)}\n\n"
             await asyncio.sleep(0.3)
         
         # Step 9: Stream final result
@@ -1719,26 +1741,34 @@ async def stream_simulation_progress(run_id: str, request: SimulationRequest):
         }
         
         import json
-        yield f'data: {{"type": "result", "content": {json.dumps(result)}}}\n\n'
+        payload = {"type": "result", "content": result}
+        yield f"data: {json.dumps(payload)}\n\n"
         
         logger.info(f"[SIMULATE-STREAM] Success - Simulation completed")
         
     except FileNotFoundError as e:
         # IRON DOME: Stream error gracefully
         logger.error(f"[SIMULATE-STREAM] File not found: {e}")
-        yield f'data: {{"type": "error", "content": "Dataset or analytics not found for this run"}}\n\n'
+        payload = {"type": "error", "content": "Dataset or analytics not found for this run"}
+        yield f"data: {json.dumps(payload)}\n\n"
     except ValueError as e:
         # IRON DOME: Stream validation error
         logger.error(f"[SIMULATE-STREAM] Invalid parameter: {e}")
-        yield f'data: {{"type": "error", "content": "{str(e)}"}}\n\n'
+        payload = {"type": "error", "content": str(e)}
+        yield f"data: {json.dumps(payload)}\n\n"
     except MemoryError as e:
         # IRON DOME: Safe Mode for RAM overflow
         logger.error(f"[SIMULATE-STREAM] Memory error: {e}")
-        yield f'data: {{"type": "error", "content": "Safe Mode: Dataset too large for simulation. Try with a smaller dataset."}}\n\n'
+        payload = {
+            "type": "error",
+            "content": "Safe Mode: Dataset too large for simulation. Try with a smaller dataset.",
+        }
+        yield f"data: {json.dumps(payload)}\n\n"
     except Exception as e:
         # IRON DOME: Catch-all fail-open
         logger.error(f"[SIMULATE-STREAM] Unexpected error: {e}", exc_info=True)
-        yield f'data: {{"type": "error", "content": "Simulation failed. Please check parameters and try again."}}\n\n'
+        payload = {"type": "error", "content": "Simulation failed. Please check parameters and try again."}
+        yield f"data: {json.dumps(payload)}\n\n"
 
 
 @app.post("/run/{run_id}/simulate/stream", tags=["Intelligence"])

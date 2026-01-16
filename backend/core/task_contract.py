@@ -231,7 +231,7 @@ def enforce_quality_failsafe(
         ]
         
         contract["limitations"].append(
-            f"Quality score {quality_score:.2f} < 0.75: Analysis restricted to descriptive mode only. "
+            f"Quality score {quality_score:.2f} < 0.40: Analysis restricted to descriptive mode only. "
             f"Predictive modeling disabled to prevent hallucinations."
         )
         
