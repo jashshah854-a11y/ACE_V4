@@ -7,7 +7,7 @@ import { ToneSelector } from './ToneSelector';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 // Placeholder import - in real implementation this would map to actual chart components
-import { LineChart, BarChart, ScatterChart } from 'lucide-react';
+import { LineChart, BarChart, CircleDot } from 'lucide-react';
 
 interface StoryCanvasProps {
     story: Story;
@@ -62,7 +62,7 @@ export function StoryCanvas({ story, onToneChange, isLoading = false, className 
         // This uses Lucide icons as placeholders for actual Recharts components
         // In a full implementation, you'd map visual.type to <RechartsComponent />
         const Icon = visual.type === 'line_chart' ? LineChart :
-            visual.type === 'bar_chart' ? BarChart : ScatterChart;
+            visual.type === 'bar_chart' ? BarChart : CircleDot;
 
         return (
             <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200 text-gray-400">

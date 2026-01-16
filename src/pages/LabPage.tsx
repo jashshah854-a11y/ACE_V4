@@ -7,7 +7,7 @@ import { useGovernedReport } from "@/hooks/useGovernedReport";
 import { useReportData } from "@/hooks/useReportData";
 import { useQuery } from "@tanstack/react-query";
 import { getReport } from "@/lib/api-client";
-import { Loader2, Beaker, ArrowLeft } from "lucide-react";
+import { Loader2, Beaker, ArrowLeft, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { GuidanceOverlay } from "@/components/report/GuidanceOverlay";
@@ -172,7 +172,7 @@ const LabPage = () => {
                         <div className="bg-card border border-border/40 rounded-xl p-6 min-h-[600px]">
                             {inlineHint ? (
                                 <div className="mb-5 inline-flex w-full items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 px-3 py-2 text-sm text-amber-900"
-                                     data-guidance-context="global">
+                                    data-guidance-context="global">
                                     <Lightbulb className="h-4 w-4 mt-0.5 text-amber-600" />
                                     <div>
                                         <p className="text-xs uppercase tracking-wide text-amber-600">Diagnostics Hint</p>
