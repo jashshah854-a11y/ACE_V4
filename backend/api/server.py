@@ -997,6 +997,73 @@ async def get_evidence_sample(run_id: str, rows: int = 5):
     return {"rows": sample, "row_count": len(sample)}
 
 
+@app.get("/run/{run_id}/story", tags=["Artifacts"])
+async def get_story(run_id: str, tone: str = 'conversational'):
+    """Get narrative story for a run.
+    
+    Args:
+        run_id: Unique run identifier
+        tone: Narrative tone ('formal' or 'conversational')
+    
+    Returns:
+        Story structure with narrative points, headlines, and visualizations
+    """
+    _validate_run_id(run_id)
+    
+    # Validate tone parameter
+    if tone not in ['formal', 'conversational']:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid tone. Must be 'formal' or 'conversational'"
+        )
+    
+    run_path = DATA_DIR / "runs" / run_id
+    state = StateManager(str(run_path))
+    
+    # Check for cached story with this tone
+    cache_key = f"story_{tone}"
+    cached_story = state.read(cache_key)
+    
+    if cached_story:
+        logger.info(f"Returning cached {tone} story for run {run_id}")
+        return cached_story
+    
+    # Get enhanced analytics and dataset profile
+    enhanced_analytics = state.read("enhanced_analytics")
+    dataset_identity = state.read("dataset_identity")
+    
+    if not enhanced_analytics:
+        raise HTTPException(
+            status_code=404,
+            detail="Enhanced analytics not available. Run must complete first."
+        )
+    
+    # Generate story
+    from core.story_generator import StoryGenerator
+    
+    generator = StoryGenerator()
+    
+    try:
+        story = generator.generate_story(
+            run_id=run_id,
+            analytics_data=enhanced_analytics,
+            dataset_profile=dataset_identity or {},
+            tone=tone
+        )
+        
+        # Cache the story
+        state.write(cache_key, story)
+        
+        logger.info(f"Generated and cached {tone} story for run {run_id}")
+        return story
+        
+    except Exception as e:
+        logger.error(f"Failed to generate story for run {run_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate story: {str(e)}"
+        )
+
 
 @app.get("/run/{run_id}/timeline", tags=["Run"])
 async def get_timeline_selection(run_id: str):
