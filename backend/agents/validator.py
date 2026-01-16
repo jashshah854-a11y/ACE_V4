@@ -62,6 +62,7 @@ class Validator:
             report["notes"].append("Profile/sample drift warning; proceed with caution.")
 
         self.state.write("validation_report", report)
+        self.state.write("data_validation_report", report)
 
         log_ok(f"Validation completed (mode={report['mode']}, confidence={report['confidence_label']})")
         return report
@@ -92,21 +93,20 @@ def main():
     except Exception as e:
         log_warn(f"Validation failed: {e}")
         tracker.update("validator", {"status": "failed", "error": str(e)})
-        state.write(
-            "validation_report",
-            {
-                "allow_insights": False,
-                "mode": "limitations",
-                "blocked_agents": [
-                    "overseer",
-                    "regression",
-                    "sentry",
-                    "personas",
-                    "fabricator",
-                ],
-                "error": str(e),
-            },
-        )
+        fallback_report = {
+            "allow_insights": False,
+            "mode": "limitations",
+            "blocked_agents": [
+                "overseer",
+                "regression",
+                "sentry",
+                "personas",
+                "fabricator",
+            ],
+            "error": str(e),
+        }
+        state.write("validation_report", fallback_report)
+        state.write("data_validation_report", fallback_report)
         sys.exit(1)
 
 

@@ -32,7 +32,7 @@ class Expositor:
         personas_data = self.state.read("personas") or {}
         strategies_data = self.state.read("strategies") or {}
         data_type = self.state.read("data_type") or {}
-        validation = self.state.read("validation_report") or self.state.read("data_validation_report") or {}
+        validation = self.state.read("validation_report") or {}
         task_contract = self.state.read("task_contract") or {}
         confidence_report = self.state.read("confidence_report") or {}
         governed_meta = self.state.read("governed_report_meta") or {}

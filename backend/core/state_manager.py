@@ -79,6 +79,8 @@ class StateManager:
         """
         Reads data from Disk, falling back to Redis if missing.
         """
+        if name == "data_validation_report":
+            print("[StateManager] WARNING: data_validation_report is deprecated; use validation_report instead.")
         # 1. Try Disk
         path = self.run_path / f"{name}.json"
         if path.exists():

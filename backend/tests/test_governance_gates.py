@@ -9,7 +9,7 @@ def _bootstrap_base_state(sm: StateManager):
     sm.write("dataset_identity_card", {"data_type": {"primary_type": "marketing_performance"}})
     sm.write("task_contract", {"allowed_sections": ["insights", "modeling"], "forbidden_sections": []})
     sm.write("confidence_report", {"confidence_label": "moderate"})
-    sm.write("data_validation_report", {"allow_insights": True, "mode": "insight"})
+    sm.write("validation_report", {"allow_insights": True, "mode": "insight"})
 
 
 def test_block_when_identity_missing(tmp_path):
@@ -24,7 +24,7 @@ def test_block_on_validation_limitation_mode(tmp_path):
     sm.write("dataset_identity_card", {"data_type": {"primary_type": "marketing_performance"}})
     sm.write("task_contract", {"allowed_sections": ["insights"]})
     sm.write("confidence_report", {"confidence_label": "moderate"})
-    sm.write("data_validation_report", {"allow_insights": False, "mode": "limitations", "blocked_agents": ["overseer"]})
+    sm.write("validation_report", {"allow_insights": False, "mode": "limitations", "blocked_agents": ["overseer"]})
 
     blocked, reason = should_block_agent("overseer", sm)
     assert blocked
@@ -39,7 +39,7 @@ def test_block_on_contract_forbidden_modeling(tmp_path):
         {"allowed_sections": ["data_overview"], "forbidden_sections": ["modeling"]},
     )
     sm.write("confidence_report", {"confidence_label": "moderate"})
-    sm.write("data_validation_report", {"allow_insights": True, "mode": "insight"})
+    sm.write("validation_report", {"allow_insights": True, "mode": "insight"})
 
     blocked, reason = should_block_agent("regression", sm)
     assert blocked
@@ -51,7 +51,7 @@ def test_block_on_low_confidence(tmp_path):
     sm.write("dataset_identity_card", {"data_type": {"primary_type": "marketing_performance"}})
     sm.write("task_contract", {"allowed_sections": ["insights", "modeling"]})
     sm.write("confidence_report", {"confidence_label": "low"})
-    sm.write("data_validation_report", {"allow_insights": True, "mode": "insight"})
+    sm.write("validation_report", {"allow_insights": True, "mode": "insight"})
 
     blocked, reason = should_block_agent("overseer", sm)
     assert blocked
@@ -64,7 +64,7 @@ def test_render_governed_report_drops_insights_when_not_allowed(tmp_path):
     sm.write("dataset_identity_card", {"data_type": {"primary_type": "marketing_performance"}})
     sm.write("task_contract", {"allowed_sections": ["data_overview"], "forbidden_sections": ["insights"]})
     sm.write("confidence_report", {"confidence_label": "moderate"})
-    sm.write("data_validation_report", {"allow_insights": True, "mode": "insight"})
+    sm.write("validation_report", {"allow_insights": True, "mode": "insight"})
     sm.write("limitations", [])
 
     insights_path = Path(run_path) / "artifacts" / "insights.json"
@@ -120,7 +120,7 @@ def test_render_governed_report_preserves_evidence_bundle(tmp_path):
     sm.write("dataset_identity_card", {"data_type": {"primary_type": "marketing_performance"}})
     sm.write("task_contract", {"allowed_sections": ["insights"], "forbidden_sections": []})
     sm.write("confidence_report", {"data_confidence": 0.9, "confidence_label": "moderate"})
-    sm.write("data_validation_report", {"allow_insights": True, "mode": "insight"})
+    sm.write("validation_report", {"allow_insights": True, "mode": "insight"})
     sm.write("limitations", [])
     sm.write("evidence_registry", {
         "artifacts/ctr.csv": {
@@ -148,3 +148,4 @@ def test_render_governed_report_preserves_evidence_bundle(tmp_path):
     report = render_governed_report(sm, insights_path)
     assert report["insights"]
     assert "artifacts/ctr.csv" in report.get("evidence", {})
+

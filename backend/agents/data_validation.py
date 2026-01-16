@@ -57,7 +57,9 @@ def main():
     data_path = dataset_info.get("path") or state.get_file_path("cleaned_uploaded.csv")
 
     if not data_path or not Path(data_path).exists():
-        state.write("data_validation_report", {"can_proceed": False, "reason": "missing_dataset"})
+        report = {"can_proceed": False, "reason": "missing_dataset"}
+        state.write("validation_report", report)
+        state.write("data_validation_report", report)
         print("[DATA_VALIDATION] Missing dataset.")
         sys.exit(1)
 
@@ -130,6 +132,7 @@ def main():
             span = report.get("time_span_days", 0)
             report["limitations"].append(f"Time coverage too short ({span} days).")
 
+    state.write("validation_report", report)
     state.write("data_validation_report", report)
     print(f"[DATA_VALIDATION] can_proceed={report['can_proceed']} mode={report['mode']}")
     if not report["can_proceed"]:

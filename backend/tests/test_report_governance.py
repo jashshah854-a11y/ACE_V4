@@ -12,7 +12,7 @@ def test_governed_report_blocks_zero_confidence(tmp_path):
     sm.write("dataset_identity_card", {"data_type": {"primary_type": "marketing_performance"}})
     sm.write("task_contract", {"allowed_sections": ["insights"], "forbidden_sections": []})
     sm.write("confidence_report", {"data_confidence": 0.0, "confidence_label": "low", "reasons": ["mock"]})
-    sm.write("data_validation_report", {"allow_insights": True, "mode": "insight"})
+    sm.write("validation_report", {"allow_insights": True, "mode": "insight"})
     sm.write("limitations", [])
 
     insights_path = Path(tmp_path) / "artifacts" / "insights.json"
@@ -70,4 +70,5 @@ def test_business_intel_section_surfaces_evidence_and_risk(tmp_path):
     rendered = "\n".join(lines)
     assert "amount" in rendered
     assert "Risk definition" in rendered
+
 
