@@ -77,10 +77,7 @@ export const Navbar = () => {
               About
             </Link>
 
-            {/* Logo Mark (Right Side) as requested */}
-            <div className="ml-4 pl-4 border-l border-border/50">
-              <AceLogo mode="icon" size="sm" />
-            </div>
+            {/* Logo Mark (Right Side) removed as requested */}
           </div>
         </div>
 
