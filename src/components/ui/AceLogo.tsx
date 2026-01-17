@@ -122,12 +122,12 @@ export function AceLogo({ className, mode = "full", size = "md" }: AceLogoProps)
                         ACE
                     </h1>
                     {size !== 'sm' && (
-                        <span className="text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-medium">
-                            Advanced Contextual Engine
-                        </span>
-                    )}
-                </div>
+                        Autonomous Customer Intelligence
+                </span>
             )}
         </div>
+    )
+}
+        </div >
     );
 }
