@@ -8,6 +8,7 @@ from core.confidence import compute_data_confidence
 from core.insights import validate_insights, load_insights
 from core.state_manager import StateManager
 from core.sentry import EvidenceSentry
+from core.analysis_intent import classify_analysis_intent
 
 INSIGHT_AGENTS = {"overseer", "regression", "personas", "fabricator"}
 
@@ -79,6 +80,7 @@ def rebuild_governance_artifacts(state_manager: StateManager, user_intent: Optio
     schema_profile = _load_json_if_exists(ingestion_meta.get("schema_profile", "")) if isinstance(ingestion_meta, dict) else {}
     drift_report = _load_json_if_exists(ingestion_meta.get("drift_report", "")) if isinstance(ingestion_meta, dict) else {}
     data_type = state_manager.read("data_type_identification") or state_manager.read("data_type") or {}
+    run_config = state_manager.read("run_config") or {}
 
     scan_output = state_manager.read("schema_scan_output") or {}
     identity_card = build_identity_card(
@@ -109,6 +111,9 @@ def rebuild_governance_artifacts(state_manager: StateManager, user_intent: Optio
     save_task_contract(contract_path, task_contract)
     state_manager.write("task_contract", task_contract)
 
+    analysis_intent = classify_analysis_intent(schema_profile or {}, run_config.get("target_column"))
+    state_manager.write("analysis_intent", analysis_intent)
+
     confidence = compute_data_confidence(identity_card, validation_report, ingestion_meta.get("drift_status", "none") if isinstance(ingestion_meta, dict) else "none")
     conf_path = artifacts_dir / "confidence_report.json"
     with open(conf_path, "w", encoding="utf-8") as f:
@@ -119,6 +124,7 @@ def rebuild_governance_artifacts(state_manager: StateManager, user_intent: Optio
         "identity_card": identity_card,
         "task_contract": task_contract,
         "confidence_report": confidence,
+        "analysis_intent": analysis_intent,
     }
 
 
@@ -191,8 +197,17 @@ def render_governed_report(state_manager: StateManager, insights_path: Path) -> 
     contract = state_manager.read("task_contract") or {}
     allowed_sections = set(contract.get("allowed_sections", []))
     limitations = state_manager.read("limitations") or []
+    scope_constraints = state_manager.read("scope_constraints") or []
     confidence = state_manager.read("confidence_report") or {}
     validation = state_manager.read("validation_report") or {}
+    analysis_intent = state_manager.read("analysis_intent") or {}
+    analysis_intent_value = analysis_intent.get("intent") or "exploratory"
+    target_candidate = analysis_intent.get("target_candidate") or {
+        "column": None,
+        "reason": "no_usable_target_found",
+        "confidence": 0.0,
+        "detected": False,
+    }
     data_type = (state_manager.read("data_type_identification") or {}).get("primary_type")
     sentry = EvidenceSentry(state_manager)
 
@@ -257,7 +272,10 @@ def render_governed_report(state_manager: StateManager, insights_path: Path) -> 
         "mode": report_mode,
         "allowed_sections": list(allowed_sections),
         "data_type": data_type,
+        "analysis_intent": analysis_intent_value,
+        "target_candidate": target_candidate,
         "confidence": confidence,
+        "scope_constraints": scope_constraints,
         "limitations": limitations,
         "insights": insights,
         "task_contract": contract,

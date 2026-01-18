@@ -38,6 +38,7 @@ from core.state_manager import StateManager
 from core.data_guardrails import is_agent_allowed, append_limitation
 from core.insights import validate_insights
 from core.governance import rebuild_governance_artifacts, should_block_agent, render_governed_report, INSIGHT_AGENTS
+from core.agent_eligibility import resolve_agent_eligibility
 from core.data_loader import calculate_file_timeout
 from agents.data_sanitizer import DataSanitizer
 from ace_v4.performance.config import PerformanceConfig
@@ -483,9 +484,10 @@ def main_loop(run_path):
             
             # --- PROTOCOL 1100: PREVENT PREMATURE COMPLETION ---
             # Ensure expositor has run before allowing pipeline to complete
+            expositor_required = "expositor" in PIPELINE_SEQUENCE
             expositor_completed = "expositor" in state.get("steps_completed", [])
-            
-            if not expositor_completed:
+
+            if expositor_required and not expositor_completed:
                 print(f"[ORCHESTRATOR] âš ï¸ Protocol 1100: Pipeline marked {state['status']} but EXPOSITOR hasn't run. FORCING CONTINUATION.", file=sys.stderr, flush=True)
                 # Override status back to running
                 state["status"] = "running"
@@ -552,6 +554,44 @@ def main_loop(run_path):
         # Honor validation guardrails (skip blocked agents rather than hallucinate)
         validation_report = state_manager.read("validation_report") or {}
         blocked = set(validation_report.get("blocked_agents") or [])
+        analysis_intent = state_manager.read("analysis_intent") or {}
+        eligibility = resolve_agent_eligibility(current, analysis_intent)
+        if eligibility["status"] != "eligible":
+            step_state = state["steps"].setdefault(current, {"name": current})
+            step_state["status"] = "not_applicable" if eligibility["status"] == "not_applicable" else "skipped"
+            step_state["eligibility_status"] = eligibility["status"]
+            step_state["reason_code"] = eligibility.get("reason_code")
+            step_state["message"] = eligibility.get("message") or "Agent not applicable for this run."
+            state["steps"][current] = step_state
+            if current not in state["steps_completed"]:
+                state["steps_completed"].append(current)
+            update_history(state, f"{current} marked {step_state['status']}: {step_state['message']}")
+            scope_constraints = state_manager.read("scope_constraints") or []
+            scope_constraints.append(
+                {
+                    "agent": current,
+                    "reason_code": step_state["reason_code"],
+                    "message": step_state["message"],
+                }
+            )
+            state_manager.write("scope_constraints", scope_constraints)
+            save_state(state_path, state)
+
+            if current in PIPELINE_SEQUENCE:
+                idx = PIPELINE_SEQUENCE.index(current)
+                if idx + 1 < len(PIPELINE_SEQUENCE):
+                    state["current_step"] = PIPELINE_SEQUENCE[idx + 1]
+                    state["next_step"] = PIPELINE_SEQUENCE[idx + 1]
+                else:
+                    state["status"] = "complete"
+                    state["next_step"] = "complete"
+                    update_history(state, "Pipeline completed successfully")
+            else:
+                state["status"] = "complete"
+                state["next_step"] = "complete"
+                update_history(state, "Pipeline completed successfully")
+            save_state(state_path, state)
+            continue
         
         # CRITICAL OVERRIDE: Check if drift blocking is disabled
         from core.config import ENABLE_DRIFT_BLOCKING
@@ -605,14 +645,20 @@ def main_loop(run_path):
             # Ingestion was already completed during run initialization
             # Mark it as completed and move to next step
             finalize_step(state, "ingestion", True, "Ingestion completed during run initialization", "")
-            idx = PIPELINE_SEQUENCE.index("type_identifier")  # First real agent step
-            if idx < len(PIPELINE_SEQUENCE):
+            if PIPELINE_SEQUENCE:
+                if "type_identifier" in PIPELINE_SEQUENCE:
+                    idx = PIPELINE_SEQUENCE.index("type_identifier")
+                else:
+                    idx = 0
                 state["current_step"] = PIPELINE_SEQUENCE[idx]
                 state["next_step"] = PIPELINE_SEQUENCE[idx]
             save_state(state_path, state)
             continue
 
         # Run the agent
+        step_state = state["steps"].setdefault(current, {"name": current})
+        step_state["eligibility_status"] = "eligible"
+        state["steps"][current] = step_state
         mark_step_running(state, current)
         save_state(state_path, state)
 
@@ -809,11 +855,19 @@ def main_loop(run_path):
                 # Pipeline will advance normally to next step
 
         if success:
-            idx = PIPELINE_SEQUENCE.index(current)
-
-            if idx + 1 < len(PIPELINE_SEQUENCE):
-                state["current_step"] = PIPELINE_SEQUENCE[idx + 1]
-                state["next_step"] = PIPELINE_SEQUENCE[idx + 1]
+            if current in PIPELINE_SEQUENCE:
+                idx = PIPELINE_SEQUENCE.index(current)
+                if idx + 1 < len(PIPELINE_SEQUENCE):
+                    state["current_step"] = PIPELINE_SEQUENCE[idx + 1]
+                    state["next_step"] = PIPELINE_SEQUENCE[idx + 1]
+                else:
+                    state["next_step"] = "complete"
+                    if state.get("failed_steps"):
+                        state["status"] = "complete_with_errors"
+                        update_history(state, "Pipeline finished with errors")
+                    else:
+                        state["status"] = "complete"
+                        update_history(state, "Pipeline completed successfully")
             else:
                 state["next_step"] = "complete"
                 if state.get("failed_steps"):

@@ -44,7 +44,9 @@ def compute_data_confidence(identity_card: Dict, validation_report: Dict, drift_
     if not checks.get("sample_size", {}).get("ok", True):
         score -= 0.25
         reasons.append("Sample size below minimum.")
-    if not checks.get("variance", {}).get("ok", True):
+    variance_check = checks.get("variance", {})
+    variance_applicable = variance_check.get("applicable", True)
+    if variance_applicable and not variance_check.get("ok", True):
         score -= 0.2
         reasons.append("Target variance insufficient.")
     if validation_report and validation_report.get("mode") == "limitations":
