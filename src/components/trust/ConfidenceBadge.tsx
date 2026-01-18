@@ -19,6 +19,7 @@ interface ConfidenceBadgeProps {
         dataCoverage?: string;
         validationStatus?: string;
         sampleSufficiency?: string;
+        scopeNote?: string;
     };
 }
 
@@ -87,6 +88,9 @@ export function ConfidenceBadge({ level, score, className, showLabel = true, det
                             <div>Data coverage: {resolvedDetails.dataCoverage}</div>
                             <div>Validation: {resolvedDetails.validationStatus}</div>
                             <div>Sample sufficiency: {resolvedDetails.sampleSufficiency}</div>
+                            {resolvedDetails.scopeNote ? (
+                                <div>Scope: {resolvedDetails.scopeNote}</div>
+                            ) : null}
                         </div>
                     </div>
                 </TooltipContent>

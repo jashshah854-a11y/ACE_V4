@@ -1,4 +1,5 @@
 ﻿import { useRemoteArtifact } from "@/hooks/useRemoteArtifact";
+import type { AnalysisIntent, ScopeConstraint, TargetCandidate } from "@/types/analysisIntent";
 
 export interface TaskContractSnapshot {
   primary_question?: string;
@@ -16,6 +17,9 @@ export interface GovernedReport {
   mode?: string;
   allowed_sections?: string[];
   data_type?: string;
+  analysis_intent?: AnalysisIntent;
+  target_candidate?: TargetCandidate;
+  scope_constraints?: ScopeConstraint[];
   confidence?: {
     data_confidence?: number;
     confidence_label?: string;

@@ -24,7 +24,9 @@ function deriveRunMode(
     if (hasCriticalErrors) return 'failed';
 
     // Limitations: Any blocking issues
-    if (validationIssues.length > 0 || governanceBlocks.length > 0) {
+    const hasBlockingValidation = validationIssues.some((issue) => issue.severity !== 'info');
+    const hasBlockingGovernance = governanceBlocks.some((issue) => issue.severity !== 'info');
+    if (hasBlockingValidation || hasBlockingGovernance) {
         return 'limitations';
     }
 

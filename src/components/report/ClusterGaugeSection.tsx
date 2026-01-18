@@ -18,8 +18,8 @@ export function ClusterGaugeSection({ data }: ClusterGaugeSectionProps) {
     if (!data) {
         return (
             <ActionableEmptyState
-                title="Behavioral Clustering Suppressed"
-                description="Clustering requires numerical or categorical variance across records. Current dataset may be too small or uniform."
+                title="Behavioral clustering not available"
+                description="Clustering requires enough variance across records. This dataset may be too small or uniform to segment reliably."
                 requirements={["At least 50 records", "Variance in numeric fields", "Sufficient data quality"]}
             />
         );

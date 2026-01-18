@@ -9,7 +9,7 @@ interface WhyExplainerProps {
     className?: string;
 }
 
-export function WhyExplainer({ reasons, title = "Why are these insights suppressed?", className }: WhyExplainerProps) {
+export function WhyExplainer({ reasons, title = "Why are these insights not applicable?", className }: WhyExplainerProps) {
     const [isOpen, setIsOpen] = useState(false);
 
     if (!reasons || reasons.length === 0) return null;

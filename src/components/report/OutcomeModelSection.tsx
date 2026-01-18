@@ -17,8 +17,8 @@ export function OutcomeModelSection({ data }: OutcomeModelSectionProps) {
     if (!data || data.status === 'skipped') {
         return (
             <ActionableEmptyState
-                title="Outcome Modeling Suppressed"
-                description="Predictive modeling requires a target variable (e.g., 'Churn', 'Revenue') and sufficient historical data."
+                title="Outcome modeling not applicable"
+                description="This dataset supports descriptive insights, but outcome prediction requires a target variable and sufficient history."
                 requirements={["Target variable identified", "Sufficient correlation signals", "Minimum 100 historical records"]}
             />
         );
