@@ -113,6 +113,7 @@ function createSafeDefaults(): ReportDataResult {
         scopeLocks: [],
         guidanceNotes: [],
         governingThought: "",
+        governingTrust: undefined,
         narrativeModules: [],
         appendixModules: [],
         syntheticTimeColumn: undefined,

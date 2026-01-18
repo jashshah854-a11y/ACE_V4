@@ -29,6 +29,7 @@ export function StoryView({ data, onChangeStoryPoint }: StoryViewProps) {
                 why_it_matters: section.impact || "This impacts the primary business objective.",
                 what_to_watch: "Data quality and sample coverage remain the main watchouts.",
             },
+            trust: section.trust,
             visual: {
                 type: 'table',
                 data: [],

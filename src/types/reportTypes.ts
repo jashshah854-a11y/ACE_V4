@@ -1,5 +1,6 @@
 ﻿import type { ReportViewModel } from "@/lib/reportViewModel";
 import type { NarrativeModule } from "@/lib/meaningAssembler";
+import type { TrustScore } from "@/types/trust";
 
 export type GuidanceSeverity = "info" | "warning" | "critical";
 
@@ -227,5 +228,7 @@ export interface ReportDataResult {
   viewModel: ReportViewModel;
   evidenceMap: Record<string, EvidenceSummary>;
   governedInsights: GovernedInsightSummary[];
+  governingTrust?: TrustScore;
 }
+
 

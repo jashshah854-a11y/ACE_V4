@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { InsightExplanation } from './InsightExplanation';
 import { ConfidenceBadge } from '@/components/trust/ConfidenceBadge';
+import { TrustBadge } from '@/components/trust/TrustBadge';
+import { TrustBreakdown } from '@/components/trust/TrustBreakdown';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Pause, Play, RefreshCw, BarChart3, LineChart as LineChartIcon, Sparkles } from 'lucide-react';
 import { Story, StoryPoint, ToneProfile, ChartType } from '@/types/StoryTypes';
@@ -162,14 +164,18 @@ export function StoryCanvas({ story, onToneChange, isLoading = false, className 
                                         <div className="flex-1">
                                             {currentPoint.headline}
                                         </div>
-                                        {currentPoint.metadata?.confidence !== undefined && (
-                                            <ConfidenceBadge
-                                                level={currentPoint.metadata.confidence > 0.8 ? 'high' : currentPoint.metadata.confidence > 0.5 ? 'medium' : 'low'}
-                                                score={currentPoint.metadata.confidence}
-                                                showLabel={false}
-                                                className="shrink-0 mt-1"
-                                            />
-                                        )}
+                                        <div className="flex flex-col items-end gap-1 shrink-0 mt-1">
+                                            {currentPoint.trust && (
+                                                <TrustBadge trust={currentPoint.trust} showScore={true} />
+                                            )}
+                                            {currentPoint.metadata?.confidence !== undefined && (
+                                                <ConfidenceBadge
+                                                    level={currentPoint.metadata.confidence > 0.8 ? 'high' : currentPoint.metadata.confidence > 0.5 ? 'medium' : 'low'}
+                                                    score={currentPoint.metadata.confidence}
+                                                    showLabel={false}
+                                                />
+                                            )}
+                                        </div>
                                     </div>
                                 </motion.h3>
 
@@ -181,6 +187,10 @@ export function StoryCanvas({ story, onToneChange, isLoading = false, className 
                                 >
                                     <p>{selectNarrativeText(currentPoint, mode)}</p>
                                 </motion.div>
+
+                                {currentPoint.trust && (
+                                    <TrustBreakdown trust={currentPoint.trust} mode={mode} insightId={currentPoint.id} />
+                                )}
 
                                 {/* Explanation Block */}
                                 {currentPoint.explanation && (
@@ -287,15 +297,13 @@ export function StoryCanvas({ story, onToneChange, isLoading = false, className 
 
 function selectNarrativeText(point: StoryPoint, mode: 'executive' | 'analyst' | 'expert') {
     const variations = point.narrative_variations;
-    if (variations && variations[mode]) {
-        return variations[mode];
-    }
+    let text = variations && variations[mode] ? variations[mode] : point.narrative;
 
     if (mode === 'executive') {
-        return summarizeForExecutive(point.narrative);
+        text = summarizeForExecutive(text);
     }
 
-    return point.narrative;
+    return applyTrustTone(text, point.trust?.band);
 }
 
 function summarizeForExecutive(text: string) {
@@ -306,4 +314,13 @@ function summarizeForExecutive(text: string) {
         return sentenceMatch[1];
     }
     return trimmed.length > 220 ? `${trimmed.slice(0, 217)}...` : trimmed;
+}
+
+function applyTrustTone(text: string, band?: 'certified' | 'conditional' | 'caution') {
+    if (!band || !text) return text;
+    if (band === 'certified') return text;
+    if (band === 'conditional') {
+        return `This insight is directional and should be read with context. ${text}`;
+    }
+    return `This signal is preliminary and should not drive action yet. ${text}`;
 }
