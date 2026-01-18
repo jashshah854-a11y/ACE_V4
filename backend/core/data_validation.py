@@ -68,9 +68,10 @@ def validate_dataset(df: pd.DataFrame, run_config: Dict, schema_map: Optional[Di
     # Target variable
     target_col = _detect_target(df, run_config, schema_map)
     checks["target_variable"] = {"ok": bool(target_col), "detail": target_col or "Not found"}
+    not_applicable_agents: Set[str] = set()
     if not target_col:
-        blocked.update({"regression", "fabricator"})
-        notes.append("No suitable target variable detected; regression and strategy generation will be skipped.")
+        not_applicable_agents.update({"regression", "fabricator"})
+        notes.append("No suitable target variable detected; predictive agents marked not applicable.")
 
     # Variance check on target
     if target_col:
@@ -85,7 +86,7 @@ def validate_dataset(df: pd.DataFrame, run_config: Dict, schema_map: Optional[Di
             blocked.update({"regression", "fabricator"})
             notes.append("Target lacks variance; predictive modeling disabled.")
     else:
-        checks["variance"] = {"ok": False, "detail": "No target to assess"}
+        checks["variance"] = {"ok": True, "detail": "No target to assess", "applicable": False}
 
     # Time coverage
     coverage_days = _time_coverage_days(df)
@@ -119,6 +120,7 @@ def validate_dataset(df: pd.DataFrame, run_config: Dict, schema_map: Optional[Di
         "allow_insights": allow_insights,
         "mode": mode,
         "blocked_agents": sorted(blocked),
+        "not_applicable_agents": sorted(not_applicable_agents),
         "checks": checks,
         "row_count": row_count,
         "column_count": col_count,
