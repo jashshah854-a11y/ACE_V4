@@ -13,6 +13,21 @@ export type StoryType =
 
 export type ToneProfile = 'formal' | 'conversational' | 'playful';
 
+export type NarrativeMode = 'executive' | 'analyst' | 'expert';
+
+export interface NarrativeContent {
+    executive: string;
+    analyst: string;
+    expert: string;
+}
+
+export interface ExplanationContent {
+    what_happened: string;
+    why_it_happened: string;
+    why_it_matters: string;
+    what_to_watch: string;
+}
+
 export type ChartType =
     | 'line_chart'
     | 'bar_chart'
@@ -30,7 +45,17 @@ export interface ChartSpec {
         title?: string;
         legend?: boolean;
         colors?: string[];
+        annotations?: ChartAnnotation[];
     };
+}
+
+export interface ChartAnnotation {
+    type: 'point' | 'range' | 'threshold';
+    value: number | string; // X or Y value
+    endValue?: number | string; // For ranges
+    label: string;
+    color?: string;
+    axis?: 'x' | 'y';
 }
 
 export interface EvidenceRef {
@@ -50,7 +75,9 @@ export interface StoryPoint {
     id: string;
     sequence: number;
     headline: string;           // Governing thought
-    narrative: string;          // Main text (tone-aware)
+    narrative: string;          // Main text (default/fallback)
+    narrative_variations?: NarrativeContent; // Mode-specific narratives
+    explanation?: ExplanationContent; // Structured explanation blocks
     visual: ChartSpec;          // Chart configuration
     evidence: EvidenceRef[];    // Links to evidence
     interactions: Interaction[]; // Drill-down actions

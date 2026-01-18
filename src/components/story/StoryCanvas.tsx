@@ -1,13 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
+import { InsightExplanation } from './InsightExplanation';
+import { ConfidenceBadge } from '@/components/trust/ConfidenceBadge';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Pause, Play, RefreshCw, BarChart3, LineChart as LineChartIcon, Sparkles } from 'lucide-react';
 import { Story, StoryPoint, ToneProfile, ChartType } from '@/types/StoryTypes';
 import { ToneSelector } from './ToneSelector';
+import { NarrativeModeSelector } from '@/components/narrative/NarrativeModeSelector';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { StoryBarChart, StoryLineChart } from './StoryCharts';
 import { PredictiveDriversChart } from '@/components/canvas/EvidenceCharts';
+import { useNarrative } from '@/components/narrative/NarrativeContext';
 
 interface StoryCanvasProps {
     story: Story;
@@ -19,6 +23,7 @@ interface StoryCanvasProps {
 export function StoryCanvas({ story, onToneChange, isLoading = false, className }: StoryCanvasProps) {
     const [currentPointIndex, setCurrentPointIndex] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
+    const { mode } = useNarrative();
 
     const currentPoint = story.points[currentPointIndex];
     const progress = ((currentPointIndex + 1) / story.points.length) * 100;
@@ -65,6 +70,8 @@ export function StoryCanvas({ story, onToneChange, isLoading = false, className 
                         data={visual.data}
                         title={title}
                         color={config.colors?.[0]}
+                        annotations={config.annotations}
+                        mode={mode}
                     />
                 );
             case 'line_chart':
@@ -73,6 +80,8 @@ export function StoryCanvas({ story, onToneChange, isLoading = false, className 
                         data={visual.data}
                         title={title}
                         color={config.colors?.[0]}
+                        annotations={config.annotations}
+                        mode={mode}
                     />
                 );
             // Feature importance is a special chart type we might receive
@@ -124,6 +133,7 @@ export function StoryCanvas({ story, onToneChange, isLoading = false, className 
                             Refining...
                         </div>
                     )}
+                    <NarrativeModeSelector />
                     <ToneSelector currentTone={story.tone} onToneChange={onToneChange} />
                 </div>
             </div>
@@ -148,7 +158,19 @@ export function StoryCanvas({ story, onToneChange, isLoading = false, className 
                                     transition={{ delay: 0.1 }}
                                     className="text-2xl font-serif text-foreground leading-snug"
                                 >
-                                    {currentPoint.headline}
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex-1">
+                                            {currentPoint.headline}
+                                        </div>
+                                        {currentPoint.metadata?.confidence !== undefined && (
+                                            <ConfidenceBadge
+                                                level={currentPoint.metadata.confidence > 0.8 ? 'high' : currentPoint.metadata.confidence > 0.5 ? 'medium' : 'low'}
+                                                score={currentPoint.metadata.confidence}
+                                                showLabel={false}
+                                                className="shrink-0 mt-1"
+                                            />
+                                        )}
+                                    </div>
                                 </motion.h3>
 
                                 <motion.div
@@ -157,8 +179,19 @@ export function StoryCanvas({ story, onToneChange, isLoading = false, className 
                                     transition={{ delay: 0.2 }}
                                     className="prose prose-sm dark:prose-invert text-muted-foreground leading-relaxed"
                                 >
-                                    <p>{currentPoint.narrative}</p>
+                                    <p>{selectNarrativeText(currentPoint, mode)}</p>
                                 </motion.div>
+
+                                {/* Explanation Block */}
+                                {currentPoint.explanation && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        transition={{ delay: 0.25 }}
+                                    >
+                                        <InsightExplanation explanation={currentPoint.explanation} />
+                                    </motion.div>
+                                )}
 
                                 {currentPoint.evidence.length > 0 && (
                                     <motion.div
@@ -250,4 +283,27 @@ export function StoryCanvas({ story, onToneChange, isLoading = false, className 
             </div>
         </div>
     );
+}
+
+function selectNarrativeText(point: StoryPoint, mode: 'executive' | 'analyst' | 'expert') {
+    const variations = point.narrative_variations;
+    if (variations && variations[mode]) {
+        return variations[mode];
+    }
+
+    if (mode === 'executive') {
+        return summarizeForExecutive(point.narrative);
+    }
+
+    return point.narrative;
+}
+
+function summarizeForExecutive(text: string) {
+    if (!text) return "";
+    const trimmed = text.replace(/\s+/g, " ").trim();
+    const sentenceMatch = trimmed.match(/^(.*?[.!?])\s/);
+    if (sentenceMatch?.[1]) {
+        return sentenceMatch[1];
+    }
+    return trimmed.length > 220 ? `${trimmed.slice(0, 217)}...` : trimmed;
 }

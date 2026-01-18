@@ -1,6 +1,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { NarrativeProvider } from "@/components/narrative/NarrativeContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -28,30 +29,32 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <SimulationProvider>
         <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <SimulationSafeModeBanner />
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/app" element={<ExecutivePulse />} />
-              <Route path="/report/summary" element={<ExecutivePulse />} />
-              {/* NEW: Simplified Run Overview */}
-              <Route path="/report/:runId" element={<RunSummaryPage />} />
-              {/* NEW: Quick Summary View */}
-              <Route path="/summary/:runId" element={<QuickSummaryView />} />
-              <Route path="/upload" element={<Index />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/pipeline/:runId" element={<Pipeline />} />
-              <Route path="/pipeline" element={<Pipeline />} />
-              <Route path="/lab" element={<LabPage />} />
-              <Route path="/lab/:runId" element={<LabPage />} />
-              <Route path="/about" element={<FoundersLetter />} />
-              <Route path="/logs/:runId" element={<Pipeline />} /> {/* Fallback to Pipeline view for logs */}
-              <Route path="/demo/pipeline-status" element={<DemoPipelineStatus />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
+          <NarrativeProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <SimulationSafeModeBanner />
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/app" element={<ExecutivePulse />} />
+                <Route path="/report/summary" element={<ExecutivePulse />} />
+                {/* NEW: Simplified Run Overview */}
+                <Route path="/report/:runId" element={<RunSummaryPage />} />
+                {/* NEW: Quick Summary View */}
+                <Route path="/summary/:runId" element={<QuickSummaryView />} />
+                <Route path="/upload" element={<Index />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/pipeline/:runId" element={<Pipeline />} />
+                <Route path="/pipeline" element={<Pipeline />} />
+                <Route path="/lab" element={<LabPage />} />
+                <Route path="/lab/:runId" element={<LabPage />} />
+                <Route path="/about" element={<FoundersLetter />} />
+                <Route path="/logs/:runId" element={<Pipeline />} /> {/* Fallback to Pipeline view for logs */}
+                <Route path="/demo/pipeline-status" element={<DemoPipelineStatus />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </NarrativeProvider>
           <GlobalErrorOverlay />
         </TooltipProvider>
       </SimulationProvider>

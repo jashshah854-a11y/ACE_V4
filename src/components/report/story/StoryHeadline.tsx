@@ -1,6 +1,7 @@
 ﻿import { StoryViewData } from "@/lib/reportViewModel";
 import { Sparkles } from "lucide-react";
 import { ReactNode } from "react";
+import { ConfidenceBadge, ConfidenceLevel } from "@/components/trust/ConfidenceBadge";
 
 interface StoryHeadlineProps {
     data: StoryViewData;
@@ -36,6 +37,18 @@ export function StoryHeadline({ data, onHighlight }: StoryHeadlineProps) {
                 <span>{data.meta.date}</span>
                 <span>·</span>
                 <span>Run {data.meta.runId}</span>
+                <div className="ml-2">
+                    <ConfidenceBadge
+                        level={data.meta.confidence > 0.8 ? 'high' : data.meta.confidence > 0.5 ? 'medium' : 'low'}
+                        score={data.meta.confidence}
+                        showLabel={true}
+                        details={{
+                            dataCoverage: `Data quality ${Math.round(data.meta.dataQuality * 100)}%`,
+                            validationStatus: data.meta.confidence > 0.6 ? "Passed core checks" : "Borderline checks",
+                            sampleSufficiency: data.meta.runId ? `Run: ${data.meta.runId}` : undefined,
+                        }}
+                    />
+                </div>
             </div>
             <h1 className="text-2xl md:text-3xl lg:text-4xl font-serif font-bold text-foreground leading-tight mb-4">
                 {emphasize(data.headline)}

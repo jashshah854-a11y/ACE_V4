@@ -3,9 +3,10 @@ import "./intelligence-canvas.css";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { NeuralSpine, AgentExecution } from "./NeuralSpine";
-import { NarrativeStream } from "./NarrativeStream";
+import { NarrativeStream } from "@/components/canvas/NarrativeStream";
 import { EvidenceLab, EvidenceObject } from "./EvidenceLab";
 import { getReport, getRunStatus, getEnhancedAnalytics } from "@/lib/api-client";
+import { extractMetrics } from "@/lib/reportParser";
 
 interface IntelligenceCanvasProps {
     runId: string;
@@ -49,7 +50,7 @@ export function IntelligenceCanvas({ runId, className }: IntelligenceCanvasProps
     const agents: AgentExecution[] = useMemo(() => {
         if (!pipelineState) return [];
 
-        const steps = pipelineState.steps || [];
+        const steps = Array.isArray(pipelineState.steps) ? pipelineState.steps : [];
         return steps.map((step: any) => ({
             name: step.name || step.agent || "unknown",
             status: step.status || "pending",
@@ -150,6 +151,11 @@ export function IntelligenceCanvas({ runId, className }: IntelligenceCanvasProps
 
     }, [activeClaimId, analytics]);
 
+    const reportMetrics = useMemo(() => extractMetrics(reportContent || ""), [reportContent]);
+    const normalizedConfidence = reportMetrics.confidenceLevel !== undefined
+        ? reportMetrics.confidenceLevel / 100
+        : 1.0;
+
     if (reportLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-void">
@@ -178,7 +184,8 @@ export function IntelligenceCanvas({ runId, className }: IntelligenceCanvasProps
                 {/* CENTER PANEL: Narrative Stream */}
                 <NarrativeStream
                     content={reportContent || "# Loading...\n\nPlease wait while we load the analysis report."}
-                    onClaimClick={setActiveClaimId}
+                    confidence={normalizedConfidence}
+                    onClaimClick={(evidenceId) => setActiveClaimId(evidenceId)}
                 />
 
                 {/* RIGHT PANEL: Evidence Lab */}

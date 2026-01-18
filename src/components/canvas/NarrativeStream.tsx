@@ -8,8 +8,11 @@ import {
     extractGoverningThought,
     parseSCQABlocks,
     extractSections,
+    extractMetrics,
     type SCQABlock
 } from '@/lib/reportParser';
+import { ConfidenceBadge } from '@/components/trust/ConfidenceBadge';
+import { parseGuardrailsText } from '@/lib/getGuidance';
 
 interface NarrativeStreamProps {
     /** Raw markdown content from backend */
@@ -47,12 +50,18 @@ export function NarrativeStream({
     const [activeClaimId, setActiveClaimId] = useState<string | null>(null);
 
     // Extract narrative components
+    const metrics = extractMetrics(content);
     const governingThought = extractGoverningThought(content);
     const scqaBlocks = parseSCQABlocks(content);
     const sections = extractSections(content);
+    const guardrailSection = sections.find((section) =>
+        section.title.toLowerCase().includes("guardrail") || section.title.toLowerCase().includes("validation")
+    );
+    const guardrailNotes = guardrailSection ? parseGuardrailsText(guardrailSection.content) : [];
 
     // Safe mode detection
     const isSafeMode = confidence < 0.1;
+    const confidenceLevel = confidence >= 0.8 ? "high" : confidence >= 0.5 ? "medium" : "low";
 
     // Determine which sections to show based on task contract
     const shouldShowSection = (sectionId: string): boolean => {
@@ -142,9 +151,21 @@ export function NarrativeStream({
                 <p className="font-data text-xs text-muted-foreground mb-4 uppercase tracking-widest">
                     Intelligence Report // ACE V4 // Neural Refinery
                 </p>
-                <h1 className="governing-thought mb-4">
-                    {governingThought}
-                </h1>
+                <div className="flex flex-wrap items-start gap-4 mb-4">
+                    <h1 className="governing-thought flex-1">
+                        {governingThought}
+                    </h1>
+                    <ConfidenceBadge
+                        level={confidenceLevel}
+                        score={confidence}
+                        showLabel={false}
+                        details={{
+                            dataCoverage: metrics.dataQualityScore ? `${Math.round(metrics.dataQualityScore)}% coverage` : "Coverage unavailable",
+                            validationStatus: guardrailNotes.length ? "Guardrails flagged" : "Passed core checks",
+                            sampleSufficiency: metrics.recordsProcessed ? `Rows: ${metrics.recordsProcessed.toLocaleString()}` : "Sample size unknown",
+                        }}
+                    />
+                </div>
 
                 {/* Safe Mode Banner */}
                 {isSafeMode && (
@@ -161,6 +182,19 @@ export function NarrativeStream({
                                 </p>
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {guardrailNotes.length > 0 && (
+                    <div className="mt-6 p-4 bg-amber-50/70 border border-amber-200 rounded-lg">
+                        <p className="text-xs font-semibold uppercase tracking-widest text-amber-900 mb-2">
+                            Validation & Guardrails
+                        </p>
+                        <ul className="space-y-1 text-xs text-amber-900/80">
+                            {guardrailNotes.slice(0, 4).map((note, idx) => (
+                                <li key={idx}>- {note}</li>
+                            ))}
+                        </ul>
                     </div>
                 )}
             </header>
