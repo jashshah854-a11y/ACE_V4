@@ -462,9 +462,9 @@ const ExecutivePulse = () => {
                   {/* Validation Footer */}
                   <div className="pt-4">
                     <ValidationSummaryPanel
-                      dataQualityScore={reportData.meta.dataQuality}
+                      dataQualityScore={reportData.dataQualityValue}
                       suppressedCount={0} // Placeholder
-                      issues={reportData.meta.confidence < 0.6 ? [{ type: 'warning', message: 'Low confidence detected in recent samples.' }] : []}
+                      issues={reportData.confidenceValue && reportData.confidenceValue < 60 ? [{ type: 'warning', message: 'Low confidence detected in recent samples.' }] : []}
                       insightPolicy={insightPolicy}
                     />
                   </div>
@@ -474,17 +474,14 @@ const ExecutivePulse = () => {
                 <aside className="space-y-6 lg:sticky lg:top-24 self-start h-fit">
                   <GuidanceOverlay notes={reportData.guidanceNotes} context="global" />
                   <ValidationSummaryPanel
-                    dataQualityScore={reportData.meta.dataQuality}
+                    dataQualityScore={reportData.dataQualityValue}
                     suppressedCount={0}
-                    issues={reportData.meta.confidence < 0.6 ? [{ type: 'warning', message: 'Low confidence detected in recent samples.' }] : []}
+                    issues={reportData.confidenceValue && reportData.confidenceValue < 60 ? [{ type: 'warning', message: 'Low confidence detected in recent samples.' }] : []}
                     insightPolicy={insightPolicy}
                   />
                   {/* Scope Locks */}
                   {scopeLocks.length > 0 && (
                     <div className="rounded-2xl border border-amber-200/50 bg-amber-50/50 p-5">
-                      <p className="text-[10px] uppercase tracking-widest text-amber-800 font-bold mb-3 flex items-center gap-2">
-                        <Shield className="w-3 h-3" /> Scope Locks
-                      </p>
                       <div className="flex flex-wrap gap-2">
                         {scopeLocks.map((lock, idx) => (
                           <span key={idx} className="bg-white px-2 py-1 rounded-md text-xs border border-amber-100 text-amber-900 shadow-sm">
