@@ -25,6 +25,8 @@ import {
   Users
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
+import { StoryView } from "@/components/story/StoryView";
+import { ValidationSummaryPanel } from "@/components/trust/ValidationSummaryPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getReport } from "@/lib/api-client";
@@ -48,6 +50,9 @@ import { useTaskContext } from "@/context/TaskContext";
 import { CuratedKpiPanel } from "@/components/report/story/CuratedKpiPanel";
 import { useCuratedKpis } from "@/hooks/useCuratedKpis";
 import { ExecutiveKpiGrid } from "@/components/report/ExecutiveKpiGrid"; // New Component
+import { NarrativeModeSelector } from "@/components/narrative/NarrativeModeSelector";
+import { ConfidenceBadge } from "@/components/trust/ConfidenceBadge";
+import { useNarrative } from "@/components/narrative/NarrativeContext";
 
 const ExecutivePulse = () => {
   const [searchParams] = useSearchParams();
@@ -126,6 +131,7 @@ const ExecutivePulse = () => {
   });
 
   const { setSafeMode } = useSimulation();
+  const { mode: narrativeMode } = useNarrative();
 
   const handleEvidenceFocus = useCallback(
     ({ section, evidenceId }: { section: string; evidenceId?: string }) => {
@@ -208,6 +214,21 @@ const ExecutivePulse = () => {
   };
 
   const hasData = activeRun && reportQuery.data;
+  const summarizedContent = (content: string) => {
+    const lines = content.split("\n").filter((line) => line.trim().length > 0);
+    const first = lines[0] || content;
+    return first.length > 240 ? `${first.slice(0, 237)}...` : first;
+  };
+
+  const contentForMode = (content: string, impact?: string) => {
+    if (narrativeMode === "executive") {
+      return summarizedContent(content);
+    }
+    if (narrativeMode === "expert" && impact) {
+      return `${content}\n\nAssumptions & caveats: ${impact}`;
+    }
+    return content;
+  };
 
   // --- New KPI Grid Data ---
   const executiveMetrics = [
@@ -216,6 +237,15 @@ const ExecutivePulse = () => {
     { label: "Data Quality", value: `${dataClarityPercent}%`, icon: Shield, className: dataClarityPercent > 80 ? "border-green-500/20" : "border-amber-500/20" },
     { label: "AI Confidence", value: `${aiConfidencePercent}%`, icon: Zap, className: aiConfidencePercent > 80 ? "border-blue-500/20" : "border-amber-500/20" },
   ];
+
+  const confidenceLevel = aiConfidencePercent > 80 ? "high" : aiConfidencePercent > 50 ? "medium" : "low";
+  const validationIssues = reportData.diagnostics?.validation?.failed_fields || [];
+  const validationStatus = validationIssues.length ? "Borderline checks" : "Passed core checks";
+  const insightPolicy = reportData.shouldEmitInsights
+    ? "endorsed"
+    : reportData.safeMode
+      ? "limited"
+      : "blocked";
 
 
   // --- Empty State ---
@@ -274,18 +304,22 @@ const ExecutivePulse = () => {
               <p className="text-muted-foreground">Strategic intelligence readout and simulation lab.</p>
             </div>
 
-            <div className="flex gap-2">
-              <div className="relative">
-                <Input
-                  value={runInput}
-                  onChange={(e) => setRunInput(e.target.value)}
-                  placeholder="Run ID"
-                  className="font-mono text-sm w-40 pl-8"
-                  onKeyDown={(e) => e.key === "Enter" && handleSwitchRun()}
-                />
-                <FileText className="w-3.5 h-3.5 absolute left-2.5 top-3 text-muted-foreground" />
+            <div className="flex flex-col md:flex-row gap-4 items-end md:items-center">
+              <NarrativeModeSelector />
+
+              <div className="flex gap-2">
+                <div className="relative">
+                  <Input
+                    value={runInput}
+                    onChange={(e) => setRunInput(e.target.value)}
+                    placeholder="Run ID"
+                    className="font-mono text-sm w-40 pl-8"
+                    onKeyDown={(e) => e.key === "Enter" && handleSwitchRun()}
+                  />
+                  <FileText className="w-3.5 h-3.5 absolute left-2.5 top-3 text-muted-foreground" />
+                </div>
+                <Button onClick={handleSwitchRun} disabled={!runInput.trim()}>Load</Button>
               </div>
-              <Button onClick={handleSwitchRun} disabled={!runInput.trim()}>Load</Button>
             </div>
           </div>
 
@@ -306,6 +340,17 @@ const ExecutivePulse = () => {
                     <div className="flex items-center gap-2 mb-4 text-primary/80">
                       <Sparkles className="w-4 h-4" />
                       <span className="text-xs font-bold uppercase tracking-widest">Governing Thought</span>
+                      <ConfidenceBadge
+                        level={confidenceLevel}
+                        score={reportData.confidenceValue}
+                        className="ml-auto"
+                        showLabel={false}
+                        details={{
+                          dataCoverage: reportData.dataQualityValue ? `${Math.round(reportData.dataQualityValue)}% coverage` : undefined,
+                          validationStatus,
+                          sampleSufficiency: reportData.identityStats?.rows ? `Rows: ${reportData.identityStats.rows}` : undefined,
+                        }}
+                      />
                     </div>
                     <h2 className="font-serif text-3xl md:text-4xl leading-tight text-foreground mb-4">
                       {reportData.governingThought || storyData.heroInsight?.keyInsight || "Analyzing strategic implications..."}
@@ -354,11 +399,14 @@ const ExecutivePulse = () => {
                     {/* Narrative Blocks */}
                     {storyData.sections.map((section, idx) => {
                       if (section.type === "recommendation" && section.listItems?.length) {
+                        const items = narrativeMode === "executive"
+                          ? section.listItems.slice(0, 3)
+                          : section.listItems;
                         return (
                           <ActionChecklist
                             key={idx}
                             title={section.title}
-                            items={section.listItems}
+                            items={items}
                             onViewEvidence={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })}
                           />
                         );
@@ -370,15 +418,32 @@ const ExecutivePulse = () => {
                           sentiment={section.sentiment}
                           impact={section.impact}
                         >
-                          <ReactMarkdown>{section.content}</ReactMarkdown>
+                          <ReactMarkdown>{contentForMode(section.content, section.impact)}</ReactMarkdown>
                         </SentimentBlock>
                       );
                     })}
+                  </div>
+
+                  {/* Validation Footer */}
+                  <div className="pt-4">
+                    <ValidationSummaryPanel
+                      dataQualityScore={reportData.meta.dataQuality}
+                      suppressedCount={0} // Placeholder
+                      issues={reportData.meta.confidence < 0.6 ? [{ type: 'warning', message: 'Low confidence detected in recent samples.' }] : []}
+                      insightPolicy={insightPolicy}
+                    />
                   </div>
                 </div>
 
                 {/* Right Column: Lab & Controls */}
                 <aside className="space-y-6 lg:sticky lg:top-24 self-start h-fit">
+                  <GuidanceOverlay notes={reportData.guidanceNotes} context="global" />
+                  <ValidationSummaryPanel
+                    dataQualityScore={reportData.meta.dataQuality}
+                    suppressedCount={0}
+                    issues={reportData.meta.confidence < 0.6 ? [{ type: 'warning', message: 'Low confidence detected in recent samples.' }] : []}
+                    insightPolicy={insightPolicy}
+                  />
                   {/* Scope Locks */}
                   {scopeLocks.length > 0 && (
                     <div className="rounded-2xl border border-amber-200/50 bg-amber-50/50 p-5">

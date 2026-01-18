@@ -15,7 +15,7 @@ import {
   History, LayoutGrid, ListFilter, SlidersHorizontal
 } from "lucide-react";
 
-import { getReport } from "@/lib/api-client";
+import { getReport, getReportsHistory } from "@/lib/api-client";
 import {
   getRecentReports,
   saveRecentReport,
@@ -72,10 +72,47 @@ const Reports = () => {
   // Refresh data on mount and updates
   useEffect(() => {
     refreshDiagnosticHints();
-    // Update recents periodically to catch new runs
+
+    // Initial fetch from LocalStorage
+    setRecentReports(getRecentReports());
+
+    // Fetch from Supabase (Cloud Sync)
+    getReportsHistory().then(cloudReports => {
+      if (cloudReports.length > 0) {
+        // Merge strategy: Use Cloud as source of truth, but maybe keep local ones that aren't in cloud yet?
+        // For now, let's just prepend cloud ones that aren't in local, or just Replace?
+        // "There is no point if not saved". Let's trust Cloud.
+        // But we might want to merge.
+
+        setRecentReports(prev => {
+          const combined = [...prev];
+          cloudReports.forEach(cr => {
+            if (!combined.find(p => p.runId === cr.runId)) {
+              combined.push(cr);
+            }
+          });
+          // Re-sort by timestamp desc
+          return combined.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        });
+      }
+    });
+
     const interval = setInterval(() => {
-      setRecentReports(getRecentReports());
+      // We could poll Supabase here too, but expensive.
+      // Just keep local sync for new runs started in this session
+      const local = getRecentReports();
+      setRecentReports(prev => {
+        // Simple merge: add any local ones that appeared
+        const combined = [...prev];
+        local.forEach(l => {
+          if (!combined.find(p => p.runId === l.runId)) {
+            combined.unshift(l);
+          }
+        });
+        return combined;
+      });
     }, 2000);
+
     return () => clearInterval(interval);
   }, [refreshDiagnosticHints]);
 

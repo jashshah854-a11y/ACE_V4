@@ -273,8 +273,33 @@ export async function getRunStatus(runId: string): Promise<RunState> {
 }
 
 // Forced Deployment Trigger: 2026-01-09T11:13:00
+import { supabase } from "@/lib/supabase";
+
+// Forced Deployment Trigger: 2026-01-09T11:13:00
 export async function getReport(runId: string): Promise<string> {
   const cleanId = runId.trim();
+
+  // STRATEGY: Read-Through Cache via Supabase
+  // 1. Try fetching from Supabase first (Persistent Layer)
+  try {
+    const { data, error } = await supabase
+      .from('reports')
+      .select('content')
+      .eq('run_id', cleanId)
+      .single();
+
+    if (data?.content && !error) {
+      console.log(`[SUPABASE] Cache Hit for ${cleanId}`);
+      // If stored as JSON wrapper, extract markdown, else return as string
+      return typeof data.content === 'object' && data.content.markdown
+        ? data.content.markdown
+        : data.content;
+    }
+  } catch (err) {
+    console.warn("[SUPABASE] Cache lookup failed:", err);
+  }
+
+  // 2. Fallback to API (Generation Layer)
   // CRITICAL FIX 1: Use Singular Protocol (/run/) not Plural (/runs/)
   const response = await fetch(`${API_BASE}/run/${cleanId}/report`, {
     method: "GET",
@@ -300,7 +325,34 @@ export async function getReport(runId: string): Promise<string> {
   }
 
   // Return raw markdown text
-  return await response.text();
+  const markdown = await response.text();
+
+  // 3. Save to Supabase for future access
+  saveReportToSupabase(cleanId, markdown).catch(err =>
+    console.error("[SUPABASE] Failed to persist report:", err)
+  );
+
+  return markdown;
+}
+
+// Internal Helper to persist reports
+async function saveReportToSupabase(runId: string, markdown: string) {
+  // Construct a title/summary if possible (naive parse for now)
+  const titleMatch = markdown.match(/^# (.*$)/m);
+  const title = titleMatch ? titleMatch[1] : `Report ${runId}`;
+
+  // Store content. Using JSONB column for flexibility
+  const contentPayload = { markdown };
+
+  const { error } = await supabase.from('reports').upsert({
+    run_id: runId,
+    title: title,
+    content: contentPayload,
+    // We can add pipeline_state here if we had it, but for getReport we only have the markdown
+  }, { onConflict: 'run_id' });
+
+  if (error) throw error;
+  console.log(`[SUPABASE] Persisted report ${runId}`);
 }
 
 export async function getEnhancedAnalytics(runId: string): Promise<any> {
@@ -404,3 +456,32 @@ export async function askQuestion(
 
 
 // PHASE 10: What-If Simulation
+// ...
+
+// SUPABASE HISTORY
+import { RecentReport } from "@/lib/localStorage";
+
+export async function getReportsHistory(): Promise<RecentReport[]> {
+  const { data, error } = await supabase
+    .from('reports')
+    .select('run_id, title, created_at')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error(`[SUPABASE] Failed to fetch reports history:`, error);
+    return [];
+  }
+
+  return data.map(row => ({
+    runId: row.run_id,
+    timestamp: row.created_at,
+    title: row.title || `Report ${row.run_id}`,
+    createdAt: new Date(row.created_at).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    })
+  }));
+}

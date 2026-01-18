@@ -1,4 +1,4 @@
-import { Action, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface AceLogoProps {
@@ -122,12 +122,12 @@ export function AceLogo({ className, mode = "full", size = "md" }: AceLogoProps)
                         ACE
                     </h1>
                     {size !== 'sm' && (
-                        Autonomous Customer Intelligence
-                </span>
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest pl-0.5">
+                            Autonomous Customer Intelligence
+                        </span>
+                    )}
+                </div>
             )}
         </div>
-    )
-}
-        </div >
     );
 }
