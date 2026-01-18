@@ -2,12 +2,15 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Volume2, VolumeX, Download, Copy, Check } from "lucide-react";
 import { StoryViewData } from "@/lib/ReportViewModel";
+import type { TrustBand } from "@/types/trust";
+import { LimitationBanner } from "@/components/report/LimitationBanner";
 
 interface StoryControlBarProps {
     data: StoryViewData;
+    trustBand?: TrustBand;
 }
 
-export function StoryControlBar({ data }: StoryControlBarProps) {
+export function StoryControlBar({ data, trustBand }: StoryControlBarProps) {
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [copied, setCopied] = useState(false);
 
@@ -68,8 +71,17 @@ ${data.executiveBrief.map(b => `- ${b}`).join('\n')}
         };
     }, []);
 
+    const isExportBlocked = trustBand === "caution";
+
     return (
-        <div className="flex items-center gap-2 mb-6 animate-fade-in-up">
+        <div className="space-y-3">
+            {isExportBlocked && (
+                <LimitationBanner
+                    message="Exports are gated until trust improves. Review validation and expand sample size."
+                    severity="warning"
+                />
+            )}
+            <div className="flex items-center gap-2 mb-6 animate-fade-in-up">
             <Button
                 variant="outline"
                 size="sm"
@@ -87,6 +99,7 @@ ${data.executiveBrief.map(b => `- ${b}`).join('\n')}
                 size="sm"
                 onClick={copyBrief}
                 className="gap-2 text-muted-foreground hover:text-foreground"
+                disabled={isExportBlocked}
             >
                 {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                 {copied ? "Copied Brief" : "Copy Brief"}
@@ -97,10 +110,12 @@ ${data.executiveBrief.map(b => `- ${b}`).join('\n')}
                 size="sm"
                 onClick={() => window.print()}
                 className="gap-2 text-muted-foreground hover:text-foreground"
+                disabled={isExportBlocked}
             >
                 <Download className="w-4 h-4" />
                 Print PDF
             </Button>
+            </div>
         </div>
     );
 }

@@ -1,6 +1,10 @@
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, CheckCircle2, Info, TrendingUp, AlertOctagon } from "lucide-react";
+import type { TrustScore } from "@/types/trust";
+import { TrustBadge } from "@/components/trust/TrustBadge";
+import { TrustBreakdown } from "@/components/trust/TrustBreakdown";
+import { useNarrative } from "@/components/narrative/NarrativeContext";
 
 type Sentiment = "positive" | "negative" | "neutral" | "caution";
 
@@ -9,9 +13,11 @@ interface SentimentBlockProps {
     title: string;
     children: ReactNode;
     impact?: string; // "Why this matters" text
+    trust?: TrustScore;
+    insightId?: string;
 }
 
-export function SentimentBlock({ sentiment, title, children, impact }: SentimentBlockProps) {
+export function SentimentBlock({ sentiment, title, children, impact, trust, insightId }: SentimentBlockProps) {
     const styles = {
         positive: {
             border: "border-teal-200 dark:border-teal-900",
@@ -45,6 +51,7 @@ export function SentimentBlock({ sentiment, title, children, impact }: Sentiment
 
     const currentStyle = styles[sentiment] || styles.neutral;
     const Icon = currentStyle.icon;
+    const { mode } = useNarrative();
 
     return (
         <div className={cn(
@@ -67,16 +74,33 @@ export function SentimentBlock({ sentiment, title, children, impact }: Sentiment
                 <div className="flex-1">
                     {/* Title */}
                     <h3 className={cn(
-                        "text-2xl font-serif font-bold mb-4",
+                        "text-2xl font-serif font-bold mb-2",
                         "text-foreground"
                     )}>
                         {title}
                     </h3>
 
+                    {trust && (
+                        <div className="mb-4 flex flex-wrap items-center gap-2">
+                            <TrustBadge trust={trust} showScore={true} />
+                            {trust.certification.certified && (
+                                <span className="text-[10px] uppercase tracking-wider text-emerald-700">
+                                    Certified insight
+                                </span>
+                            )}
+                        </div>
+                    )}
+
                     {/* Main Content */}
                     <div className="prose-report text-lg leading-relaxed font-serif text-slate-700 dark:text-slate-300">
                         {children}
                     </div>
+
+                    {trust && (
+                        <div className="mt-4">
+                            <TrustBreakdown trust={trust} mode={mode} insightId={insightId} />
+                        </div>
+                    )}
 
                     {/* "Why This Matters" Footer */}
                     {impact && (

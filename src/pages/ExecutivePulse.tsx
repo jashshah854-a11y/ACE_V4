@@ -53,6 +53,8 @@ import { ExecutiveKpiGrid } from "@/components/report/ExecutiveKpiGrid"; // New 
 import { NarrativeModeSelector } from "@/components/narrative/NarrativeModeSelector";
 import { ConfidenceBadge } from "@/components/trust/ConfidenceBadge";
 import { useNarrative } from "@/components/narrative/NarrativeContext";
+import { TrustBadge } from "@/components/trust/TrustBadge";
+import { TrustBreakdown } from "@/components/trust/TrustBreakdown";
 
 const ExecutivePulse = () => {
   const [searchParams] = useSearchParams();
@@ -214,20 +216,33 @@ const ExecutivePulse = () => {
   };
 
   const hasData = activeRun && reportQuery.data;
+  const executiveBrief = reportData.governingTrust?.band === "caution"
+    ? ["Executive summary suppressed until trust improves. Review validation and expand sample size."]
+    : storyData.executiveBrief;
+  const storyDataForBrief = { ...storyData, executiveBrief };
   const summarizedContent = (content: string) => {
     const lines = content.split("\n").filter((line) => line.trim().length > 0);
     const first = lines[0] || content;
     return first.length > 240 ? `${first.slice(0, 237)}...` : first;
   };
 
-  const contentForMode = (content: string, impact?: string) => {
+  const contentForMode = (content: string, impact?: string, trustBand?: "certified" | "conditional" | "caution") => {
     if (narrativeMode === "executive") {
-      return summarizedContent(content);
+      return summarizedContent(applyTrustTone(content, trustBand));
     }
     if (narrativeMode === "expert" && impact) {
-      return `${content}\n\nAssumptions & caveats: ${impact}`;
+      return `${applyTrustTone(content, trustBand)}\n\nAssumptions & caveats: ${impact}`;
     }
-    return content;
+    return applyTrustTone(content, trustBand);
+  };
+
+  const applyTrustTone = (content: string, trustBand?: "certified" | "conditional" | "caution") => {
+    if (!trustBand) return content;
+    if (trustBand === "certified") return content;
+    if (trustBand === "conditional") {
+      return `This insight is directional and should be considered with context. ${content}`;
+    }
+    return `This signal is preliminary and should not drive action yet. ${content}`;
   };
 
   // --- New KPI Grid Data ---
@@ -340,17 +355,21 @@ const ExecutivePulse = () => {
                     <div className="flex items-center gap-2 mb-4 text-primary/80">
                       <Sparkles className="w-4 h-4" />
                       <span className="text-xs font-bold uppercase tracking-widest">Governing Thought</span>
-                      <ConfidenceBadge
-                        level={confidenceLevel}
-                        score={reportData.confidenceValue}
-                        className="ml-auto"
-                        showLabel={false}
-                        details={{
-                          dataCoverage: reportData.dataQualityValue ? `${Math.round(reportData.dataQualityValue)}% coverage` : undefined,
-                          validationStatus,
-                          sampleSufficiency: reportData.identityStats?.rows ? `Rows: ${reportData.identityStats.rows}` : undefined,
-                        }}
-                      />
+                      <div className="ml-auto flex items-center gap-2">
+                        {reportData.governingTrust && (
+                          <TrustBadge trust={reportData.governingTrust} showScore={true} />
+                        )}
+                        <ConfidenceBadge
+                          level={confidenceLevel}
+                          score={reportData.confidenceValue}
+                          showLabel={false}
+                          details={{
+                            dataCoverage: reportData.dataQualityValue ? `${Math.round(reportData.dataQualityValue)}% coverage` : undefined,
+                            validationStatus,
+                            sampleSufficiency: reportData.identityStats?.rows ? `Rows: ${reportData.identityStats.rows}` : undefined,
+                          }}
+                        />
+                      </div>
                     </div>
                     <h2 className="font-serif text-3xl md:text-4xl leading-tight text-foreground mb-4">
                       {reportData.governingThought || storyData.heroInsight?.keyInsight || "Analyzing strategic implications..."}
@@ -358,6 +377,11 @@ const ExecutivePulse = () => {
                     <p className="text-lg text-muted-foreground leading-relaxed">
                       {reportData.primaryQuestion ? `Addressing: "${reportData.primaryQuestion}"` : "No primary question defined for this analysis."}
                     </p>
+                    {reportData.governingTrust && (
+                      <div className="mt-4 max-w-xl">
+                        <TrustBreakdown trust={reportData.governingTrust} mode={narrativeMode} />
+                      </div>
+                    )}
                   </div>
 
                   {/* Warnings */}
@@ -377,9 +401,9 @@ const ExecutivePulse = () => {
                   <div className="space-y-12">
                     {/* Headline & Evidence Link */}
                     <div className="rounded-3xl border border-border/40 bg-card p-6 shadow-sm">
-                      <StoryHeadline data={storyData} onHighlight={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })} />
+                      <StoryHeadline data={storyDataForBrief} onHighlight={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })} />
                       <div className="mt-8 flex justify-center">
-                        <StoryControlBar data={storyData} />
+                        <StoryControlBar data={storyDataForBrief} trustBand={reportData.governingTrust?.band} />
                       </div>
                     </div>
 
@@ -402,6 +426,15 @@ const ExecutivePulse = () => {
                         const items = narrativeMode === "executive"
                           ? section.listItems.slice(0, 3)
                           : section.listItems;
+                        if (section.trust?.band === "caution") {
+                          return (
+                            <LimitationBanner
+                              key={idx}
+                              message="Recommendations are gated until trust improves. Review validation and expand sample size."
+                              severity="warning"
+                            />
+                          );
+                        }
                         return (
                           <ActionChecklist
                             key={idx}
@@ -417,8 +450,10 @@ const ExecutivePulse = () => {
                           title={section.title}
                           sentiment={section.sentiment}
                           impact={section.impact}
+                          trust={section.trust}
+                          insightId={section.id}
                         >
-                          <ReactMarkdown>{contentForMode(section.content, section.impact)}</ReactMarkdown>
+                          <ReactMarkdown>{contentForMode(section.content, section.impact, section.trust?.band)}</ReactMarkdown>
                         </SentimentBlock>
                       );
                     })}

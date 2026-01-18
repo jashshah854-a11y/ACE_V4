@@ -1,4 +1,5 @@
 import { LucideIcon, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Brain, Target, Shield, Activity, Zap } from "lucide-react";
+import type { TrustScore } from "@/types/trust";
 
 // --- Types ---
 
@@ -35,6 +36,7 @@ export interface StorySection {
     sentiment: "positive" | "negative" | "neutral" | "caution";
     type: "narrative" | "key_insight" | "recommendation";
     impact?: string; // "Why this matters"
+    trust?: TrustScore;
 }
 
 // --- Jargon Dictionary ---

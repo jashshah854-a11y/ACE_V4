@@ -4,15 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RecentReport } from "@/lib/localStorage";
 import { cn } from "@/lib/utils";
+import type { RunTrustSummary } from "@/lib/trustCache";
+import { TrustBadge } from "@/components/trust/TrustBadge";
 
 interface ProjectCardProps {
     report: RecentReport;
     diagnosticHint?: string; // One-liner hint if available
+    trustSummary?: RunTrustSummary;
     onClick: () => void;
     className?: string;
 }
 
-export function ProjectCard({ report, diagnosticHint, onClick, className }: ProjectCardProps) {
+export function ProjectCard({ report, diagnosticHint, trustSummary, onClick, className }: ProjectCardProps) {
     // Format date for display
     const dateDisplay = report.createdAt || new Date(report.timestamp).toLocaleDateString();
 
@@ -33,12 +36,41 @@ export function ProjectCard({ report, diagnosticHint, onClick, className }: Proj
                     <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
                         <FileText className="w-5 h-5" />
                     </div>
-                    {diagnosticHint && (
-                        <Badge variant="outline" className="border-amber-500/30 text-amber-600 bg-amber-50/50">
-                            <AlertTriangle className="w-3 h-3 mr-1" />
-                            Use Diagnostics
-                        </Badge>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {trustSummary && (
+                            <TrustBadge
+                                trust={{
+                                    score: trustSummary.score,
+                                    band: trustSummary.band,
+                                    factors: [],
+                                    positives: [],
+                                    negatives: [],
+                                    risks: [],
+                                    improvements: [],
+                                    components: {
+                                        dataQuality: 0,
+                                        validation: 0,
+                                        sampleSize: 0,
+                                        stability: 0,
+                                        featureDominance: 0,
+                                        assumptionRisk: 0,
+                                    },
+                                    certification: {
+                                        certified: trustSummary.certified,
+                                        rulesetVersion: trustSummary.rulesetVersion,
+                                        inputs: {},
+                                    },
+                                }}
+                                showScore={false}
+                            />
+                        )}
+                        {diagnosticHint && (
+                            <Badge variant="outline" className="border-amber-500/30 text-amber-600 bg-amber-50/50">
+                                <AlertTriangle className="w-3 h-3 mr-1" />
+                                Use Diagnostics
+                            </Badge>
+                        )}
+                    </div>
                 </div>
 
                 {/* Content */}

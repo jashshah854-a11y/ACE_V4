@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import {
   extractMetrics,
   extractSections,
@@ -27,6 +27,8 @@ import type {
 import { transformAPIResponse, filterSuppressedSections } from "@/lib/reportViewModel";
 import { ensureSafeReport } from "@/lib/ReportGuard";
 import { assembleNarrative, type NarrativeModule } from "@/lib/meaningAssembler";
+import { computeTrustScore, TRUST_RULESET_VERSION } from "@/lib/trustScoring";
+import { updateRunTrust } from "@/lib/trustCache";
 
 const MIN_IMPORTANCE = 0.05;
 
@@ -192,6 +194,39 @@ function extractOutOfScope(contractCopy?: string) {
 function normalizeConfidence(value?: number) {
   if (typeof value !== "number" || Number.isNaN(value)) return undefined;
   return value <= 1 ? value * 100 : value;
+}
+
+function normalizeRowCount(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const cleaned = value.replace(/,/g, "").trim();
+    const parsed = Number(cleaned);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
+function deriveAssumptionRisk(diagnostics: any, limitationsMode: boolean) {
+  const reasons = Array.isArray(diagnostics?.reasons) ? diagnostics.reasons : [];
+  const validationNotes = Array.isArray(diagnostics?.validation?.failed_fields)
+    ? diagnostics.validation.failed_fields
+    : [];
+  const reasonText = reasons.join(" ").toLowerCase();
+  const hasCritical = reasonText.includes("blocked") || reasonText.includes("safe mode") || reasonText.includes("missing");
+  const assumptionRisk = hasCritical || limitationsMode || validationNotes.length > 0 ? 0.45 : 0.8;
+  return {
+    assumptionRisk,
+    hasCriticalAssumptions: hasCritical || limitationsMode,
+  };
+}
+
+function computeFeatureDominance(enhancedAnalytics: any) {
+  const fi = enhancedAnalytics?.feature_importance?.feature_importance;
+  if (!Array.isArray(fi) || fi.length === 0) return undefined;
+  const total = fi.reduce((sum: number, item: any) => sum + (Number(item?.importance) || 0), 0);
+  if (!total) return undefined;
+  const top = Math.max(...fi.map((item: any) => Number(item?.importance) || 0));
+  return total > 0 ? Math.min(1, Math.max(0, top / total)) : undefined;
 }
 
 function buildContractSummary(contract?: TaskContractSnapshot) {
@@ -573,6 +608,48 @@ export function useReportData(
     [identityPayload?.summary, enhancedAnalytics?.quality_metrics, diagnostics?.confidence, metrics.totalRows, metrics.confidenceLevel]
   );
 
+  const validationFailed = Boolean(diagnostics?.validation?.failed_fields?.length);
+  const baseTrustInputs = useMemo(() => {
+    const rowCount = normalizeRowCount(identityStats.rows);
+    const signalStability = typeof confidenceValue === "number" ? confidenceValue : undefined;
+    const dataQualityScore = typeof dataQualityValue === "number" ? dataQualityValue : undefined;
+    const featureDominance = computeFeatureDominance(enhancedAnalytics);
+    const assumption = deriveAssumptionRisk(diagnostics, limitationsMode);
+
+    return {
+      dataQualityScore,
+      validationFailed,
+      sampleSize: rowCount,
+      signalStability,
+      featureDominance,
+      assumptionRisk: assumption.assumptionRisk,
+      hasCriticalAssumptions: assumption.hasCriticalAssumptions,
+    };
+  }, [identityStats.rows, confidenceValue, dataQualityValue, enhancedAnalytics, diagnostics, limitationsMode, validationFailed]);
+
+  const sectionTrustMap = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof computeTrustScore>>();
+    scoredSections.forEach((section) => {
+      const content = section?.content?.toLowerCase?.() || "";
+      const evidenceHint = content.includes("evidence") || content.includes("data") || content.includes("sample");
+      const stability = baseTrustInputs.signalStability;
+      const featureDominance = baseTrustInputs.featureDominance;
+      const adjustedDominance = evidenceHint ? (featureDominance ?? 0.6) + 0.1 : featureDominance ?? 0.5;
+      const trust = computeTrustScore({
+        ...baseTrustInputs,
+        featureDominance: Math.min(1, adjustedDominance),
+      });
+      map.set(section.id, trust);
+    });
+    return map;
+  }, [scoredSections, baseTrustInputs]);
+
+  const governingTrust = useMemo(() => {
+    const primaryId = narrativeAssembly.primary[0]?.id;
+    const primaryTrust = primaryId ? sectionTrustMap.get(primaryId) : undefined;
+    return primaryTrust ?? computeTrustScore(baseTrustInputs);
+  }, [baseTrustInputs, narrativeAssembly.primary, sectionTrustMap]);
+
 
   const profile = useMemo(() => {
     if (!identityColumns) return undefined;
@@ -676,7 +753,19 @@ export function useReportData(
       evidenceSections: evidenceSections || [],
       sections,
     };
-    return transformAPIResponse(tempResult);
+    const baseModel = transformAPIResponse(tempResult);
+    const sectionsWithTrust = baseModel.sections.map((section) => ({
+      ...section,
+      trust: sectionTrustMap.get(section.id),
+    }));
+    return {
+      ...baseModel,
+      sections: sectionsWithTrust,
+      heroInsight: {
+        ...baseModel.heroInsight,
+        trust: governingTrust,
+      },
+    };
   }, [
     metrics,
     confidenceValue,
@@ -691,7 +780,20 @@ export function useReportData(
     evidenceSections,
     sections,
     runId,
+    sectionTrustMap,
+    governingTrust,
   ]);
+
+  useEffect(() => {
+    if (!runId || !governingTrust) return;
+    updateRunTrust(runId, {
+      score: governingTrust.score,
+      band: governingTrust.band,
+      certified: governingTrust.certification.certified,
+      updatedAt: new Date().toISOString(),
+      rulesetVersion: TRUST_RULESET_VERSION,
+    });
+  }, [runId, governingTrust]);
 
 
 
@@ -738,6 +840,7 @@ export function useReportData(
     governanceWarnings,
     scopeLocks,
     governingThought: narrativeAssembly.governingThought,
+    governingTrust,
     narrativeModules: narrativeAssembly.primary,
     appendixModules: narrativeAssembly.appendix,
     enhancedAnalytics,
