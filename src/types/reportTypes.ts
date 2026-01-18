@@ -1,6 +1,7 @@
 ﻿import type { ReportViewModel } from "@/lib/reportViewModel";
 import type { NarrativeModule } from "@/lib/meaningAssembler";
 import type { TrustScore } from "@/types/trust";
+import type { AnalysisIntent, ScopeConstraintDisplay, TargetCandidate } from "@/types/analysisIntent";
 
 export type GuidanceSeverity = "info" | "warning" | "critical";
 
@@ -215,6 +216,9 @@ export interface ReportDataResult {
   scoredSections: Array<any>;
   governanceWarnings: string[];
   scopeLocks: { dimension: string; reason?: string }[];
+  analysisIntent?: AnalysisIntent;
+  targetCandidate?: TargetCandidate;
+  scopeConstraints: ScopeConstraintDisplay[];
   profile?: ReportProfile;
   syntheticTimeColumn?: string;
   guidanceNotes: GuidanceNote[];

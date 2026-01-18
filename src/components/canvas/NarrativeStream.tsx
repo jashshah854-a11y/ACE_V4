@@ -178,7 +178,7 @@ export function NarrativeStream({
                                 </p>
                                 <p className="font-ui text-sm text-muted-foreground">
                                     Data confidence below threshold ({(confidence * 100).toFixed(0)}%).
-                                    Predictive insights suppressed. Displaying descriptive statistics only.
+                                    Predictive modeling is paused; descriptive statistics remain available.
                                 </p>
                             </div>
                         </div>
@@ -238,7 +238,7 @@ export function NarrativeStream({
                     {taskContract.blocked_agents.length > 0 && (
                         <div>
                             <p className="font-ui text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                                Excluded (Insufficient Data):
+                                Not applicable for this dataset:
                             </p>
                             <p className="font-ui text-sm text-muted-foreground">
                                 {taskContract.blocked_agents.map(agent => {

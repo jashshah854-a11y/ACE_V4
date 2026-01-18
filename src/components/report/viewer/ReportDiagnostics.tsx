@@ -28,7 +28,7 @@ export function SafeModeBanner({ safeMode, limitationsReason, onHelpClick }: Saf
       <div className="flex-1">
         <div className="font-medium text-sm text-amber-900 mb-1">Safe Mode Active</div>
         <div className="text-sm text-amber-800">
-          {limitationsReason || "Predictive modeling disabled due to insufficient target variance. Showing descriptive facts only."}
+          {limitationsReason || "Predictive modeling is paused due to insufficient target variance. Descriptive insights remain available."}
         </div>
       </div>
       <Button

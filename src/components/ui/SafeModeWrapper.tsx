@@ -32,7 +32,7 @@ export function SafeModeWrapper({
                         <p className="font-[family-name:var(--font-library-body)] text-sm text-[hsl(var(--library-muted))]">
                             Confidence is low
                             {confidenceScore !== undefined && ` (${Math.round(confidenceScore * 100)}%)`}.
-                            Showing descriptive view only. Predictive features have been disabled.
+                            Showing descriptive view only. Predictive features are paused.
                         </p>
                     </div>
                 </div>

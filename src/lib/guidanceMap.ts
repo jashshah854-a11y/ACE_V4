@@ -130,11 +130,11 @@ export const GUIDANCE_MAP: Record<string, GuidanceEntry> = {
 
     // Blocked Agents (from Screenshot 55)
     "blocked_agents: regression": {
-        issue: "Regression Modeling Disabled",
+        issue: "Outcome modeling not applicable",
         icon: "Lock",
-        explanation: "Regression analysis is blocked due to data quality issues (typically missing target variable or insufficient variance).",
-        fix: "Address the primary validation issues listed above to unlock regression capabilities.",
-        severity: "critical"
+        explanation: "Outcome modeling is not available without a clear target variable or sufficient variance.",
+        fix: "Add an outcome column (e.g., churn, revenue) and resolve data quality issues to enable predictive analysis.",
+        severity: "info"
     },
 
     "blocked_agents: clustering": {

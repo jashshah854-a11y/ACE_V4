@@ -136,7 +136,7 @@ describe("Phase 6 Narrative Intelligence behaviors", () => {
 
     expect(screen.getByText("Failed")).toBeInTheDocument();
     expect(screen.getByText("Blocked by policy")).toBeInTheDocument();
-    expect(screen.getByText(/2 insights suppressed/i)).toBeInTheDocument();
+    expect(screen.getByText(/2 insights withheld/i)).toBeInTheDocument();
   });
 
   it("filters chart annotations by narrative mode", () => {

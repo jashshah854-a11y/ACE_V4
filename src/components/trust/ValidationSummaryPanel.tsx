@@ -81,11 +81,11 @@ export function ValidationSummaryPanel({
                     <span className="font-medium text-foreground">{policyLabel}</span>
                 </div>
 
-                {/* Suppressed Insights */}
+                {/* Limited Insights */}
                 {suppressedCount > 0 && (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground border-t border-border/50 pt-3">
                         <EyeOff className="w-3.5 h-3.5" />
-                        <span>{suppressedCount} insights suppressed due to low confidence</span>
+                        <span>{suppressedCount} insights withheld due to low confidence</span>
                     </div>
                 )}
 

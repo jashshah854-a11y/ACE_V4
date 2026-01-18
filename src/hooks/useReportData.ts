@@ -29,6 +29,7 @@ import { ensureSafeReport } from "@/lib/ReportGuard";
 import { assembleNarrative, type NarrativeModule } from "@/lib/meaningAssembler";
 import { computeTrustScore, TRUST_RULESET_VERSION } from "@/lib/trustScoring";
 import { updateRunTrust } from "@/lib/trustCache";
+import { formatScopeConstraint } from "@/lib/scopeConstraintCopy";
 
 const MIN_IMPORTANCE = 0.05;
 
@@ -253,6 +254,8 @@ export function useReportData(
   governedReport?: GovernedReport | null
 ): ReportDataResult {
   const contractSnapshot = governedReport?.task_contract;
+  const analysisIntent = governedReport?.analysis_intent;
+  const targetCandidate = governedReport?.target_candidate;
   const governedConfidence = normalizeConfidence(governedReport?.confidence?.data_confidence);
   const contractConfidenceThreshold = normalizeConfidence(contractSnapshot?.confidence_threshold);
   const confidenceThreshold = contractConfidenceThreshold ?? (confidenceMode === "strict" ? 90 : 60);
@@ -271,6 +274,14 @@ export function useReportData(
     () => normalizeGovernedInsights(governedReport?.insights, evidenceMap),
     [governedReport?.insights, evidenceMap]
   );
+  const scopeConstraints = useMemo(() => {
+    const rawConstraints = Array.isArray(governedReport?.scope_constraints)
+      ? governedReport?.scope_constraints
+      : [];
+    return rawConstraints
+      .filter((constraint) => constraint && typeof constraint === "object")
+      .map((constraint) => formatScopeConstraint(constraint, analysisIntent, targetCandidate));
+  }, [governedReport?.scope_constraints, analysisIntent, targetCandidate]);
 
   const { data: enhancedAnalytics, loading: analyticsLoading } = useEnhancedAnalytics(runId);
   const { data: diagnostics } = useDiagnostics(runId);
@@ -585,12 +596,24 @@ export function useReportData(
     const scopeLimits: string[] = [];
     if (!hasTimeField) scopeLimits.push("No time field");
     if (limitationsMode) scopeLimits.push("Limitations mode");
+    if (scopeConstraints.length) {
+      scopeLimits.push(...scopeConstraints.map((constraint) => constraint.title));
+    }
     return {
       mode,
       freshness,
       scopeLimits: scopeLimits.length ? scopeLimits : ["None flagged"],
     };
-  }, [diagnostics?.mode, enhancedAnalytics?.mode, enhancedAnalytics?.data_freshness, metrics.dataFreshness, safeMode, hasTimeField, limitationsMode]);
+  }, [
+    diagnostics?.mode,
+    enhancedAnalytics?.mode,
+    enhancedAnalytics?.data_freshness,
+    metrics.dataFreshness,
+    safeMode,
+    hasTimeField,
+    limitationsMode,
+    scopeConstraints,
+  ]);
 
   const identityStats = useMemo(
     () => ({
@@ -839,6 +862,9 @@ export function useReportData(
     scoredSections,
     governanceWarnings,
     scopeLocks,
+    analysisIntent,
+    targetCandidate,
+    scopeConstraints,
     governingThought: narrativeAssembly.governingThought,
     governingTrust,
     narrativeModules: narrativeAssembly.primary,

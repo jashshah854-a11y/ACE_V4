@@ -1,7 +1,7 @@
 /**
  * GhostTab Component
  * 
- * Disabled tab component with lock icon for suppressed features.
+ * Disabled tab component with lock icon for unavailable features.
  * Clicking the tab triggers the GuidanceModal to explain why it's locked.
  */
 
@@ -36,8 +36,8 @@ export function GhostTab({ label, onClick, className }: GhostTabProps) {
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-xs">
                     <p className="text-xs">
-                        This feature is currently locked due to data quality issues.
-                        Click to learn how to unlock it.
+                        This feature is not available for the current dataset.
+                        Click to learn how to enable it.
                     </p>
                 </TooltipContent>
             </Tooltip>

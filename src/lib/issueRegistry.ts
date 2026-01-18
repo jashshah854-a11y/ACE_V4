@@ -18,6 +18,13 @@ export const VALIDATION_ISSUES: Record<string, Omit<Issue, 'key'>> = {
         whyItMatters: 'Predictive modeling and strategic recommendations require an outcome column.',
         howToFix: 'Add a column representing the outcome you want to predict (e.g., "churned", "revenue", "converted").',
     },
+    missing_target_exploratory: {
+        severity: 'info',
+        title: 'Outcome modeling not applicable',
+        description: 'Exploratory runs focus on descriptive insights without a target outcome.',
+        whyItMatters: 'Predictions and strategy recommendations are out of scope without a target column.',
+        howToFix: 'Add an outcome column if you want predictive modeling in a future run.',
+    },
 
     missing_time_coverage: {
         severity: 'warning',
@@ -114,12 +121,20 @@ export function mapBackendSignalsToIssues(rawPayload: any): {
 } {
     const validationIssues: Issue[] = [];
     const governanceBlocks: Issue[] = [];
+    const analysisIntent =
+        rawPayload?.analysis_intent?.intent ||
+        rawPayload?.analysis_intent ||
+        rawPayload?.analysisIntent ||
+        "unknown";
+    const targetCandidate = rawPayload?.analysis_intent?.target_candidate || rawPayload?.target_candidate;
+    const hasTarget = rawPayload?.has_target ?? (targetCandidate ? Boolean(targetCandidate.detected) : undefined);
 
     // Check for missing target
-    if (!rawPayload.has_target || rawPayload.target_column === null) {
+    if (hasTarget === false || rawPayload.target_column === null) {
+        const issueKey = analysisIntent === "exploratory" ? "missing_target_exploratory" : "missing_target";
         validationIssues.push({
-            key: 'missing_target',
-            ...VALIDATION_ISSUES.missing_target,
+            key: issueKey,
+            ...VALIDATION_ISSUES[issueKey],
         });
     }
 

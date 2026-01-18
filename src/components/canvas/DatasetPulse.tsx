@@ -216,7 +216,7 @@ export function DatasetPulse({
                                     Safe Mode Active
                                 </p>
                                 <p className="text-xs text-white/70 leading-relaxed">
-                                    Data confidence below threshold. Predictive insights suppressed to prevent calculation errors. Displaying descriptive statistics only.
+                                    Data confidence below threshold. Predictive modeling is paused; descriptive statistics remain available.
                                 </p>
                             </div>
                         </div>

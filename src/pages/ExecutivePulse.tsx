@@ -55,6 +55,8 @@ import { ConfidenceBadge } from "@/components/trust/ConfidenceBadge";
 import { useNarrative } from "@/components/narrative/NarrativeContext";
 import { TrustBadge } from "@/components/trust/TrustBadge";
 import { TrustBreakdown } from "@/components/trust/TrustBreakdown";
+import { ScopeConstraintsCard } from "@/components/report/ScopeConstraintsCard";
+import { ActionableEmptyState } from "@/components/report/shared/ActionableEmptyState";
 
 const ExecutivePulse = () => {
   const [searchParams] = useSearchParams();
@@ -195,6 +197,15 @@ const ExecutivePulse = () => {
 
   const scqaModules = reportData.narrativeModules || [];
   const scopeLocks = reportData.scopeLocks || [];
+  const scopeConstraints = reportData.scopeConstraints || [];
+  const regressionConstraint = scopeConstraints.find((constraint) => constraint.agent === "regression");
+  const scopeNote = scopeConstraints.length === 1
+    ? scopeConstraints[0].title
+    : scopeConstraints.length > 1
+      ? `${scopeConstraints.length} scope constraints`
+      : reportData.analysisIntent === "exploratory"
+        ? "Exploratory focus"
+        : undefined;
   const profileMeta = (reportData.profile ?? {}) as Record<string, any>;
   const identityRows = typeof reportData.identityStats?.rows === "number"
     ? reportData.identityStats.rows.toLocaleString()
@@ -367,6 +378,7 @@ const ExecutivePulse = () => {
                             dataCoverage: reportData.dataQualityValue ? `${Math.round(reportData.dataQualityValue)}% coverage` : undefined,
                             validationStatus,
                             sampleSufficiency: reportData.identityStats?.rows ? `Rows: ${reportData.identityStats.rows}` : undefined,
+                            scopeNote,
                           }}
                         />
                       </div>
@@ -409,11 +421,19 @@ const ExecutivePulse = () => {
 
                     {/* Interactive Charts */}
                     <div className="grid gap-6 md:grid-cols-2">
-                      <TopDriversCard
-                        data={reportData.enhancedAnalytics?.feature_importance}
-                        safeMode={reportData.safeMode}
-                        onViewEvidence={() => handleEvidenceFocus({ section: "feature_importance", evidenceId: predictiveEvidenceId })}
-                      />
+                      {regressionConstraint ? (
+                        <ActionableEmptyState
+                          title="Outcome drivers not applicable"
+                          description={regressionConstraint.detail}
+                          requirements={["Target outcome column", "Sufficient variance", "Minimum data volume"]}
+                        />
+                      ) : (
+                        <TopDriversCard
+                          data={reportData.enhancedAnalytics?.feature_importance}
+                          safeMode={reportData.safeMode}
+                          onViewEvidence={() => handleEvidenceFocus({ section: "feature_importance", evidenceId: predictiveEvidenceId })}
+                        />
+                      )}
                       <CorrelationInsightsCard
                         data={reportData.enhancedAnalytics?.correlation_analysis}
                         onViewEvidence={() => handleEvidenceFocus({ section: "feature_importance", evidenceId: predictiveEvidenceId })}
@@ -491,6 +511,7 @@ const ExecutivePulse = () => {
                       </div>
                     </div>
                   )}
+                  <ScopeConstraintsCard constraints={scopeConstraints} />
 
                   {/* Lab Controls */}
                   <div className="rounded-2xl border border-border/40 bg-card shadow-sm overflow-hidden">
