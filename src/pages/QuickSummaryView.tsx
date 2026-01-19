@@ -10,6 +10,7 @@ import { QuickSummaryData } from '@/types/QuickSummaryTypes';
 import { SummaryCard } from '@/components/quick-summary/SummaryCard';
 import { StoryCanvas } from '@/components/story/StoryCanvas';
 import { Story, ToneProfile } from '@/types/StoryTypes';
+import { API_BASE } from '@/lib/api-client';
 
 export default function QuickSummaryView() {
     const { runId } = useParams<{ runId: string }>();
@@ -34,7 +35,7 @@ export default function QuickSummaryView() {
         const fetchSummary = async () => {
             try {
                 setLoading(true);
-                const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/run/${runId}/summary`);
+                const response = await fetch(`${API_BASE}/run/${runId}/summary`);
 
                 if (!response.ok) {
                     throw new Error(`Failed to fetch summary: ${response.statusText}`);
@@ -65,7 +66,7 @@ export default function QuickSummaryView() {
             try {
                 setStoryLoading(true);
                 const response = await fetch(
-                    `${import.meta.env.VITE_API_BASE_URL}/run/${runId}/story?tone=${currentTone}`
+                    `${API_BASE}/run/${runId}/story?tone=${currentTone}`
                 );
 
                 if (!response.ok) {

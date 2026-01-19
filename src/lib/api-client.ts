@@ -71,7 +71,7 @@ export interface DatasetIdentity {
   }>;
   quality_score: number;
   critical_gaps: string[];
-  detected_capabilities: string[];
+  detected_capabilities: Record<string, boolean>;
   warnings: string[];
 }
 

@@ -27,9 +27,9 @@ echo ACE V3 Orchestrator Server Starting...
 echo ========================================
 echo.
 echo Server will be available at:
-echo   - API: http://localhost:8001
-echo   - Docs: http://localhost:8001/docs
-echo   - Runs: http://localhost:8001/runs
+echo   - API: http://localhost:8000
+echo   - Docs: http://localhost:8000/docs
+echo   - Runs: http://localhost:8000/runs
 echo.
 echo Press CTRL+C to stop the server
 echo ========================================

@@ -46,9 +46,9 @@ job_queue: Optional[RedisJobQueue] = None
 limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
-    title="ACE V3 Intelligence API",
+    title="ACE V4 Intelligence API",
     description="Universal Autonomous Cognitive Entity Engine API",
-    version="3.0.0"
+    version="4.0.0"
 )
 
 app.state.limiter = limiter
@@ -591,7 +591,7 @@ async def health_check():
 
     return {
         "status": overall_status,
-        "service": "ACE V3 API",
+        "service": "ACE V4 API",
         "checks": checks
     }
 
@@ -1030,7 +1030,7 @@ async def get_story(run_id: str, tone: str = 'conversational'):
     
     # Get enhanced analytics and dataset profile
     enhanced_analytics = state.read("enhanced_analytics")
-    dataset_identity = state.read("dataset_identity")
+    dataset_identity = state.read("dataset_identity_card")
     
     if not enhanced_analytics:
         raise HTTPException(
@@ -1867,14 +1867,6 @@ async def simulate_scenario(run_id: str, request: SimulationRequest):
             }
         )
 
-
-@app.get("/health", tags=["Health"])
-async def health_check():
-    """
-    Health check endpoint for Railway/uptime monitoring.
-    """
-    return {"status": "ok", "service": "ACE-V4-Backend", "version": "4.0.0"}
-
 # --- Legacy / Alias Routes to fix Frontend 404s ---
 
 @app.get("/run/{run_id}/governed_report", tags=["Report"])
@@ -1888,7 +1880,7 @@ if __name__ == "__main__":
     import uvicorn
     import os
     # Railway provides PORT env var
-    port = int(os.getenv("PORT", 8001))
+    port = int(os.getenv("PORT", 8000))
     # Use direct module reference since we're running from project root
     uvicorn.run("backend.api.server:app", host="0.0.0.0", port=port, reload=False)
 
