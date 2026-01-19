@@ -26,10 +26,14 @@ export function SafeModeBanner({ safeMode, limitationsReason, onHelpClick }: Saf
     <div className="w-full bg-amber-50 border-l-4 border-amber-500 p-4 flex items-center gap-3 shadow-sm mb-4">
       <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0" />
       <div className="flex-1">
-        <div className="font-medium text-sm text-amber-900 mb-1">Safe Mode Active</div>
-        <div className="text-sm text-amber-800">
-          {limitationsReason || "Predictive modeling is paused due to insufficient target variance. Descriptive insights remain available."}
-        </div>
+          <div className="font-medium text-sm text-amber-900 mb-1">Safe Mode Active</div>
+          <div className="text-sm text-amber-800">
+            Safe Mode is active here because predictive outputs require traceable, decision-grade evidence.
+            Descriptive insights elsewhere in the report remain available.
+          </div>
+          {limitationsReason ? (
+            <div className="mt-1 text-xs text-amber-800/90">Scope note: {limitationsReason}</div>
+          ) : null}
       </div>
       <Button
         variant="ghost"

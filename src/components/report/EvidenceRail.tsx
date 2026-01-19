@@ -381,6 +381,12 @@ function InlineEvidenceRail({
           </Button>
         )}
       </div>
+      {data.safeMode && (
+        <div className="px-5 py-3 text-xs text-amber-900 bg-amber-50/70 border-b border-amber-200/60">
+          Safe Mode is active here because predictive evidence requires traceable, decision-grade support.
+          Descriptive insights elsewhere in the report remain available.
+        </div>
+      )}
 
       {nudgeChips.length > 0 && (
         <div className="px-5 pt-4 flex flex-wrap gap-2">
@@ -436,8 +442,8 @@ function InlineEvidenceRail({
             </>
           ) : (
             <EvidenceGate
-              title="Evidence Locked"
-              message="Business intelligence requires traceable proof."
+              title="Evidence not applicable for this run"
+              message="Business intelligence in the Lab requires traceable, decision-grade evidence. Descriptive insights in the report remain available."
               onWhy={onFocusGuidance}
             />
           )}
@@ -468,8 +474,8 @@ function InlineEvidenceRail({
             </>
           ) : (
             <EvidenceGate
-              title="Evidence Locked"
-              message="Predictive drivers require traceable proof."
+              title="Evidence not applicable for this run"
+              message="Predictive drivers in the Lab require traceable, decision-grade evidence. Descriptive insights in the report remain available."
               onWhy={onFocusGuidance}
             />
           )}
@@ -563,7 +569,7 @@ function SectionHeader({
 }
 
 function EvidenceGate({
-  title = "Evidence Locked",
+  title = "Evidence not applicable for this run",
   message,
   onWhy,
 }: {
@@ -784,14 +790,14 @@ function formatPercent(value: unknown) {
   if (typeof value === "number" && isFinite(value)) {
     return `${value.toFixed(1)}%`;
   }
-  return value != null ? String(value) : "—";
+  return value != null ? String(value) : "";
 }
 
 function formatCurrencyValue(value: unknown) {
   if (typeof value === "number" && isFinite(value)) {
     return currencyFormatter.format(value);
   }
-  return value != null ? String(value) : "—";
+  return value != null ? String(value) : "";
 }
 
 
