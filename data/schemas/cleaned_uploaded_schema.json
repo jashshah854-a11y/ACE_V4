@@ -1,45 +1,45 @@
 {
   "dataset_info": {
     "name": "cleaned_uploaded",
-    "path": "C:\\Users\\jashs\\Projects\\ACE_V4_Orchestrator\\ACE_V3_Source\\data\\runs\\ad23399e\\cleaned_uploaded.csv",
-    "row_count": 3,
-    "column_count": 3,
+    "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\backend\\data\\runs\\edfb9945\\cleaned_uploaded.csv",
+    "row_count": 2,
+    "column_count": 2,
     "sample_rows": [
       {
-        "cust_id": 101,
-        "name": "Alice",
-        "segment": "Gold"
+        "id": 1,
+        "value": 10
       },
       {
-        "cust_id": 102,
-        "name": "Bob",
-        "segment": "Silver"
-      },
-      {
-        "cust_id": 103,
-        "name": "Charlie",
-        "segment": "Bronze"
+        "id": 2,
+        "value": 15
       }
     ]
   },
   "basic_types": {
     "numeric": [
-      "cust_id"
+      "id",
+      "value"
     ],
     "categorical": [],
     "datetime": [],
-    "text": [
-      "name",
-      "segment"
-    ]
+    "text": []
   },
   "stats": {
-    "cust_id": {
-      "mean": 102.0,
-      "median": 102.0,
-      "std": 1.0,
-      "min": 101.0,
-      "max": 103.0,
+    "id": {
+      "mean": 1.5,
+      "median": 1.5,
+      "std": 0.7071067811865476,
+      "min": 1.0,
+      "max": 2.0,
+      "skew": 0.0,
+      "missing_rate": 0.0
+    },
+    "value": {
+      "mean": 12.5,
+      "median": 12.5,
+      "std": 3.5355339059327378,
+      "min": 10.0,
+      "max": 15.0,
       "skew": 0.0,
       "missing_rate": 0.0
     }
@@ -73,22 +73,38 @@
   },
   "feature_quality_scores": {},
   "relationships": {
-    "correlations": {},
-    "strong_pairs": []
+    "correlations": {
+      "id": {
+        "value": 1.0
+      },
+      "value": {
+        "id": 1.0
+      }
+    },
+    "strong_pairs": [
+      [
+        "id",
+        "value"
+      ],
+      [
+        "value",
+        "id"
+      ]
+    ]
   },
   "normalization_plan": {},
   "feature_plan": {
     "clustering_features": [
-      "cust_id",
-      "segment"
+      "value"
     ],
     "persona_features": [
-      "segment"
+      "value"
     ],
     "risk_features": [],
     "value_features": [],
     "anomaly_features": [
-      "cust_id"
+      "id",
+      "value"
     ]
   },
   "warnings": {

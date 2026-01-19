@@ -1101,6 +1101,14 @@ async def get_diagnostics(run_id: str):
     identity = _ensure_identity_card(state, run_path)
     confidence = state.read("confidence_report") or {}
     mode = state.read("run_mode") or "strict"
+    analysis_intent = state.read("analysis_intent") or {}
+    analysis_intent_value = analysis_intent.get("intent") or "exploratory"
+    target_candidate = analysis_intent.get("target_candidate") or {
+        "column": None,
+        "reason": "no_usable_target_found",
+        "confidence": 0.0,
+        "detected": False,
+    }
 
     columns = _normalize_columns(identity.get("columns") or identity.get("fields") or {})
     time_tokens = ("date", "time", "day", "week", "month", "quarter", "year", "period", "timestamp")
@@ -1131,6 +1139,8 @@ async def get_diagnostics(run_id: str):
         "validation": validation,
         "identity": identity,
         "confidence": confidence,
+        "analysis_intent": analysis_intent_value,
+        "target_candidate": target_candidate,
         "reasons": reasons,
         # CRITICAL FIX: Frontend expects data_quality.score here
         "data_quality": {

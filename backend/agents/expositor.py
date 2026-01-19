@@ -117,6 +117,14 @@ class Expositor:
         import datetime
         run_id = Path(self.state.run_path).name
         date_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        analysis_intent = self.state.read("analysis_intent") or {}
+        analysis_intent_value = analysis_intent.get("intent") or "exploratory"
+        target_candidate = analysis_intent.get("target_candidate") or {
+            "column": None,
+            "reason": "no_usable_target_found",
+            "confidence": 0.0,
+            "detected": False,
+        }
         
         # CRITICAL FIX: Read quality score with proper fallback chain
         # Priority: 1. Scanner (where we set min floor of 0.4)
@@ -159,7 +167,9 @@ class Expositor:
             "quality_score": quality_score, # Valid float from previous fix
             "confidence": confidence_score if confidence_score is not None else 1.0,
             "row_count": row_count,
-            "column_count": col_count
+            "column_count": col_count,
+            "analysis_intent": analysis_intent_value,
+            "target_candidate": target_candidate,
         }
         lines.append(json.dumps(metadata_json, indent=2))
         lines.append("") # Spacing
