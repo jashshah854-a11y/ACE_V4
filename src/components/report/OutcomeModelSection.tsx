@@ -6,20 +6,26 @@ import { numberFormatter } from "@/lib/numberFormatter";
 import { CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { ActionableEmptyState } from "./shared/ActionableEmptyState";
 import { ModelUseGuidelines } from "./ModelUseGuidelines";
+import { ScopePlaceholder } from "./ScopePlaceholder";
+import type { AnalysisIntent, ScopeConstraint, TargetCandidate } from "@/types/analysisIntent";
 
 interface OutcomeModelSectionProps {
     data: OutcomeModelData | null;
+    scopeConstraints?: ScopeConstraint[];
+    analysisIntent?: AnalysisIntent;
+    targetCandidate?: TargetCandidate;
 }
 
-export function OutcomeModelSection({ data }: OutcomeModelSectionProps) {
+export function OutcomeModelSection({ data, scopeConstraints = [], analysisIntent, targetCandidate }: OutcomeModelSectionProps) {
     if (!data || data.status === 'skipped') {
         return (
-            <ActionableEmptyState
-                title="Outcome modeling not applicable"
-                description="This dataset supports descriptive insights, but outcome prediction requires a target variable and sufficient history."
-                requirements={["Target variable identified", "Sufficient correlation signals", "Minimum 100 historical records"]}
+            <ScopePlaceholder
+                sectionName="Outcome Modeling"
+                agentKey="regression"
+                scopeConstraints={scopeConstraints}
+                analysisIntent={analysisIntent}
+                targetCandidate={targetCandidate}
             />
         );
     }
