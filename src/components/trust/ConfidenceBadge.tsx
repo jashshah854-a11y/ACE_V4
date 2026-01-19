@@ -31,7 +31,7 @@ export function ConfidenceBadge({ level, score, className, showLabel = true, det
             border: "border-emerald-500/20",
             icon: CheckCircle,
             label: "High Confidence",
-            desc: "Robust data breadth and consistency."
+            desc: "Run confidence reflects strong data coverage and integrity."
         },
         medium: {
             color: "text-amber-500",
@@ -39,7 +39,7 @@ export function ConfidenceBadge({ level, score, className, showLabel = true, det
             border: "border-amber-500/20",
             icon: HelpCircle, // Or a dash/dot
             label: "Medium Confidence",
-            desc: "Some data gaps or variance detected."
+            desc: "Run confidence reflects moderate data coverage and integrity."
         },
         low: {
             color: "text-rose-500",
@@ -47,7 +47,7 @@ export function ConfidenceBadge({ level, score, className, showLabel = true, det
             border: "border-rose-500/20",
             icon: AlertTriangle,
             label: "Low Confidence",
-            desc: "Significant uncertainty. Validation recommended."
+            desc: "Run confidence reflects limited data coverage and integrity."
         }
     };
 
