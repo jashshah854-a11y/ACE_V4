@@ -52,9 +52,7 @@ export function ConfidenceSignal({ signal, limitationsReason }: SignalProps) {
         return cn(base, "bg-gray-200 dark:bg-gray-700");
     };
 
-    const tooltipText = limitationsReason
-        ? `${signal.label}: ${limitationsReason}`
-        : `${signal.label}: Confidence score is ${Math.round(signal.confidenceScore)}%`;
+    const tooltipText = `${signal.label}: Run confidence reflects data trust and report integrity (${Math.round(signal.confidenceScore)}%).`;
 
     return (
         <TooltipProvider>
@@ -68,6 +66,9 @@ export function ConfidenceSignal({ signal, limitationsReason }: SignalProps) {
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-xs text-sm">
                     <p>{tooltipText}</p>
+                    {limitationsReason ? (
+                        <p className="mt-2 text-xs text-muted-foreground">Scope note: {limitationsReason}</p>
+                    ) : null}
                 </TooltipContent>
             </Tooltip>
         </TooltipProvider>
