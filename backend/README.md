@@ -1,8 +1,10 @@
-# ACE V3: Autonomous Cognitive Entity
+# ACE V4: Autonomous Cognitive Entity
+
+Note: Some modules and logs still reference "V3" due to legacy naming; they map to the V4 backend unless explicitly marked otherwise.
 
 **Universal. Unbreakable. Intelligent.**
 
-ACE V3 is a schema-agnostic analytics engine designed to ingest *any* tabular dataset, infer its semantic structure, and autonomously generate deep customer intelligence reports.
+ACE V4 is a schema-agnostic analytics engine designed to ingest *any* tabular dataset, infer its semantic structure, and autonomously generate deep customer intelligence reports.
 
 ## Features
 
@@ -20,7 +22,7 @@ ACE V3 is a schema-agnostic analytics engine designed to ingest *any* tabular da
 
 ## Architecture
 
-ACE V3 operates as a multi-agent pipeline:
+ACE V4 operates as a multi-agent pipeline:
 
 1. **Scanner**: Profiling and initial data scan.
 2. **Interpreter**: Infers semantic roles and domain context.
@@ -68,7 +70,7 @@ Run the universal test suite:
 python tests/test_universal.py
 ```
 
-## ACE V4: The Next Generation
+## ACE V4: The Current Generation
 
 ACE V4 introduces a modular, layered architecture for enterprise-grade data processing:
 
