@@ -30,9 +30,9 @@ export function SafeModeWrapper({
                             Safe Mode Active
                         </h3>
                         <p className="font-[family-name:var(--font-library-body)] text-sm text-[hsl(var(--library-muted))]">
-                            Confidence is low
-                            {confidenceScore !== undefined && ` (${Math.round(confidenceScore * 100)}%)`}.
-                            Showing descriptive view only. Predictive features are paused.
+                            Safe Mode is active here because predictive evidence requires traceable, decision-grade support.
+                            {confidenceScore !== undefined && ` Run confidence is ${Math.round(confidenceScore * 100)}%.`}
+                            Descriptive insights elsewhere in the report remain available.
                         </p>
                     </div>
                 </div>

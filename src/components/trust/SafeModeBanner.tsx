@@ -31,11 +31,11 @@ export function SimulationSafeModeBanner() {
             </div>
             <div className="flex-1 md:flex-none max-w-4xl text-sm font-medium flex flex-col md:flex-row md:items-center gap-1 md:gap-4">
                 <span>
-                    <strong>Safe Mode Active:</strong> Data quality metrics have dropped below the methodologically sound threshold for this analysis.
+                    <strong>Safe Mode Active:</strong> Predictive explanations require traceable, decision-grade evidence for this analysis.
                 </span>
                 <span className="hidden md:inline w-px h-4 bg-amber-300 mx-2" />
                 <span className="opacity-90">
-                    Exploratory features and predictive models are disabled to prevent hallucinations.
+                    Descriptive insights remain available elsewhere in the report.
                 </span>
             </div>
             <Button
