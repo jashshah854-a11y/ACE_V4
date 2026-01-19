@@ -26,10 +26,9 @@ from core.explainability import persist_evidence
 from core.scope_enforcer import ScopeEnforcer, ScopeViolationError
 from core.cache import RailwayClusteringCache
 
-def build_feature_matrix(df, schema_map: SchemaMap):
-    # Use robust SchemaMap from core/schema
-    # Flatten numeric features
-    cols = schema_map.basic_types.numeric
+def build_feature_matrix(df, schema_map):
+    resolved_schema = ensure_schema_map(schema_map)
+    cols = resolved_schema.basic_types.numeric
     if not cols:
         # Fallback to all columns if no numeric types defined
         cols = df.columns.tolist()

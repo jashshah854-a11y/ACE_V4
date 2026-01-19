@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -20,8 +21,8 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 # LOWERED to 5% - Accept almost any data
 QUALITY_THRESHOLD = 0.05  # Was 0.5, then 0.1, now 0.05
 
-# DISABLE drift as a blocker - allow analyses on changed/sampled data
-ENABLE_DRIFT_BLOCKING = False
+# ENABLE drift as a blocker for governance safety
+ENABLE_DRIFT_BLOCKING = True
 
 # Allow insights even with low confidence
 MIN_CONFIDENCE_FOR_INSIGHTS = 0.1
@@ -36,11 +37,18 @@ BUSINESS_KEYWORDS = [
 # ============================================================================
 # Settings Class - Complete Pydantic Configuration
 # ============================================================================
+_SKIP_ENV_FILE = bool(
+    os.getenv("PYTEST_CURRENT_TEST")
+    or os.getenv("ACE_SKIP_ENV_FILE")
+    or "pytest" in sys.modules
+)
+
+
 class Settings(BaseSettings):
     """Application configuration settings with Pydantic validation"""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=None if _SKIP_ENV_FILE else ".env",
         case_sensitive=False,
         extra="ignore"
     )
