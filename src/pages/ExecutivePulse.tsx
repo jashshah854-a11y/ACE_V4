@@ -56,7 +56,7 @@ import { useNarrative } from "@/components/narrative/NarrativeContext";
 import { TrustBadge } from "@/components/trust/TrustBadge";
 import { TrustBreakdown } from "@/components/trust/TrustBreakdown";
 import { ScopeConstraintsCard } from "@/components/report/ScopeConstraintsCard";
-import { ActionableEmptyState } from "@/components/report/shared/ActionableEmptyState";
+import { ScopePlaceholder } from "@/components/report/ScopePlaceholder";
 
 const ExecutivePulse = () => {
   const [searchParams] = useSearchParams();
@@ -198,7 +198,6 @@ const ExecutivePulse = () => {
   const scqaModules = reportData.narrativeModules || [];
   const scopeLocks = reportData.scopeLocks || [];
   const scopeConstraints = reportData.scopeConstraints || [];
-  const regressionConstraint = scopeConstraints.find((constraint) => constraint.agent === "regression");
   const scopeNote = scopeConstraints.length === 1
     ? scopeConstraints[0].title
     : scopeConstraints.length > 1
@@ -228,7 +227,7 @@ const ExecutivePulse = () => {
 
   const hasData = activeRun && reportQuery.data;
   const executiveBrief = reportData.governingTrust?.band === "caution"
-    ? ["Executive summary suppressed until trust improves. Review validation and expand sample size."]
+    ? ["Executive summary withheld until trust improves. Review validation and expand sample size."]
     : storyData.executiveBrief;
   const storyDataForBrief = { ...storyData, executiveBrief };
   const summarizedContent = (content: string) => {
@@ -421,17 +420,21 @@ const ExecutivePulse = () => {
 
                     {/* Interactive Charts */}
                     <div className="grid gap-6 md:grid-cols-2">
-                      {regressionConstraint ? (
-                        <ActionableEmptyState
-                          title="Outcome drivers not applicable"
-                          description={regressionConstraint.detail}
-                          requirements={["Target outcome column", "Sufficient variance", "Minimum data volume"]}
-                        />
-                      ) : (
+                      {reportData.enhancedAnalytics?.feature_importance?.available &&
+                      Array.isArray(reportData.enhancedAnalytics.feature_importance.feature_importance) &&
+                      reportData.enhancedAnalytics.feature_importance.feature_importance.length > 0 ? (
                         <TopDriversCard
                           data={reportData.enhancedAnalytics?.feature_importance}
                           safeMode={reportData.safeMode}
                           onViewEvidence={() => handleEvidenceFocus({ section: "feature_importance", evidenceId: predictiveEvidenceId })}
+                        />
+                      ) : (
+                        <ScopePlaceholder
+                          sectionName="Outcome Drivers"
+                          agentKey="regression"
+                          scopeConstraints={scopeConstraints}
+                          analysisIntent={reportData.analysisIntent}
+                          targetCandidate={reportData.targetCandidate}
                         />
                       )}
                       <CorrelationInsightsCard

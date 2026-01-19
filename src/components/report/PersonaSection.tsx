@@ -3,15 +3,20 @@ import { PersonaCard, PERSONA_GRADIENTS } from "./PersonaCard";
 import { PersonaData } from "@/lib/reportParser";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { motion } from "framer-motion";
+import { ScopePlaceholder } from "./ScopePlaceholder";
+import type { AnalysisIntent, ScopeConstraint, TargetCandidate } from "@/types/analysisIntent";
 
 interface PersonaSectionProps {
     personas: PersonaData[];
+    scopeConstraints?: ScopeConstraint[];
+    analysisIntent?: AnalysisIntent;
+    targetCandidate?: TargetCandidate;
 }
 
 /**
  * Visual persona section with distribution chart and persona cards
  */
-export function PersonaSection({ personas }: PersonaSectionProps) {
+export function PersonaSection({ personas, scopeConstraints = [], analysisIntent, targetCandidate }: PersonaSectionProps) {
     // Null safety - filter valid personas
     const validPersonas = Array.isArray(personas) 
         ? personas.filter(p => p && p.name && typeof p.size === 'number')
@@ -19,9 +24,13 @@ export function PersonaSection({ personas }: PersonaSectionProps) {
 
     if (validPersonas.length === 0) {
         return (
-            <div className="text-center py-8 text-muted-foreground">
-                <p>No personas generated</p>
-            </div>
+            <ScopePlaceholder
+                sectionName="Personas & Strategies"
+                agentKey="fabricator"
+                scopeConstraints={scopeConstraints}
+                analysisIntent={analysisIntent}
+                targetCandidate={targetCandidate}
+            />
         );
     }
 
