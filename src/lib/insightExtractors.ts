@@ -35,12 +35,12 @@ function isLimitationsMode(content: string, metrics: any): boolean {
 export function extractHeroInsight(content: string, metrics: any): HeroInsight {
     if (isLimitationsMode(content, metrics)) {
         return {
-            keyInsight: "Insights suppressed due to governance limits",
+            keyInsight: "Insights are limited by governance scope",
             impact: "low",
             trend: "neutral",
             confidence: metrics?.confidenceLevel ?? 0,
             dataQuality: metrics?.dataQualityScore ?? 0,
-            recommendation: "No strategies recommended until confidence/contract gates clear.",
+            recommendation: "Strategies are paused until confidence and contract gates clear.",
             context: "Report is in limitations mode; review validation, contract, and data quality."
         };
     }

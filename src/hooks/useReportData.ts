@@ -275,10 +275,7 @@ export function useReportData(
     [governedReport?.insights, evidenceMap]
   );
   const scopeConstraints = useMemo(() => {
-    const rawConstraints = Array.isArray(governedReport?.scope_constraints)
-      ? governedReport?.scope_constraints
-      : [];
-    return rawConstraints
+    return (Array.isArray(governedReport?.scope_constraints) ? governedReport?.scope_constraints : [])
       .filter((constraint) => constraint && typeof constraint === "object")
       .map((constraint) => formatScopeConstraint(constraint, analysisIntent, targetCandidate));
   }, [governedReport?.scope_constraints, analysisIntent, targetCandidate]);
@@ -559,7 +556,7 @@ export function useReportData(
     const lower = content.toLowerCase();
     const signals: string[] = [];
     if (limitationsMode) {
-      signals.push("Insights suppressed by confidence/contract/validation gates.");
+      signals.push("Insights limited by confidence, contract, or validation gates.");
     }
     if (typeof metrics.confidenceLevel === "number") {
       signals.push(`Confidence: ${metrics.confidenceLevel}%`);
@@ -865,6 +862,7 @@ export function useReportData(
     analysisIntent,
     targetCandidate,
     scopeConstraints,
+    rawScopeConstraints,
     governingThought: narrativeAssembly.governingThought,
     governingTrust,
     narrativeModules: narrativeAssembly.primary,
