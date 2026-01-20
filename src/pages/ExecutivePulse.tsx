@@ -354,15 +354,12 @@ const ExecutivePulse = () => {
             <EmptyState />
           ) : (
             <div className="animate-in fade-in duration-500">
-              {/* 1. Standardized KPI Grid */}
-              <ExecutiveKpiGrid metrics={executiveMetrics} />
-
               {/* 2. Main 2-Column Layout */}
               <div className="grid gap-8 lg:grid-cols-[1fr_360px] xl:grid-cols-[1fr_400px]">
 
                 {/* Left Column: Narrative & Insights */}
                 <div className="space-y-8 min-w-0">
-                  {/* Governing Thought Section */}
+                  {/* 1. Governing Thought Section - ALWAYS FIRST */}
                   <div className="space-y-4">
                     <ExplanationBlock {...getSectionCopy("governing_thought")} />
 
@@ -401,6 +398,9 @@ const ExecutivePulse = () => {
                       )}
                     </div>
                   </div>
+
+                  {/* 2. Key Metrics Summary - Evidence for thesis */}
+                  <ExecutiveKpiGrid metrics={executiveMetrics} />
 
                   {/* Warnings */}
                   {reportData.governanceWarnings?.length ? (
