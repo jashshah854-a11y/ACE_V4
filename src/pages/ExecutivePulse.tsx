@@ -59,6 +59,7 @@ import { ScopeConstraintsCard } from "@/components/report/ScopeConstraintsCard";
 import { ScopePlaceholder } from "@/components/report/ScopePlaceholder";
 import { ExplanationBlock } from "@/components/report/ExplanationBlock";
 import { getSectionCopy } from "@/lib/reportCopy";
+import { CollapsibleSection } from "@/components/report/CollapsibleSection";
 
 const ExecutivePulse = () => {
   const [searchParams] = useSearchParams();
@@ -415,79 +416,161 @@ const ExecutivePulse = () => {
                     </div>
                   ) : null}
 
-                  {/* Story Content */}
-                  <div className="space-y-12">
-                    {/* Headline & Evidence Link */}
-                    <div className="rounded-3xl border border-border/40 bg-card p-6 shadow-sm">
-                      <StoryHeadline data={storyDataForBrief} onHighlight={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })} />
-                      <div className="mt-8 flex justify-center">
-                        <StoryControlBar data={storyDataForBrief} trustBand={reportData.governingTrust?.band} />
-                      </div>
-                    </div>
+                  {/* 3. Action Items - PRIORITIZED for Executives */}
+                  {storyData.sections.filter(s => s.type === "recommendation" && s.listItems?.length).map((section, idx) => {
+                    const items = narrativeMode === "executive"
+                      ? section.listItems.slice(0, 3)
+                      : section.listItems;
+                    if (section.trust?.band === "caution") {
+                      return (
+                        <LimitationBanner
+                          key={`action-${idx}`}
+                          message="Recommendations are gated until trust improves. Review validation and expand sample size."
+                          severity="warning"
+                        />
+                      );
+                    }
+                    return (
+                      <ActionChecklist
+                        key={`action-${idx}`}
+                        title={section.title}
+                        items={items}
+                        onViewEvidence={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })}
+                      />
+                    );
+                  })}
 
-                    {/* Interactive Charts */}
-                    <div className="grid gap-6 md:grid-cols-2">
-                      {reportData.enhancedAnalytics?.feature_importance?.available &&
-                        Array.isArray(reportData.enhancedAnalytics.feature_importance.feature_importance) &&
-                        reportData.enhancedAnalytics.feature_importance.feature_importance.length > 0 ? (
-                        <TopDriversCard
-                          data={reportData.enhancedAnalytics?.feature_importance}
-                          safeMode={reportData.safeMode}
+                  {/* 4. Supporting Evidence - Progressive Disclosure for Executive */}
+                  {narrativeMode === "executive" ? (
+                    <CollapsibleSection
+                      title="View Supporting Analysis & Evidence"
+                      subtitle="Charts, correlations, and detailed narratives"
+                      defaultOpen={false}
+                    >
+                      <div className="space-y-8">
+                        {/* Headline & Evidence Link */}
+                        <div className="rounded-3xl border border-border/40 bg-card p-6 shadow-sm">
+                          <StoryHeadline data={storyDataForBrief} onHighlight={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })} />
+                          <div className="mt-8 flex justify-center">
+                            <StoryControlBar data={storyDataForBrief} trustBand={reportData.governingTrust?.band} />
+                          </div>
+                        </div>
+
+                        {/* Interactive Charts */}
+                        <div className="grid gap-6 md:grid-cols-2">
+                          {reportData.enhancedAnalytics?.feature_importance?.available &&
+                            Array.isArray(reportData.enhancedAnalytics.feature_importance.feature_importance) &&
+                            reportData.enhancedAnalytics.feature_importance.feature_importance.length > 0 ? (
+                            <TopDriversCard
+                              data={reportData.enhancedAnalytics?.feature_importance}
+                              safeMode={reportData.safeMode}
+                              onViewEvidence={() => handleEvidenceFocus({ section: "feature_importance", evidenceId: predictiveEvidenceId })}
+                            />
+                          ) : (
+                            <ScopePlaceholder
+                              sectionName="Outcome Drivers"
+                              agentKey="regression"
+                              scopeConstraints={scopeConstraints}
+                              analysisIntent={reportData.analysisIntent}
+                              targetCandidate={reportData.targetCandidate}
+                            />
+                          )}
+                          <CorrelationInsightsCard
+                            data={reportData.enhancedAnalytics?.correlation_analysis}
+                            onViewEvidence={() => handleEvidenceFocus({ section: "feature_importance", evidenceId: predictiveEvidenceId })}
+                          />
+                        </div>
+
+                        {/* Additional Narrative Blocks */}
+                        {storyData.sections.filter(s => s.type !== "recommendation").map((section, idx) => (
+                          <SentimentBlock
+                            key={`narrative-${idx}`}
+                            title={section.title}
+                            sentiment={section.sentiment}
+                            impact={section.impact}
+                            trust={section.trust}
+                            insightId={section.id}
+                          >
+                            <ReactMarkdown>{contentForMode(section.content, section.impact, section.trust?.band)}</ReactMarkdown>
+                          </SentimentBlock>
+                        ))}
+                      </div>
+                    </CollapsibleSection>
+                  ) : (
+                    // Analyst/Expert Mode: Everything expanded
+                    <div className="space-y-12">
+                      {/* Headline & Evidence Link */}
+                      <div className="rounded-3xl border border-border/40 bg-card p-6 shadow-sm">
+                        <StoryHeadline data={storyDataForBrief} onHighlight={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })} />
+                        <div className="mt-8 flex justify-center">
+                          <StoryControlBar data={storyDataForBrief} trustBand={reportData.governingTrust?.band} />
+                        </div>
+                      </div>
+
+                      {/* Interactive Charts */}
+                      <div className="grid gap-6 md:grid-cols-2">
+                        {reportData.enhancedAnalytics?.feature_importance?.available &&
+                          Array.isArray(reportData.enhancedAnalytics.feature_importance.feature_importance) &&
+                          reportData.enhancedAnalytics.feature_importance.feature_importance.length > 0 ? (
+                          <TopDriversCard
+                            data={reportData.enhancedAnalytics?.feature_importance}
+                            safeMode={reportData.safeMode}
+                            onViewEvidence={() => handleEvidenceFocus({ section: "feature_importance", evidenceId: predictiveEvidenceId })}
+                          />
+                        ) : (
+                          <ScopePlaceholder
+                            sectionName="Outcome Drivers"
+                            agentKey="regression"
+                            scopeConstraints={scopeConstraints}
+                            analysisIntent={reportData.analysisIntent}
+                            targetCandidate={reportData.targetCandidate}
+                          />
+                        )}
+                        <CorrelationInsightsCard
+                          data={reportData.enhancedAnalytics?.correlation_analysis}
                           onViewEvidence={() => handleEvidenceFocus({ section: "feature_importance", evidenceId: predictiveEvidenceId })}
                         />
-                      ) : (
-                        <ScopePlaceholder
-                          sectionName="Outcome Drivers"
-                          agentKey="regression"
-                          scopeConstraints={scopeConstraints}
-                          analysisIntent={reportData.analysisIntent}
-                          targetCandidate={reportData.targetCandidate}
-                        />
-                      )}
-                      <CorrelationInsightsCard
-                        data={reportData.enhancedAnalytics?.correlation_analysis}
-                        onViewEvidence={() => handleEvidenceFocus({ section: "feature_importance", evidenceId: predictiveEvidenceId })}
-                      />
-                    </div>
+                      </div>
 
-                    {/* Narrative Blocks */}
-                    {storyData.sections.map((section, idx) => {
-                      if (section.type === "recommendation" && section.listItems?.length) {
-                        const items = narrativeMode === "executive"
-                          ? section.listItems.slice(0, 3)
-                          : section.listItems;
-                        if (section.trust?.band === "caution") {
+                      {/* All Narrative Blocks */}
+                      {storyData.sections.map((section, idx) => {
+                        if (section.type === "recommendation" && section.listItems?.length) {
+                          const items = narrativeMode === "executive"
+                            ? section.listItems.slice(0, 3)
+                            : section.listItems;
+                          if (section.trust?.band === "caution") {
+                            return (
+                              <LimitationBanner
+                                key={idx}
+                                message="Recommendations are gated until trust improves. Review validation and expand sample size."
+                                severity="warning"
+                              />
+                            );
+                          }
                           return (
-                            <LimitationBanner
+                            <ActionChecklist
                               key={idx}
-                              message="Recommendations are gated until trust improves. Review validation and expand sample size."
-                              severity="warning"
+                              title={section.title}
+                              items={items}
+                              onViewEvidence={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })}
                             />
                           );
                         }
                         return (
-                          <ActionChecklist
+                          <SentimentBlock
                             key={idx}
                             title={section.title}
-                            items={items}
-                            onViewEvidence={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })}
-                          />
+                            sentiment={section.sentiment}
+                            impact={section.impact}
+                            trust={section.trust}
+                            insightId={section.id}
+                          >
+                            <ReactMarkdown>{contentForMode(section.content, section.impact, section.trust?.band)}</ReactMarkdown>
+                          </SentimentBlock>
                         );
-                      }
-                      return (
-                        <SentimentBlock
-                          key={idx}
-                          title={section.title}
-                          sentiment={section.sentiment}
-                          impact={section.impact}
-                          trust={section.trust}
-                          insightId={section.id}
-                        >
-                          <ReactMarkdown>{contentForMode(section.content, section.impact, section.trust?.band)}</ReactMarkdown>
-                        </SentimentBlock>
-                      );
-                    })}
-                  </div>
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Right Column: Lab & Controls */}
