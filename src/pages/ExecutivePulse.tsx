@@ -400,150 +400,151 @@ const ExecutivePulse = () => {
                         </div>
                       )}
                     </div>
+                  </div>
 
-                    {/* Warnings */}
-                    {reportData.governanceWarnings?.length ? (
-                      <div className="space-y-2">
-                        {reportData.governanceWarnings.slice(0, 3).map((warning, idx) => (
-                          <LimitationBanner
-                            key={`gov-warning-${idx}`}
-                            message={warning}
-                            severity={warning.toLowerCase().includes('safe mode') ? 'critical' : 'warning'}
-                          />
-                        ))}
+                  {/* Warnings */}
+                  {reportData.governanceWarnings?.length ? (
+                    <div className="space-y-2">
+                      {reportData.governanceWarnings.slice(0, 3).map((warning, idx) => (
+                        <LimitationBanner
+                          key={`gov-warning-${idx}`}
+                          message={warning}
+                          severity={warning.toLowerCase().includes('safe mode') ? 'critical' : 'warning'}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {/* Story Content */}
+                  <div className="space-y-12">
+                    {/* Headline & Evidence Link */}
+                    <div className="rounded-3xl border border-border/40 bg-card p-6 shadow-sm">
+                      <StoryHeadline data={storyDataForBrief} onHighlight={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })} />
+                      <div className="mt-8 flex justify-center">
+                        <StoryControlBar data={storyDataForBrief} trustBand={reportData.governingTrust?.band} />
                       </div>
-                    ) : null}
+                    </div>
 
-                    {/* Story Content */}
-                    <div className="space-y-12">
-                      {/* Headline & Evidence Link */}
-                      <div className="rounded-3xl border border-border/40 bg-card p-6 shadow-sm">
-                        <StoryHeadline data={storyDataForBrief} onHighlight={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })} />
-                        <div className="mt-8 flex justify-center">
-                          <StoryControlBar data={storyDataForBrief} trustBand={reportData.governingTrust?.band} />
-                        </div>
-                      </div>
-
-                      {/* Interactive Charts */}
-                      <div className="grid gap-6 md:grid-cols-2">
-                        {reportData.enhancedAnalytics?.feature_importance?.available &&
-                          Array.isArray(reportData.enhancedAnalytics.feature_importance.feature_importance) &&
-                          reportData.enhancedAnalytics.feature_importance.feature_importance.length > 0 ? (
-                          <TopDriversCard
-                            data={reportData.enhancedAnalytics?.feature_importance}
-                            safeMode={reportData.safeMode}
-                            onViewEvidence={() => handleEvidenceFocus({ section: "feature_importance", evidenceId: predictiveEvidenceId })}
-                          />
-                        ) : (
-                          <ScopePlaceholder
-                            sectionName="Outcome Drivers"
-                            agentKey="regression"
-                            scopeConstraints={scopeConstraints}
-                            analysisIntent={reportData.analysisIntent}
-                            targetCandidate={reportData.targetCandidate}
-                          />
-                        )}
-                        <CorrelationInsightsCard
-                          data={reportData.enhancedAnalytics?.correlation_analysis}
+                    {/* Interactive Charts */}
+                    <div className="grid gap-6 md:grid-cols-2">
+                      {reportData.enhancedAnalytics?.feature_importance?.available &&
+                        Array.isArray(reportData.enhancedAnalytics.feature_importance.feature_importance) &&
+                        reportData.enhancedAnalytics.feature_importance.feature_importance.length > 0 ? (
+                        <TopDriversCard
+                          data={reportData.enhancedAnalytics?.feature_importance}
+                          safeMode={reportData.safeMode}
                           onViewEvidence={() => handleEvidenceFocus({ section: "feature_importance", evidenceId: predictiveEvidenceId })}
                         />
-                      </div>
+                      ) : (
+                        <ScopePlaceholder
+                          sectionName="Outcome Drivers"
+                          agentKey="regression"
+                          scopeConstraints={scopeConstraints}
+                          analysisIntent={reportData.analysisIntent}
+                          targetCandidate={reportData.targetCandidate}
+                        />
+                      )}
+                      <CorrelationInsightsCard
+                        data={reportData.enhancedAnalytics?.correlation_analysis}
+                        onViewEvidence={() => handleEvidenceFocus({ section: "feature_importance", evidenceId: predictiveEvidenceId })}
+                      />
+                    </div>
 
-                      {/* Narrative Blocks */}
-                      {storyData.sections.map((section, idx) => {
-                        if (section.type === "recommendation" && section.listItems?.length) {
-                          const items = narrativeMode === "executive"
-                            ? section.listItems.slice(0, 3)
-                            : section.listItems;
-                          if (section.trust?.band === "caution") {
-                            return (
-                              <LimitationBanner
-                                key={idx}
-                                message="Recommendations are gated until trust improves. Review validation and expand sample size."
-                                severity="warning"
-                              />
-                            );
-                          }
+                    {/* Narrative Blocks */}
+                    {storyData.sections.map((section, idx) => {
+                      if (section.type === "recommendation" && section.listItems?.length) {
+                        const items = narrativeMode === "executive"
+                          ? section.listItems.slice(0, 3)
+                          : section.listItems;
+                        if (section.trust?.band === "caution") {
                           return (
-                            <ActionChecklist
+                            <LimitationBanner
                               key={idx}
-                              title={section.title}
-                              items={items}
-                              onViewEvidence={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })}
+                              message="Recommendations are gated until trust improves. Review validation and expand sample size."
+                              severity="warning"
                             />
                           );
                         }
                         return (
-                          <SentimentBlock
+                          <ActionChecklist
                             key={idx}
                             title={section.title}
-                            sentiment={section.sentiment}
-                            impact={section.impact}
-                            trust={section.trust}
-                            insightId={section.id}
-                          >
-                            <ReactMarkdown>{contentForMode(section.content, section.impact, section.trust?.band)}</ReactMarkdown>
-                          </SentimentBlock>
+                            items={items}
+                            onViewEvidence={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })}
+                          />
                         );
-                      })}
+                      }
+                      return (
+                        <SentimentBlock
+                          key={idx}
+                          title={section.title}
+                          sentiment={section.sentiment}
+                          impact={section.impact}
+                          trust={section.trust}
+                          insightId={section.id}
+                        >
+                          <ReactMarkdown>{contentForMode(section.content, section.impact, section.trust?.band)}</ReactMarkdown>
+                        </SentimentBlock>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Right Column: Lab & Controls */}
+                <aside className="space-y-6 lg:sticky lg:top-24 self-start h-fit">
+                  <GuidanceOverlay notes={reportData.guidanceNotes} context="global" />
+                  <ValidationSummaryPanel
+                    dataQualityScore={reportData.dataQualityValue}
+                    suppressedCount={0}
+                    issues={reportData.confidenceValue && reportData.confidenceValue < 60 ? [{ type: 'warning', message: 'Low confidence detected in recent samples.' }] : []}
+                    insightPolicy={insightPolicy}
+                  />
+                  {/* Scope Locks */}
+                  {scopeLocks.length > 0 && (
+                    <div className="rounded-2xl border border-amber-200/50 bg-amber-50/50 p-5">
+                      <div className="flex flex-wrap gap-2">
+                        {scopeLocks.map((lock, idx) => (
+                          <span key={idx} className="bg-white px-2 py-1 rounded-md text-xs border border-amber-100 text-amber-900 shadow-sm">
+                            {lock.dimension}
+                          </span>
+                        ))}
+                      </div>
                     </div>
+                  )}
+                  <ScopeConstraintsCard constraints={scopeConstraints} />
+
+                  {/* Lab Controls */}
+                  <div className="rounded-2xl border border-border/40 bg-card shadow-sm overflow-hidden">
+                    <div className="p-4 border-b border-border/40 bg-muted/20 flex items-center justify-between">
+                      <h3 className="font-semibold text-sm flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-primary" /> Strategy Lab
+                      </h3>
+                      <span className="text-[10px] uppercase font-mono text-muted-foreground">v4.0</span>
+                    </div>
+                    <SimulationControls
+                      runId={activeRun}
+                      availableColumns={numericColumns}
+                      hint={guidanceHint?.message}
+                      onSimulationResult={handleSimulationReport}
+                    />
                   </div>
 
-                  {/* Right Column: Lab & Controls */}
-                  <aside className="space-y-6 lg:sticky lg:top-24 self-start h-fit">
-                    <GuidanceOverlay notes={reportData.guidanceNotes} context="global" />
-                    <ValidationSummaryPanel
-                      dataQualityScore={reportData.dataQualityValue}
-                      suppressedCount={0}
-                      issues={reportData.confidenceValue && reportData.confidenceValue < 60 ? [{ type: 'warning', message: 'Low confidence detected in recent samples.' }] : []}
-                      insightPolicy={insightPolicy}
-                    />
-                    {/* Scope Locks */}
-                    {scopeLocks.length > 0 && (
-                      <div className="rounded-2xl border border-amber-200/50 bg-amber-50/50 p-5">
-                        <div className="flex flex-wrap gap-2">
-                          {scopeLocks.map((lock, idx) => (
-                            <span key={idx} className="bg-white px-2 py-1 rounded-md text-xs border border-amber-100 text-amber-900 shadow-sm">
-                              {lock.dimension}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <ScopeConstraintsCard constraints={scopeConstraints} />
+                  {/* Evidence Rail */}
+                  <EvidenceRail
+                    mode="inline"
+                    data={reportData}
+                    runId={activeRun}
+                    onFocusGuidance={() => focusGuidance("global")}
+                    simulationResult={simulationEvidence.result}
+                    simulationModifications={simulationEvidence.modifications}
+                  />
+                </aside>
 
-                    {/* Lab Controls */}
-                    <div className="rounded-2xl border border-border/40 bg-card shadow-sm overflow-hidden">
-                      <div className="p-4 border-b border-border/40 bg-muted/20 flex items-center justify-between">
-                        <h3 className="font-semibold text-sm flex items-center gap-2">
-                          <Zap className="w-4 h-4 text-primary" /> Strategy Lab
-                        </h3>
-                        <span className="text-[10px] uppercase font-mono text-muted-foreground">v4.0</span>
-                      </div>
-                      <SimulationControls
-                        runId={activeRun}
-                        availableColumns={numericColumns}
-                        hint={guidanceHint?.message}
-                        onSimulationResult={handleSimulationReport}
-                      />
-                    </div>
-
-                    {/* Evidence Rail */}
-                    <EvidenceRail
-                      mode="inline"
-                      data={reportData}
-                      runId={activeRun}
-                      onFocusGuidance={() => focusGuidance("global")}
-                      simulationResult={simulationEvidence.result}
-                      simulationModifications={simulationEvidence.modifications}
-                    />
-                  </aside>
-
-                </div>
               </div>
+            </div>
           )}
 
-            </div>
+        </div>
       </main>
     </div>
   );
