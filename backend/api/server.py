@@ -1876,6 +1876,71 @@ async def get_governed_report(request: Request, run_id: str):
     return await get_report(request, run_id)
 
 
+# ============================================================================
+# PHASE 5: DECISION CAPTURE & SYSTEM INTELLIGENCE
+# ============================================================================
+
+# GUARDRAIL 2: Allowed touch types (prevents scope creep)
+ALLOWED_TOUCH_TYPES = {
+    'action_view',
+    'action_click',
+    'evidence_expand',
+    'trust_inspect',
+    'reflection_dismiss'
+}
+
+@app.post("/api/decision-touch", tags=["Decision Capture"])
+async def create_decision_touch(touch_data: Dict[str, Any]):
+    """
+    Record a decision interaction (silent tracking).
+    
+    Phase 5.1: Captures executive interactions with Action Items,
+    Supporting Evidence, and Trust signals for contextual memory.
+    
+    GUARDRAIL 2: Only allowed touch types are accepted.
+    """
+    try:
+        touch_type = touch_data.get('touch_type')
+        
+        # GUARDRAIL 2: Validate touch type against whitelist
+        if touch_type not in ALLOWED_TOUCH_TYPES:
+            logger.warning(f"[DECISION] Rejected unknown touch_type: {touch_type}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid touch_type. Allowed: {', '.join(sorted(ALLOWED_TOUCH_TYPES))}"
+            )
+        
+        logger.info(f"[DECISION] Captured {touch_type} for run {touch_data.get('run_id')}")
+        return {"status": "recorded", "timestamp": datetime.utcnow().isoformat()}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[DECISION] Error capturing touch: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@app.post("/api/action-outcome", tags=["Decision Capture"])
+async def create_action_outcome(outcome_data: Dict[str, Any]):
+    """
+    Tag the outcome of an action item (optional user input).
+    
+    Phase 5.2: Allows executives to mark action status
+    for future reflection and pattern detection.
+    """
+    try:
+        logger.info(f"[OUTCOME] Marked action {outcome_data.get('action_item_id')} as {outcome_data.get('status')}")
+        return {"status": "recorded", "timestamp": datetime.utcnow().isoformat()}
+    except Exception as e:
+        logger.error(f"[OUTCOME] Error recording outcome: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/health")
+def health_check():
+    """Simple health check endpoint."""
+    return {"status": "healthy"}
+
+
 if __name__ == "__main__":
     import uvicorn
     import os
