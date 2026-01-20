@@ -3,11 +3,11 @@ import { ExplanationBlockProps } from "@/components/report/ExplanationBlock";
 /**
  * Section Copy Registry
  * 
- * Central source of truth for section explanations.
- * Supports token replacement for dynamic content.
- * 
- * Usage:
- * const copy = getSectionCopy("drivers", { targetVariable: "Revenue" });
+ * AUTHORITY RULES:
+ * - ExplanationBlock is TIMELESS - explains what the section IS and WHY it exists
+ * - InsightCaption is TEMPORAL - explains what the data is DOING right now
+ * - NEVER reference current dominance, variance, or specific metrics in ExplanationBlock
+ * - ExplanationBlock must read correctly even if data changes completely
  */
 
 interface SectionCopyEntry {
@@ -22,93 +22,93 @@ interface SectionCopyEntry {
 export const SECTION_COPY: Record<string, SectionCopyEntry> = {
     // Feature Importance / Drivers
     drivers: {
-        what: "The statistical features most strongly associated with {targetVariable}",
-        shows: "Which data points have the highest predictive power in explaining outcomes",
-        why: "Focus analysis and action on the factors that matter most for {targetVariable}",
-        how: "Features are ranked by importance score (0-100). Higher bars indicate stronger influence.",
-        notes: "Importance is derived from {model_type} analysis with {sample_size} records",
+        what: "Statistical ranking of features by their association with outcomes",
+        shows: "Which variables explain the most variation in {targetVariable}",
+        why: "Identify where effort and resources will have maximum impact",
+        how: "Features ranked by importance score. Higher scores indicate stronger explanatory power.",
+        notes: "Analysis method: {model_type} with {sample_size} records",
     },
 
     // Correlation Analysis
     correlations: {
-        what: "Statistical relationships between pairs of numeric variables",
-        shows: "Which metrics move together (positive correlation) or oppose each other (negative correlation)",
-        why: "Identify hidden patterns and validate assumptions about how metrics relate",
-        how: "Heatmap cells show correlation strength from -1 (perfect negative) to +1 (perfect positive). Darker colors indicate stronger relationships.",
-        limits: "Correlation does not imply causation. Strong correlations may be coincidental.",
+        what: "Pairwise statistical relationships between numeric variables",
+        shows: "Which metrics move in the same direction (positive) or opposite directions (negative)",
+        why: "Discover hidden patterns and validate assumptions about metric relationships",
+        how: "Correlation values range from -1 (perfect opposite) to +1 (perfect together). Zero means no linear relationship.",
+        limits: "Correlation measures association, not causation. Strong correlations may be coincidental.",
     },
 
     // Clustering / Segments
     segments: {
-        what: "Naturally occurring groups in your data with distinct characteristics",
-        shows: "How records cluster into segments based on behavioral or attribute patterns",
-        why: "Tailor strategies to different audience groups rather than one-size-fits-all approaches",
-        how: "Each segment is sized by number of records and labeled by defining characteristics. Look for distinct patterns across segments.",
-        notes: "Segments identified using {clustering_method} with {num_features} features",
+        what: "Groups of similar records based on behavioral or attribute patterns",
+        shows: "How the dataset naturally divides into distinct segments",
+        why: "Enable targeted strategies instead of one-size-fits-all approaches",
+        how: "Segments are defined by clustering algorithms that find natural groupings in multi-dimensional space.",
+        notes: "Method: {clustering_method} using {num_features} features",
     },
 
     // Distribution Analysis
     distribution: {
-        what: "How values are spread across the range of {variable_name}",
-        shows: "Concentration, outliers, and typical ranges for this metric",
-        why: "Understand what 'normal' looks like and identify unusual cases that need attention",
-        how: "Histogram bars show count of records in each value range. Taller bars indicate more common values.",
+        what: "The spread of values across the full range of {variable_name}",
+        shows: "Where values concentrate, where gaps exist, and where outliers appear",
+        why: "Understand typical ranges and identify unusual cases requiring investigation",
+        how: "Bars represent count of records in each range. Height shows frequency.",
     },
 
     // Time Trends
     trends: {
-        what: "How {metric_name} has changed over {time_period}",
-        shows: "Directional movement, volatility, and inflection points",
-        why: "Spot emerging patterns early and track if changes persist or reverse",
-        notes: "Data spans {date_range} with {num_observations} observations",
-        limits: "Past trends do not guarantee future performance",
+        what: "Changes in {metric_name} tracked across {time_period}",
+        shows: "Direction, volatility, and turning points over time",
+        why: "Spot emerging patterns and assess whether changes are temporary or sustained",
+        notes: "Timespan: {date_range} ({num_observations} observations)",
+        limits: "Historical patterns do not guarantee future behavior.",
     },
 
     // Business Intelligence
     business_value: {
-        what: "Revenue, customer value, or business outcome metrics from your data",
-        shows: "Total value, concentration, high-value segments, and at-risk indicators",
-        why: "Quantify business impact and prioritize where to invest resources",
-        notes: "Value calculated from {value_column}. Segments are based on {segmentation_method}.",
+        what: "Economic metrics derived from your dataset",
+        shows: "Total value, concentration patterns, and segment contributions",
+        why: "Quantify impact and prioritize resource allocation by value potential",
+        notes: "Value source: {value_column}, segmentation method: {segmentation_method}",
     },
 
     // Data Quality
     data_quality: {
-        what: "Completeness, consistency, and reliability of your dataset",
-        shows: "Missing values, data coverage, and validation status",
-        why: "Trust insights only when data quality meets minimum thresholds",
-        limits: "Some analyses are blocked when quality falls below {quality_threshold}%",
+        what: "Assessment of dataset completeness and consistency",
+        shows: "Missing values, coverage gaps, and validation results",
+        why: "Establish reliability before trusting conclusions",
+        limits: "Quality below {quality_threshold}% blocks certain analyses",
     },
 
     // Validation Summary
     validation: {
-        what: "Checks performed to ensure data and analysis meet quality standards",
-        shows: "Which validation rules passed, which failed, and why",
-        why: "Prevent bad decisions based on flawed or incomplete data",
+        what: "Quality checks applied to data and analysis methods",
+        shows: "Which rules passed, which failed, and specific issues found",
+        why: "Prevent decisions based on flawed data or unreliable methods",
     },
 
     // Scenario Comparison
     scenarios: {
-        what: "Side-by-side comparison of different 'what-if' conditions",
-        shows: "How outcomes change when you adjust input variables",
-        why: "Model decisions before committing resources to a strategy",
-        notes: "Scenarios use {model_name} trained on {training_sample_size} records",
-        limits: "Predictions are estimates with confidence intervals. Real outcomes may vary.",
+        what: "Simulated outcomes under different input conditions",
+        shows: "How changes to variables affect predicted results",
+        why: "Test strategies before real-world commitment",
+        notes: "Model: {model_name}, training size: {training_sample_size}",
+        limits: "Estimates include uncertainty. Actual results may differ.",
     },
 
     // Anomalies
     anomalies: {
-        what: "Records that deviate significantly from expected patterns",
-        shows: "Outliers detected by statistical methods",
-        why: "Investigate unusual cases that may represent errors, fraud, or unique opportunities",
-        how: "Anomalies are flagged when values exceed {threshold} standard deviations from the mean",
+        what: "Records with values outside expected statistical ranges",
+        shows: "Outliers detected by deviation from typical patterns",
+        why: "Flag errors, fraud, or exceptional cases requiring review",
+        how: "Flagged when deviation exceeds {threshold} standard deviations",
     },
 
     // Evidence Rail
     evidence: {
-        what: "Technical details on how each analysis was performed",
-        shows: "Methods, data sources, sample sizes, and confidence levels",
-        why: "Audit and validate findings with transparency into the analysis process",
+        what: "Technical documentation of analysis methods and data sources",
+        shows: "Algorithms used, parameters applied, and confidence assessments",
+        why: "Enable audit trails and method validation",
     },
 };
 
@@ -125,8 +125,8 @@ export function getSectionCopy(
         // Fallback for unknown sections
         return {
             what: "An analysis component",
-            shows: "Data insights from your dataset",
-            why: "Provides context for decision-making",
+            shows: "Patterns discovered in your dataset",
+            why: "Provide context for interpretation",
             tokens,
         };
     }
