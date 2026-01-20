@@ -3,7 +3,7 @@ uvicorn
 python-multipart
 slowapi
 pandas
-numpy
+numpy<2
 scikit-learn
 scipy
 pydantic

@@ -280,6 +280,8 @@ export function useReportData(
       .map((constraint) => formatScopeConstraint(constraint, analysisIntent, targetCandidate));
   }, [governedReport?.scope_constraints, analysisIntent, targetCandidate]);
 
+  const rawScopeConstraints = governedReport?.scope_constraints || [];
+
   const { data: enhancedAnalytics, loading: analyticsLoading } = useEnhancedAnalytics(runId);
   const { data: diagnostics } = useDiagnostics(runId);
   const { data: modelArtifacts } = useModelArtifacts(runId);
@@ -631,7 +633,7 @@ export function useReportData(
   const validationFailed = Boolean(diagnostics?.validation?.failed_fields?.length);
   const baseTrustInputs = useMemo(() => {
     const rowCount = normalizeRowCount(identityStats.rows);
-    const signalStability = typeof confidenceValue === "number" ? confidenceValue : undefined;
+    const signalStability = typeof confidenceValue === "number" ? confidenceValue : 0.7;
     const dataQualityScore = typeof dataQualityValue === "number" ? dataQualityValue : undefined;
     const featureDominance = computeFeatureDominance(enhancedAnalytics);
     const assumption = deriveAssumptionRisk(diagnostics, limitationsMode);
