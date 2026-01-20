@@ -1,10 +1,16 @@
 import type { EnhancedAnalyticsData } from "@/types/reportTypes";
 
 /**
- * Insight Extraction - Automatic caption and watch item generation
+ * Insight Extraction with Guardrails
  * 
- * Analyzes data patterns and generates plain-language insights
+ * GUARDRAILS:
+ * 1. Sample size below MIN_SAMPLE_SIZE caps severity at "neutral"
+ * 2. High variance + low coverage downgrades confidence
+ * 3. Only ONE primary insight per section
  */
+
+const MIN_SAMPLE_SIZE = 100; // Minimum records for high severity insights
+const LOW_COVERAGE_THRESHOLD = 0.7; // Below this, downgrade confidence
 
 export interface ExtractedInsight {
     text: string;
@@ -14,10 +20,42 @@ export interface ExtractedInsight {
 }
 
 /**
+ * Apply guardrails to insight severity and confidence
+ */
+function applyGuardrails(
+    insight: ExtractedInsight,
+    sampleSize?: number,
+    coverage?: number,
+    variance?: number
+): ExtractedInsight {
+    let adjustedSeverity = insight.severity;
+    let adjustedConfidence = insight.confidence;
+
+    // Guardrail 1: Low sample size caps severity
+    if (sampleSize !== undefined && sampleSize < MIN_SAMPLE_SIZE) {
+        if (adjustedSeverity === "warning" || adjustedSeverity === "risk" || adjustedSeverity === "positive") {
+            adjustedSeverity = "neutral";
+        }
+    }
+
+    // Guardrail 2: High variance + low coverage reduces confidence
+    if (coverage !== undefined && coverage < LOW_COVERAGE_THRESHOLD && variance !== undefined && variance > 1.0) {
+        adjustedConfidence = adjustedConfidence ? adjustedConfidence * 0.6 : undefined;
+    }
+
+    return {
+        ...insight,
+        severity: adjustedSeverity,
+        confidence: adjustedConfidence,
+    };
+}
+
+/**
  * Extract insight from feature importance data
  */
 export function extractDriverInsight(
-    data: EnhancedAnalyticsData["feature_importance"]
+    data: EnhancedAnalyticsData["feature_importance"],
+    sampleSize?: number
 ): ExtractedInsight | null {
     if (!data?.available || !data.feature_importance?.length) {
         return null;
@@ -27,30 +65,35 @@ export function extractDriverInsight(
     const topImportance = topDriver?.importance || 0;
     const secondImportance = data.feature_importance[1]?.importance || 0;
 
+    let insight: ExtractedInsight;
+
     // Check if one feature dominates
     if (topImportance > secondImportance * 2) {
-        return {
-            text: `${topDriver.feature} dominates with ${Math.round(topImportance)}% importance—focus improvements here for maximum impact.`,
+        insight = {
+            text: `${topDriver.feature} explains ${Math.round(topImportance)}% of variance—single largest driver observed.`,
             severity: "positive",
             confidence: data.confidence,
-            watchItem: `Monitor ${topDriver.feature} closely as changes here will significantly affect ${data.target || "outcomes"}.`,
+            watchItem: `Monitor ${topDriver.feature} for disproportionate impact on ${data.target || "outcomes"}.`,
+        };
+    } else {
+        // Balanced importance
+        const topThree = data.feature_importance.slice(0, 3).map((f) => f.feature).join(", ");
+        insight = {
+            text: `Power distributed across ${topThree}—no single dominant factor.`,
+            severity: "neutral",
+            confidence: data.confidence,
         };
     }
 
-    // Balanced importance
-    const topThree = data.feature_importance.slice(0, 3).map((f) => f.feature).join(", ");
-    return {
-        text: `Multiple drivers (${topThree}) show similar importance—consider multi-factor strategies.`,
-        severity: "neutral",
-        confidence: data.confidence,
-    };
+    return applyGuardrails(insight, sampleSize);
 }
 
 /**
  * Extract insight from correlation data
  */
 export function extractCorrelationInsight(
-    data: EnhancedAnalyticsData["correlation_analysis"]
+    data: EnhancedAnalyticsData["correlation_analysis"],
+    sampleSize?: number
 ): ExtractedInsight | null {
     if (!data?.available || !data.strong_correlations?.length) {
         return null;
@@ -59,25 +102,27 @@ export function extractCorrelationInsight(
     const strongestCorr = data.strong_correlations[0];
     const strength = Math.abs(strongestCorr.pearson);
 
-    if (strength > 0.8) {
-        return {
-            text: `Very strong ${strongestCorr.direction} correlation (${strength.toFixed(2)}) between ${strongestCorr.feature1} and ${strongestCorr.feature2}.`,
-            severity: "warning",
-            watchItem: "High correlation may indicate redundancy or confounding—investigate causality.",
-        };
-    }
+    let insight: ExtractedInsight;
 
-    if (strength > 0.5) {
-        return {
-            text: `Moderate correlation detected: ${strongestCorr.feature1} and ${strongestCorr.feature2} move ${strongestCorr.direction === "positive" ? "together" : "oppositely"}.`,
+    if (strength > 0.8) {
+        insight = {
+            text: `${strongestCorr.feature1} and ${strongestCorr.feature2}: ${strength.toFixed(2)} ${strongestCorr.direction} correlation detected.`,
+            severity: "warning",
+            watchItem: "Very strong correlation may indicate redundancy—verify independence.",
+        };
+    } else if (strength > 0.5) {
+        insight = {
+            text: `${strongestCorr.feature1} and ${strongestCorr.feature2} move ${strongestCorr.direction === "positive" ? "together" : "oppositely"} (${strength.toFixed(2)}).`,
+            severity: "neutral",
+        };
+    } else {
+        insight = {
+            text: `${data.total_correlations} relationships found—mostly moderate strength.`,
             severity: "neutral",
         };
     }
 
-    return {
-        text: `${data.total_correlations} moderate relationships found—patterns exist but are not overly strong.`,
-        severity: "neutral",
-    };
+    return applyGuardrails(insight, sampleSize);
 }
 
 /**
@@ -85,72 +130,80 @@ export function extractCorrelationInsight(
  */
 export function extractDistributionInsight(
     columnName: string,
-    stats: { min: number; max: number; mean: number; std: number; median: number }
+    stats: { min: number; max: number; mean: number; std: number; median: number },
+    sampleSize?: number
 ): ExtractedInsight | null {
     const range = stats.max - stats.min;
-    const cov = stats.std / Math.abs(stats.mean || 1); // Coefficient of variation
+    const cov = stats.std / Math.abs(stats.mean || 1);
+
+    let insight: ExtractedInsight;
 
     // High variability
     if (cov > 1.0) {
-        return {
-            text: `${columnName} shows high variance (CV=${cov.toFixed(1)})—consider segmentation or outlier treatment.`,
+        insight = {
+            text: `${columnName} coefficient of variation: ${cov.toFixed(1)}. Spread exceeds central tendency.`,
             severity: "warning",
         };
+    } else {
+        // Skewed distribution
+        const skew = Math.abs(stats.mean - stats.median) / (stats.std || 1);
+        if (skew > 0.5) {
+            insight = {
+                text: `${columnName} skewed. Mean ${stats.mean.toFixed(1)} differs from median ${stats.median.toFixed(1)}.`,
+                severity: "neutral",
+                watchItem: "Skewed distributions may need log transformation.",
+            };
+        } else {
+            // Normal-ish
+            insight = {
+                text: `${columnName} approximately normal. Mean ${stats.mean.toFixed(1)}, range ${range.toFixed(1)}.`,
+                severity: "neutral",
+            };
+        }
     }
 
-    // Skewed distribution
-    const skew = Math.abs(stats.mean - stats.median) / (stats.std || 1);
-    if (skew > 0.5) {
-        return {
-            text: `${columnName} is skewed (mean=${stats.mean.toFixed(1)}, median=${stats.median.toFixed(1)})—typical cases differ from average.`,
-            severity: "neutral",
-            watchItem: "Skewed distributions may benefit from log transformation or non-parametric methods.",
-        };
-    }
-
-    // Normal-ish
-    return {
-        text: `${columnName} shows relatively normal distribution with mean ${stats.mean.toFixed(1)} and range ${range.toFixed(1)}.`,
-        severity: "neutral",
-    };
+    return applyGuardrails(insight, sampleSize, undefined, cov);
 }
 
 /**
  * Extract insight from segment/cluster data
  */
 export function extractSegmentInsight(
-    segments: Array<{ label?: string; size?: number; avgValue?: number }>
+    segments: Array<{ label?: string; size?: number; avgValue?: number }>,
+    totalSampleSize?: number
 ): ExtractedInsight | null {
     if (!segments.length) return null;
 
     const totalSize = segments.reduce((sum, s) => sum + (s.size || 0), 0);
     const largestSegment = segments.reduce((max, s) =>
-        (s.size || 0) > (max.size || 0) ? s : max
-        , segments[0]);
+        (s.size || 0) > (max.size || 0) ? s : max, segments[0]
+    );
 
     const largestPct = ((largestSegment.size || 0) / totalSize) * 100;
 
+    let insight: ExtractedInsight;
+
     // One dominant segment
     if (largestPct > 50) {
-        return {
-            text: `${largestSegment.label || "Largest segment"} represents ${largestPct.toFixed(0)}% of records—strategies should prioritize this group.`,
+        insight = {
+            text: `${largestSegment.label || "Largest group"}: ${largestPct.toFixed(0)}% of population.`,
             severity: "positive",
         };
-    }
-
-    // Balanced segments
-    if (segments.length >= 3) {
-        return {
-            text: `${segments.length} distinct segments identified—each group needs tailored approach.`,
+    } else if (segments.length >= 3) {
+        // Balanced segments
+        insight = {
+            text: `${segments.length} segments with balanced distribution—differentiation opportunity.`,
             severity: "neutral",
-            watchItem: "Segment-specific targeting can improve conversion rates by 20-40%.",
+            watchItem: "Segment-specific tactics often lift conversion 20-40%.",
+        };
+    } else {
+        insight = {
+            text: `${segments.length} segments with similar sizes.`,
+            severity: "neutral",
         };
     }
 
-    return {
-        text: `${segments.length} segments found with relatively balanced distribution.`,
-        severity: "neutral",
-    };
+    return applyGuardrails(insight, totalSampleSize);
 }
 
 /**
@@ -170,38 +223,43 @@ export function extractAnomalyInsight(
 
     if (outliers.length === 0) {
         return {
-            text: "No statistical outliers detected—data appears consistent.",
+            text: "No outliers beyond 3σ threshold.",
             severity: "positive",
         };
     }
 
     const outlierPct = (outliers.length / values.length) * 100;
 
+    let insight: ExtractedInsight;
+
     if (outlierPct > 5) {
-        return {
-            text: `${outlierPct.toFixed(1)}% of values are outliers (>3σ)—investigate data quality or consider robust methods.`,
+        insight = {
+            text: `${outlierPct.toFixed(1)}% outlier rate exceeds tolerance—review data quality.`,
             severity: "warning",
-            watchItem: "High outlier rate may indicate data errors, fraud, or need for separate handling.",
+            watchItem: "High outlier rates may indicate errors or require separate handling.",
+        };
+    } else {
+        insight = {
+            text: `${outliers.length} outliers (${outlierPct.toFixed(1)}%)—within acceptable range.`,
+            severity: "neutral",
         };
     }
 
-    return {
-        text: `${outliers.length} outliers detected (${outlierPct.toFixed(1)}%)—within normal range but worth monitoring.`,
-        severity: "neutral",
-    };
+    return applyGuardrails(insight, values.length);
 }
 
 /**
  * Main insight extraction router
  */
 export function extractInsights(
-    analyticsData: EnhancedAnalyticsData | null
+    analyticsData: EnhancedAnalyticsData | null,
+    sampleSize?: number
 ): Record<string, ExtractedInsight | null> {
     if (!analyticsData) return {};
 
     return {
-        drivers: extractDriverInsight(analyticsData.feature_importance),
-        correlations: extractCorrelationInsight(analyticsData.correlation_analysis),
-        // Add more as data becomes available
+        drivers: extractDriverInsight(analyticsData.feature_importance, sampleSize),
+        correlations: extractCorrelationInsight(analyticsData.correlation_analysis, sampleSize),
+        // Add more as needed
     };
 }
