@@ -1924,12 +1924,33 @@ async def create_action_outcome(outcome_data: Dict[str, Any]):
     """
     Tag the outcome of an action item (optional user input).
     
-    Phase 5.2: Allows executives to mark action status
-    for future reflection and pattern detection.
+    Phase 5.2: Allows users to mark how decisions turned out.
+    Pure signal collection - no insights, no pressure.
     """
     try:
-        logger.info(f"[OUTCOME] Marked action {outcome_data.get('action_item_id')} as {outcome_data.get('status')}")
+        status = outcome_data.get('status')
+        decision_touch_id = outcome_data.get('decision_touch_id')
+        
+        # Validate status enum (4 values only)
+        ALLOWED_OUTCOME_STATUSES = {'positive', 'neutral', 'negative', 'unknown'}
+        if status not in ALLOWED_OUTCOME_STATUSES:
+            logger.warning(f"[OUTCOME] Rejected invalid status: {status}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid status. Allowed: {', '.join(sorted(ALLOWED_OUTCOME_STATUSES))}"
+            )
+        
+        # Validate decision linkage (no standalone outcomes)
+        if not decision_touch_id:
+            raise HTTPException(
+                status_code=400,
+                detail="decision_touch_id is required - outcomes must link to decision memory"
+            )
+        
+        logger.info(f"[OUTCOME] Marked outcome as {status} for decision {decision_touch_id}")
         return {"status": "recorded", "timestamp": datetime.utcnow().isoformat()}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"[OUTCOME] Error recording outcome: {e}")
         return {"status": "error", "message": str(e)}
