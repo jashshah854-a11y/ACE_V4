@@ -110,6 +110,15 @@ export const SECTION_COPY: Record<string, SectionCopyEntry> = {
         shows: "Algorithms used, parameters applied, and confidence assessments",
         why: "Enable audit trails and method validation",
     },
+
+    // Governing Thought (NEW)
+    governing_thought: {
+        what: "The single most important conclusion synthesized from all analysis",
+        shows: "A decision-ready thesis that frames the entire report",
+        why: "Anchor interpretation and prevent getting lost in individual metrics",
+        how: "Derived from pattern convergence, signal strength, and strategic relevance.",
+        notes: "This shapes how all other insights should be interpreted.",
+    },
 };
 
 /**
