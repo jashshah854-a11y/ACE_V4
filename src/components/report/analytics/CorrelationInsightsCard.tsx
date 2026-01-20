@@ -1,5 +1,8 @@
 import { Activity, Info } from "lucide-react";
 import type { EnhancedAnalyticsData } from "@/types/reportTypes";
+import { ChartWrapper } from "@/components/report/ChartWrapper";
+import { ExplanationBlock } from "@/components/report/ExplanationBlock";
+import { getSectionCopy } from "@/lib/reportCopy";
 
 interface CorrelationInsightsCardProps {
   data?: EnhancedAnalyticsData["correlation_analysis"];
@@ -14,57 +17,58 @@ export function CorrelationInsightsCard({ data, onViewEvidence }: CorrelationIns
   const correlations = data.strong_correlations.slice(0, 4);
 
   const directionGlyph = (direction?: string) => {
-    if (direction === "negative") return "NEG";
-    return "POS";
+    if (direction === "negative") return "↓ NEG";
+    return "↑ POS";
   };
 
-  return (
-    <div className="rounded-2xl border border-border/40 bg-card/70 backdrop-blur-sm p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Behavior Watchlist</p>
-          <h3 className="text-lg font-semibold text-foreground">Significant relationships</h3>
-        </div>
-        <div className="flex items-center gap-3">
-          {onViewEvidence && (
-            <button
-              type="button"
-              onClick={onViewEvidence}
-              className="rounded-full border border-border/50 p-1 text-muted-foreground hover:text-action"
-              aria-label="View correlation source"
-            >
-              <Info className="w-4 h-4" />
-            </button>
-          )}
-          <Activity className="w-5 h-5 text-emerald-500" />
-        </div>
-      </div>
+  const explanationCopy = getSectionCopy("correlations");
 
-      <div className="space-y-3">
-        {correlations.map((pair) => (
-          <div key={`${pair.feature1}-${pair.feature2}`} className="border border-border/30 rounded-xl p-3">
-            <div className="flex items-center justify-between text-sm font-medium text-foreground">
-              <span>{pair.feature1}</span>
-              <span className="text-muted-foreground">{directionGlyph(pair.direction)}</span>
-              <span>{pair.feature2}</span>
-            </div>
-            <div className="text-xs text-muted-foreground mt-1 flex items-center gap-3">
-              <span>pearson: {Number(pair.pearson).toFixed(2)}</span>
-              <span>spearman: {Number(pair.spearman).toFixed(2)}</span>
-              {pair.strength && (
-                <span className="uppercase tracking-wide text-[10px]">{pair.strength}</span>
-              )}
-            </div>
+  const chartContent = (
+    <div className="space-y-3">
+      {correlations.map((pair) => (
+        <div key={`${pair.feature1}-${pair.feature2}`} className="border border-border/30 rounded-xl p-3">
+          <div className="flex items-center justify-between text-sm font-medium text-foreground">
+            <span>{pair.feature1}</span>
+            <span className="text-muted-foreground px-2">{directionGlyph(pair.direction)}</span>
+            <span>{pair.feature2}</span>
           </div>
-        ))}
-      </div>
-
-      {Array.isArray(data.insights) && data.insights.length > 0 && (
-        <div className="mt-4 text-xs text-muted-foreground border-t border-border/30 pt-3">
-          <p className="font-semibold text-foreground mb-1">Insight</p>
-          <p>{data.insights[0]}</p>
+          <div className="text-xs text-muted-foreground mt-1 flex items-center gap-3">
+            <span>pearson: {Number(pair.pearson).toFixed(2)}</span>
+            <span>spearman: {Number(pair.spearman).toFixed(2)}</span>
+            {pair.strength && (
+              <span className="uppercase tracking-wide text-[10px]">{pair.strength}</span>
+            )}
+          </div>
         </div>
-      )}
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <ExplanationBlock {...explanationCopy} />
+
+      <ChartWrapper
+        title="Significant Relationships"
+        questionAnswered="Which metrics move together or oppose each other?"
+        source="Correlation analysis"
+        sampleSize={data.total_correlations}
+        chart={chartContent}
+        caption={
+          data.insights?.[0]
+            ? {
+              text: data.insights[0],
+              severity: "neutral",
+            }
+            : undefined
+        }
+        metricDefinitions={{
+          "Pearson": "Linear correlation (-1 to +1). Measures straight-line relationships.",
+          "Spearman": "Rank correlation (-1 to +1). Captures non-linear monotonic relationships.",
+          "Positive (POS)": "Variables move in the same direction",
+          "Negative (NEG)": "Variables move in opposite directions",
+        }}
+      />
     </div>
   );
 }
