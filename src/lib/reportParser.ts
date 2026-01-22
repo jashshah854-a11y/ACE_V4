@@ -90,6 +90,9 @@ export interface OutcomeModelData {
     rmse: number;
     mae: number;
     features: Array<{ name: string; importance: number }>;
+    drivers?: Array<{ feature: string; importance: number }>;
+    status?: 'success' | 'skipped' | 'failed';
+    target?: string;
 }
 
 export interface AnomalyData {
