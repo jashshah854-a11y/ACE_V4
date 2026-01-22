@@ -87,23 +87,36 @@ class EnhancedAnalytics:
         # Spearman correlation (monotonic relationships)
         spearman_corr = numeric_df.corr(method='spearman')
 
-        # Find strong correlations
+        # Find strong correlations and potential leakage
         strong_correlations = []
+        suspicious_leakage = []
+        
         for i in range(len(pearson_corr.columns)):
             for j in range(i + 1, len(pearson_corr.columns)):
                 col1, col2 = pearson_corr.columns[i], pearson_corr.columns[j]
                 pearson_val = pearson_corr.iloc[i, j]
                 spearman_val = spearman_corr.iloc[i, j]
+                
+                max_corr = max(abs(pearson_val), abs(spearman_val))
+
+                # LEAKAGE CHECK: Perfect or near-perfect correlation (r > 0.99)
+                # This usually indicates one variable is derived from the other (e.g. income -> reward_points)
+                if max_corr > 0.99:
+                    suspicious_leakage.append(f"{col1} ↔ {col2} (r={max_corr:.4f})")
+                    # Downgrade reliability context in metadata if state manager exists
+                    if self.state_manager:
+                         self.state_manager.add_warning(f"Likely data leakage detected: {col1} and {col2} are perfectly correlated.")
 
                 # Consider correlation strong if |r| > 0.5
-                if abs(pearson_val) > 0.5 or abs(spearman_val) > 0.5:
+                if max_corr > 0.5:
                     strong_correlations.append({
                         "feature1": col1,
                         "feature2": col2,
                         "pearson": float(pearson_val),
                         "spearman": float(spearman_val),
-                        "strength": self._correlation_strength(max(abs(pearson_val), abs(spearman_val))),
-                        "direction": "positive" if pearson_val > 0 else "negative"
+                        "strength": self._correlation_strength(max_corr),
+                        "direction": "positive" if pearson_val > 0 else "negative",
+                        "is_leakage": max_corr > 0.99
                     })
 
         # Sort by strength
@@ -116,6 +129,7 @@ class EnhancedAnalytics:
             "strong_correlations": strong_correlations[:10],  # Top 10
             "total_correlations": len(strong_correlations),
             "features": self.numeric_cols,
+            "leakage_warnings": suspicious_leakage,
             "insights": self._generate_correlation_insights(strong_correlations)
         }
 
@@ -226,6 +240,15 @@ class EnhancedAnalytics:
             return {"available": False, "reason": f"Model training failed: {exc}"}
 
         importances = [entry.as_dict() for entry in model.get_feature_importance()]
+        
+        # NORMALIZATION FIX:
+        # Raw coefficients (e.g., 2.65) cannot be treated as percentages.
+        # We must normalize them relative to the sum of absolute importances.
+        total_importance = sum(imp["importance"] for imp in importances)
+        if total_importance > 0:
+            for imp in importances:
+                imp["importance"] = imp["importance"] / total_importance
+        
         evidence = model.get_evidence().to_payload()
         confidence_interval = model.get_confidence_interval()
         artifacts = model.serialize_artifacts()

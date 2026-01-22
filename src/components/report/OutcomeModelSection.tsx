@@ -31,12 +31,16 @@ export function OutcomeModelSection({ data, scopeConstraints = [], analysisInten
     }
 
     const r2 = data.r2 || 0;
-    const isGood = r2 > 0.7;
-    const isFair = r2 > 0.3 && r2 <= 0.7;
-    const isPoor = r2 <= 0.3;
+    const hasDrivers = Array.isArray(data.drivers) && data.drivers.length > 0;
+
+    // Strict status definitions: missing drivers = failed model regardless of R²
+    const isPoor = r2 <= 0.3 || !hasDrivers;
+    const isFair = !isPoor && r2 > 0.3 && r2 <= 0.7;
+    const isGood = !isPoor && r2 > 0.7;
 
     if (isPoor) {
-        return <ModelUseGuidelines target={data.target} r2={r2} />;
+        // If drivers are missing, treat as 0 R² for the failure explanation
+        return <ModelUseGuidelines target={data.target} r2={hasDrivers ? r2 : 0} />;
     }
 
     // Convert R² to percentage for gauge (max 100, min 0)
@@ -122,7 +126,7 @@ export function OutcomeModelSection({ data, scopeConstraints = [], analysisInten
                                 <div>
                                     <h4 className="text-sm font-semibold mb-2">Top Predictors</h4>
                                     <div className="space-y-1">
-                                        {(Array.isArray(data.drivers) ? data.drivers : []).slice(0, 3).map((driver, idx) => (
+                                        {(Array.isArray(data.drivers) ? data.drivers : []).slice(0, 3).map((driver: { feature: string, importance: number }, idx: number) => (
                                             <div key={idx} className="flex justify-between items-center text-sm">
                                                 <span className="truncate">{driver.feature}</span>
                                                 <span className="text-muted-foreground ml-2">

@@ -15,7 +15,7 @@ def select_task(data_type: Optional[Dict], has_target: bool, target_is_binary: b
             primary = "regression"
 
     dt_primary = (data_type or {}).get("primary_type") or "unknown"
-    if dt_primary in ("marketing_performance", "customer_behavior_logs"):
+    if dt_primary in ("marketing_performance", "customer_behavior_logs", "customer_crm"):
         template = "marketing"
     elif dt_primary in ("financial_accounting", "operational_supply_chain"):
         template = "finance_ops"
