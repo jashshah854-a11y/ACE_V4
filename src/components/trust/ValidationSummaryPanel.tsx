@@ -37,21 +37,21 @@ export function ValidationSummaryPanel({
     return (
         <div className={cn("rounded-lg border bg-card p-4 text-sm shadow-sm", className)}>
             <div className="flex items-center gap-2 font-medium text-foreground mb-3">
-                <Shield className={cn("w-4 h-4", isHighQuality ? "text-emerald-500" : isLowQuality ? "text-rose-500" : "text-amber-500")} />
+                <Shield className={cn("w-4 h-4", isHighQuality ? "text-emerald-600" : isLowQuality ? "text-rose-600" : "text-amber-600")} />
                 Governance & Validation
             </div>
 
             <div className="space-y-3">
                 <div className="flex items-center justify-between text-muted-foreground text-xs">
                     <span>Validation Status</span>
-                    <span className={cn("font-mono font-medium", hasErrors ? "text-rose-600" : hasWarnings ? "text-amber-600" : "text-emerald-600")}>
+                    <span className={cn("font-mono font-medium", hasErrors ? "text-rose-700" : hasWarnings ? "text-amber-700" : "text-emerald-700")}>
                         {statusLabel}
                     </span>
                 </div>
                 {/* Quality Score Indicator */}
                 <div className="flex items-center justify-between text-muted-foreground text-xs" title="Proprietary quality score based on completeness, consistency, and format validity.">
                     <span>Data Quality Assessment</span>
-                    <span className={cn("font-mono font-medium", isHighQuality ? "text-emerald-600" : "text-amber-600")}>
+                    <span className={cn("font-mono font-medium", isHighQuality ? "text-emerald-700" : "text-amber-700")}>
                         {(dataQualityScore * 100).toFixed(0)}%
                     </span>
                 </div>
@@ -59,7 +59,7 @@ export function ValidationSummaryPanel({
                 {/* Progress Bar */}
                 <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
                     <div
-                        className={cn("h-full rounded-full transition-all duration-500", isHighQuality ? "bg-emerald-500" : isLowQuality ? "bg-rose-500" : "bg-amber-500")}
+                        className={cn("h-full rounded-full transition-all duration-500", isHighQuality ? "bg-emerald-600" : isLowQuality ? "bg-rose-600" : "bg-amber-500")}
                         style={{ width: `${dataQualityScore * 100}%` }}
                     />
                 </div>
