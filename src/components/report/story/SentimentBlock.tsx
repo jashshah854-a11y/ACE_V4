@@ -83,11 +83,7 @@ export function SentimentBlock({ sentiment, title, children, impact, trust, insi
                     {trust && (
                         <div className="mb-4 flex flex-wrap items-center gap-2">
                             <TrustBadge trust={trust} showScore={true} />
-                            {trust.certification.certified && (
-                                <span className="text-[10px] uppercase tracking-wider text-emerald-700">
-                                    Certified insight
-                                </span>
-                            )}
+                            {/* Removed "Certified insight" text to reduce badge spam */}
                         </div>
                     )}
 

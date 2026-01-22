@@ -689,7 +689,7 @@ export function useReportData(
     if (syntheticTimeColumn) {
       warnings.add(`Timeline helper active: using ${syntheticTimeColumn} for trend analysis.`);
     } else if (!hasTimeField) {
-      warnings.add('Time coverage unknown; add a date or time field to unlock trend insights.');
+      // warnings.add('Time coverage unknown; add a date or time field to unlock trend insights.');
     }
     return Array.from(warnings);
   }, [diagnostics?.reasons, hasTimeField, identitySafeMode, syntheticTimeColumn]);
@@ -730,7 +730,7 @@ export function useReportData(
     }
 
     if (!hasTimeField && !syntheticTimeColumn) {
-      register('Time coverage unknown; add a date or time field to unlock trend tools.', "warning", "Timeline");
+      // register('Time coverage unknown; add a date or time field to unlock trend tools.', "warning", "Timeline");
     }
 
     if (syntheticTimeColumn) {

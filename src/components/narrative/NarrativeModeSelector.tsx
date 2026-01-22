@@ -1,4 +1,4 @@
-
+import { useEffect } from 'react';
 import { cn } from "@/lib/utils";
 import { useNarrative, NarrativeMode } from "./NarrativeContext";
 import { User, Activity, Code2 } from "lucide-react";
@@ -26,6 +26,11 @@ export function NarrativeModeSelector({ className }: { className?: string }) {
             desc: 'Assumptions, code & validation'
         }
     ];
+
+    // Scroll to top when mode changes to make the transition obvious
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [mode]);
 
     return (
         <div className={cn("flex items-center gap-1 p-1 bg-muted/40 rounded-lg border border-border/50", className)}>

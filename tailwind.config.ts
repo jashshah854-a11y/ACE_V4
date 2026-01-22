@@ -22,7 +22,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        serif: ['Playfair Display', 'Georgia', 'serif'],
+        serif: ['Crimson Pro', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
         // Typography Ritual Extensions
         narrator: ['Merriweather', 'Georgia', 'serif'],

@@ -562,7 +562,7 @@ class EnhancedAnalytics:
         top_3 = importances[:3]
         total_top_3 = sum(imp for _, imp in top_3)
 
-        insights.append(f"Top 3 features explain {total_top_3*100:.1f}% of {target} variance")
+        insights.append(f"Top 3 drivers have the strongest relative influence on {target}")
 
         top_feature, top_imp = importances[0]
         insights.append(f"Most important feature: {top_feature} ({top_imp*100:.1f}% importance)")
