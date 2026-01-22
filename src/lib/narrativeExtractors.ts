@@ -56,17 +56,17 @@ export function extractExecutiveBrief(content: string): ExecutiveBriefData {
             .replace(/\*\*Confidence Level:\*\*[^\n]*/gi, '')
             .replace(/`[a-f0-9-]{8,}`/gi, '')
             .trim();
-        
+
         // Extract first meaningful sentence as purpose (skip short fragments)
         const sentences = cleanSectionContent.split(/[.!?]/);
         const meaningfulSentence = sentences.find(s => {
             const trimmed = s.trim();
-            return trimmed.length > 30 && 
-                   !trimmed.toLowerCase().includes('run id') &&
-                   !trimmed.toLowerCase().includes('generated') &&
-                   !trimmed.toLowerCase().includes('quality score');
+            return trimmed.length > 30 &&
+                !trimmed.toLowerCase().includes('run id') &&
+                !trimmed.toLowerCase().includes('generated') &&
+                !trimmed.toLowerCase().includes('quality score');
         });
-        
+
         if (meaningfulSentence) {
             purpose = sanitizeDisplayText(meaningfulSentence.trim());
         }
@@ -105,8 +105,8 @@ export function extractExecutiveBrief(content: string): ExecutiveBriefData {
             }
         }
 
-        // Check if personas exist
-        const personaMatches = content.match(/###\s+(.+?)(?:\n|$)/g);
+        // Check if personas exist - strict check for Persona headers
+        const personaMatches = content.match(/###\s+Persona\s+\d+/gi);
         if (personaMatches && personaMatches.length > 0) {
             keyFindings.push(`${personaMatches.length} detailed persona profiles created based on spending and engagement patterns`);
         }

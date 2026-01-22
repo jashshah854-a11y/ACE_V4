@@ -161,11 +161,22 @@ class Expositor:
         row_count = self.state.read("dataset_identity_card").get("row_count", 0)
         col_count = self.state.read("dataset_identity_card").get("column_count", 0)
         
+        # Downgrade confidence if validation blockers exist
+        final_confidence = confidence_score if confidence_score is not None else 1.0
+        if blocked_agents:
+            print(f"[EXPOSITOR] Downgrading confidence due to blocked agents: {blocked_agents}")
+            final_confidence = min(final_confidence, 0.8)
+        
+        # Downgrade if fallback mode active
+        if self._check_fallback(overseer, personas, strategies):
+            print("[EXPOSITOR] Downgrading confidence due to fallback mode")
+            final_confidence = min(final_confidence, 0.6)
+
         metadata_json = {
             "run_id": str(run_id),
             "generated": date_str,
             "quality_score": quality_score, # Valid float from previous fix
-            "confidence": confidence_score if confidence_score is not None else 1.0,
+            "confidence": final_confidence,
             "row_count": row_count,
             "column_count": col_count,
             "analysis_intent": analysis_intent_value,
@@ -405,7 +416,7 @@ class Expositor:
         if data_type and data_type.get("primary_type"):
             parts.append(f"Dataset type: {data_type.get('primary_type')} ({data_type.get('confidence_label', 'unknown')} confidence).")
 
-        if overseer and "stats" in overseer:
+        if overseer and "stats" in overseer and "overseer" not in validation.get("blocked_agents", []):
             k = overseer["stats"].get("k", 0)
             parts.append(f"The engine identified {k} behavioral segments.")
 

@@ -298,13 +298,13 @@ function InlineEvidenceRail({
 
   const showBusiness = Boolean(
     data.enhancedAnalytics?.business_intelligence?.available &&
-      businessEvidence?.confidence &&
-      businessEvidence.confidence >= MIN_CONFIDENCE,
+    businessEvidence?.confidence &&
+    businessEvidence.confidence >= MIN_CONFIDENCE,
   );
   const showPredictive = Boolean(
     data.enhancedAnalytics?.feature_importance?.available &&
-      predictiveEvidence?.confidence &&
-      predictiveEvidence.confidence >= MIN_CONFIDENCE,
+    predictiveEvidence?.confidence &&
+    predictiveEvidence.confidence >= MIN_CONFIDENCE,
   );
 
   const businessData = data.enhancedAnalytics?.business_intelligence;
@@ -410,7 +410,7 @@ function InlineEvidenceRail({
           className={cn(
             "rounded-2xl border border-border/50 bg-background/70 p-4",
             highlightedSection === "business_intelligence" &&
-              "ring-2 ring-offset-2 ring-[#005eb8] ring-offset-background",
+            "ring-2 ring-offset-2 ring-[#005eb8] ring-offset-background",
           )}
         >
           {showBusiness && businessData ? (
@@ -455,7 +455,7 @@ function InlineEvidenceRail({
           className={cn(
             "rounded-2xl border border-border/50 bg-background/70 p-4",
             highlightedSection === "feature_importance" &&
-              "ring-2 ring-offset-2 ring-[#005eb8] ring-offset-background",
+            "ring-2 ring-offset-2 ring-[#005eb8] ring-offset-background",
           )}
         >
           {showPredictive && predictiveData ? (
@@ -519,14 +519,15 @@ function InlineEvidenceRail({
           </section>
         ) : null}
 
-        {data.guidanceNotes?.length ? (
+        {/* Removed duplicate GuidanceOverlay - already rendered in parent */}
+        {/* {data.guidanceNotes?.length ? (
           <GuidanceOverlay
             notes={data.guidanceNotes}
             context="rail"
             limit={3}
             className="!mb-0"
           />
-        ) : null}
+        ) : null} */}
       </div>
 
       <EvidenceLineageModal
@@ -665,11 +666,10 @@ function SimulationDeltaCard({
               <span className="text-slate-500">{"?"}</span>
               <span className="font-semibold text-white">{row.simulated}</span>
               <span
-                className={`rounded-full px-2 py-0.5 text-[11px] ${
-                  row.improved
+                className={`rounded-full px-2 py-0.5 text-[11px] ${row.improved
                     ? "bg-emerald-500/20 text-emerald-200"
                     : "bg-rose-500/20 text-rose-200"
-                }`}
+                  }`}
               >
                 {row.delta}
               </span>
@@ -738,7 +738,7 @@ function buildSuggestionChips(
 
     const hasClusters = Boolean(
       data.enhancedAnalytics.behavioral_clusters &&
-        data.enhancedAnalytics.behavioral_clusters.length > 0,
+      data.enhancedAnalytics.behavioral_clusters.length > 0,
     );
     if (hasClusters) {
       dynamic.push({

@@ -297,14 +297,23 @@ def compute_regression_insights(
                 coef = coef[0]
             weights = np.abs(coef)
     if weights is not None and len(weights) == len(model_feature_names):
-        driver_pairs = sorted(
-            (
-                {"feature": model_feature_names[idx], "importance": float(weight)}
-                for idx, weight in enumerate(weights)
-            ),
-            key=lambda item: item["importance"],
-            reverse=True,
-        )[: min(10, len(model_feature_names))]
+        # Normalize weights if they are raw coefficients (Linear Regression)
+        total_weight = np.sum(np.abs(weights))
+        if total_weight > 0 and normalized_model == "linear":
+            weights = np.abs(weights) / total_weight
+        
+        # Guard: If R2 is very poor, don't claim to know the drivers
+        if r2 < 0.05:
+            driver_pairs = []
+        else:
+            driver_pairs = sorted(
+                (
+                    {"feature": model_feature_names[idx], "importance": float(weight)}
+                    for idx, weight in enumerate(weights)
+                ),
+                key=lambda item: item["importance"],
+                reverse=True,
+            )[: min(10, len(model_feature_names))]
 
     preview = pd.DataFrame({"actual": y_test, "predicted": y_pred})
     preview["error"] = preview["predicted"] - preview["actual"]

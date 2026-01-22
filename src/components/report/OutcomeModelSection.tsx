@@ -118,7 +118,7 @@ export function OutcomeModelSection({ data, scopeConstraints = [], analysisInten
                             </div>
 
                             {/* Top Drivers */}
-                            {data.drivers && data.drivers.length > 0 && (
+                            {!isPoor && data.drivers && data.drivers.length > 0 && (
                                 <div>
                                     <h4 className="text-sm font-semibold mb-2">Top Predictors</h4>
                                     <div className="space-y-1">

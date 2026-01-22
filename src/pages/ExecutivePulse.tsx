@@ -62,6 +62,7 @@ import { getSectionCopy } from "@/lib/reportCopy";
 import { CollapsibleSection } from "@/components/report/CollapsibleSection";
 import { useReflection } from "@/hooks/useReflection";
 import { ReflectionSlot } from "@/components/report/ReflectionSlot";
+import { TableOfContents } from "@/components/report/navigation/TableOfContents";
 
 const ExecutivePulse = () => {
   const [searchParams] = useSearchParams();
@@ -263,10 +264,35 @@ const ExecutivePulse = () => {
 
   // --- New KPI Grid Data ---
   const executiveMetrics = [
-    { label: "Total Rows", value: identityRows, icon: Activity },
-    { label: "Fields", value: columnCount || "Scanning...", icon: BarChart3 },
-    { label: "Data Quality", value: `${dataClarityPercent}%`, icon: Shield, className: dataClarityPercent > 80 ? "border-green-500/20" : "border-amber-500/20" },
-    { label: "AI Confidence", value: `${aiConfidencePercent}%`, icon: Zap, className: aiConfidencePercent > 80 ? "border-blue-500/20" : "border-amber-500/20" },
+    {
+      label: "Total Rows",
+      value: identityRows,
+      icon: Users,
+      tooltip: "Number of records successfully parsed and available for analysis."
+    },
+    {
+      label: "Fields",
+      value: columnCount || "Scanning...",
+      unit: "columns",
+      icon: BarChart3,
+      tooltip: "Number of distinct data columns identified in the dataset."
+    },
+    {
+      label: "Data Quality",
+      value: dataClarityPercent,
+      unit: "%",
+      icon: Shield,
+      className: dataClarityPercent > 80 ? "border-green-500/20" : "border-amber-500/20",
+      tooltip: "Proprietary quality score based on completeness, consistency, and format validity."
+    },
+    {
+      label: "AI Confidence",
+      value: aiConfidencePercent,
+      unit: "%",
+      icon: Zap,
+      className: aiConfidencePercent > 80 ? "border-blue-500/20" : "border-amber-500/20",
+      tooltip: "Model R² score indicating predictive power and signal strength."
+    },
   ];
 
   const confidenceLevel = aiConfidencePercent > 80 ? "high" : aiConfidencePercent > 50 ? "medium" : "low";
@@ -364,15 +390,21 @@ const ExecutivePulse = () => {
                 {/* Left Column: Narrative & Insights */}
                 <div className="space-y-8 min-w-0">
                   {/* 1. Governing Thought Section - ALWAYS FIRST */}
-                  <div className="space-y-4">
+                  <section id="governing-thought" className="space-y-6 scroll-mt-24">
                     <ExplanationBlock {...getSectionCopy("governing_thought")} />
 
                     {/* Hero Insight Card */}
-                    <div className="rounded-3xl border border-border/40 bg-gradient-to-br from-card to-background p-8 shadow-sm">
-                      <div className="flex items-center gap-2 mb-4 text-primary/80">
-                        <Sparkles className="w-4 h-4" />
-                        <span className="text-xs font-bold uppercase tracking-widest">Governing Thought</span>
-                        <div className="ml-auto flex items-center gap-2">
+                    <div className="rounded-3xl border border-border/40 bg-gradient-to-br from-card to-background p-8 lg:p-10 shadow-sm relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
+                        <Sparkles className="w-24 h-24" />
+                      </div>
+
+                      <div className="flex items-center gap-3 mb-6 relative">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          <Sparkles className="w-4 h-4" />
+                        </span>
+                        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground/80">Governing Thought</span>
+                        <div className="ml-auto flex items-center gap-3">
                           {reportData.governingTrust && (
                             <TrustBadge trust={reportData.governingTrust} showScore={true} />
                           )}
@@ -389,19 +421,23 @@ const ExecutivePulse = () => {
                           />
                         </div>
                       </div>
-                      <h2 className="font-serif text-3xl md:text-4xl leading-tight text-foreground mb-4">
-                        {reportData.governingThought || storyData.heroInsight?.keyInsight || "Analyzing strategic implications..."}
-                      </h2>
-                      <p className="text-lg text-muted-foreground leading-relaxed">
-                        {reportData.primaryQuestion ? `Addressing: "${reportData.primaryQuestion}"` : "No primary question defined for this analysis."}
-                      </p>
+
+                      <div className="relative z-10 space-y-4">
+                        <h2 className="font-serif text-3xl md:text-5xl leading-tight text-foreground font-medium text-balance">
+                          {reportData.governingThought || storyData.heroInsight?.keyInsight || "Analyzing strategic implications..."}
+                        </h2>
+                        <p className="text-xl text-muted-foreground leading-relaxed font-light text-balance max-w-2xl">
+                          {reportData.primaryQuestion ? `Addressing: "${reportData.primaryQuestion}"` : "No primary question defined for this analysis."}
+                        </p>
+                      </div>
+
                       {reportData.governingTrust && (
-                        <div className="mt-4 max-w-xl">
+                        <div className="mt-8 max-w-xl border-t border-border/50 pt-6">
                           <TrustBreakdown trust={reportData.governingTrust} mode={narrativeMode} />
                         </div>
                       )}
                     </div>
-                  </div>
+                  </section>
 
                   {/* 2. Key Metrics Summary - Evidence for thesis */}
                   <ExecutiveKpiGrid metrics={executiveMetrics} />
@@ -599,21 +635,29 @@ const ExecutivePulse = () => {
                   )}
                   <ScopeConstraintsCard constraints={scopeConstraints} />
 
-                  {/* Lab Controls */}
-                  <div className="rounded-2xl border border-border/40 bg-card shadow-sm overflow-hidden">
-                    <div className="p-4 border-b border-border/40 bg-muted/20 flex items-center justify-between">
-                      <h3 className="font-semibold text-sm flex items-center gap-2">
-                        <Zap className="w-4 h-4 text-primary" /> Strategy Lab
-                      </h3>
-                      <span className="text-[10px] uppercase font-mono text-muted-foreground">v4.0</span>
+                  {/* Lab Controls - Only show if data supports simulation */}
+                  {numericColumns.length > 0 ? (
+                    <div className="rounded-2xl border border-border/40 bg-card shadow-sm overflow-hidden">
+                      <div className="p-4 border-b border-border/40 bg-muted/20 flex items-center justify-between">
+                        <h3 className="font-semibold text-sm flex items-center gap-2">
+                          <Zap className="w-4 h-4 text-primary" /> Strategy Lab
+                        </h3>
+                        <span className="text-[10px] uppercase font-mono text-muted-foreground">v4.0</span>
+                      </div>
+                      <SimulationControls
+                        runId={activeRun}
+                        availableColumns={numericColumns}
+                        hint={guidanceHint?.message}
+                        onSimulationResult={handleSimulationReport}
+                      />
                     </div>
-                    <SimulationControls
-                      runId={activeRun}
-                      availableColumns={numericColumns}
-                      hint={guidanceHint?.message}
-                      onSimulationResult={handleSimulationReport}
-                    />
-                  </div>
+                  ) : (
+                    <div className="rounded-2xl border border-border/40 bg-muted/30 p-5 text-center">
+                      <Zap className="w-8 h-8 mx-auto mb-3 text-muted-foreground/50" />
+                      <p className="text-sm text-muted-foreground font-medium mb-1">Strategy Lab Unavailable</p>
+                      <p className="text-xs text-muted-foreground/70">Requires numeric fields for simulation</p>
+                    </div>
+                  )}
 
                   {/* Evidence Rail */}
                   <EvidenceRail

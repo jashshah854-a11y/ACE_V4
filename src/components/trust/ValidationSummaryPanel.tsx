@@ -49,7 +49,7 @@ export function ValidationSummaryPanel({
                     </span>
                 </div>
                 {/* Quality Score Indicator */}
-                <div className="flex items-center justify-between text-muted-foreground text-xs">
+                <div className="flex items-center justify-between text-muted-foreground text-xs" title="Proprietary quality score based on completeness, consistency, and format validity.">
                     <span>Data Quality Assessment</span>
                     <span className={cn("font-mono font-medium", isHighQuality ? "text-emerald-600" : "text-amber-600")}>
                         {(dataQualityScore * 100).toFixed(0)}%

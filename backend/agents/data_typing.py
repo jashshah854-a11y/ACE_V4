@@ -13,39 +13,82 @@ from ace_v4.performance.config import PerformanceConfig
 
 
 DATA_TYPE_KEYWORDS: Dict[str, List[str]] = {
-    "marketing_performance": ["cpc", "ctr", "impressions", "clicks", "campaign", "adgroup", "roas", "spend"],
-    "technical_metrics": ["cpu", "memory", "latency", "throughput", "qps", "error_rate", "requests", "status_code"],
+    "marketing_performance": ["cpc", "ctr", "impressions", "clicks", "campaign", "adgroup", "roas", "ad_spend"],
+    "technical_metrics": ["cpu", "memory", "latency", "throughput", "qps", "error_rate", "requests_per", "status_code"],
     "correlation_outputs": ["correlation", "pearson", "spearman", "covariance", "p-value", "r_value"],
-    "time_series_trends": ["date", "timestamp", "time", "day", "week", "month", "year"],
-    "forecast_prediction": ["forecast", "prediction", "predicted", "projection", "upper", "lower", "confidence"],
-    "political_policy": ["election", "vote", "policy", "bill", "senate", "house", "candidate", "approval"],
-    "financial_accounting": ["revenue", "expense", "profit", "balance", "ledger", "account", "invoice", "payable"],
-    "customer_behavior": ["user_id", "customer_id", "session", "event", "page", "action", "transaction"],
-    "operational_supply_chain": ["inventory", "shipment", "logistics", "warehouse", "sku", "lead_time", "supplier"],
-    "survey_qualitative": ["survey", "response", "rating", "question", "comment", "nps", "likert"],
-    "geospatial": ["latitude", "longitude", "lat", "lon", "geo", "location"],
-    "experimental_ab_test": ["variant", "control", "treatment", "experiment", "ab", "split", "bucket"],
-    "risk_compliance": ["risk", "compliance", "policy", "control", "audit", "breach", "exposure"],
-    "text_narrative": ["summary", "text", "description", "notes", "commentary", "narrative"],
+    "time_series_trends": ["timestamp", "date_time", "created_at", "updated_at", "fiscal_year", "fiscal_quarter"],
+    "forecast_prediction": ["forecast", "prediction", "predicted", "projection", "confidence_interval"],
+    "political_policy": ["election", "vote", "policy", "bill", "senate", "house", "candidate", "approval_rating"],
+    "financial_accounting": ["general_ledger", "invoice_id", "accounts_payable", "accounts_receivable", "ebitda", "profit_loss", "balance_sheet", "tax_amount", "fiscal"],
+    "customer_behavior": ["customer", "user", "session", "click", "page_view", "transaction", "shopping", "points", "reward", "loyalty", "churn", "tenure", "income", "credit_limit", "balance", "spend"],
+    "operational_supply_chain": ["inventory", "sku", "lead_time", "supplier", "warehouse", "logistics", "shipment_id"],
+    "survey_qualitative": ["survey", "respondent", "nps", "likert", "verbatim", "comment", "feedback"],
+    "geospatial": ["latitude", "longitude", "coordinates", "postal_code", "zip_code"],
+    "experimental_ab_test": ["variant_id", "control_group", "treatment", "experiment_id", "ab_test"],
+    "risk_compliance": ["compliance_status", "audit_log", "breach_id", "risk_level"],
+    "text_narrative": ["summary", "description", "transcript", "full_text"],
 }
 
 
 def score_data_types(df: pd.DataFrame) -> List[Tuple[str, int]]:
     columns = [c.lower() for c in df.columns]
     scores: List[Tuple[str, int]] = []
+    
+    # Pre-scan for customer/transaction overlap
+    has_customer_keys = any(k in "".join(columns) for k in ["customer", "user", "client"])
+    
     for dtype, keywords in DATA_TYPE_KEYWORDS.items():
         score = 0
         for col in columns:
             score += sum(1 for kw in keywords if kw in col)
+            
+        # Boost customer behavior if we see explicit customer keys
+        if dtype == "customer_behavior" and has_customer_keys:
+            score += 2
+            
         scores.append((dtype, score))
     scores.sort(key=lambda x: x[1], reverse=True)
     return scores
 
 
 def detect_time_signal(df: pd.DataFrame) -> bool:
+    time_keywords = {"date", "time", "year", "month", "day", "hour", "minute", "second", "timestamp", "week", "quarter"}
     for col in df.columns:
-        if pd.api.types.is_datetime64_any_dtype(df[col]) or "date" in str(col).lower() or "time" in str(col).lower():
+        # Check dtype first - this is the strongest signal
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
             return True
+            
+        # Check column name with stricter logic
+        col_lower = str(col).lower()
+        
+        # 1. Exact match - strong signal
+        if col_lower in time_keywords:
+            # Verify content looks like time/date if it's object type
+            if df[col].dtype == 'object':
+                 try:
+                     pd.to_datetime(df[col].dropna().head(10))
+                     return True
+                 except:
+                     pass
+            else:
+                return True
+            
+        # 2. Suffix/Prefix match (e.g. created_at, birth_date) - medium signal
+        if any(col_lower.endswith(f"_{kw}") or col_lower.startswith(f"{kw}_") for kw in time_keywords):
+            # Same content verification for object types
+             if df[col].dtype == 'object':
+                 try:
+                     pd.to_datetime(df[col].dropna().head(10))
+                     return True
+                 except:
+                     pass
+             else:
+                 return True
+            
+        # 3. Common specific terms that don't follow _ pattern
+        if col_lower in ("created_at", "updated_at", "deadline", "schedule"):
+             return True
+            
     return False
 
 
