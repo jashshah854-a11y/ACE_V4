@@ -60,6 +60,8 @@ import { ScopePlaceholder } from "@/components/report/ScopePlaceholder";
 import { ExplanationBlock } from "@/components/report/ExplanationBlock";
 import { getSectionCopy } from "@/lib/reportCopy";
 import { CollapsibleSection } from "@/components/report/CollapsibleSection";
+import { useReflection } from "@/hooks/useReflection";
+import { ReflectionSlot } from "@/components/report/ReflectionSlot";
 
 const ExecutivePulse = () => {
   const [searchParams] = useSearchParams();
@@ -139,6 +141,7 @@ const ExecutivePulse = () => {
 
   const { setSafeMode } = useSimulation();
   const { mode: narrativeMode } = useNarrative();
+  const { reflection, dismissReflection } = useReflection(activeRun);
 
   const handleEvidenceFocus = useCallback(
     ({ section, evidenceId }: { section: string; evidenceId?: string }) => {
