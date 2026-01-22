@@ -20,6 +20,15 @@ from typing import Any, Dict, Optional, List
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
 
+# Phase 5 Imports (Moved to top to prevent NameError)
+from backend.api.decision_models import (
+    DecisionTouch, 
+    DecisionTouchCreate, 
+    ActionOutcome, 
+    ActionOutcomeCreate,
+    PatternCandidate
+)
+
 # Fix for joblib warning on Windows
 if os.name == 'nt':
     os.environ["LOKY_MAX_CPU_COUNT"] = str(os.cpu_count())
@@ -51,6 +60,57 @@ app = FastAPI(
     version="4.0.0"
 )
 
+# Phase 5: Imports and Globals
+from backend.api.decision_models import (
+    DecisionTouch, 
+    DecisionTouchCreate, 
+    ActionOutcome, 
+    ActionOutcomeCreate,
+    PatternCandidate,
+    Reflection,
+    MemoryAssertion,
+    UserMemoryState,
+    ReconciliationNote,
+    BeliefCoherenceState
+)
+
+# In-Memory Storage (Temporary until 5.3 DB)
+decision_touches: Dict[str, DecisionTouch] = {}
+action_outcomes: Dict[str, ActionOutcome] = {}
+reflections: Dict[str, Reflection] = {}
+memory_assertions: Dict[str, MemoryAssertion] = {}
+user_memory_states: Dict[str, UserMemoryState] = {}
+reconciliation_notes: Dict[str, ReconciliationNote] = {}
+belief_coherence_states: Dict[str, BeliefCoherenceState] = {}
+
+# Phase 6.1: Safety Infrastructure
+from backend.safety.safety_guard import SafetyGuard, ConsentProvider
+from backend.safety.circuit_breaker import CircuitBreaker
+
+# Initialize global safety components
+consent_provider = ConsentProvider()
+safety_guard = SafetyGuard(consent_provider)
+circuit_breaker = CircuitBreaker()
+
+# KILL SWITCHES (Phase 5 Maintenance) - DEPRECATED
+# These are now managed by SafetyGuard
+# Kept for backwards compatibility
+KILL_SWITCH_REFLECTION_GLOBAL_OFF = False
+KILL_SWITCH_PATTERN_MONITOR_PAUSE = False
+
+# Phase 5 Safety Infrastructure (Global Instances)
+from backend.core.consent_provider import create_consent_provider
+from backend.core.audit_logger import AuditLogger
+from backend.core.circuit_breaker import CircuitBreaker
+from backend.core.safety_guard import SafetyGuard
+
+safety_guard: Optional[SafetyGuard] = None
+consent_provider = None
+audit_logger = None
+circuit_breaker = None
+
+app.state.limiter = limiter
+
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -66,11 +126,44 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize Redis queue and start background worker on application startup."""
-    global job_queue
+    """Initialize Redis queue, background worker, and safety infrastructure on application startup."""
+    global job_queue, safety_guard, consent_provider, audit_logger, circuit_breaker
     
     logger.info("[API] Starting application...")
     
+    # Initialize Phase 5 Safety Infrastructure
+    try:
+        logger.info("[API] Initializing safety infrastructure...")
+        
+        # Consent provider (mock mode for Phase 6.0)
+        consent_mode = os.getenv("CONSENT_PROVIDER_MODE", "mock")
+        consent_provider = create_consent_provider(mode=consent_mode)
+        logger.info(f"[API] ✅ Consent provider initialized (mode: {consent_mode})")
+        
+        # Audit logger
+        audit_logger = AuditLogger(mode="file")
+        logger.info("[API] ✅ Audit logger initialized")
+        
+        # Circuit breaker
+        circuit_breaker = CircuitBreaker()
+        logger.info("[API] ✅ Circuit breaker initialized")
+        
+        # Safety guard
+        safety_guard = SafetyGuard(
+            consent_provider=consent_provider,
+            circuit_breaker=circuit_breaker,
+            audit_logger=audit_logger
+        )
+        logger.info("[API] ✅ Safety guard initialized")
+        logger.info(f"[API]    - KILL_SWITCH_REFLECTION_GLOBAL_OFF: {safety_guard.kill_switch_reflection_off}")
+        logger.info(f"[API]    - KILL_SWITCH_PATTERN_MONITOR_PAUSE: {safety_guard.kill_switch_pattern_pause}")
+        
+    except Exception as e:
+        logger.exception("[API] ❌ CRITICAL: Failed to initialize safety infrastructure")
+        logger.error(f"[API] Error: {e}")
+        logger.error("[API] Phase 5 features will not be available")
+    
+    # Initialize Redis queue
     try:
         redis_url = os.getenv("REDIS_URL")
         if not redis_url:
@@ -1901,6 +1994,8 @@ async def create_decision_touch(touch_data: Dict[str, Any]):
     """
     try:
         touch_type = touch_data.get('touch_type')
+        user_id = touch_data.get('user_id')
+        request_id = touch_data.get('run_id')
         
         # GUARDRAIL 2: Validate touch type against whitelist
         if touch_type not in ALLOWED_TOUCH_TYPES:
@@ -1910,8 +2005,33 @@ async def create_decision_touch(touch_data: Dict[str, Any]):
                 detail=f"Invalid touch_type. Allowed: {', '.join(sorted(ALLOWED_TOUCH_TYPES))}"
             )
         
+        # Safety guard must approve before storing
+        if not safety_guard:
+            logger.error("[DECISION] Safety guard not initialized")
+            raise HTTPException(status_code=503, detail="Safety infrastructure not available")
+
+        decision = safety_guard.check_decision_touch(
+            touch_type=touch_type,
+            user_id=user_id,
+            request_id=request_id
+        )
+        if not decision.allow:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Decision touch blocked: {decision.reason_code}"
+            )
+
+        # Create and store
+        decision_touch = DecisionTouch(**touch_data)
+        # Assuming global dict storage from earlier implementation
+        decision_touches[decision_touch.id] = decision_touch
+        
         logger.info(f"[DECISION] Captured {touch_type} for run {touch_data.get('run_id')}")
-        return {"status": "recorded", "timestamp": datetime.utcnow().isoformat()}
+        return {
+            "status": "recorded", 
+            "id": decision_touch.id, 
+            "timestamp": decision_touch.timestamp.isoformat()
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -1940,7 +2060,6 @@ async def create_action_outcome(outcome_data: Dict[str, Any]):
                 detail=f"Invalid status. Allowed: {', '.join(sorted(ALLOWED_OUTCOME_STATUSES))}"
             )
         
-        # Validate decision linkage (no standalone outcomes)
         if not decision_touch_id:
             raise HTTPException(
                 status_code=400,
@@ -1954,6 +2073,249 @@ async def create_action_outcome(outcome_data: Dict[str, Any]):
     except Exception as e:
         logger.error(f"[OUTCOME] Error recording outcome: {e}")
         return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/internal/pattern-monitor", tags=["Internal"])
+async def run_pattern_monitor():
+    """
+    Phase 5.25: Internal trigger for pattern emergence monitor.
+    Scans memory for repetitive patterns (N>=3).
+    Returns gate status for Phase 5.3.
+    """
+    from backend.api.decision_models import (
+    DecisionTouch, 
+    DecisionTouchCreate, 
+    ActionOutcome, 
+    ActionOutcomeCreate,
+    PatternCandidate
+)
+    from backend.jobs.pattern_monitor import PatternMonitor
+    
+    # Safety Guard: Check pattern monitor permission for all users
+    # Note: For multi-user analysis, we check per user during candidate creation
+    # Here we just verify kill switch is not active globally
+    if not safety_guard:
+        logger.error("[PATTERN_MONITOR] Safety guard not initialized")
+        return {
+            "status": "error",
+            "candidates_found": 0,
+            "phase5_3_ready": False,
+            "note": "Safety infrastructure not available"
+        }
+    
+    # Quick kill switch check
+    if safety_guard.kill_switch_pattern_pause:
+        logger.info("[PATTERN_MONITOR] Blocked by kill switch")
+        return {
+            "status": "paused",
+            "candidates_found": 0,
+            "phase5_3_ready": False,
+            "note": "Kill Switch Active: Pattern Monitor Paused"
+        }
+    
+    # In-memory retrieval (mocking DB fetch)
+    # real impl would select * from table
+    all_touches = list(decision_touches.values())
+    all_outcomes = list(action_outcomes.values())
+    
+    # Pass safety_guard to monitor for per-user checks
+    monitor = PatternMonitor(all_touches, all_outcomes, safety_guard=safety_guard, circuit_breaker=circuit_breaker)
+    candidates = monitor.run_analysis()
+    
+    is_ready = monitor.check_phase5_3_readiness()
+    
+    return {
+        "status": "executed",
+        "candidates_found": len(candidates),
+        "phase5_3_ready": is_ready,
+        "note": "Readiness requires >7 days persistence",
+        "debug_touch_count": len(all_touches),
+        "debug_outcome_count": len(all_outcomes)
+    }
+
+
+@app.post("/api/internal/generate-reflections", tags=["Internal"])
+async def generate_reflections(payload: Dict[str, str]):
+    """
+    Phase 5.3: Trigger reflection generation for a specific run/user.
+    Internal endpoint.
+    """
+    run_id = payload.get("run_id")
+    user_id = payload.get("user_id")
+    
+    if not run_id or not user_id:
+        raise HTTPException(status_code=400, detail="Missing run_id or user_id")
+    
+    # Safety Guard: Check if reflection generation is allowed
+    if not safety_guard:
+        logger.error("[REFLECTION_GEN] Safety guard not initialized")
+        return {"status": "error", "reason": "Safety infrastructure not available"}
+    
+    # Kill switch check
+    if safety_guard.kill_switch_reflection_off:
+        logger.info(f"[REFLECTION_GEN] Blocked by kill switch for user {user_id}")
+        return {"status": "none", "reason": "Kill Switch Active: Reflections Disabled"}
+    
+    from backend.jobs.reflection_generator import ReflectionGenerator
+    from backend.api.decision_models import PatternCandidate, Reflection
+    
+    # 1. Fetch Candidates (In-memory mock)
+    # We need to hydrate PatternCandidates from wherever they are stored.
+    # For V1, we regenerate them using PatternMonitor on the fly or assume stored?
+    # PatternMonitor stores in `candidates` list but it's transient in the job.
+    # We will Re-Run Monitor to get fresh candidates.
+    from backend.jobs.pattern_monitor import PatternMonitor
+    monitor = PatternMonitor(
+        list(decision_touches.values()), 
+        list(action_outcomes.values()),
+        safety_guard=safety_guard,
+        circuit_breaker=circuit_breaker
+    )
+    candidates = monitor.run_analysis()
+    
+    # 2. Fetch History (In-memory mock)
+    # We don't have a `reflections` global dict yet. Let's add it.
+    # See below for global add.
+    global reflections
+    existing_refs = [r for r in reflections.values()]
+    
+    # 3. Generate (NO hardcoded consent - uses SafetyGuard)
+    generator = ReflectionGenerator(
+        candidates, 
+        existing_refs, 
+        safety_guard=safety_guard,
+        circuit_breaker=circuit_breaker
+    )
+    new_reflection = generator.generate(run_id, user_id)
+    
+    if new_reflection:
+        # Safety Guard: Check emission permission
+        emission_decision = safety_guard.check_reflection_emission(
+            user_id=user_id,
+            reflection_id=new_reflection.id,
+            request_id=run_id
+        )
+        
+        if not emission_decision.allow:
+            logger.info(f"[REFLECTION_GEN] Emission blocked: {emission_decision.reason_code}")
+            return {"status": "generated_but_not_emitted", "reason": emission_decision.reason_code}
+        
+        # Mark as SHOWN immediately (Backend emission = Shown)
+        new_reflection.shown_at = datetime.utcnow()
+        
+        # Record emission in circuit breaker
+        circuit_breaker.record_global_reflection_emission()
+        
+        # Store it
+        reflections[new_reflection.id] = new_reflection
+        return {"status": "generated", "reflection": new_reflection.dict()}
+    
+    return {"status": "none", "reason": "No eligible patterns or cooldown active"}
+
+
+@app.post("/api/internal/assertion-engine", tags=["Internal"])
+async def run_assertion_engine(payload: Dict[str, str]):
+    """
+    Memory Assertion Engine: Autonomous belief formation.
+    Converts 30+ day patterns into soft internal beliefs.
+    NEVER exposed to users.
+    """
+    user_id = payload.get("user_id")
+    
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Missing user_id")
+    
+    from backend.jobs.assertion_engine import AssertionEngine
+    from backend.jobs.pattern_monitor import PatternMonitor
+    
+    # 1. Get fresh patterns
+    monitor = PatternMonitor(list(decision_touches.values()), list(action_outcomes.values()))
+    candidates = monitor.run_analysis()
+    
+    # 2. Get reflections and existing assertions
+    global memory_assertions, user_memory_states
+    all_reflections = list(reflections.values())
+    all_assertions = list(memory_assertions.values())
+    
+    # 3. Run assertion engine
+    user_consent = False
+    if consent_provider:
+        try:
+            user_consent = consent_provider.get_consent(user_id)
+        except Exception as e:
+            logger.error(f"[ASSERTION_ENGINE] ConsentProvider failure: {e}")
+            user_consent = False
+
+    engine = AssertionEngine(candidates, all_reflections, all_assertions, user_consent=user_consent)
+    
+    # Create new assertions
+    new_assertions = engine.evaluate_patterns(user_id)
+    for assertion in new_assertions:
+        memory_assertions[assertion.assertion_id] = assertion
+    
+    # Check contradictions
+    engine.check_contradictions(user_id)
+    
+    # Apply decay
+    deleted_ids = engine.apply_decay(user_id)
+    
+    # Update memory state
+    memory_state = engine.get_memory_state(user_id)
+    user_memory_states[user_id] = memory_state
+    
+    return {
+        "status": "executed",
+        "new_assertions": len(new_assertions),
+        "deleted_assertions": len(deleted_ids),
+        "total_assertions": memory_state.assertion_count,
+        "memory_state": memory_state.memory_state,
+        "note": "Internal only - never exposed to users"
+    }
+
+
+@app.post("/api/internal/reconciliation", tags=["Internal"])
+async def run_reconciliation(payload: Dict[str, str]):
+    """
+    Phase 6: Memory Reconciliation Engine
+    Resolves conflicts between beliefs by adjusting confidence.
+    NEVER emits user-facing output.
+    """
+    user_id = payload.get("user_id")
+    
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Missing user_id")
+    
+    from backend.jobs.reconciliation_engine import ReconciliationEngine
+    
+    # Get user's assertions
+    global memory_assertions, reconciliation_notes, belief_coherence_states
+    
+    user_assertions = [a for a in memory_assertions.values() if a.user_id == user_id]
+    user_notes = [n for n in reconciliation_notes.values() if n.user_id == user_id]
+    existing_state = belief_coherence_states.get(user_id)
+    
+    # Run reconciliation
+    engine = ReconciliationEngine(user_assertions, user_notes, existing_state)
+    new_state = engine.evaluate_coherence(user_id)
+    
+    # Store new state
+    belief_coherence_states[user_id] = new_state
+    
+    # Store new notes
+    new_notes = engine.get_reconciliation_notes()
+    for note in new_notes:
+        reconciliation_notes[note.note_id] = note
+    
+    return {
+        "status": "executed",
+        "coherence_state": new_state.current_state,
+        "assertion_count": new_state.assertion_count,
+        "contradiction_count": new_state.contradiction_count,
+        "notes_created": len(new_notes),
+        "note": "Internal only - never exposed to users"
+    }
+
+
 
 
 @app.get("/health")
