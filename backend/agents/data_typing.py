@@ -9,6 +9,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from core.state_manager import StateManager
 from core.data_guardrails import SUPPORTED_DATA_TYPES
 from core.data_loader import smart_load_dataset
+from core.datetime_utils import coerce_datetime
 from ace_v4.performance.config import PerformanceConfig
 
 
@@ -65,11 +66,9 @@ def detect_time_signal(df: pd.DataFrame) -> bool:
         if col_lower in time_keywords:
             # Verify content looks like time/date if it's object type
             if df[col].dtype == 'object':
-                 try:
-                     pd.to_datetime(df[col].dropna().head(10))
+                 parsed = coerce_datetime(df[col].dropna().head(10))
+                 if parsed.notna().any():
                      return True
-                 except:
-                     pass
             else:
                 return True
             
@@ -77,11 +76,9 @@ def detect_time_signal(df: pd.DataFrame) -> bool:
         if any(col_lower.endswith(f"_{kw}") or col_lower.startswith(f"{kw}_") for kw in time_keywords):
             # Same content verification for object types
              if df[col].dtype == 'object':
-                 try:
-                     pd.to_datetime(df[col].dropna().head(10))
+                 parsed = coerce_datetime(df[col].dropna().head(10))
+                 if parsed.notna().any():
                      return True
-                 except:
-                     pass
              else:
                  return True
             

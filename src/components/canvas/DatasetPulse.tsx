@@ -1,6 +1,5 @@
 import React from 'react';
 import { Shield, AlertTriangle, Database, CheckCircle2, XCircle } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface DatasetPulseProps {
@@ -19,12 +18,6 @@ interface DatasetPulseProps {
     /** Quality score (0-1 or 0-100) */
     qualityScore: number;
 
-    /** Confidence score (0-1) */
-    confidence: number;
-
-    /** Whether safe mode is active */
-    safeMode: boolean;
-
     /** Analysis status */
     status?: 'running' | 'completed' | 'failed';
 }
@@ -37,7 +30,6 @@ interface DatasetPulseProps {
  * 
  * **Components:**
  * - Dataset Identity Card: Schema, volume metrics, quality badge
- * - Safe Mode Banner: Triggers when confidence < threshold
  * - Mission Control Header: Run ID and status indicator
  */
 export function DatasetPulse({
@@ -46,8 +38,6 @@ export function DatasetPulse({
     rowCount,
     columnCount,
     qualityScore,
-    confidence,
-    safeMode,
     status = 'completed',
 }: DatasetPulseProps) {
     // Normalize quality score to 0-100 range
@@ -155,12 +145,6 @@ export function DatasetPulse({
                             </span>
                         </div>
 
-                        <div className="flex justify-between items-center">
-                            <span className="text-xs text-white/60">Confidence</span>
-                            <span className="font-data text-sm text-white font-semibold">
-                                {(confidence * 100).toFixed(0)}%
-                            </span>
-                        </div>
                     </div>
 
                     {/* Quality Badge */}
@@ -206,22 +190,6 @@ export function DatasetPulse({
                     </div>
                 )}
 
-                {/* Safe Mode Banner */}
-                {safeMode && (
-                    <div className="p-4 bg-quality-medium/20 border border-quality-medium rounded-lg">
-                        <div className="flex items-start gap-3">
-                            <AlertTriangle className="w-5 h-5 text-quality-medium flex-shrink-0 mt-0.5" />
-                            <div>
-                                <p className="text-sm font-semibold text-quality-medium mb-1">
-                                    Safe Mode Active
-                                </p>
-                                <p className="text-xs text-white/70 leading-relaxed">
-                                    Data confidence below threshold. Predictive modeling is paused; descriptive statistics remain available.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* Footer */}

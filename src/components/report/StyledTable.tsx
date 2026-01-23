@@ -19,6 +19,9 @@ interface StyledTableProps {
  * Professional table with zebra striping, hover states, and proper formatting
  */
 export function StyledTable({ columns, data, className }: StyledTableProps) {
+    if (!data || data.length === 0) {
+        return null;
+    }
     const formatValue = (value: any, format?: Column['format']): string => {
         if (value === null || value === undefined) return '-';
 
@@ -90,12 +93,6 @@ export function StyledTable({ columns, data, className }: StyledTableProps) {
                 </tbody>
             </table>
 
-            {/* Empty State */}
-            {data.length === 0 && (
-                <div className="text-center py-12 text-muted-foreground">
-                    No data available
-                </div>
-            )}
         </div>
     );
 }

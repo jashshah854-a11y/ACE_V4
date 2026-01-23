@@ -8,7 +8,7 @@ interface RawDataTableProps {
 
 export function RawDataTable({ data, columns, className }: RawDataTableProps) {
     if (!data || data.length === 0) {
-        return <div className="text-xs text-muted-foreground p-4 italic">No data available</div>;
+        return null;
     }
 
     // Auto-detect columns if not provided

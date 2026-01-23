@@ -43,6 +43,7 @@ from api.contextual_intelligence import AskRequest, process_ask_query
 from core.simulation import SimulationEngine
 from core.enhanced_analytics import EnhancedAnalytics
 from core.governance import rebuild_governance_artifacts
+from core.analytics_validation import apply_artifact_validation
 import pandas as pd
 
 # Set up logging
@@ -274,23 +275,6 @@ def _is_numeric_dtype(meta: Dict[str, Any]) -> bool:
     dtype = str(meta.get("dtype") or meta.get("type") or "").lower()
     numeric_tokens = ("int", "float", "double", "decimal", "number")
     return any(token in dtype for token in numeric_tokens)
-
-
-def _store_enhanced_analytics_fallback(run_path: Path, mode: str = "auto_heal") -> None:
-    """Write a placeholder enhanced_analytics artifact so downstream routes do not 404."""
-    try:
-        state = StateManager(str(run_path))
-        placeholder = {
-            "quality_metrics": {"available": False, "reason": "Report fallback"},
-            "business_intelligence": {"available": False},
-            "feature_importance": {"available": False},
-            "correlations": {"available": False},
-            "fallback_mode": mode,
-        }
-        state.write("enhanced_analytics", placeholder)
-        logger.info(f"[AUTO-HEAL] Stored fallback enhanced_analytics payload ({mode}) for {run_path}")
-    except Exception as err:
-        logger.warning(f"[AUTO-HEAL] Unable to persist fallback analytics: {err}")
 
 
 def _ensure_identity_card(state: StateManager, run_path: Path) -> Dict[str, Any]:
@@ -879,65 +863,6 @@ async def get_report(request: Request, run_id: str, format: str = "markdown"):
     report_path = run_path / "final_report.md"
     
     if not report_path.exists():
-        # AUTO-HEAL: If run is technically complete but report is missing, generate fallback
-        try:
-            status = ""
-            created_at = "unknown"
-            updated_at = "unknown"
-
-            # 1. Try file-based state first
-            state_path = run_path / "orchestrator_state.json"
-            if state_path.exists():
-                with open(state_path, "r", encoding="utf-8") as f:
-                    state = json.load(f)
-                status = state.get("status", "")
-                created_at = state.get("created_at")
-                updated_at = state.get("updated_at")
-            else:
-                 # 2. Try Redis fallback (Iron Dome)
-                 try:
-                    sys.path.append(str(Path(__file__).parent.parent))
-                    from jobs.redis_queue import get_queue
-                    queue = get_queue()
-                    if queue:
-                        job = queue.get_job(run_id)
-                        if job:
-                           status = job.status
-                           created_at = job.created_at
-                           updated_at = job.updated_at
-                           logger.info(f"[AUTO-HEAL] Recovered status '{status}' from Redis for {run_id}")
-                 except Exception as re:
-                     logger.warning(f"[AUTO-HEAL] Redis check failed: {re}")
-
-            if status in ["complete", "completed", "complete_with_errors", "failed"]:
-                logger.warning(f"[AUTO-HEAL] Run {run_id} is {status} but report missing. Creating specialized fallback...")
-                
-                fallback_content = (
-                    f"# Analysis Report ({status})\n\n"
-                    f"**Run ID:** `{run_id}`\n\n"
-                    f"> ⚠️ **System Notice:** The final report generation step encountered an issue, but the analysis pipeline finished.\n\n"
-                    f"## Status Overview\n"
-                    f"- **Status:** {status}\n"
-                    f"- **Created:** {created_at}\n"
-                    f"- **Updated:** {updated_at}\n\n"
-                    f"## Diagnostics\n"
-                    f"Please check the [Analysis Logs](/logs/{run_id}) for details on why the `expositor` agent failed to produce output."
-                )
-                
-                # Ensure directory exists (Critical Fix for Container Volumes)
-                report_path.parent.mkdir(parents=True, exist_ok=True)
-
-                # Write the fallback to disk so it sticks
-                with open(report_path, "w", encoding="utf-8") as f:
-                    f.write(fallback_content)
-
-                _store_enhanced_analytics_fallback(run_path, mode="auto_heal")
-                logger.info(f"[AUTO-HEAL] Fallback report created at {report_path}")
-        except Exception as e:
-            logger.error(f"[AUTO-HEAL] Failed to generate fallback: {e}")
-
-    # Re-check existence after auto-heal attempt
-    if not report_path.exists():
         raise HTTPException(status_code=404, detail="Report not found")
     
     if format.lower() == "pdf":
@@ -959,6 +884,23 @@ async def get_report(request: Request, run_id: str, format: str = "markdown"):
         media_type="text/markdown",
         filename=f"ace_report_{run_id}.md"
     )
+
+
+@app.get("/run/{run_id}/manifest", tags=["Artifacts"])
+async def get_run_manifest(run_id: str):
+    """Return the run manifest for a given run."""
+    _validate_run_id(run_id)
+
+    run_path = DATA_DIR / "runs" / run_id
+    manifest_path = run_path / "run_manifest.json"
+    if not manifest_path.exists():
+        raise HTTPException(status_code=404, detail="Run manifest not found")
+
+    try:
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to read run manifest: {exc}")
 
 # REMOVED: Plural route - use /run/{run_id}/artifacts/{name} if needed
 async def get_artifact(run_id: str, artifact_name: str):
@@ -1196,6 +1138,7 @@ async def get_diagnostics(run_id: str):
     mode = state.read("run_mode") or "strict"
     analysis_intent = state.read("analysis_intent") or {}
     analysis_intent_value = analysis_intent.get("intent") or "exploratory"
+    regression_status = state.read("regression_status") or "not_started"
     target_candidate = analysis_intent.get("target_candidate") or {
         "column": None,
         "reason": "no_usable_target_found",
@@ -1226,6 +1169,7 @@ async def get_diagnostics(run_id: str):
     schema_scan = state.read("schema_scan_output")
     if not isinstance(schema_scan, dict):
         schema_scan = {}
+    warnings = state.get_warnings()
 
     return {
         "mode": mode,
@@ -1235,6 +1179,8 @@ async def get_diagnostics(run_id: str):
         "analysis_intent": analysis_intent_value,
         "target_candidate": target_candidate,
         "reasons": reasons,
+        "regression_status": regression_status,
+        "warnings": warnings,
         # CRITICAL FIX: Frontend expects data_quality.score here
         "data_quality": {
             "score": schema_scan.get("quality_score", 0.4)

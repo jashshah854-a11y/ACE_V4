@@ -11,6 +11,7 @@ PIPELINE_SEQUENCE = [
     "personas",
     "fabricator",
     "expositor",
+    "trust_evaluation",
 ]
 
 # Optional descriptions for clarity if you want UI to show it
@@ -25,6 +26,7 @@ PIPELINE_DESCRIPTIONS = {
     "personas": "Persona generation",
     "fabricator": "Strategy generation",
     "expositor": "Final report assembly",
+    "trust_evaluation": "Trust model evaluation",
 }
 
 # Map backend steps to user-facing stages
@@ -40,10 +42,11 @@ STEP_TO_STAGE_MAP = {
     "personas": {"stage": "personas", "display": "Persona Generation", "weight": 1},
     "fabricator": {"stage": "report", "display": "Strategy Generation", "weight": 1},
     "expositor": {"stage": "report", "display": "Report Generation", "weight": 1},
+    "trust_evaluation": {"stage": "report", "display": "Trust Evaluation", "weight": 1},
 }
 
 # Total steps including pre-pipeline ingestion
-TOTAL_PIPELINE_STEPS = 11  # ingestion + 10 pipeline steps
+TOTAL_PIPELINE_STEPS = 12  # ingestion + 11 pipeline steps
 
 
 def calculate_progress(current_step: str, steps_completed: list) -> dict:

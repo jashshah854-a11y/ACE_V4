@@ -16,6 +16,7 @@ import { useRemoteArtifact } from "@/hooks/useRemoteArtifact";
 import { getSyntheticTimeColumn } from "@/lib/timelineHelper";
 import { useDiagnostics } from "@/hooks/useDiagnostics";
 import { useModelArtifacts } from "@/hooks/useModelArtifacts";
+import { useRunManifest } from "@/hooks/useRunManifest";
 import type { GovernedReport, TaskContractSnapshot } from "@/hooks/useGovernedReport";
 import type {
   ReportDataResult,
@@ -27,8 +28,6 @@ import type {
 import { transformAPIResponse, filterSuppressedSections } from "@/lib/reportViewModel";
 import { ensureSafeReport } from "@/lib/ReportGuard";
 import { assembleNarrative, type NarrativeModule } from "@/lib/meaningAssembler";
-import { computeTrustScore, TRUST_RULESET_VERSION } from "@/lib/trustScoring";
-import { updateRunTrust } from "@/lib/trustCache";
 import { formatScopeConstraint } from "@/lib/scopeConstraintCopy";
 
 const MIN_IMPORTANCE = 0.05;
@@ -192,44 +191,6 @@ function extractOutOfScope(contractCopy?: string) {
   return Array.from(dims);
 }
 
-function normalizeConfidence(value?: number) {
-  if (typeof value !== "number" || Number.isNaN(value)) return undefined;
-  return value <= 1 ? value * 100 : value;
-}
-
-function normalizeRowCount(value: unknown): number | undefined {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string") {
-    const cleaned = value.replace(/,/g, "").trim();
-    const parsed = Number(cleaned);
-    return Number.isFinite(parsed) ? parsed : undefined;
-  }
-  return undefined;
-}
-
-function deriveAssumptionRisk(diagnostics: any, limitationsMode: boolean) {
-  const reasons = Array.isArray(diagnostics?.reasons) ? diagnostics.reasons : [];
-  const validationNotes = Array.isArray(diagnostics?.validation?.failed_fields)
-    ? diagnostics.validation.failed_fields
-    : [];
-  const reasonText = reasons.join(" ").toLowerCase();
-  const hasCritical = reasonText.includes("blocked") || reasonText.includes("safe mode") || reasonText.includes("missing");
-  const assumptionRisk = hasCritical || limitationsMode || validationNotes.length > 0 ? 0.45 : 0.8;
-  return {
-    assumptionRisk,
-    hasCriticalAssumptions: hasCritical || limitationsMode,
-  };
-}
-
-function computeFeatureDominance(enhancedAnalytics: any) {
-  const fi = enhancedAnalytics?.feature_importance?.feature_importance;
-  if (!Array.isArray(fi) || fi.length === 0) return undefined;
-  const total = fi.reduce((sum: number, item: any) => sum + (Number(item?.importance) || 0), 0);
-  if (!total) return undefined;
-  const top = Math.max(...fi.map((item: any) => Number(item?.importance) || 0));
-  return total > 0 ? Math.min(1, Math.max(0, top / total)) : undefined;
-}
-
 function buildContractSummary(contract?: TaskContractSnapshot) {
   if (!contract) return undefined;
   const parts: string[] = [];
@@ -256,9 +217,16 @@ export function useReportData(
   const contractSnapshot = governedReport?.task_contract;
   const analysisIntent = governedReport?.analysis_intent;
   const targetCandidate = governedReport?.target_candidate;
-  const governedConfidence = normalizeConfidence(governedReport?.confidence?.data_confidence);
-  const contractConfidenceThreshold = normalizeConfidence(contractSnapshot?.confidence_threshold);
-  const confidenceThreshold = contractConfidenceThreshold ?? (confidenceMode === "strict" ? 90 : 60);
+  const { data: runManifest, loading: manifestLoading, compatible: manifestCompatible } = useRunManifest(runId);
+  const renderPolicy = runManifest?.render_policy;
+  const trustModel = runManifest?.trust ?? null;
+  const manifestReady = Boolean(runManifest && manifestCompatible);
+  const allowReport = manifestReady && renderPolicy?.allow_report === true;
+  const reportContent = allowReport ? content : "";
+  const gatedRunId = manifestReady ? runId : undefined;
+  const allowPersonas = renderPolicy?.allow_personas === true;
+  const allowAnomalies = renderPolicy?.allow_anomalies === true;
+  const allowRegression = renderPolicy?.allow_regression_sections === true;
 
   const evidenceMap = useMemo(() => normalizeEvidenceMap(governedReport?.evidence), [governedReport?.evidence]);
   const evidenceScopeMap = useMemo(() => {
@@ -282,11 +250,23 @@ export function useReportData(
 
   const rawScopeConstraints = governedReport?.scope_constraints || [];
 
-  const { data: enhancedAnalytics, loading: analyticsLoading } = useEnhancedAnalytics(runId);
-  const { data: diagnostics } = useDiagnostics(runId);
-  const { data: modelArtifacts } = useModelArtifacts(runId);
-  const { data: identityPayload } = useRemoteArtifact<IdentityApiResponse>(runId, "identity");
-  const { data: timelineSelection } = useRemoteArtifact<{ column?: string }>(runId, "timeline");
+  const { data: enhancedAnalytics, loading: analyticsLoading } = useEnhancedAnalytics(gatedRunId);
+  const { data: diagnostics } = useDiagnostics(gatedRunId);
+  const { data: modelArtifacts } = useModelArtifacts(gatedRunId);
+  const { data: identityPayload } = useRemoteArtifact<IdentityApiResponse>(gatedRunId, "identity");
+  const { data: timelineSelection } = useRemoteArtifact<{ column?: string }>(gatedRunId, "timeline");
+
+  const gatedEnhancedAnalytics = useMemo(() => {
+    if (!enhancedAnalytics) return null;
+    if (!renderPolicy) return enhancedAnalytics;
+    const next = { ...enhancedAnalytics };
+    if (!renderPolicy.allow_correlation_analysis) next.correlation_analysis = null;
+    if (!renderPolicy.allow_distribution_analysis) next.distribution_analysis = null;
+    if (!renderPolicy.allow_quality_metrics) next.quality_metrics = null;
+    if (!renderPolicy.allow_business_intelligence) next.business_intelligence = null;
+    if (!renderPolicy.allow_feature_importance) next.feature_importance = null;
+    return next;
+  }, [enhancedAnalytics, renderPolicy]);
 
   const identityCard = identityPayload?.identity || diagnostics?.identity || null;
   const identitySafeMode = identityPayload?.summary?.is_safe_mode ?? identityCard?.is_safe_mode;
@@ -298,10 +278,10 @@ export function useReportData(
     const rawColumns =
       diagnostics?.identity?.columns ||
       diagnostics?.identity?.schema?.columns ||
-      enhancedAnalytics?.quality_metrics?.columns ||
+      gatedEnhancedAnalytics?.quality_metrics?.columns ||
       null;
     return normalizeColumnMap(rawColumns);
-  }, [identityPayload?.profile?.columns, diagnostics?.identity, enhancedAnalytics?.quality_metrics]);
+  }, [identityPayload?.profile?.columns, diagnostics?.identity, gatedEnhancedAnalytics?.quality_metrics]);
 
   const derivedNumericColumns = useMemo(() => {
     if (identityPayload?.profile?.numericColumns?.length) {
@@ -322,7 +302,7 @@ export function useReportData(
 
   // DETECT FALLBACK / ERROR REPORT
   const isFallbackReport = useMemo(() => {
-    const lower = content.toLowerCase();
+    const lower = reportContent.toLowerCase();
     return (
       lower.includes("system notice") ||
       lower.includes("analysis failed") ||
@@ -330,17 +310,17 @@ export function useReportData(
       // Detect the hard fallback header from server.py
       (lower.includes("# analysis report") && lower.includes("diagnostics"))
     );
-  }, [content]);
+  }, [reportContent]);
 
   // Core extraction
-  const metrics = useMemo(() => extractMetrics(content), [content]);
-  const progressMetrics = useMemo(() => extractProgressMetrics(content), [content]);
-  const sections = useMemo(() => extractSections(content), [content]);
+  const metrics = useMemo(() => extractMetrics(reportContent), [reportContent]);
+  const progressMetrics = useMemo(() => extractProgressMetrics(reportContent), [reportContent]);
+  const sections = useMemo(() => extractSections(reportContent), [reportContent]);
   const scoredSections = useMemo(
     () => sections.map((section, index) => ({ ...section, importance: parseImportanceFromContent(section.content, index) })),
     [sections]
   );
-  const { segmentData, compositionData } = useMemo(() => extractChartData(content), [content]);
+  const { segmentData, compositionData } = useMemo(() => extractChartData(reportContent), [reportContent]);
 
   const measurableSegments = useMemo(
     () =>
@@ -352,10 +332,12 @@ export function useReportData(
     [segmentData]
   );
 
-  const rawClusterMetrics = useMemo(() => parseClusterMetrics(content), [content]);
-  const rawPersonas = useMemo(() => extractPersonas(content), [content]);
-  const outcomeModel = useMemo(() => extractOutcomeModel(content), [content]);
-  const anomalies = useMemo(() => extractAnomalies(content), [content]);
+  const rawClusterMetrics = useMemo(() => parseClusterMetrics(reportContent), [reportContent]);
+  const rawPersonas = useMemo(() => extractPersonas(reportContent), [reportContent]);
+  const outcomeModel = useMemo(() => extractOutcomeModel(reportContent), [reportContent]);
+  const anomalies = useMemo(() => extractAnomalies(reportContent), [reportContent]);
+  const gatedOutcomeModel = useMemo(() => (allowRegression ? outcomeModel : null), [outcomeModel, allowRegression]);
+  const gatedAnomalies = useMemo(() => (allowAnomalies ? anomalies : null), [anomalies, allowAnomalies]);
 
   const clusteringEvidenceId = evidenceScopeMap.clustering?.id;
   const clusterMetrics = useMemo(() => {
@@ -364,55 +346,48 @@ export function useReportData(
   }, [rawClusterMetrics, clusteringEvidenceId]);
 
   const personas = useMemo(() => {
+    if (!allowPersonas) return [];
     if (!rawPersonas?.length || !clusteringEvidenceId) return rawPersonas;
     return rawPersonas.map((persona) => ({ ...persona, evidenceId: clusteringEvidenceId }));
-  }, [rawPersonas, clusteringEvidenceId]);
+  }, [rawPersonas, clusteringEvidenceId, allowPersonas]);
 
   // Narrative components
   const executiveBrief = useMemo(() => {
     if (isFallbackReport) {
       // Manual extraction for fallback reports
-      const lines = content.split('\n').filter(l => l.trim().length > 0);
-      const purpose = lines.find(l => l.toLowerCase().includes("notice")) || "The system encountered an error during analysis.";
-      const status = lines.find(l => l.toLowerCase().includes("status:")) || "Status: Incomplete";
+      const lines = reportContent.split("\n").filter((line) => line.trim().length > 0);
+      const purpose = lines.find((line) => line.toLowerCase().includes("notice")) || "The system encountered an error during analysis.";
+      const status = lines.find((line) => line.toLowerCase().includes("status:")) || "Status: Incomplete";
       return {
         purpose: purpose.replace(/^[>#\-\s*]+/, "").trim(),
         keyFindings: [status.replace(/^[>#\-\s*]+/, "").trim()],
         confidenceVerdict: "Low (Fallback)",
-        recommendedAction: "Please review the diagnostics section or retry the analysis."
+        recommendedAction: "Please review the diagnostics section or retry the analysis.",
       };
     }
-    return extractExecutiveBrief(content);
-  }, [content, isFallbackReport]);
+    return extractExecutiveBrief(reportContent);
+  }, [reportContent, isFallbackReport]);
 
-  const conclusion = useMemo(() => extractConclusion(content), [content]);
-  const heroInsight = useMemo(() => extractHeroInsight(content, metrics), [content, metrics]);
-  const mondayActions = useMemo(() => generateMondayActions(content, metrics, anomalies), [content, metrics, anomalies]);
-  const segmentComparisonData = useMemo(() => extractSegmentData(content), [content]);
+  const conclusion = useMemo(() => extractConclusion(reportContent), [reportContent]);
+  const heroInsight = useMemo(() => extractHeroInsight(reportContent, metrics), [reportContent, metrics]);
+  const mondayActions = useMemo(
+    () => generateMondayActions(reportContent, metrics, gatedAnomalies),
+    [reportContent, metrics, gatedAnomalies]
+  );
+  const segmentComparisonData = useMemo(() => extractSegmentData(reportContent), [reportContent]);
 
   const keyTakeaways = useMemo(
     () =>
-      content
+      reportContent
         .split("\n")
         .filter((line) => line.trim().startsWith("-") || line.trim().startsWith("*"))
         .map((line) => line.replace(/^[-*]\s*/, "").trim())
         .filter((line) => line.length > 20 && line.length < 150)
         .slice(0, 5),
-    [content]
+    [reportContent]
   );
 
   // Computed values
-  const confidenceValue = useMemo(() => {
-    if (governedConfidence !== undefined) return governedConfidence;
-    if (typeof metrics.confidenceLevel === "number") return Number(metrics.confidenceLevel);
-    if (Number.isFinite(Number(metrics.confidenceLevel))) return Number(metrics.confidenceLevel);
-    const diagConfidence = diagnostics?.confidence?.data_confidence;
-    if (typeof diagConfidence === "number") {
-      return diagConfidence > 1 ? diagConfidence : diagConfidence * 100;
-    }
-    return undefined;
-  }, [governedConfidence, metrics.confidenceLevel, diagnostics?.confidence?.data_confidence]);
-
   const dataQualityValue = useMemo(() => {
     if (typeof metrics.dataQualityScore === "number") return Number(metrics.dataQualityScore);
     if (Number.isFinite(Number(metrics.dataQualityScore))) return Number(metrics.dataQualityScore);
@@ -426,33 +401,21 @@ export function useReportData(
   }, [metrics.dataQualityScore, diagnostics?.data_quality]);
 
   const limitationsMode = useMemo(() => {
-    if (governedReport?.mode === "limitations") return true;
-    if (isFallbackReport) return true;
-    const governedLowConfidence = typeof governedConfidence === "number" && governedConfidence < confidenceThreshold;
-    return governedLowConfidence;
-  }, [governedReport?.mode, governedConfidence, confidenceThreshold, isFallbackReport]);
+    return Boolean(governedReport?.mode === "limitations" || isFallbackReport);
+  }, [governedReport?.mode, isFallbackReport]);
 
   const safeMode = useMemo(
     () =>
-      limitationsMode ||
-      (typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel < confidenceThreshold) ||
-      identitySafeMode === true ||
-      isFallbackReport,
-    [limitationsMode, metrics.confidenceLevel, confidenceThreshold, identitySafeMode, isFallbackReport]
+      limitationsMode || identitySafeMode === true || isFallbackReport,
+    [limitationsMode, identitySafeMode, isFallbackReport]
   );
 
-  const hideActions = useMemo(
-    () => safeMode || (typeof metrics.confidenceLevel === "number" && metrics.confidenceLevel < confidenceThreshold),
-    [safeMode, metrics.confidenceLevel, confidenceThreshold]
-  );
+  const hideActions = useMemo(() => safeMode, [safeMode]);
 
   const shouldEmitInsights = useMemo(
     () =>
-      !isFallbackReport &&
-      !limitationsMode &&
-      identitySafeMode !== true &&
-      (typeof metrics.confidenceLevel !== "number" || metrics.confidenceLevel >= confidenceThreshold),
-    [limitationsMode, identitySafeMode, metrics.confidenceLevel, confidenceThreshold, isFallbackReport]
+      !isFallbackReport && !limitationsMode && identitySafeMode !== true,
+    [limitationsMode, identitySafeMode, isFallbackReport]
   );
 
 
@@ -472,9 +435,9 @@ export function useReportData(
       });
       if (match) return true;
     }
-    const lower = content.toLowerCase();
+    const lower = reportContent.toLowerCase();
     return TIME_TOKENS.some((token) => lower.includes(token));
-  }, [syntheticTimeColumn, identityColumns, diagnostics?.identity?.schema?.columns, content]);
+  }, [syntheticTimeColumn, identityColumns, diagnostics?.identity?.schema?.columns, reportContent]);
 
   // Sections
   const taskContractSection = useMemo(
@@ -555,19 +518,16 @@ export function useReportData(
   );
 
   const uncertaintySignals = useMemo(() => {
-    const lower = content.toLowerCase();
+    const lower = reportContent.toLowerCase();
     const signals: string[] = [];
     if (limitationsMode) {
-      signals.push("Insights limited by confidence, contract, or validation gates.");
-    }
-    if (typeof metrics.confidenceLevel === "number") {
-      signals.push(`Confidence: ${metrics.confidenceLevel}%`);
+      signals.push("Insights limited by contract or validation gates.");
     }
     if (lower.includes("conflict")) {
       signals.push("Report text mentions conflicts across datasets or models.");
     }
     return signals;
-  }, [content, limitationsMode, metrics.confidenceLevel]);
+  }, [reportContent, limitationsMode]);
 
   const narrativeSummary = useMemo(() => {
     const wins: string[] = keyTakeaways.slice(0, 2);
@@ -579,15 +539,14 @@ export function useReportData(
       risks.push(`Validation gaps: ${diagnostics.validation.failed_fields.slice(0, 3).join(", ")}`);
     }
     const meaning: string[] = [];
-    if (safeMode) meaning.push("Safe Mode limits ranking/strategies; use exploratory toggle for a preview.");
-    if (confidenceValue !== undefined) meaning.push(`Confidence sits at ${confidenceValue}% (${confidenceMode}).`);
+    if (safeMode) meaning.push("Some outputs are gated for this run; review diagnostics for details.");
     if (!hasTimeField) meaning.push("Time-based insights are off; add date/time to enable trend views.");
     return {
-      wins: wins.length ? wins : ["No high-confidence wins detected."],
+      wins: wins.length ? wins : ["No standout wins detected."],
       risks: risks.length ? risks : ["No major risks detected."],
       meaning: meaning.length ? meaning : ["Data quality and scope look acceptable for a quick read."],
     };
-  }, [keyTakeaways, uncertaintySignals, diagnostics?.validation?.failed_fields, safeMode, confidenceValue, confidenceMode, hasTimeField]);
+  }, [keyTakeaways, uncertaintySignals, diagnostics?.validation?.failed_fields, safeMode, confidenceMode, hasTimeField]);
 
   const runContext = useMemo(() => {
     const mode = diagnostics?.mode || (enhancedAnalytics?.mode as string) || (safeMode ? "safe" : "standard");
@@ -625,53 +584,9 @@ export function useReportData(
         identityPayload?.summary?.quality?.avg_null_pct !== undefined
           ? 1 - Number(identityPayload.summary.quality.avg_null_pct)
           : enhancedAnalytics?.quality_metrics?.overall_completeness,
-      confidence: diagnostics?.confidence?.data_confidence ?? metrics.confidenceLevel ?? "n/a",
     }),
-    [identityPayload?.summary, enhancedAnalytics?.quality_metrics, diagnostics?.confidence, metrics.totalRows, metrics.confidenceLevel]
+    [identityPayload?.summary, enhancedAnalytics?.quality_metrics, metrics.totalRows]
   );
-
-  const validationFailed = Boolean(diagnostics?.validation?.failed_fields?.length);
-  const baseTrustInputs = useMemo(() => {
-    const rowCount = normalizeRowCount(identityStats.rows);
-    const signalStability = typeof confidenceValue === "number" ? confidenceValue : 0.7;
-    const dataQualityScore = typeof dataQualityValue === "number" ? dataQualityValue : undefined;
-    const featureDominance = computeFeatureDominance(enhancedAnalytics);
-    const assumption = deriveAssumptionRisk(diagnostics, limitationsMode);
-
-    return {
-      dataQualityScore,
-      validationFailed,
-      sampleSize: rowCount,
-      signalStability,
-      featureDominance,
-      assumptionRisk: assumption.assumptionRisk,
-      hasCriticalAssumptions: assumption.hasCriticalAssumptions,
-    };
-  }, [identityStats.rows, confidenceValue, dataQualityValue, enhancedAnalytics, diagnostics, limitationsMode, validationFailed]);
-
-  const sectionTrustMap = useMemo(() => {
-    const map = new Map<string, ReturnType<typeof computeTrustScore>>();
-    scoredSections.forEach((section) => {
-      const content = section?.content?.toLowerCase?.() || "";
-      const evidenceHint = content.includes("evidence") || content.includes("data") || content.includes("sample");
-      const stability = baseTrustInputs.signalStability;
-      const featureDominance = baseTrustInputs.featureDominance;
-      const adjustedDominance = evidenceHint ? (featureDominance ?? 0.6) + 0.1 : featureDominance ?? 0.5;
-      const trust = computeTrustScore({
-        ...baseTrustInputs,
-        featureDominance: Math.min(1, adjustedDominance),
-      });
-      map.set(section.id, trust);
-    });
-    return map;
-  }, [scoredSections, baseTrustInputs]);
-
-  const governingTrust = useMemo(() => {
-    const primaryId = narrativeAssembly.primary[0]?.id;
-    const primaryTrust = primaryId ? sectionTrustMap.get(primaryId) : undefined;
-    return primaryTrust ?? computeTrustScore(baseTrustInputs);
-  }, [baseTrustInputs, narrativeAssembly.primary, sectionTrustMap]);
-
 
   const profile = useMemo(() => {
     if (!identityColumns) return undefined;
@@ -679,19 +594,7 @@ export function useReportData(
   }, [identityColumns, derivedNumericColumns]);
 
   const governanceWarnings = useMemo(() => {
-    const warnings = new Set<string>();
-    if (Array.isArray(diagnostics?.reasons)) {
-      diagnostics?.reasons.forEach((reason: string) => warnings.add(reason));
-    }
-    if (identitySafeMode) {
-      warnings.add('Safe Mode active: backend limited advanced insight agents.');
-    }
-    if (syntheticTimeColumn) {
-      warnings.add(`Timeline helper active: using ${syntheticTimeColumn} for trend analysis.`);
-    } else if (!hasTimeField) {
-      // warnings.add('Time coverage unknown; add a date or time field to unlock trend insights.');
-    }
-    return Array.from(warnings);
+    return [];
   }, [diagnostics?.reasons, hasTimeField, identitySafeMode, syntheticTimeColumn]);
 
   const guidanceNotes = useMemo(() => {
@@ -724,11 +627,6 @@ export function useReportData(
       });
     }
 
-    const confidenceReasons = diagnostics?.confidence?.reasons;
-    if (Array.isArray(confidenceReasons)) {
-      confidenceReasons.forEach((reason) => register(reason, "info", "Confidence"));
-    }
-
     if (!hasTimeField && !syntheticTimeColumn) {
       // register('Time coverage unknown; add a date or time field to unlock trend tools.', "warning", "Timeline");
     }
@@ -745,24 +643,34 @@ export function useReportData(
     if (heroInsight?.title) chips.push({ label: `Top insight: ${heroInsight.title}`, tone: "default" });
     if (mondayActions?.[0]) chips.push({ label: `Top action: ${mondayActions[0].title || "Action 1"}`, tone: "default" });
     if (personas?.[0]?.label) chips.push({ label: `Segment: ${personas[0].label}`, tone: "default" });
-    if (anomalies?.count) chips.push({ label: `${anomalies.count} anomalies`, tone: "warn" });
-    if (confidenceValue !== undefined) {
-      const tone = confidenceValue >= confidenceThreshold ? "ok" : "warn";
-      chips.push({ label: `Confidence ${confidenceValue}%`, tone });
-    }
+    if (gatedAnomalies?.count) chips.push({ label: `${gatedAnomalies.count} anomalies`, tone: "warn" });
     if (identityStats.rows && identityStats.rows !== "n/a") {
       chips.push({ label: `Rows: ${identityStats.rows}`, tone: "default" });
     }
-    if (safeMode) chips.push({ label: "Safe Mode active", tone: "warn" });
-    if (chips.length === 0) chips.push({ label: "No highlights available", tone: "default" });
+    if (chips.length === 0) return [];
     return chips.slice(0, 5);
-  }, [heroInsight?.title, mondayActions, personas, anomalies?.count, confidenceValue, confidenceThreshold, safeMode, identityStats.rows]);
+  }, [heroInsight?.title, mondayActions, personas, gatedAnomalies?.count, identityStats.rows]);
+
+  const runWarnings = useMemo(() => {
+    const warnings = Array.isArray(runManifest?.warnings) ? runManifest.warnings : [];
+    const deduped = new Map<string, { code: string; message: string; details?: any }>();
+    warnings.forEach((warning) => {
+      if (!warning || !warning.warning_code) return;
+      if (!deduped.has(warning.warning_code)) {
+        deduped.set(warning.warning_code, {
+          code: warning.warning_code,
+          message: warning.message,
+          details: warning,
+        });
+      }
+    });
+    return Array.from(deduped.values());
+  }, [runManifest?.warnings]);
 
   // Compute View Model
   const viewModel = useMemo(() => {
     const tempResult = {
       metrics,
-      confidenceValue,
       dataQualityValue,
       safeMode,
       limitationsMode,
@@ -776,21 +684,12 @@ export function useReportData(
       sections,
     };
     const baseModel = transformAPIResponse(tempResult);
-    const sectionsWithTrust = baseModel.sections.map((section) => ({
-      ...section,
-      trust: sectionTrustMap.get(section.id),
-    }));
     return {
       ...baseModel,
-      sections: sectionsWithTrust,
-      heroInsight: {
-        ...baseModel.heroInsight,
-        trust: governingTrust,
-      },
+      sections: baseModel.sections,
     };
   }, [
     metrics,
-    confidenceValue,
     dataQualityValue,
     safeMode,
     limitationsMode,
@@ -802,22 +701,7 @@ export function useReportData(
     evidenceSections,
     sections,
     runId,
-    sectionTrustMap,
-    governingTrust,
   ]);
-
-  useEffect(() => {
-    if (!runId || !governingTrust) return;
-    updateRunTrust(runId, {
-      score: governingTrust.score,
-      band: governingTrust.band,
-      certified: governingTrust.certification.certified,
-      updatedAt: new Date().toISOString(),
-      rulesetVersion: TRUST_RULESET_VERSION,
-    });
-  }, [runId, governingTrust]);
-
-
 
   // Return with safe defaults for all values via Report Guard
   return ensureSafeReport({
@@ -829,15 +713,14 @@ export function useReportData(
     measurableSegments: measurableSegments || [],
     clusterMetrics,
     personas: Array.isArray(personas) ? personas : [],
-    outcomeModel,
-    anomalies: anomalies || { count: 0, drivers: [] },
+    outcomeModel: gatedOutcomeModel,
+    anomalies: gatedAnomalies || { count: 0, drivers: [] },
     executiveBrief: executiveBrief || { purpose: "", keyFindings: [], confidenceVerdict: "", recommendedAction: "" },
     conclusion: conclusion || { shouldUseFor: [], shouldNotUseFor: [], nextStep: "" },
     heroInsight: heroInsight || { keyInsight: "", impact: "medium" as const, trend: "neutral" as const, confidence: 0, dataQuality: 0, recommendation: "" },
     mondayActions: mondayActions || [],
     segmentComparisonData: segmentComparisonData || [],
     keyTakeaways: keyTakeaways || [],
-    confidenceValue,
     dataQualityValue,
     limitationsMode,
     safeMode,
@@ -866,10 +749,10 @@ export function useReportData(
     scopeConstraints,
     rawScopeConstraints,
     governingThought: narrativeAssembly.governingThought,
-    governingTrust,
+    trustModel,
     narrativeModules: narrativeAssembly.primary,
     appendixModules: narrativeAssembly.appendix,
-    enhancedAnalytics,
+    enhancedAnalytics: gatedEnhancedAnalytics,
     analyticsLoading,
     diagnostics,
     modelArtifacts,
@@ -877,6 +760,11 @@ export function useReportData(
     profile,
     syntheticTimeColumn,
     guidanceNotes,
+    runWarnings,
+    runManifest,
+    manifestLoading,
+    manifestCompatible,
+    renderPolicy,
     evidenceMap,
     governedInsights,
   });

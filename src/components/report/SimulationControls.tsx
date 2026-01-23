@@ -157,9 +157,7 @@ export default function SimulationControls({
                             <p>{hint}</p>
                         </div>
                     </div>
-                ) : (
-                    <p className="text-xs text-slate-500">Guidance will surface once diagnostics finish.</p>
-                )}
+                ) : null}
 
                 <AnimatePresence initial={false}>
                     {exploreMode && (
@@ -248,9 +246,7 @@ export default function SimulationControls({
                                             );
                                         })}
                                     </div>
-                                ) : (
-                                    <p className="text-xs text-slate-500">Stage at least one variable to unlock the cockpit.</p>
-                                )}
+                                ) : null}
 
                                 <div className="flex flex-col gap-2 pt-1">
                                     <button
@@ -271,9 +267,6 @@ export default function SimulationControls({
                                             </>
                                         )}
                                     </button>
-                                    {scenarios.length === 0 && (
-                                        <p className="text-center text-xs text-slate-500">Add at least one modification to activate the cockpit.</p>
-                                    )}
                                 </div>
 
                                 {error && (

@@ -15,7 +15,6 @@ interface ReportResponse {
     run_id: string;
     status: 'running' | 'completed' | 'failed';
     report_content: string;
-    confidence: number;
     quality_score: number;
     row_count: number;
     column_count: number;
@@ -54,7 +53,6 @@ async function fetchReport(runId: string): Promise<ReportResponse> {
         run_id: data.run_id || runId,
         status: data.status || 'completed',
         report_content: data.report_content || data.markdown || '',
-        confidence: data.confidence || data.data_confidence || 1.0,
         quality_score: data.quality_score || data.data_quality || 1.0,
         row_count: data.row_count || data.rows || 0,
         column_count: data.column_count || data.columns || 0,
@@ -146,9 +144,6 @@ export default function ReportPage() {
         data.enhanced_analytics
     );
 
-    // Safe mode detection (confidence < 0.1)
-    const isSafeMode = data.confidence < 0.1;
-
     // Click-to-verify handler
     const handleClaimClick = (evidenceId: string, type: string) => {
         console.log(`[Click-to-Verify] User clicked claim: ${evidenceId} (${type})`);
@@ -166,8 +161,6 @@ export default function ReportPage() {
                     rowCount={data.row_count}
                     columnCount={data.column_count}
                     qualityScore={data.quality_score}
-                    confidence={data.confidence}
-                    safeMode={isSafeMode}
                     status={data.status}
                 />
             }
@@ -175,7 +168,6 @@ export default function ReportPage() {
                 <NarrativeStream
                     content={data.report_content}
                     taskContract={data.task_contract}
-                    confidence={data.confidence}
                     onClaimClick={handleClaimClick}
                 />
             }

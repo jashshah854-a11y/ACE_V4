@@ -11,6 +11,7 @@ import { SummaryCard } from '@/components/quick-summary/SummaryCard';
 import { StoryCanvas } from '@/components/story/StoryCanvas';
 import { Story, ToneProfile } from '@/types/StoryTypes';
 import { API_BASE } from '@/lib/api-client';
+import { useRunManifest } from '@/hooks/useRunManifest';
 
 export default function QuickSummaryView() {
     const { runId } = useParams<{ runId: string }>();
@@ -27,6 +28,7 @@ export default function QuickSummaryView() {
     const [loading, setLoading] = useState(true);
     const [storyLoading, setStoryLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { data: manifest, loading: manifestLoading, compatible: manifestCompatible } = useRunManifest(runId);
 
     // Fetch Summary (Dashboard Data)
     useEffect(() => {
@@ -85,6 +87,37 @@ export default function QuickSummaryView() {
 
         fetchStory();
     }, [runId, viewMode, currentTone]);
+
+    if (!runId) {
+        return null;
+    }
+
+    if (manifestLoading) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-gray-50">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600 font-medium">Loading manifest...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!manifestCompatible) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-gray-50">
+                <div className="text-center max-w-md p-8 bg-white rounded-xl shadow-sm border border-gray-200">
+                    <div className="text-amber-500 text-5xl mb-4">âš ï¸</div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">Manifest Incompatible</h2>
+                    <p className="text-gray-600 mb-6">This summary requires a newer manifest version.</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (manifest?.render_policy && !manifest.render_policy.allow_report) {
+        return null;
+    }
 
     if (loading) {
         return (

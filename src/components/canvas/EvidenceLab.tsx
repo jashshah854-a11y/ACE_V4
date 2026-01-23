@@ -40,6 +40,10 @@ export function EvidenceLab({
     const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
     const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
+    if (!evidence || evidence.length === 0) {
+        return null;
+    }
+
     // Auto-scroll to active evidence when it changes
     useEffect(() => {
         if (activeEvidenceId) {
@@ -85,29 +89,19 @@ export function EvidenceLab({
 
             {/* Evidence Cards */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {evidence.length === 0 ? (
-                    <div className="text-center py-12 text-lab-text/40">
-                        <Database className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                        <p className="text-sm">No evidence objects available</p>
-                        <p className="text-xs mt-2">
-                            Evidence will appear here when you click claims in the narrative
-                        </p>
-                    </div>
-                ) : (
-                    evidence.map((item) => (
-                        <EvidenceCard
-                            key={item.id}
-                            evidence={item}
-                            isActive={activeEvidenceId === item.id}
-                            isExpanded={expandedCards.has(item.id)}
-                            onToggle={() => toggleCard(item.id)}
-                            onClick={() => onEvidenceClick?.(item.id)}
-                            ref={(el) => {
-                                if (el) cardRefs.current.set(item.id, el);
-                            }}
-                        />
-                    ))
-                )}
+                {evidence.map((item) => (
+                    <EvidenceCard
+                        key={item.id}
+                        evidence={item}
+                        isActive={activeEvidenceId === item.id}
+                        isExpanded={expandedCards.has(item.id)}
+                        onToggle={() => toggleCard(item.id)}
+                        onClick={() => onEvidenceClick?.(item.id)}
+                        ref={(el) => {
+                            if (el) cardRefs.current.set(item.id, el);
+                        }}
+                    />
+                ))}
             </div>
 
             {/* Lab Footer */}

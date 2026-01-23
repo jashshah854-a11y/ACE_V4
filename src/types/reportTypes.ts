@@ -1,7 +1,8 @@
 ﻿import type { ReportViewModel } from "@/lib/reportViewModel";
 import type { NarrativeModule } from "@/lib/meaningAssembler";
-import type { TrustScore } from "@/types/trust";
+import type { TrustModel } from "@/types/trust";
 import type { AnalysisIntent, ScopeConstraintDisplay, TargetCandidate } from "@/types/analysisIntent";
+import type { RunManifest, RunManifestRenderPolicy } from "@/types/runManifest";
 
 export type GuidanceSeverity = "info" | "warning" | "critical";
 
@@ -26,6 +27,10 @@ export interface ReportProfile {
 
 export interface BusinessIntelligence {
   available: boolean;
+  valid?: boolean;
+  status?: "success" | "failed";
+  errors?: any[];
+  warnings?: any[];
   value_metrics?: {
     total_value: number;
     avg_value: number;
@@ -61,11 +66,14 @@ export interface FeatureImportanceItem {
 
 export interface FeatureImportance {
   available: boolean;
+  valid?: boolean;
+  status?: "success" | "failed";
+  errors?: any[];
+  warnings?: any[];
   target?: string;
   task_type?: "regression" | "classification";
   feature_importance?: FeatureImportanceItem[];
   insights?: string[];
-  confidence?: number;
   confidence_interval?: [number, number];
   evidence_id?: string | null;
   reason?: string;
@@ -88,6 +96,10 @@ export interface EnhancedAnalyticsData {
   feature_importance?: FeatureImportance;
   quality_metrics?: {
     available?: boolean;
+    valid?: boolean;
+    status?: "success" | "failed";
+    errors?: any[];
+    warnings?: any[];
     overall_completeness?: number;
     total_records?: number;
     columns?: Record<string, any>;
@@ -95,12 +107,20 @@ export interface EnhancedAnalyticsData {
   } | null;
   correlation_analysis?: {
     available: boolean;
+    valid?: boolean;
+    status?: "success" | "failed";
+    errors?: any[];
+    warnings?: any[];
     strong_correlations?: CorrelationPair[];
     total_correlations?: number;
     insights?: string[];
   };
   distribution_analysis?: {
     available: boolean;
+    valid?: boolean;
+    status?: "success" | "failed";
+    errors?: any[];
+    warnings?: any[];
     distributions?: Record<string, any>;
     insights?: string[];
   };
@@ -192,7 +212,6 @@ export interface ReportDataResult {
   mondayActions: any;
   segmentComparisonData: any;
   keyTakeaways: string[];
-  confidenceValue?: number;
   dataQualityValue?: number;
   limitationsMode: boolean;
   safeMode: boolean;
@@ -208,7 +227,7 @@ export interface ReportDataResult {
   uncertaintySignals: string[];
   narrativeSummary: { wins: string[]; risks: string[]; meaning: string[] };
   runContext: { mode: string; freshness: string; scopeLimits: string[] };
-  identityStats: { rows: any; completeness: any; confidence: any };
+  identityStats: { rows: any; completeness: any };
   highlights: { label: string; tone: "default" | "warn" | "ok" }[];
   primaryQuestion?: string;
   successCriteria?: string;
@@ -222,6 +241,7 @@ export interface ReportDataResult {
   profile?: ReportProfile;
   syntheticTimeColumn?: string;
   guidanceNotes: GuidanceNote[];
+  runWarnings?: Array<{ code: string; message: string; details?: any }>;
   governingThought?: string;
   narrativeModules: NarrativeModule[];
   appendixModules: NarrativeModule[];
@@ -232,7 +252,11 @@ export interface ReportDataResult {
   viewModel: ReportViewModel;
   evidenceMap: Record<string, EvidenceSummary>;
   governedInsights: GovernedInsightSummary[];
-  governingTrust?: TrustScore;
+  trustModel?: TrustModel | null;
+  runManifest?: RunManifest | null;
+  manifestLoading: boolean;
+  manifestCompatible: boolean;
+  renderPolicy?: RunManifestRenderPolicy;
 }
 
 

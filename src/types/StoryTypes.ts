@@ -4,7 +4,7 @@
  * Defines the data structures for stories and story points.
  */
 
-import type { TrustScore } from "@/types/trust";
+import type { TrustModel } from "@/types/trust";
 
 export type StoryType =
     | 'change_over_time'
@@ -83,7 +83,7 @@ export interface StoryPoint {
     visual: ChartSpec;          // Chart configuration
     evidence: EvidenceRef[];    // Links to evidence
     interactions: Interaction[]; // Drill-down actions
-    trust?: TrustScore;
+    trust?: TrustModel;
     metadata: {
         storyType: StoryType;
         tone: ToneProfile;

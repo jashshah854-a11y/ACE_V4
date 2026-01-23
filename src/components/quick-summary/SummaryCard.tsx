@@ -18,12 +18,7 @@ export function SummaryCard({ question, summary }: SummaryCardProps) {
     const data = getDataForQuestion(question, summary);
 
     if (!data) {
-        return (
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">{question}</h2>
-                <p className="text-gray-500">No data available for this question.</p>
-            </div>
-        );
+        return null;
     }
 
     return (

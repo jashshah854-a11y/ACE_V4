@@ -1,17 +1,15 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
-import { AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { CheckCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
     extractGoverningThought,
     parseSCQABlocks,
     extractSections,
-    extractMetrics,
     type SCQABlock
 } from '@/lib/reportParser';
-import { ConfidenceBadge } from '@/components/trust/ConfidenceBadge';
 import { parseGuardrailsText } from '@/lib/getGuidance';
 
 interface NarrativeStreamProps {
@@ -23,9 +21,6 @@ interface NarrativeStreamProps {
         allowed_sections: string[];
         blocked_agents: string[];
     };
-
-    /** Confidence score (0-1) for safe mode detection */
-    confidence?: number;
 
     /** Callback when user clicks a claim to view evidence */
     onClaimClick?: (evidenceId: string, type: 'business_pulse' | 'predictive_drivers' | 'correlation' | 'quality') => void;
@@ -39,29 +34,23 @@ interface NarrativeStreamProps {
  * - SCQA Blocks: Situation → Complication → Question → Answer
  * - Task Contract: Upfront scope declaration
  * - Click-to-Verify: Interactive claims linked to evidence
- * - Safe Mode: Fallback to descriptive stats when confidence < 0.1
  */
 export function NarrativeStream({
     content,
     taskContract,
-    confidence = 1.0,
     onClaimClick
 }: NarrativeStreamProps) {
     const [activeClaimId, setActiveClaimId] = useState<string | null>(null);
+    const sanitizedContent = useMemo(() => stripConfidenceSections(content), [content]);
 
     // Extract narrative components
-    const metrics = extractMetrics(content);
-    const governingThought = extractGoverningThought(content);
-    const scqaBlocks = parseSCQABlocks(content);
-    const sections = extractSections(content);
+    const governingThought = extractGoverningThought(sanitizedContent);
+    const scqaBlocks = parseSCQABlocks(sanitizedContent);
+    const sections = extractSections(sanitizedContent);
     const guardrailSection = sections.find((section) =>
         section.title.toLowerCase().includes("guardrail") || section.title.toLowerCase().includes("validation")
     );
     const guardrailNotes = guardrailSection ? parseGuardrailsText(guardrailSection.content) : [];
-
-    // Safe mode detection
-    const isSafeMode = confidence < 0.1;
-    const confidenceLevel = confidence >= 0.8 ? "high" : confidence >= 0.5 ? "medium" : "low";
 
     // Determine which sections to show based on task contract
     const shouldShowSection = (sectionId: string): boolean => {
@@ -155,35 +144,7 @@ export function NarrativeStream({
                     <h1 className="governing-thought flex-1">
                         {governingThought}
                     </h1>
-                    <ConfidenceBadge
-                        level={confidenceLevel}
-                        score={confidence}
-                        showLabel={false}
-                        details={{
-                            dataCoverage: metrics.dataQualityScore ? `${Math.round(metrics.dataQualityScore)}% coverage` : "Coverage unavailable",
-                            validationStatus: guardrailNotes.length ? "Guardrails flagged" : "Passed core checks",
-                            sampleSufficiency: metrics.recordsProcessed ? `Rows: ${metrics.recordsProcessed.toLocaleString()}` : "Sample size unknown",
-                        }}
-                    />
                 </div>
-
-                {/* Safe Mode Banner */}
-                {isSafeMode && (
-                    <div className="mt-6 p-4 bg-quality-medium/10 border-l-4 border-quality-medium rounded-r">
-                        <div className="flex items-start gap-3">
-                            <AlertTriangle className="w-5 h-5 text-quality-medium flex-shrink-0 mt-0.5" />
-                            <div>
-                                <p className="font-ui text-sm font-semibold text-quality-medium mb-1">
-                                    Safe Mode Active
-                                </p>
-                                <p className="font-ui text-sm text-muted-foreground">
-                                    Data confidence below threshold ({(confidence * 100).toFixed(0)}%).
-                                    Predictive modeling is paused; descriptive statistics remain available.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
                 {guardrailNotes.length > 0 && (
                     <div className="mt-6 p-4 bg-amber-50/70 border border-amber-200 rounded-lg">
@@ -238,7 +199,7 @@ export function NarrativeStream({
                     {taskContract.blocked_agents.length > 0 && (
                         <div>
                             <p className="font-ui text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                                Not applicable for this dataset:
+                                Excluded analysis for this run:
                             </p>
                             <p className="font-ui text-sm text-muted-foreground">
                                 {taskContract.blocked_agents.map(agent => {
@@ -272,21 +233,25 @@ export function NarrativeStream({
                     rehypePlugins={[rehypeHighlight]}
                     components={components}
                 >
-                    {content}
+                    {sanitizedContent}
                 </ReactMarkdown>
             </article>
 
             {/* Zero-Filler Mandate: Show message if content is suspiciously short */}
-            {content.length < 500 && (
-                <div className="mt-12 p-6 border border-muted rounded-lg bg-muted/20">
-                    <p className="font-ui text-sm text-muted-foreground text-center">
-                        <AlertTriangle className="w-4 h-4 inline mr-2" />
-                        Limited analysis available. Dataset may require additional fields or higher quality data for comprehensive insights.
-                    </p>
-                </div>
-            )}
         </div>
     );
+}
+
+function stripConfidenceSections(markdown: string) {
+    if (!markdown) return "";
+    const confidenceSection = /^##\s+.*confidence.*\n[\s\S]*?(?=^##\s+|\z)/gim;
+    const confidenceLine = /^.*confidence.*$/gim;
+    const certifiedLine = /^.*certified.*$/gim;
+    return markdown
+        .replace(confidenceSection, "")
+        .replace(confidenceLine, "")
+        .replace(certifiedLine, "")
+        .trim();
 }
 
 /**

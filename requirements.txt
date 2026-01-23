@@ -3,8 +3,8 @@
 fastapi
 uvicorn
 python-multipart
-pandas
-numpy
+pandas==2.2.3
+numpy==1.26.4
 scikit-learn
 scipy
 pydantic

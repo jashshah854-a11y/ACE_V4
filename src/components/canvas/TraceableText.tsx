@@ -57,7 +57,6 @@ interface TraceableClaimProps {
 
 export function TraceableClaim({
     evidenceId,
-    confidence,
     onClick,
     children,
 }: TraceableClaimProps) {
@@ -70,32 +69,13 @@ export function TraceableClaim({
             onClick={handleClick}
             className={cn(
                 "traceable-claim cursor-pointer transition-all duration-200 rounded px-1",
-                // High confidence: Solid teal underline
-                confidence === "high" && [
-                    "underline decoration-[hsl(var(--lab-signal))] decoration-2",
-                    "hover:bg-[hsl(var(--lab-signal))]/10",
-                ],
-                // Moderate confidence: Solid but lighter
-                confidence === "moderate" && [
-                    "underline decoration-[hsl(var(--lab-signal))]/70 decoration-2",
-                    "hover:bg-[hsl(var(--lab-signal))]/10",
-                ],
-                // Low confidence: Dashed amber underline
-                confidence === "low" && [
-                    "underline decoration-dashed decoration-[hsl(var(--lab-alert))] decoration-2",
-                    "hover:bg-[hsl(var(--lab-alert))]/10",
-                ]
+                "underline decoration-[hsl(var(--lab-signal))] decoration-2",
+                "hover:bg-[hsl(var(--lab-signal))]/10",
             )}
             style={{
                 textUnderlineOffset: "3px",
             }}
-            title={
-                confidence === "high"
-                    ? "High confidence - Click to see proof"
-                    : confidence === "moderate"
-                        ? "Moderate confidence - Click to see evidence"
-                        : "Low confidence - Treat as tentative"
-            }
+            title="Click to see proof"
         >
             {children}
         </span>

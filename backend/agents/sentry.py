@@ -31,39 +31,28 @@ class Sentry:
         df = self._load_base_frame()
 
         # Use universal anomaly detection
-        try:
-            anomalies_summary = detect_universal_anomalies(df, self.schema_map)
-            
-            # Format for output
-            # Sentry output expects "anomalies" as a list of dicts (rows)
-            # detect_universal_anomalies returns indices and a summary.
-            # We need to reconstruct the row data for the report.
-            
-            anomalies_list = []
-            if anomalies_summary["total_count"] > 0:
-                # We need to fetch the actual rows based on indices
-                # But detect_universal_anomalies doesn't return the rows directly to save memory?
-                # Wait, it returns "indices".
-                indices = anomalies_summary["indices"]
-                anomalies_list = df.iloc[indices].to_dict(orient="records")
-            
-            payload = {
-                "status": "ok",
-                "anomaly_count": anomalies_summary["total_count"],
-                "anomalies": anomalies_list[:100], # Limit to 100
-                "drivers": anomalies_summary.get("drivers", {}),
-                "role_deviations": anomalies_summary.get("role_deviations", {})
-            }
-            self.state.write("anomalies", payload)
-            
-        except Exception as e:
-            print(f"Sentry analysis failed: {e}")
-            self.state.write("anomalies", {
-                "status": "error", 
-                "reason": str(e),
-                "anomaly_count": 0,
-                "anomalies": []
-            })
+        anomalies_summary = detect_universal_anomalies(df, self.schema_map)
+
+        # Format for output
+        # Sentry output expects "anomalies" as a list of dicts (rows)
+        # detect_universal_anomalies returns indices and a summary.
+        # We need to reconstruct the row data for the report.
+        anomalies_list = []
+        if anomalies_summary["total_count"] > 0:
+            # We need to fetch the actual rows based on indices
+            # But detect_universal_anomalies doesn't return the rows directly to save memory?
+            # Wait, it returns "indices".
+            indices = anomalies_summary["indices"]
+            anomalies_list = df.iloc[indices].to_dict(orient="records")
+
+        payload = {
+            "status": "ok",
+            "anomaly_count": anomalies_summary["total_count"],
+            "anomalies": anomalies_list[:100], # Limit to 100
+            "drivers": anomalies_summary.get("drivers", {}),
+            "role_deviations": anomalies_summary.get("role_deviations", {})
+        }
+        self.state.write("anomalies", payload)
 
     def _load_base_frame(self) -> pd.DataFrame:
         run_config = self.state.read("run_config") or {}
@@ -83,17 +72,7 @@ class Sentry:
         if Path(data_path).exists():
              return smart_load_dataset(data_path, config=config, fast_mode=fast_mode, prefer_parquet=True)
 
-        return pd.DataFrame()
-
-
-    def fallback(self, error):
-        print(f"Sentry fallback triggered: {error}")
-        return {
-            "status": "fallback",
-            "reason": str(error),
-            "anomaly_count": 0,
-            "anomalies": []
-        }
+        raise FileNotFoundError("Active dataset not found for anomaly detection")
 
 
 def main():
@@ -114,8 +93,6 @@ def main():
         agent.run()
     except Exception as e:
         print(f"[ERROR] Sentry agent failed: {e}")
-        fallback_output = agent.fallback(e)
-        state.write("anomalies", fallback_output)
         sys.exit(1)
 
 

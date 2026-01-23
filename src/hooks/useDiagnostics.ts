@@ -8,6 +8,8 @@ interface DiagnosticsResponse {
   identity?: any;
   confidence?: any;
   reasons?: string[];
+  regression_status?: "not_started" | "running" | "success" | "failed";
+  warnings?: Array<{ code: string; message: string; details?: any }>;
 }
 
 export function useDiagnostics(runId?: string) {

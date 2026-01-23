@@ -1,6 +1,7 @@
 import pandas as pd
 import difflib
 from typing import List, Optional
+from core.datetime_utils import coerce_datetime
 
 def normalize_dates(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -14,7 +15,7 @@ def normalize_dates(df: pd.DataFrame) -> pd.DataFrame:
         if any(k in col_lower for k in date_keywords):
             try:
                 # Attempt conversion
-                df[col] = pd.to_datetime(df[col], errors='coerce')
+                df[col] = coerce_datetime(df[col])
             except:
                 pass
                 

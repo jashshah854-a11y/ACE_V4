@@ -72,14 +72,6 @@ export function MetricsCards({ metrics, className }: MetricsCardsProps) {
             icon: Shield,
             color: metrics.anomalyCount && metrics.anomalyCount > 0 ? "text-orange-600" : "text-green-600",
         },
-        {
-            title: "Confidence Level",
-            value: metrics.confidenceLevel,
-            suffix: "%",
-            icon: TrendingUp,
-            color: getConfidenceColor(metrics.confidenceLevel),
-            trend: getTrend(metrics.confidenceLevel, 80),
-        },
     ];
 
     // Filter out cards with no data
@@ -175,47 +167,4 @@ function getTrend(value: number | undefined, threshold: number): 'up' | 'down' |
     if (value >= threshold + 5) return 'up';
     if (value <= threshold - 5) return 'down';
     return 'neutral';
-}
-
-function getConfidenceColor(confidence: number | undefined): string {
-    if (confidence === undefined) return "text-gray-600";
-    if (confidence >= 85) return "text-green-600";
-    if (confidence >= 60) return "text-yellow-600";
-    return "text-orange-600";
-}
-
-function renderProgressRing(value: number, isPercentage: boolean) {
-    if (!isPercentage) return null;
-
-    const percentage = Math.min(100, Math.max(0, value));
-    const circumference = 2 * Math.PI * 20; // radius = 20
-    const strokeDashoffset = circumference - (percentage / 100) * circumference;
-
-    return (
-        <div className="mt-3">
-            <svg className="w-full h-2" viewBox="0 0 100 6">
-                <rect
-                    x="0"
-                    y="0"
-                    width="100"
-                    height="6"
-                    rx="3"
-                    className="fill-muted"
-                />
-                <rect
-                    x="0"
-                    y="0"
-                    width={`${percentage}%`}
-                    height="6"
-                    rx="3"
-                    className={cn(
-                        "transition-all duration-500",
-                        percentage >= 90 ? "fill-green-500" :
-                            percentage >= 70 ? "fill-yellow-500" :
-                                "fill-red-500"
-                    )}
-                />
-            </svg>
-        </div>
-    );
 }

@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Users, AlertTriangle, DollarSign, Activity, Info } from "lucide-react";
 import { BusinessIntelligence } from "@/types/reportTypes";
 import { cn } from "@/lib/utils";
+import { isValidArtifact } from "@/lib/artifactGuard";
 
 interface BusinessPulseProps {
     data: BusinessIntelligence;
@@ -10,7 +11,7 @@ interface BusinessPulseProps {
 }
 
 export function BusinessPulse({ data, onViewEvidence }: BusinessPulseProps) {
-    if (!data?.available) return null;
+    if (!data || !isValidArtifact(data)) return null;
 
     const { value_metrics, clv_proxy, churn_risk, segment_value, insights } = data;
 

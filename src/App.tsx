@@ -18,6 +18,7 @@ import RunSummaryPage from "./pages/RunSummaryPage";
 import QuickSummaryView from "./pages/QuickSummaryView";  // NEW: Quick View mode
 import LandingPage from "./pages/LandingPage";
 import LabPage from "./pages/LabPage";
+import DiagnosticsPage from "./pages/DiagnosticsPage";
 import { SimulationSafeModeBanner } from "@/components/trust/SafeModeBanner";
 
 import { SimulationProvider } from "./context/SimulationContext";
@@ -48,6 +49,7 @@ const App = () => (
                 <Route path="/pipeline" element={<Pipeline />} />
                 <Route path="/lab" element={<LabPage />} />
                 <Route path="/lab/:runId" element={<LabPage />} />
+                <Route path="/diagnostics/:runId" element={<DiagnosticsPage />} />
                 <Route path="/about" element={<FoundersLetter />} />
                 <Route path="/logs/:runId" element={<Pipeline />} /> {/* Fallback to Pipeline view for logs */}
                 <Route path="/demo/pipeline-status" element={<DemoPipelineStatus />} />

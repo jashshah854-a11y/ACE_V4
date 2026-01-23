@@ -20,10 +20,10 @@ export function DatasetIdentityCard({ identity }: DatasetIdentityCardProps) {
                         <Activity className="w-5 h-5 text-teal-500" />
                         DATASET IDENTITY CARD
                     </h3>
-                    <p className="text-xs text-slate-400 mt-1">Sentry Verification Complete • ID: {Math.random().toString(36).substring(7).toUpperCase()}</p>
+                    <p className="text-xs text-slate-400 mt-1">Ingestion complete - ID: {Math.random().toString(36).substring(7).toUpperCase()}</p>
                 </div>
                 <div className="text-xs px-2 py-1 rounded bg-teal-950/30 text-teal-400 border border-teal-800/50">
-                    VERIFIED source
+                    Source loaded
                 </div>
             </div>
 

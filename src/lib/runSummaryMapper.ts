@@ -7,7 +7,7 @@
 
 import type { RunSummaryViewModel, RunMode, SCQANarrative } from '@/types/RunSummaryViewModel';
 import { mapBackendSignalsToIssues } from './issueRegistry';
-import { normalizeKPIs, translateConfidence } from './kpiNormalizer';
+import { normalizeKPIs } from './kpiNormalizer';
 import { parseSCQABlocks } from './reportParser';
 
 /**
@@ -74,12 +74,6 @@ function generateExecutiveBullets(
     const columns = rawPayload.column_count || 0;
     bullets.push(`Analyzed ${rows.toLocaleString()} records across ${columns} features`);
 
-    // Add confidence note
-    const confidence = rawPayload.confidence || 0;
-    if (confidence < 0.7) {
-        bullets.push(`Confidence is ${translateConfidence(confidence)}; review limitations carefully`);
-    }
-
     // Add governance note
     if (governanceBlocks.length > 0) {
         bullets.push(`${governanceBlocks.length} feature(s) disabled by governance`);
@@ -134,16 +128,6 @@ export function mapToRunSummaryViewModel(
     // 5. Extract SCQA narrative
     const scqaNarrative = extractSCQANarrative(rawPayload.report_content || '');
 
-    // 6. Determine trust level
-    const confidence = rawPayload.confidence || rawPayload.data_confidence || 0;
-    const trustLabel = translateConfidence(confidence);
-
-    // Updated trust guidance (Phase 3: Copy Precision)
-    const trustGuidance = {
-        high: 'Suitable for planning and evaluation',
-        moderate: 'Use for directional insight, not forecasts or commitments',
-        low: 'Results are exploratory only and should not inform decisions',
-    }[trustLabel];
     const hasTimeField = rawPayload.has_time_field || false;
     const timeCoverage = hasTimeField ? 'sufficient' : 'unknown';
 
@@ -182,12 +166,6 @@ export function mapToRunSummaryViewModel(
                 : mode === 'limitations'
                     ? 'Limited analysis mode'
                     : 'Run failed',
-        },
-
-        trust: {
-            score: confidence,
-            label: trustLabel,
-            guidance: trustGuidance,
         },
 
         dataset: {

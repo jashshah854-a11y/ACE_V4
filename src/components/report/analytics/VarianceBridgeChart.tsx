@@ -1,10 +1,14 @@
 ﻿import type { BusinessIntelligence } from "@/types/reportTypes";
+import { isValidArtifact } from "@/lib/artifactGuard";
 
 interface VarianceBridgeChartProps {
   data?: BusinessIntelligence;
 }
 
 export function VarianceBridgeChart({ data }: VarianceBridgeChartProps) {
+  if (!data || !isValidArtifact(data)) {
+    return null;
+  }
   const segments = data?.segment_value;
   const total = data?.value_metrics?.total_value ?? 0;
   if (!segments || !segments.length || !total) {

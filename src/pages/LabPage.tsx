@@ -128,7 +128,31 @@ const LabPage = () => {
             </div>
         );
     }
-    if (reportQuery.isLoading) return <div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin" /></div>;
+    if (reportQuery.isLoading || reportData.manifestLoading) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <Loader2 className="animate-spin" />
+            </div>
+        );
+    }
+
+    if (!reportData.manifestCompatible) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <div className="text-center max-w-md">
+                    <Beaker className="w-10 h-10 text-amber-500 mx-auto mb-4" />
+                    <h1 className="text-lg font-semibold mb-2">Manifest Incompatible</h1>
+                    <p className="text-sm text-muted-foreground">
+                        This run requires a newer diagnostics manifest. Please refresh after updating.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (reportData.renderPolicy && !reportData.renderPolicy.allow_simulation) {
+        return null;
+    }
 
     // Extract numeric columns for simulation
     const numericColumns = reportData?.profile?.numericColumns ?? [];

@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, Minus, Lightbulb, ArrowRight, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SignalWidget } from "../trust/SignalWidget";
 import { ConfidenceBadge } from "./ConfidenceBadge";
 import { TruthCheck } from "./feedback/TruthCheck";
 
@@ -9,7 +8,6 @@ interface HeroInsightPanelProps {
     keyInsight: string;
     impact: "high" | "medium" | "low";
     trend: "positive" | "negative" | "neutral";
-    confidence: number;
     dataQuality: number;
     recommendation: string;
     context?: string;
@@ -19,7 +17,6 @@ export function HeroInsightPanel({
     keyInsight,
     impact,
     trend,
-    confidence,
     dataQuality,
     recommendation,
     context
@@ -32,7 +29,6 @@ export function HeroInsightPanel({
     // Safe defaults for all values
     const safeImpact = impact || "medium";
     const safeTrend = trend || "neutral";
-    const safeConfidence = typeof confidence === 'number' ? confidence : 0;
     const safeDataQuality = typeof dataQuality === 'number' ? dataQuality : 0;
     const safeRecommendation = recommendation || "Review the data for more insights";
 
@@ -131,26 +127,6 @@ export function HeroInsightPanel({
 
                             {/* Right: Quality metrics */}
                             <div className="flex items-center gap-6">
-                                <div className="text-right">
-                                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-2 justify-end">
-                                        <span>Confidence</span>
-                                        <SignalWidget score={safeConfidence / 100} compact={true} />
-                                    </div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
-                                            <motion.div
-                                                initial={{ width: 0 }}
-                                                animate={{ width: `${safeConfidence}%` }}
-                                                transition={{ duration: 0.8, delay: 0.2 }}
-                                                className={cn(
-                                                    "h-full rounded-full",
-                                                    safeConfidence >= 70 ? "bg-teal-500" : safeConfidence >= 50 ? "bg-copper-400" : "bg-muted-foreground"
-                                                )}
-                                            />
-                                        </div>
-                                        <span className="text-sm font-bold tabular-nums">{safeConfidence}%</span>
-                                    </div>
-                                </div>
                                 <div className="text-right">
                                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-2 justify-end">
                                         <span>Data Quality</span>

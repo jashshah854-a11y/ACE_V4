@@ -27,19 +27,10 @@ class InterpreterAgent:
         try:
             schema_map = SchemaMap(**schema_map_dict)
         except Exception as e:
-            print(f"Schema validation warning: {e}")
-            schema_map = schema_map_dict
+            raise ValueError(f"Schema validation failed: {e}")
 
         self.state.write("schema_map", schema_map)
         print("Interpreter complete.")
-
-    def fallback(self, error):
-        print(f"Interpreter failed: {error}")
-        return {
-            "semantic_roles": {},
-            "domain_guess": "unknown",
-            "notes": f"Fallback due to error: {error}"
-        }
 
 def main():
     if len(sys.argv) < 2:
@@ -54,8 +45,6 @@ def main():
         agent.run()
     except Exception as e:
         print(f"[ERROR] Interpreter agent failed: {e}")
-        fallback_output = agent.fallback(e)
-        state.write("schema_map", fallback_output)
         sys.exit(1)
 
 if __name__ == "__main__":

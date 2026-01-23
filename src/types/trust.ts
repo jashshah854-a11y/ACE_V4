@@ -1,30 +1,24 @@
-export type TrustBand = "certified" | "conditional" | "caution";
+export type TrustComponentStatus = "high" | "medium" | "low" | "unknown";
 
-export interface TrustComponents {
-  dataQuality: number;
-  validation: number;
-  sampleSize: number;
-  stability: number;
-  featureDominance: number;
-  assumptionRisk: number;
+export interface TrustComponent {
+  score: number | null;
+  status: TrustComponentStatus;
+  evidence: string[];
+  notes: string;
 }
 
-export interface TrustCertification {
-  certified: boolean;
-  rulesetVersion: string;
-  inputs: Record<string, number | boolean | string>;
-  certifiedAt?: string;
-  expiryCondition?: string;
-}
-
-export interface TrustScore {
-  score: number;
-  band: TrustBand;
-  factors: string[];
-  positives: string[];
-  negatives: string[];
-  risks: string[];
-  improvements: string[];
-  components: TrustComponents;
-  certification: TrustCertification;
+export interface TrustModel {
+  overall_confidence: number | null;
+  components: {
+    data_quality: TrustComponent;
+    model_fit: TrustComponent;
+    stability: TrustComponent;
+    validation_strength: TrustComponent;
+    leakage_risk: TrustComponent;
+  };
+  applied_caps?: Array<{
+    code: string;
+    max: number;
+    evidence?: string[];
+  }>;
 }

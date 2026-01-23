@@ -16,6 +16,7 @@ from core.schema import SchemaMap, ensure_schema_map
 from core.data_loader import smart_load_dataset
 from ace_v4.performance.config import PerformanceConfig
 from anti_gravity.core.regression import compute_regression_insights
+from core.analytics_validation import apply_artifact_validation
 
 
 from core.scope_enforcer import ScopeEnforcer, ScopeViolationError
@@ -60,34 +61,39 @@ class RegressionAgent:
             include_categoricals=bool(run_config.get("include_categoricals", False)),
             fast_mode=bool(run_config.get("fast_mode", False)),
         )
+        if insights.get("status") != "ok":
+            reason = insights.get("reason", "regression skipped")
+            log_warn(f"Regression agent skipped: {reason}")
+            raise RuntimeError(reason)
         if run_config:
             insights.setdefault("applied_config", run_config)
         
-        # Analyst Core: Confidence Scoring
-        r2 = insights.get("metrics", {}).get("r2")
-        if r2 is not None:
-            insights["confidence_score"] = max(0.1, min(1.0, float(r2)))
-            insights["confidence_reasoning"] = f"Regression model fit (R2={r2:.2f})."
-        else:
-             insights["confidence_score"] = 0.5
-             insights["confidence_reasoning"] = "No R2 score available for regression."
-             
-        self.state.write("regression_insights", insights)
+        insights["status"] = "success"
+        validated = apply_artifact_validation("regression_insights", insights)
+        if not validated:
+            log_warn("Regression validation failed: metrics out of bounds.")
+            raise RuntimeError("Regression metrics failed validation")
 
-        if insights.get("status") == "ok":
+        insights = validated
+
+        for warning in insights.get("warnings", []):
+            warning_type = warning.get("type")
+            if warning_type:
+                self.state.add_warning(
+                    warning_type,
+                    warning.get("note") or f"{warning_type}: {warning.get('metric')}",
+                    details=warning,
+                )
+
+        self.state.write("regression_insights_pending", insights)
+
+        if insights.get("status") == "success":
             target = insights.get('target_column') or 'target'
             r2_score = insights.get('metrics', {}).get('r2')
             r2_display = f"{r2_score:.2f}" if isinstance(r2_score, (int, float)) else "n/a"
             log_ok(f"Regression agent modeled {target} (R^2={r2_display})")
         else:
             log_warn(f"Regression agent skipped: {insights.get('reason', 'unknown reason')}")
-
-    def fallback(self, error):
-        log_warn(f"Regression agent fallback triggered: {error}")
-        payload = {"status": "error", "reason": str(error)}
-        self.state.write("regression_insights", payload)
-        return payload
-
 
 def main():
     if len(sys.argv) < 2:
@@ -104,7 +110,6 @@ def main():
         agent.run()
     except Exception as exc:
         print(f"[ERROR] Regression agent failed: {exc}")
-        agent.fallback(exc)
         sys.exit(1)
 
 

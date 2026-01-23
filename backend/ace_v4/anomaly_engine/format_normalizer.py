@@ -1,6 +1,7 @@
 import pandas as pd
 from typing import List
 from .models import ColumnMeta
+from core.datetime_utils import coerce_datetime
 
 class FormatNormalizer:
     def normalize(self, df: pd.DataFrame, metadata: List[ColumnMeta]) -> pd.DataFrame:
@@ -25,4 +26,4 @@ class FormatNormalizer:
         return pd.to_numeric(clean, errors='coerce')
 
     def _normalize_dates(self, series: pd.Series) -> pd.Series:
-        return pd.to_datetime(series, errors='coerce')
+        return coerce_datetime(series)

@@ -26,7 +26,6 @@ const SAFE_VIEW_MODEL: ReportViewModel = {
     executiveBrief: [], // String array format
     meta: {
         dataQuality: 0,
-        confidence: 0,
         runId: "unknown",
         date: new Date().toLocaleDateString()
     },
@@ -88,7 +87,6 @@ function createSafeDefaults(): ReportDataResult {
         mondayActions: [],
         segmentComparisonData: [],
         keyTakeaways: [],
-        confidenceValue: 0,
         dataQualityValue: 0,
         limitationsMode: false,
         safeMode: false,
@@ -104,7 +102,7 @@ function createSafeDefaults(): ReportDataResult {
         uncertaintySignals: [],
         narrativeSummary: { wins: [], risks: [], meaning: [] },
         runContext: { mode: "standard", freshness: "Unknown", scopeLimits: [] },
-        identityStats: { rows: 0, completeness: 0, confidence: 0 },
+        identityStats: { rows: 0, completeness: 0 },
         highlights: [],
         primaryQuestion: "",
         outOfScopeDimensions: [],
@@ -115,8 +113,9 @@ function createSafeDefaults(): ReportDataResult {
         targetCandidate: undefined,
         scopeConstraints: [],
         guidanceNotes: [],
+        runWarnings: [],
         governingThought: "",
-        governingTrust: undefined,
+        trustModel: null,
         narrativeModules: [],
         appendixModules: [],
         syntheticTimeColumn: undefined,
@@ -125,6 +124,10 @@ function createSafeDefaults(): ReportDataResult {
         diagnostics: null,
         modelArtifacts: null,
         viewModel: SAFE_VIEW_MODEL,
-        profile: { columns: {}, numericColumns: [] }
+        profile: { columns: {}, numericColumns: [] },
+        runManifest: null,
+        manifestLoading: false,
+        manifestCompatible: false,
+        renderPolicy: undefined
     };
 }

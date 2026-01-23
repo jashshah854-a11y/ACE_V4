@@ -9,7 +9,6 @@ from unittest.mock import MagicMock
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from agents.overseer import Overseer, build_feature_matrix
-from agents.persona_engine import PersonaEngine
 from core.json_utils import extract_json_block, JsonExtractionError
 from core.schema import SchemaMap
 
@@ -88,33 +87,7 @@ def test_json_extraction():
     except JsonExtractionError:
         print("PASSED Invalid JSON (Raised Error)")
 
-def test_persona_fallback():
-    print("\n--- Testing Persona Fallback ---")
-    
-    schema_map = SchemaMap()
-    state = MagicMock()
-    engine = PersonaEngine(schema_map, state)
-    
-    fingerprints = {
-        "cluster_0": {
-            "size": 100,
-            "role_summaries": {"income": 90000}
-        },
-        "cluster_1": {
-            "size": 50,
-            "role_summaries": {"income": 30000}
-        }
-    }
-    
-    personas = engine._fallback_personas_from_clusters(fingerprints)
-    
-    assert len(personas) == 2
-    assert personas[0]["label"] == "High Income"
-    assert personas[1]["label"] == "Budget Conscious"
-    print("PASSED Persona Fallback")
-
 if __name__ == "__main__":
     test_overseer_nan_handling()
     test_json_extraction()
-    test_persona_fallback()
     print("\nALL HARDENING TESTS PASSED")

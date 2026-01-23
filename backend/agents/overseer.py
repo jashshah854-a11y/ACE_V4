@@ -14,7 +14,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from utils.logging import log_launch, log_ok, log_warn
 from core.state_manager import StateManager
-from core.analytics import run_universal_clustering, fallback_segmentation
+from core.analytics import run_universal_clustering
 from core.schema import SchemaMap, ensure_schema_map
 from core.auto_features import auto_feature_groups
 from core.data_quality import compute_data_quality
@@ -24,7 +24,6 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
 from core.explainability import persist_evidence
 from core.scope_enforcer import ScopeEnforcer, ScopeViolationError
-from core.cache import RailwayClusteringCache
 
 def build_feature_matrix(df, schema_map):
     resolved_schema = ensure_schema_map(schema_map)
@@ -49,7 +48,6 @@ class Overseer:
         self.schema_map = ensure_schema_map(schema_map)
         self.state = state
         self.name = "Overseer"
-        self.cache = RailwayClusteringCache()  # Initialize cache
 
     def run(self):
         log_launch(f"Triggering ACE {self.name}...")
@@ -68,8 +66,7 @@ class Overseer:
             data_path = self.state.get_file_path("cleaned_uploaded.csv")
 
         if not Path(data_path).exists():
-            # Fallback
-            data_path = "data/customer_data.csv"
+            raise ValueError(f"Dataset not found at {data_path}")
 
         try:
             print(f"[Overseer] Loading CSV from {data_path}")
@@ -91,24 +88,6 @@ class Overseer:
             log_warn(f"Scope lock blocked Overseer: {exc}")
             raise
 
-        # Check cache before clustering
-        fingerprint = self.cache.get_fingerprint(df)
-        print(f"[Overseer] Dataset fingerprint: {fingerprint[:16]}...")
-        
-        cached_results = self.cache.get(fingerprint)
-        if cached_results and self.cache.validate(fingerprint, df):
-            print(f"[Overseer] Cache HIT! Using cached clustering results")
-            
-            # Save cached results to state
-            if self.state:
-                self.state.write("overseer_output", cached_results)
-            
-            log_ok("Overseer Complete (from cache)")
-            return "overseer done (cached)"
-
-        # Cache miss - run clustering
-        print(f"[Overseer] Cache MISS - running fresh clustering...")
-        
         # 1. Run Universal Clustering
         print(f"[Overseer] Starting clustering...")
         try:
@@ -126,15 +105,6 @@ class Overseer:
                 "sizes": clustering_results.get("sizes", []),
                 "feature_importance": clustering_results.get("feature_importance", []),
                 "confidence_interval": clustering_results.get("confidence_interval"),
-                # Analyst Core: Confidence Scoring
-                "confidence_score": round((stats.get("silhouette", 0) + 1) / 2 * 0.8 + (stats.get("data_quality", 0) * 0.2), 2),
-                "confidence_reasoning": f"Silhouette score {stats.get('silhouette', 0):.2f} indicates cluster separation.",
-                # Add metadata for cache validation
-                "_metadata": {
-                    "row_count": len(df),
-                    "columns": df.columns.tolist(),
-                    "fingerprint": fingerprint,
-                },
             }
 
             evidence_id = None
@@ -153,56 +123,12 @@ class Overseer:
                 with open("data/overseer_output.json", "w") as f:
                     json.dump(payload, f, indent=2)
 
-            # Cache results for future runs
-            self.cache.set(fingerprint, payload)
-            print(f"[Overseer] Results cached for future runs")
-
             log_ok("Overseer V3 Complete. Output saved.")
             return "overseer done"
 
         except Exception as e:
-            log_warn(f"Clustering failed: {e}. Using fallback.")
-            df["cluster"] = fallback_segmentation(df)
-
-            # Create minimal fallback output
-            rows_payload = df.to_dict(orient="records")
-            fallback_results = {
-                "stats": {"k": 1, "silhouette": 0.0, "data_quality": compute_data_quality(df)},
-                "fingerprints": {},
-                "labels": [0] * len(df),
-                "sizes": [len(df)],
-                "rows": rows_payload
-            }
-
-            if self.state:
-                self.state.write("overseer_output", fallback_results)
-
-            return "overseer done (fallback)"
-
-    def fallback(self, error):
-        log_warn(f"Overseer fallback triggered: {error}")
-        # Create minimal fallback output
-        try:
-            data_path = self.state.get_file_path("cleaned_uploaded.csv")
-            config = PerformanceConfig()
-            df = smart_load_dataset(
-                data_path,
-                config=config,
-                max_rows=10000,
-                fast_mode=True,
-                prefer_parquet=True,
-            )
-            df["cluster"] = 0
-            rows = df.to_dict(orient="records")
-        except:
-            rows = []
-
-        return {
-            "stats": {"k": 1, "silhouette": 0.0, "data_quality": 0.0},
-            "fingerprints": {},
-            "rows": rows,
-            "error": str(error)
-        }
+            log_warn(f"Clustering failed: {e}.")
+            raise
 
 
 def main():
@@ -222,8 +148,6 @@ def main():
         agent.run()
     except Exception as e:
         print(f"[ERROR] Overseer agent failed: {e}")
-        fallback_output = agent.fallback(e)
-        state.write("overseer_output", fallback_output)
         sys.exit(1)
 
 

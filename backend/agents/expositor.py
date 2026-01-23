@@ -14,6 +14,7 @@ from core.schema import SchemaMap
 from core.enhanced_analytics import run_enhanced_analytics
 from core.data_loader import smart_load_dataset
 from ace_v4.performance.config import PerformanceConfig
+from core.analytics_validation import apply_artifact_validation
 
 class Expositor:
     def __init__(self, schema_map: SchemaMap, state: StateManager):
@@ -39,6 +40,7 @@ class Expositor:
         limitations = self.state.read("limitations") or []
         blocked_agents = set(validation.get("blocked_agents") or [])
         validation_notes = validation.get("notes") or []
+        regression_status = self.state.read("regression_status") or "not_started"
 
         allowed_sections = set(task_contract.get("allowed_sections", []))
         insights_allowed = "insights" in allowed_sections and validation.get("allow_insights", True)
@@ -67,6 +69,13 @@ class Expositor:
 
         personas = personas_data.get("personas", [])
         strategies = strategies_data.get("strategies", [])
+
+        def _artifact_ready(artifact: dict | None) -> bool:
+            return bool(
+                isinstance(artifact, dict)
+                and artifact.get("valid") is True
+                and artifact.get("status") == "success"
+            )
 
         # Run Enhanced Analytics
         enhanced_analytics = {}
@@ -101,8 +110,14 @@ class Expositor:
                     cluster_labels,
                     state_manager=self.state,
                 )
-                self.state.write("enhanced_analytics", enhanced_analytics)
-                log_ok("Enhanced analytics completed")
+                validated = apply_artifact_validation("enhanced_analytics", enhanced_analytics)
+                if validated:
+                    enhanced_analytics = validated
+                    self.state.write("enhanced_analytics_pending", enhanced_analytics)
+                    log_ok("Enhanced analytics completed")
+                else:
+                    enhanced_analytics = {}
+                    log_warn("Enhanced analytics failed validation; artifacts discarded")
             else:
                 log_warn("Dataset not found, skipping enhanced analytics")
         except Exception as e:
@@ -126,31 +141,18 @@ class Expositor:
             "detected": False,
         }
         
-        # CRITICAL FIX: Read quality score with proper fallback chain
-        # Priority: 1. Scanner (where we set min floor of 0.4)
-        #           2. Overseer stats (if available)  
-        #           3. Minimum floor fallback
         scan_output = self.state.read("schema_scan_output") or {}
-        quality_score = scan_output.get("quality_score")  # From scanner with min floor
-        
+        quality_score = scan_output.get("quality_score")
         if quality_score is None:
-            # Fallback to overseer if scanner didn't set it
-            quality_score = overseer.get("stats", {}).get("data_quality")
-        
-        if quality_score is None or quality_score == "N/A":
-            # Ultimate fallback: minimum floor
-            quality_score = 0.4
-            print(f"[EXPOSITOR WARNING] Quality score unavailable, using minimum floor: {quality_score}", flush=True)
+            raise RuntimeError("Quality score missing from schema_scan_output")
         
         # CRITICAL: Ensure JSON-safe numeric value (fix for "No number after minus sign" error)
         try:
             quality_score = float(quality_score)
-            # Replace NaN or negative values
             if quality_score != quality_score or quality_score < 0:  # NaN check
-                quality_score = 0.4
+                raise ValueError("Quality score is NaN or negative")
         except (ValueError, TypeError):
-            print(f"[EXPOSITOR ERROR] Invalid quality score format: {quality_score}, using fallback", flush=True)
-            quality_score = 0.4
+            raise ValueError(f"Invalid quality score format: {quality_score}")
         
         print(f"[EXPOSITOR DEBUG] Quality score for report: {quality_score}", flush=True)
 
@@ -167,11 +169,6 @@ class Expositor:
             print(f"[EXPOSITOR] Downgrading confidence due to blocked agents: {blocked_agents}")
             final_confidence = min(final_confidence, 0.8)
         
-        # Downgrade if fallback mode active
-        if self._check_fallback(overseer, personas, strategies):
-            print("[EXPOSITOR] Downgrading confidence due to fallback mode")
-            final_confidence = min(final_confidence, 0.6)
-
         metadata_json = {
             "run_id": str(run_id),
             "generated": date_str,
@@ -222,14 +219,6 @@ class Expositor:
             for note in data_type["notes"]:
                 lines.append(f"- {note}")
         lines.append("")
-
-        # Fallback Warning
-        if self._check_fallback(overseer, personas, strategies):
-            lines.append("> [!WARNING]")
-            lines.append("> **Fallback Mode Active**")
-            lines.append("> Some parts of the engine ran in fallback mode due to missing schema or insufficient feature depth.")
-            lines.append("> ACE automatically switched to backup intelligence.")
-            lines.append("")
 
         # Domain Context
         domain = self.schema_map.domain_guess.domain if self.schema_map.domain_guess else "General"
@@ -293,15 +282,18 @@ class Expositor:
         # Enhanced Analytics Sections
         if should_emit_insights and enhanced_analytics and "overseer" not in blocked_agents:
             # Data Quality & Overview
-            if enhanced_analytics.get("quality_metrics", {}).get("available"):
-                lines.extend(self._quality_metrics_section(enhanced_analytics["quality_metrics"]))
+            quality_metrics = enhanced_analytics.get("quality_metrics")
+            if _artifact_ready(quality_metrics):
+                lines.extend(self._quality_metrics_section(quality_metrics))
 
             # Statistical Analysis
-            if enhanced_analytics.get("correlation_analysis", {}).get("available"):
-                lines.extend(self._correlation_section(enhanced_analytics["correlation_analysis"]))
+            correlation_analysis = enhanced_analytics.get("correlation_analysis")
+            if _artifact_ready(correlation_analysis):
+                lines.extend(self._correlation_section(correlation_analysis))
 
-            if enhanced_analytics.get("distribution_analysis", {}).get("available"):
-                lines.extend(self._distribution_section(enhanced_analytics["distribution_analysis"]))
+            distribution_analysis = enhanced_analytics.get("distribution_analysis")
+            if _artifact_ready(distribution_analysis):
+                lines.extend(self._distribution_section(distribution_analysis))
 
         if not should_emit_insights:
             lines.append("## Behavioral Clusters")
@@ -314,28 +306,27 @@ class Expositor:
         elif overseer:
             lines.extend(self._clusters_section(overseer))
 
-        if not should_emit_insights:
-            lines.append("## Outcome Modeling")
-            lines.append("Outcome modeling suppressed due to confidence/contract/validation gates.")
-            lines.append("")
-        elif "regression" in blocked_agents:
-            lines.append("## Outcome Modeling")
-            lines.append("Regression skipped due to validation guard.")
-            lines.append("")
-        elif regression:
+        if regression_status == "success" and regression:
             lines.extend(self._regression_section(regression))
-        else:
-            lines.append("## Outcome Modeling")
-            lines.append("No regression results were produced.")
-            lines.append("")
 
         # Business Intelligence
-        if should_emit_insights and enhanced_analytics and enhanced_analytics.get("business_intelligence", {}).get("available") and "fabricator" not in blocked_agents:
-            lines.extend(self._business_intelligence_section(enhanced_analytics["business_intelligence"]))
+        business_intelligence = enhanced_analytics.get("business_intelligence") if enhanced_analytics else None
+        if (
+            should_emit_insights
+            and _artifact_ready(business_intelligence)
+            and "fabricator" not in blocked_agents
+        ):
+            lines.extend(self._business_intelligence_section(business_intelligence))
 
         # Feature Importance
-        if should_emit_insights and enhanced_analytics and enhanced_analytics.get("feature_importance", {}).get("available") and "regression" not in blocked_agents:
-            lines.extend(self._feature_importance_section(enhanced_analytics["feature_importance"]))
+        feature_importance = enhanced_analytics.get("feature_importance") if enhanced_analytics else None
+        if (
+            should_emit_insights
+            and regression_status == "success"
+            and _artifact_ready(feature_importance)
+            and "regression" not in blocked_agents
+        ):
+            lines.extend(self._feature_importance_section(feature_importance))
 
         if not should_emit_insights:
             lines.append("## Generated Personas & Strategies")
@@ -362,7 +353,7 @@ class Expositor:
         report = "\n".join(lines)
         
         # Save Report
-        report_path = self.state.get_file_path("final_report.md")
+        report_path = self.state.get_file_path("final_report.pending.md")
         
         # LOGGING: Explicitly log the target path
         log_info(f"Saving final report to: {report_path}")
@@ -378,7 +369,7 @@ class Expositor:
             log_warn(f"Failed to write report file: {e}")
             raise e
             
-        self.state.write("final_report", report)
+        self.state.write("final_report_pending", report)
         
         # Verify file existence
         if Path(report_path).exists():
@@ -388,16 +379,6 @@ class Expositor:
              log_warn(f"Expositor V3 Complete but report file missing at {report_path}")
              
         return "expositor done"
-
-    def _check_fallback(self, overseer, personas, strategies):
-        # specific checks for fallback indicators
-        if overseer.get("stats", {}).get("k") == 1 and overseer.get("stats", {}).get("silhouette") == 0.0:
-            return True
-        # Check if personas have fallback reasoning
-        for p in personas:
-            if "Fallback" in p.get("reasoning", ""):
-                return True
-        return False
 
     def _summary(self, overseer, personas, sentry, regression, validation=None, data_type=None):
         parts = []
@@ -426,7 +407,7 @@ class Expositor:
         if sentry and sentry.get("anomaly_count", 0) > 0:
             parts.append(f"Sentry flagged {sentry['anomaly_count']} anomalous records for review.")
 
-        if regression and regression.get("status") == "ok":
+        if regression and regression.get("status") == "success":
             metrics = regression.get("metrics", {})
             r2 = metrics.get("r2")
             target = regression.get("target_column", "the outcome")
@@ -457,7 +438,7 @@ class Expositor:
         lines = []
         lines.append("## Outcome Modeling")
         status = regression.get("status")
-        if status != "ok":
+        if status != "success":
             reason = regression.get("reason", "Regression modeling was skipped.")
             lines.append(f"Regression modeling skipped: {reason}.")
             lines.append("")
@@ -754,10 +735,6 @@ class Expositor:
 
         return lines
 
-    def fallback(self, error):
-        log_warn(f"Expositor fallback triggered: {error}")
-        return f"Report generation failed: {error}"
-
 def main():
     if len(sys.argv) < 2:
         print("Usage: python expositor.py <run_path>")
@@ -768,67 +745,25 @@ def main():
     
     # Load Schema
     schema_data = state.read("schema_map")
-    fallback_kwargs = {"semantic_roles": {}, "domain_guess": {"domain": "unknown", "confidence": 0.0}}
     if not schema_data:
-        schema_map = SchemaMap(**fallback_kwargs)
+        print("[ERROR] Expositor requires schema_map but none was found.")
+        sys.exit(1)
+
+    if isinstance(schema_data, dict):
+        try:
+            schema_map = SchemaMap(**schema_data)
+        except Exception as err:
+            print(f"[ERROR] Invalid schema_map payload: {err}")
+            sys.exit(1)
     else:
-        if isinstance(schema_data, dict):
-             try:
-                schema_map = SchemaMap(**schema_data)
-             except Exception:
-                schema_map = SchemaMap(**fallback_kwargs)
-        else:
-             schema_map = schema_data
+        schema_map = schema_data
 
     agent = Expositor(schema_map=schema_map, state=state)
     try:
         agent.run()
     except Exception as e:
         print(f"[ERROR] Expositor agent failed: {e}")
-        # UNSINKABLE: Generate a valid fallback report instead of crashing
-        # This ensures the UI has something to render
-        try:
-            fallback_report = f"""# Analysis Completed (Recovery Mode)
-
-**Run ID:** `{run_path.split("/")[-1]}`
-**Status:** System Recovered
-**Data Quality:** Low (Automatic Recovery)
-**AI Confidence:** 0.5 (System Baseline)
-
-> [!WARNING]
-> Determine analysis encountered an unexpected error, but the system recovered.
-> Some advanced insights may be missing.
-
-## Executive Summary
-The Autonomous Cognitive Engine completed the pipeline but encountered stability issues during the final narrative generation.
-- **Diagnostics:** `{str(e)}`
-- **Action:** System fell back to recovery mode to preserve data access.
-
-## Data Overview
-- **Status:** Verified
-- **Accessibility:** Restricted
-"""
-            # Write fallback report
-            report_path = state.get_file_path("final_report.md")
-            with open(report_path, "w", encoding="utf-8") as f:
-                f.write(fallback_report)
-            state.write("final_report", fallback_report)
-            
-            # Write empty analytics to prevent API 404s
-            state.write("enhanced_analytics", {
-                "quality_metrics": {"available": False, "reason": "Recovery Mode"},
-                "business_intelligence": {"available": False},
-                "feature_importance": {"available": False},
-                "correlations": {"available": False}
-            })
-            
-            print("[RECOVERY] Validation report and empty analytics written. Exiting cleanly.")
-            sys.exit(0) # Exit success so pipeline continues
-            
-        except Exception as deep_error:
-            # If even recovery fails, then we really crash
-            print(f"[FATAL] Recovery failed: {deep_error}")
-            sys.exit(1)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

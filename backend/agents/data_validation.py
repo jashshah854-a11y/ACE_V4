@@ -8,6 +8,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from core.state_manager import StateManager
 from core.data_loader import smart_load_dataset
+from core.datetime_utils import coerce_datetime
 from ace_v4.performance.config import PerformanceConfig
 
 
@@ -96,7 +97,7 @@ def main():
     time_col = detect_time_column(df)
     if time_col:
         try:
-            ts = pd.to_datetime(df[time_col], errors="coerce").dropna()
+            ts = coerce_datetime(df[time_col]).dropna()
             span_days = (ts.max() - ts.min()).days if not ts.empty else 0
         except Exception:
             span_days = 0

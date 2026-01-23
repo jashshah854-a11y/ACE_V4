@@ -1,5 +1,4 @@
 import { LucideIcon, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Brain, Target, Shield, Activity, Zap } from "lucide-react";
-import type { TrustScore } from "@/types/trust";
 
 // --- Types ---
 
@@ -11,7 +10,6 @@ export interface StoryViewData {
     executiveBrief: string[];
     meta: {
         dataQuality: number;
-        confidence: number;
         runId: string;
         date: string;
     };
@@ -36,7 +34,6 @@ export interface StorySection {
     sentiment: "positive" | "negative" | "neutral" | "caution";
     type: "narrative" | "key_insight" | "recommendation";
     impact?: string; // "Why this matters"
-    trust?: TrustScore;
 }
 
 // --- Jargon Dictionary ---
@@ -171,17 +168,6 @@ export function transformToStory(runData: BackendRunData | null | undefined): St
         icon: Shield
     });
 
-    // Confidence
-    const rawConfidence = runData.confidence_score || 0;
-    const normalizedConfidence = rawConfidence > 1 ? rawConfidence : rawConfidence * 100;
-    const confidenceRatio = normalizedConfidence / 100;
-    metrics.push({
-        label: "AI Confidence",
-        value: `${normalizedConfidence.toFixed(0)}%`,
-        status: confidenceRatio > 0.8 ? "success" : "warning",
-        icon: Brain
-    });
-
     // 3. Transform Sections
     const storySections: StorySection[] = runData.sections
         .filter((s: BackendReportSection) => s.type !== "metadata" && s.type !== "diagnostics" && s.id !== "executive-summary") // We used executive summary for headline
@@ -246,7 +232,6 @@ export function transformToStory(runData: BackendRunData | null | undefined): St
         executiveBrief,
         meta: {
             dataQuality: dataQualityRatio,
-            confidence: confidenceRatio,
             runId: runData.run_id,
             date: dateStr
         }
@@ -260,7 +245,7 @@ function createEmptyStory(): StoryViewData {
         metricCards: [],
         sections: [],
         executiveBrief: [],
-        meta: { dataQuality: 0, confidence: 0, runId: "---", date: "---" }
+        meta: { dataQuality: 0, runId: "---", date: "---" }
     };
 }
 // --- Legacy / Adapter Exports for useReportData ---
@@ -268,19 +253,28 @@ function createEmptyStory(): StoryViewData {
 export interface ReportViewModel extends StoryViewData { }
 
 export function filterSuppressedSections(sections: any[]) {
+    const suppressedMarkers = [
+        "suppressed",
+        "skipped",
+        "not applicable",
+        "no compatible data",
+        "no evidence found",
+        "confidence",
+        "certified",
+    ];
     return sections.filter(s => {
         const title = s.title?.toLowerCase() || "";
         const type = s.type?.toLowerCase() || "";
+        const content = s.content?.toLowerCase?.() || "";
+        const combined = `${title} ${type} ${content}`;
+        if (suppressedMarkers.some(marker => combined.includes(marker))) {
+            return false;
+        }
         return !title.includes("metadata") && !type.includes("diagnostic");
     });
 }
 
 export function transformAPIResponse(data: any): ReportViewModel {
-    const normalizedConfidence = typeof data?.confidenceValue === 'number'
-        ? data.confidenceValue
-        : typeof data?.metrics?.confidenceLevel === 'number'
-            ? data.metrics.confidenceLevel
-            : 0;
     const normalizedDataQuality = typeof data?.metrics?.dataQualityScore === 'number'
         ? data.metrics.dataQualityScore
         : typeof data?.dataQualityValue === 'number'
@@ -290,7 +284,6 @@ export function transformAPIResponse(data: any): ReportViewModel {
     const pseudoRun: BackendRunData = {
         run_id: data.runId || 'legacy',
         created_at: new Date().toISOString(),
-        confidence_score: normalizedConfidence / 100,
         sections: (data.sections || []).map((s: any, index: number) => ({
             id: s.id || `section-${index}`,
             title: s.title || `Section ${index + 1}`,
@@ -313,15 +306,6 @@ export function transformAPIResponse(data: any): ReportViewModel {
             status: ratio > 0.8 ? 'success' : ratio > 0.5 ? 'warning' : 'risk',
             trend: ratio > 0.8 ? 'up' : 'neutral',
             icon: Shield
-        });
-    }
-    if (typeof normalizedConfidence === 'number' && !Number.isNaN(normalizedConfidence)) {
-        const ratio = normalizedConfidence / 100;
-        metricCards.push({
-            label: 'AI Confidence',
-            value: `${normalizedConfidence.toFixed(0)}%`,
-            status: ratio > 0.8 ? 'success' : 'warning',
-            icon: Brain
         });
     }
     if (typeof data?.metrics?.recordsProcessed === 'number') {
@@ -369,7 +353,6 @@ export function transformAPIResponse(data: any): ReportViewModel {
 
     story.meta = {
         dataQuality: normalizedDataQuality / 100,
-        confidence: normalizedConfidence / 100,
         runId: pseudoRun.run_id,
         date: story.meta.date || new Date().toLocaleDateString()
     };

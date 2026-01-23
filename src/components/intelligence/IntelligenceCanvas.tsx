@@ -6,7 +6,6 @@ import { NeuralSpine, AgentExecution } from "./NeuralSpine";
 import { NarrativeStream } from "@/components/canvas/NarrativeStream";
 import { EvidenceLab, EvidenceObject } from "./EvidenceLab";
 import { getReport, getRunStatus, getEnhancedAnalytics } from "@/lib/api-client";
-import { extractMetrics } from "@/lib/reportParser";
 
 interface IntelligenceCanvasProps {
     runId: string;
@@ -55,7 +54,6 @@ export function IntelligenceCanvas({ runId, className }: IntelligenceCanvasProps
             name: step.name || step.agent || "unknown",
             status: step.status || "pending",
             duration: step.duration,
-            confidence: step.confidence,
             insights_count: step.insights_count,
         }));
     }, [pipelineState]);
@@ -76,7 +74,6 @@ export function IntelligenceCanvas({ runId, className }: IntelligenceCanvasProps
             if (bi?.churn_risk) {
                 return {
                     claim: "Detected Churn Risk Patterns",
-                    confidence: 0.89, // High confidence for calculated metrics
                     severity: "warning",
                     evidence: {
                         metric: "at_risk_percentage",
@@ -100,7 +97,6 @@ export function IntelligenceCanvas({ runId, className }: IntelligenceCanvasProps
             if (matchedFeature) {
                 return {
                     claim: `Driver: ${matchedFeature.feature}`,
-                    confidence: fi.confidence || 0.85,
                     severity: "info",
                     evidence: {
                         metric: "importance_score",
@@ -124,7 +120,6 @@ export function IntelligenceCanvas({ runId, className }: IntelligenceCanvasProps
             if (corr) {
                 return {
                     claim: `Correlation: ${corr.feature1} ↔ ${corr.feature2}`,
-                    confidence: 0.95, // Statistical correlations are exact
                     severity: "info",
                     evidence: {
                         metric: "pearson_r",
@@ -139,22 +134,16 @@ export function IntelligenceCanvas({ runId, className }: IntelligenceCanvasProps
         // Fallback: Return raw stats if data quality is high, else null
         return {
             claim: "Analytical Insight extracted from Report",
-            confidence: 0.75,
             severity: "info",
             evidence: {
                 metric: "report_generated",
-                value: "verified",
+                value: "available",
                 source_columns: ["dataset_source"],
                 methodology: "llm_synthesis"
             }
         };
 
     }, [activeClaimId, analytics]);
-
-    const reportMetrics = useMemo(() => extractMetrics(reportContent || ""), [reportContent]);
-    const normalizedConfidence = reportMetrics.confidenceLevel !== undefined
-        ? reportMetrics.confidenceLevel / 100
-        : 1.0;
 
     if (reportLoading) {
         return (
@@ -184,7 +173,6 @@ export function IntelligenceCanvas({ runId, className }: IntelligenceCanvasProps
                 {/* CENTER PANEL: Narrative Stream */}
                 <NarrativeStream
                     content={reportContent || "# Loading...\n\nPlease wait while we load the analysis report."}
-                    confidence={normalizedConfidence}
                     onClaimClick={(evidenceId) => setActiveClaimId(evidenceId)}
                 />
 

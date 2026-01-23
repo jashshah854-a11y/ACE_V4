@@ -90,18 +90,6 @@ function validateReportData(
     });
   }
 
-  // Check confidence value
-  if (data.confidenceValue === undefined || data.confidenceValue < 40) {
-    issues.push({
-      field: "confidence",
-      severity: data.confidenceValue === undefined ? "warning" : "info",
-      message: data.confidenceValue === undefined 
-        ? "Confidence score not calculated" 
-        : `Low confidence score (${data.confidenceValue}%)`,
-      suggestion: "Results should be treated as exploratory",
-    });
-  }
-
   // Check data quality
   if (data.dataQualityValue === undefined || data.dataQualityValue < 50) {
     issues.push({

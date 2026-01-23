@@ -5,7 +5,6 @@ export interface AgentExecution {
     name: string;
     status: "pending" | "running" | "complete" | "failed";
     duration?: number;  // seconds
-    confidence?: number;  // 0-1
     insights_count?: number;
 }
 
@@ -124,18 +123,11 @@ function AgentCard({ agent, onClick }: AgentCardProps) {
                     </div>
 
                     {/* Additional metrics */}
-                    {agent.status === "complete" && (
+                    {agent.status === "complete" && agent.insights_count !== undefined && (
                         <div className="flex gap-3 mt-1 text-xs text-text-muted">
-                            {agent.confidence !== undefined && (
-                                <span className="font-mono">
-                                    ⚡ {Math.round(agent.confidence * 100)}%
-                                </span>
-                            )}
-                            {agent.insights_count !== undefined && (
-                                <span className="font-mono">
-                                    💡 {agent.insights_count}
-                                </span>
-                            )}
+                            <span className="font-mono">
+                                💡 {agent.insights_count}
+                            </span>
                         </div>
                     )}
                 </div>

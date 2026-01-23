@@ -1,7 +1,6 @@
 import { Info, HelpCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface MetricInterpretationProps {
@@ -9,7 +8,6 @@ interface MetricInterpretationProps {
     value: number | string;
     interpretation: string;
     benchmark?: string;
-    confidenceLevel?: "high" | "medium" | "low";
     helpText?: string;
     className?: string;
 }
@@ -19,16 +17,9 @@ export function MetricInterpretation({
     value,
     interpretation,
     benchmark,
-    confidenceLevel,
     helpText,
     className
 }: MetricInterpretationProps) {
-    const confidenceColors = {
-        high: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
-        medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400",
-        low: "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400"
-    };
-
     return (
         <Card className={cn("p-4 transition-all duration-200 hover:shadow-md hover:border-primary/20 group", className)}>
             <div className="space-y-3">
@@ -52,11 +43,6 @@ export function MetricInterpretation({
 
                 <div className="flex items-baseline gap-2">
                     <span className="text-2xl font-bold tracking-tight text-foreground">{value}</span>
-                    {confidenceLevel && (
-                        <Badge variant="secondary" className={cn("text-[10px] px-1.5 py-0 h-5 my-auto", confidenceColors[confidenceLevel])}>
-                            {confidenceLevel}
-                        </Badge>
-                    )}
                 </div>
 
                 <div className="flex items-start gap-2 p-2.5 rounded bg-muted/30 text-sm group-hover:bg-muted/50 transition-colors">
@@ -82,7 +68,6 @@ interface MetricGridProps {
         value: number | string;
         interpretation: string;
         benchmark?: string;
-        confidenceLevel?: "high" | "medium" | "low";
         helpText?: string;
     }[];
 }

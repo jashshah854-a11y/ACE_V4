@@ -1,4 +1,4 @@
-import { ArrowUpRight, ArrowDownRight, Activity, ShieldCheck, Zap } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Activity, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface IndicatorProps {
@@ -69,23 +69,13 @@ function KpiCard({ label, value, trend, status = "neutral", subtext, icon }: Ind
 }
 
 interface KeyPerformanceIndicatorsProps {
-    confidence: number;
     quality: number;
     clusterCount?: number;
 }
 
-export function KeyPerformanceIndicators({ confidence = 0, quality = 0, clusterCount = 0 }: KeyPerformanceIndicatorsProps) {
+export function KeyPerformanceIndicators({ quality = 0, clusterCount = 0 }: KeyPerformanceIndicatorsProps) {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-            <KpiCard
-                label="Confidence"
-                value={confidence}
-                status={confidence > 80 ? "success" : confidence > 50 ? "warning" : "risk"}
-                trend={confidence > 80 ? "up" : "down"}
-                icon={<Zap className="w-8 h-8" />}
-                subtext={confidence > 80 ? "High reliability" : "Low signal strength"}
-            />
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
             <KpiCard
                 label="Data Quality"
                 value={quality}

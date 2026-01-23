@@ -15,6 +15,8 @@ const buildReport = (overrides: Partial<ReportDataResult> = {}): ReportDataResul
 
 const baseBusinessIntelligence = {
   available: true,
+  valid: true,
+  status: "success",
   value_metrics: {
     total_value: 1000,
     avg_value: 100,
@@ -68,8 +70,8 @@ describe('EvidenceRail', () => {
 
     renderRail(data);
 
-    expect(screen.getByText(/Business intelligence requires traceable proof/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Business Signals/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Business Signals/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /view source/i })).not.toBeInTheDocument();
   });
 
   it('renders BusinessPulse when trusted evidence exists', () => {
@@ -113,9 +115,12 @@ describe('EvidenceRail', () => {
 
     const data = buildReport({
       profile,
+      diagnostics: { regression_status: "success" },
       enhancedAnalytics: {
         feature_importance: {
           available: true,
+          valid: true,
+          status: "success",
           target: 'revenue',
           task_type: 'regression',
           feature_importance: [

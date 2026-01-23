@@ -67,20 +67,6 @@ export function SimulationControls() {
                     />
                 </div>
 
-                <div className="flex items-center justify-between space-x-2">
-                    <Label htmlFor="high-confidence" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                        High Fidelity Mode (&gt;90% Conf.)
-                    </Label>
-                    <Switch
-                        id="high-confidence"
-                        // Assuming this might be mapped to a filter_segment or similar in the future, 
-                        // for now just tracking it as a generic modifier
-                        checked={!!active_modifiers.filter_segment && active_modifiers.filter_segment === "high_confidence"}
-                        onCheckedChange={(checked: boolean) =>
-                            updateModifiers({ filter_segment: checked ? "high_confidence" : undefined })
-                        }
-                    />
-                </div>
             </div>
 
             {simulationState.comparison_mode && (
