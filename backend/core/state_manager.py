@@ -23,6 +23,56 @@ def _json_default(obj: Any):
     except Exception:
         return None
 
+
+def _register_enhanced_sections(
+    run_path: Path,
+    payload: dict,
+    dataset_fingerprint: str,
+    update_step_status,
+    register_artifact,
+    get_artifact_type,
+) -> None:
+    section_steps = (
+        "correlation_analysis",
+        "distribution_analysis",
+        "quality_metrics",
+        "business_intelligence",
+        "feature_importance",
+    )
+    for section_name in section_steps:
+        section = payload.get(section_name)
+        if section is None:
+            update_step_status(run_path, section_name, "skipped")
+            continue
+        if not isinstance(section, dict):
+            update_step_status(run_path, section_name, "failed")
+            register_artifact(
+                run_path,
+                section_name,
+                get_artifact_type(section_name),
+                section_name,
+                "failed",
+                False,
+                [{"type": "ARTIFACT_INVALID", "metric": section_name, "value": section}],
+                [],
+                dataset_fingerprint,
+            )
+            continue
+        valid = section.get("valid") is True
+        status = section.get("status") or ("success" if valid else "failed")
+        update_step_status(run_path, section_name, "success" if valid else "failed")
+        register_artifact(
+            run_path,
+            section_name,
+            get_artifact_type(section_name),
+            section_name,
+            status,
+            bool(valid),
+            section.get("errors") or [],
+            section.get("warnings") or [],
+            dataset_fingerprint,
+        )
+
 class StateManager:
     def __init__(self, run_path: str, redis_url: Optional[str] = None):
         self.run_path = Path(run_path)
@@ -47,6 +97,26 @@ class StateManager:
         """
         Writes data to a JSON file in the run folder AND Redis (if available).
         """
+        from core.run_manifest import get_artifact_step, get_artifact_type, register_artifact
+        from core.run_manifest import update_render_policy, update_step_status, _read_manifest
+        if name == "regression_insights":
+            regression_status = self.read("regression_status") or "not_started"
+            if regression_status != "success":
+                print("[StateManager] Refusing to persist regression_insights without success status")
+                return
+        if name in {"regression_insights", "enhanced_analytics"}:
+            from core.analytics_validation import validate_artifact
+            validation = validate_artifact(name, data)
+            if not validation.get("valid"):
+                print(f"[StateManager] Refusing to persist invalid artifact: {name}")
+                return
+        artifact_step = get_artifact_step(name)
+        manifest = _read_manifest(self.run_path)
+        if artifact_step and manifest:
+            step_status = (manifest.get("steps") or {}).get(artifact_step, {}).get("status")
+            if step_status != "success":
+                print(f"[StateManager] Refusing to persist artifact {name}; step not successful.")
+                return
         # 1. Write to Disk
         filename = f"{name}.json"
         path = self.run_path / filename
@@ -74,6 +144,38 @@ class StateManager:
                 self.redis_client.setex(key, 86400, json.dumps(data, default=_json_default))
             except Exception as e:
                 print(f"[StateManager] Redis write failed: {e}")
+
+        if artifact_step and manifest:
+            validation_errors = []
+            validation_warnings = []
+            status = "success"
+            valid = True
+            if isinstance(data, dict):
+                validation_errors = data.get("errors") or []
+                validation_warnings = data.get("warnings") or []
+                status = data.get("status") or status
+                valid = data.get("valid") if data.get("valid") is not None else valid
+            register_artifact(
+                self.run_path,
+                name,
+                get_artifact_type(name),
+                artifact_step,
+                status,
+                bool(valid),
+                validation_errors,
+                validation_warnings,
+                manifest.get("dataset_fingerprint", ""),
+            )
+            if name == "enhanced_analytics" and isinstance(data, dict):
+                _register_enhanced_sections(
+                    self.run_path,
+                    data,
+                    manifest.get("dataset_fingerprint", ""),
+                    update_step_status,
+                    register_artifact,
+                    get_artifact_type,
+                )
+            update_render_policy(self.run_path)
 
     def read(self, name: str) -> Optional[Any]:
         """
@@ -110,6 +212,26 @@ class StateManager:
         existing.append(record)
         self.write(name, existing)
 
+    def add_warning(self, code: str, message: str, details: Optional[dict] = None):
+        """Store a run-level warning for centralized diagnostics."""
+        payload = {"code": code, "message": message}
+        if details:
+            payload["details"] = details
+        warnings = self.read("run_warnings")
+        if not isinstance(warnings, list):
+            warnings = []
+        if any(isinstance(entry, dict) and entry.get("code") == code for entry in warnings):
+            return
+        warnings.append(payload)
+        self.write("run_warnings", warnings)
+        from core.run_manifest import add_warning
+        add_warning(self.run_path, code, "warning", message)
+
+    def get_warnings(self) -> list:
+        """Return run-level warnings."""
+        warnings = self.read("run_warnings")
+        return warnings if isinstance(warnings, list) else []
+
     def exists(self, name: str) -> bool:
         """
         Checks if a state file exists (Disk or Redis).
@@ -121,6 +243,20 @@ class StateManager:
             return bool(self.redis_client.exists(self._get_redis_key(name)))
             
         return False
+
+    def delete(self, name: str) -> None:
+        """Remove a state file and any cached Redis entry for this key."""
+        path = self.run_path / f"{name}.json"
+        if path.exists():
+            try:
+                path.unlink()
+            except Exception:
+                pass
+        if self.redis_client:
+            try:
+                self.redis_client.delete(self._get_redis_key(name))
+            except Exception:
+                pass
     
     def get_file_path(self, filename: str) -> str:
         """

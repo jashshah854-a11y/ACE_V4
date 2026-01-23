@@ -1,5 +1,4 @@
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 interface EvidencePanelProps {
@@ -23,7 +22,6 @@ export function EvidencePanel({ records }: EvidencePanelProps) {
                   <div className="font-medium">{record.computation_method}</div>
                   <div className="text-muted-foreground">Evidence {record.evidence_id}</div>
                 </div>
-                <Badge variant="secondary">{Math.round(record.confidence_level)}%</Badge>
               </div>
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">

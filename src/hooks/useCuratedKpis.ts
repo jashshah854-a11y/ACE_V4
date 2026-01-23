@@ -5,7 +5,6 @@ import type { CuratedKpiArtifact, CuratedKpiArtifactEntry, CuratedKpiCardData } 
 const KPI_ENDPOINT = "artifacts/kpi_summary";
 
 type KpiFallbackSource = {
-  confidenceValue?: number;
   dataQualityValue?: number;
   identityStats?: { rows?: number | string } | null;
   metrics?: Record<string, any>;
@@ -27,7 +26,6 @@ export function useCuratedKpis(runId?: string, fallbackSource?: KpiFallbackSourc
   const artifactCards = useMemo(() => normalizeArtifactKpis(data), [data]);
 
   const fallbackDeps = [
-    fallbackSource?.confidenceValue,
     fallbackSource?.dataQualityValue,
     fallbackSource?.identityStats?.rows,
     fallbackSource?.metrics?.recordsProcessed,
@@ -75,7 +73,6 @@ function normalizeArtifactKpis(payload?: CuratedKpiArtifact | null): CuratedKpiC
         trend: entry.trend ?? deriveTrend(entry.delta_pct ?? entry.delta_value),
         deltaLabel: entry.delta_label ?? formatDelta(entry.delta_pct, entry.delta_value, entry.unit),
         description: entry.description,
-        confidenceLabel: formatConfidence(entry.confidence),
         sourceColumns: entry.source_columns,
         origin: "artifact" as const,
       };
@@ -86,18 +83,6 @@ function normalizeArtifactKpis(payload?: CuratedKpiArtifact | null): CuratedKpiC
 function buildFallbackKpis(source?: KpiFallbackSource): CuratedKpiCardData[] {
   if (!source) return [];
   const entries: CuratedKpiCardData[] = [];
-
-  if (typeof source.confidenceValue === "number" && !Number.isNaN(source.confidenceValue)) {
-    entries.push({
-      id: "fallback-confidence",
-      label: "AI Confidence",
-      value: `${Math.round(source.confidenceValue)}%`,
-      status: source.confidenceValue >= 80 ? "success" : source.confidenceValue >= 50 ? "warning" : "risk",
-      trend: source.confidenceValue >= 80 ? "up" : source.confidenceValue >= 50 ? "flat" : "down",
-      description: source.confidenceValue >= 80 ? "Models validated" : "Governance review recommended",
-      origin: "fallback",
-    });
-  }
 
   if (typeof source.dataQualityValue === "number" && !Number.isNaN(source.dataQualityValue)) {
     entries.push({
@@ -169,12 +154,6 @@ function formatDelta(deltaPct?: number, deltaValue?: number, unit?: string) {
     return formatted ? `${formatted} change` : undefined;
   }
   return undefined;
-}
-
-function formatConfidence(value?: number) {
-  if (typeof value !== "number" || Number.isNaN(value)) return undefined;
-  const pct = value > 1 ? value : value * 100;
-  return `${pct.toFixed(0)}% confidence`;
 }
 
 function formatNumber(value: number, maxFraction = 1) {

@@ -14,6 +14,7 @@ from utils.logging import log_launch, log_ok, log_warn
 from core.state_manager import StateManager
 from core.schema import SchemaMap, ensure_schema_map
 from core.regression import compute_regression_insights
+from core.analytics_validation import apply_artifact_validation
 
 
 class RegressionAgent:
@@ -49,9 +50,13 @@ class RegressionAgent:
         )
         if run_config:
             insights.setdefault("applied_config", run_config)
-        self.state.write("regression_insights", insights)
+        validated = apply_artifact_validation("regression_insights", insights)
+        if validated:
+            self.state.write("regression_insights_pending", validated)
+        else:
+            log_warn("Regression validation failed: metrics out of bounds.")
 
-        if insights.get("status") == "ok":
+        if insights.get("status") == "success":
             target = insights.get('target_column') or 'target'
             r2_score = insights.get('metrics', {}).get('r2')
             r2_display = f"{r2_score:.2f}" if isinstance(r2_score, (int, float)) else "n/a"
@@ -61,9 +66,7 @@ class RegressionAgent:
 
     def fallback(self, error):
         log_warn(f"Regression agent fallback triggered: {error}")
-        payload = {"status": "error", "reason": str(error)}
-        self.state.write("regression_insights", payload)
-        return payload
+        return {"status": "error", "reason": str(error)}
 
 
 def main():

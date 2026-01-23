@@ -2,8 +2,7 @@
 import React from "react";
 import { QueryThread } from "@/context/SimulationContext";
 import { Card } from "@/components/ui/card";
-import { Loader2, Sparkles, CheckCircle, AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Loader2, Sparkles } from "lucide-react";
 import { TruthCheck } from "../feedback/TruthCheck";
 
 export function AnalystResponseCard({ thread }: { thread: QueryThread }) {
@@ -37,21 +36,6 @@ export function AnalystResponseCard({ thread }: { thread: QueryThread }) {
                             {thread.analyst_response.text_content}
                         </p>
 
-                        {/* Confidence Badge */}
-                        <div className={cn(
-                            "inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium border",
-                            thread.analyst_response.confidence_score > 0.8
-                                ? "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/30 dark:text-teal-400 dark:border-teal-800"
-                                : "bg-amber-50 text-amber-700 border-amber-200"
-                        )}>
-                            {thread.analyst_response.confidence_score > 0.8
-                                ? <CheckCircle className="w-3 h-3" />
-                                : <AlertCircle className="w-3 h-3" />}
-                            {thread.analyst_response.confidence_score > 0.8 ? "High Confidence" : "Low Confidence"}
-                            <span className="opacity-60 ml-1">
-                                {(thread.analyst_response.confidence_score * 100).toFixed(0)}%
-                            </span>
-                        </div>
                     </div>
                 )}
 

@@ -94,12 +94,6 @@ export function CuratedKpiPanel({
                 </p>
               )}
 
-              {card.confidenceLabel && (
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70 mt-4">
-                  {card.confidenceLabel}
-                </p>
-              )}
-
               {onViewEvidence && (
                 <button
                   type="button"

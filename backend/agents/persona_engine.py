@@ -86,88 +86,6 @@ class PersonaEngine:
         return "Baseline Segment"
 
 
-    def _fallback_personas_from_clusters(self, fingerprints: dict) -> list:
-        personas = []
-        if not fingerprints:
-            return personas
-
-        role_aliases = {
-            "income_like": ("income_like", "income"),
-            "spend_like": ("spend_like", "spend"),
-            "risk_like": ("risk_like", "risk"),
-        }
-
-        def resolve_role_value(role_sums, role_key):
-            for alias in role_aliases.get(role_key, (role_key,)):
-                val = self._coerce_float(role_sums.get(alias))
-                if val is not None:
-                    return val
-            return None
-
-        sample_roles = {role: [] for role in ("income_like", "spend_like", "risk_like")}
-        for fp in fingerprints.values():
-            role_sums = fp.get("role_summaries", {}) or {}
-            for role in sample_roles:
-                val = resolve_role_value(role_sums, role)
-                if val is not None:
-                    sample_roles[role].append(val)
-
-        for cid, fp in fingerprints.items():
-            role_sums = fp.get("role_summaries", {}) or {}
-            size = int(fp.get("size") or fp.get("cluster_size") or 0)
-            income_val = resolve_role_value(role_sums, "income_like")
-            spend_val = resolve_role_value(role_sums, "spend_like")
-            risk_val = resolve_role_value(role_sums, "risk_like")
-
-            income_bucket = self._bucketize(income_val, sample_roles["income_like"])
-            spend_bucket = self._bucketize(spend_val, sample_roles["spend_like"])
-            risk_bucket = self._bucketize(risk_val, sample_roles["risk_like"])
-
-            label = self._derive_label(income_bucket, spend_bucket, risk_bucket)
-            snapshot = {
-                "income_level": income_bucket,
-                "spend_level": spend_bucket,
-                "risk_score": risk_bucket
-            }
-
-            summary = f"{size or 'Unknown'} customers with {income_bucket} income, {spend_bucket} spend, {risk_bucket} risk."
-            if risk_bucket == "High":
-                behavior = "Volatile usage patterns with frequent spikes."
-                motivation = "Stability and reassurance."
-                opportunity = "Risk Mitigation"
-                action = "Deploy retention outreach with guidance and support."
-                emotion = "Anxious"
-            elif income_bucket == "High":
-                behavior = "Consistent engagement with strong value absorption."
-                motivation = "Premium experiences."
-                opportunity = "Growth"
-                action = "Offer tailored upsell bundles and loyalty rewards."
-                emotion = "Confident"
-            else:
-                behavior = "Moderate activity focused on essentials."
-                motivation = "Reliability and savings."
-                opportunity = "Retention"
-                action = "Provide education, quick wins, and reassurance."
-                emotion = "Neutral"
-
-            personas.append({
-                "cluster_id": cid,
-                "name": f"{label} Cluster {cid}",
-                "label": label,
-                "snapshot": snapshot,
-                "behavior": behavior,
-                "motivation": motivation,
-                "opportunity_zone": opportunity,
-                "emotional_state": emotion,
-                "action": action,
-                "persona_size": size,
-                "avg_risk": risk_val if risk_val is not None else 0.0,
-                "reasoning": "Generated from schema role summaries due to LLM fallback.",
-                "summary": summary
-            })
-
-        return personas
-
     def run(self):
         log_launch(f"Triggering ACE {self.name}...")
         
@@ -190,14 +108,7 @@ class PersonaEngine:
         fingerprints = overseer_output.get("fingerprints", {})
         
         if not fingerprints:
-            log_warn("No fingerprints found. Writing empty persona artifact.")
-            empty_payload = {"personas": []}
-            if self.state:
-                self.state.write("personas", empty_payload)
-            else:
-                Path("data").mkdir(exist_ok=True)
-                Path("data/personas_output.json").write_text(json.dumps(empty_payload, indent=2))
-            return empty_payload["personas"]
+            raise RuntimeError("No fingerprints available for persona generation.")
 
         domain_guess = getattr(getattr(self.schema_map, "domain_guess", None), "domain", "generic") or "generic"
         roles = self.schema_map.semantic_roles.model_dump() if hasattr(self.schema_map.semantic_roles, "model_dump") else {}
@@ -217,8 +128,8 @@ class PersonaEngine:
             if isinstance(personas, dict) and "personas" in personas:
                 personas = personas["personas"]
         except JsonExtractionError as e:
-            log_error(f"JSON Parsing failed: {e}. Using fallback.")
-            personas = self._fallback_personas_from_clusters(fingerprints)
+            log_error(f"JSON Parsing failed: {e}.")
+            raise
             
         try:
             if self.state:
@@ -243,18 +154,7 @@ class PersonaEngine:
             
         except Exception as e:
             log_error(f"Failed to save personas: {e}")
-            return None
-
-    def fallback(self, error):
-        log_error(f"Persona Engine fallback triggered: {error}")
-        try:
-            overseer_output = self.state.read("overseer_output") or {}
-            fingerprints = overseer_output.get("fingerprints", {})
-            personas = self._fallback_personas_from_clusters(fingerprints)
-        except:
-            personas = []
-            
-        return {"personas": personas, "error": str(error)}
+            raise
 
 
 def main():
@@ -272,8 +172,8 @@ def main():
     try:
         agent.run()
     except Exception as e:
-        fallback_output = agent.fallback(e)
-        state.write("personas", fallback_output)
+        log_error(f"Persona Engine failed: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -15,7 +15,6 @@ export interface ChartWrapperProps {
     source?: string;
     dateRange?: string;
     sampleSize?: number;
-    confidence?: number;
     chart: ReactNode;
     caption?: {
         text: string;
@@ -42,7 +41,6 @@ export function ChartWrapper({
     source,
     dateRange,
     sampleSize,
-    confidence,
     chart,
     caption,
     metricDefinitions,
@@ -107,33 +105,6 @@ export function ChartWrapper({
                             <span>{sampleSize.toLocaleString()} records</span>
                         </div>
                     )}
-                    {confidence !== undefined && (
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <div
-                                        className={cn(
-                                            "px-2 py-0.5 rounded-full font-medium cursor-help",
-                                            confidence >= 80
-                                                ? "bg-emerald-100 text-emerald-700"
-                                                : confidence >= 60
-                                                    ? "bg-amber-100 text-amber-700"
-                                                    : "bg-rose-100 text-rose-700"
-                                        )}
-                                    >
-                                        {Math.round(confidence)}% confidence
-                                    </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="bottom" className="max-w-xs">
-                                    <p className="text-xs font-semibold mb-1">What confidence means:</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Confidence reflects data coverage and pattern strength, not predictive certainty.
-                                        High confidence means the pattern is clear in the available data.
-                                    </p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    )}
                 </div>
             </div>
 
@@ -147,7 +118,6 @@ export function ChartWrapper({
                 <InsightCaption
                     text={caption.text}
                     severity={caption.severity}
-                    confidence={confidence}
                 />
             )}
         </div>

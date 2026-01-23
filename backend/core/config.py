@@ -96,6 +96,6 @@ class Settings(BaseSettings):
 # Instantiate the settings
 settings = Settings()
 
-print(f"[CONFIG] ⚓ GLOBAL DATA_DIR ANCHORED: {DATA_DIR}", flush=True)
-print(f"[CONFIG] 🔓 GOVERNANCE THRESHOLD: {QUALITY_THRESHOLD}", flush=True)
-print(f"[CONFIG] ✅ Upload Limit: {settings.max_upload_size_mb}MB ({settings.max_upload_size_bytes} bytes)", flush=True)
+print(f"[CONFIG] GLOBAL DATA_DIR: {DATA_DIR}", flush=True)
+print(f"[CONFIG] GOVERNANCE THRESHOLD: {QUALITY_THRESHOLD}", flush=True)
+print(f"[CONFIG] Upload Limit: {settings.max_upload_size_mb}MB ({settings.max_upload_size_bytes} bytes)", flush=True)

@@ -148,29 +148,7 @@ class SchemaInterpreter:
         user_prompt = self._build_user_prompt(scan)
 
         print(f"[INFO] Interpreting Schema (LLM: {self.model_name})...")
-        try:
-            llm_response = call_llm_json(system_prompt, user_prompt, model_name=self.model_name)
-        except Exception as e:
-            print(f"[ERROR] Schema interpretation LLM call failed: {e}")
-            # fallback: simple generic schema
-            llm_response = {
-                "domain_guess": "generic",
-                "semantic_roles": {
-                    "income_like": [],
-                    "spend_like": [],
-                    "risk_like": [],
-                    "time_like": [],
-                    "id_like": [],
-                    "other_numeric": scan.get("basic_types", {}).get("numeric", []),
-                },
-                "role_confidence": {},
-                "feature_plan": {
-                    "use_for_clustering": scan.get("basic_types", {}).get("numeric", []),
-                    "use_for_risk": [],
-                    "use_for_behavior": [],
-                },
-                "warnings": ["LLM schema interpretation failed, using fallback"],
-            }
+        llm_response = call_llm_json(system_prompt, user_prompt, model_name=self.model_name)
 
         # Fix domain_guess structure if it's just a string
         domain_val = llm_response.get("domain_guess", "generic")
@@ -200,21 +178,10 @@ class SchemaInterpreter:
         }
 
         # validate with SchemaMap model if you use Pydantic
-        try:
-            schema_map = SchemaMap(**schema_map_payload)
-            schema_map_dict = schema_map.model_dump()
-            # save schema map in usual locations
-            save_schema_map(schema_map)
-        except Exception as e:
-             print(f"[WARN] Pydantic validation failed, using raw dict: {e}")
-             schema_map_dict = schema_map_payload
-             # If validation fails, we can't use save_schema_map if it expects a model
-             # We'll try to save the dict directly to the file manually as fallback
-             try:
-                 with open("data/schema_map.json", "w") as f:
-                     json.dump(schema_map_dict, f, indent=2)
-             except Exception as save_err:
-                 print(f"[ERROR] Failed to save fallback schema map: {save_err}")
+        schema_map = SchemaMap(**schema_map_payload)
+        schema_map_dict = schema_map.model_dump()
+        # save schema map in usual locations
+        save_schema_map(schema_map)
 
         # also save a schema snapshot
         schemas_dir = Path("data") / "schemas"
@@ -229,13 +196,21 @@ class SchemaInterpreter:
 
 
 if __name__ == "__main__":
-    # allows manual testing
-    scan_path = Path("data") / "schema_scan_output.json"
-    if scan_path.exists():
-        with scan_path.open("r", encoding="utf8") as f:
-            scan = json.load(f)
-        interpreter = SchemaInterpreter()
-        schema = interpreter.run(scan)
-        # print(json.dumps(schema, indent=2)[:2000])
-    else:
-        print("[ERROR] data/schema_scan_output.json not found")
+    import sys
+
+    if len(sys.argv) < 2:
+        print("Usage: python schema_interpreter.py <run_path>")
+        sys.exit(1)
+
+    run_path = sys.argv[1]
+    from core.state_manager import StateManager
+
+    state = StateManager(run_path)
+    scan = state.read("schema_scan_output")
+    if not isinstance(scan, dict):
+        print("[ERROR] schema_scan_output missing or invalid")
+        sys.exit(1)
+
+    interpreter = SchemaInterpreter()
+    schema = interpreter.run(scan)
+    state.write("schema_map", schema)

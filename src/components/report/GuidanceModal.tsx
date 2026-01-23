@@ -102,7 +102,7 @@ export function GuidanceModal({
                             <Info className="h-4 w-4" />
                             <AlertDescription>
                                 No specific issues detected. If you're seeing this message in Safe Mode,
-                                it may be due to confidence thresholds. Try switching to Exploratory mode.
+                                it may be due to trust gating. Try switching to Exploratory mode.
                             </AlertDescription>
                         </Alert>
                     ) : (

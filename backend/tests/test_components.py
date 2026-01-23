@@ -52,35 +52,6 @@ def test_persona_json_extraction():
         else:
             print(f"FAILED: Expected 2 personas, got {len(personas) if personas else 'None'}")
 
-def test_persona_fallback_no_json():
-    print("\n--- Testing Persona Fallback (Test 4) ---")
-    
-    # Mock Schema and State
-    schema_map = SchemaMap()
-    state = MagicMock(spec=StateManager)
-    
-    # Mock fingerprints for fallback generation
-    fingerprints = {
-        "0": {"size": 100, "role_summaries": {"income": 90000}},
-        "1": {"size": 50, "role_summaries": {"income": 20000}}
-    }
-    state.read.return_value = {"fingerprints": fingerprints}
-    
-    engine = PersonaEngine(schema_map, state)
-    
-    # Mock LLM Response (No JSON)
-    mock_response = "Here is your output. Sorry no JSON."
-    
-    with patch("agents.persona_engine.ask_gemini", return_value=mock_response):
-        personas = engine.run()
-        
-        if personas and len(personas) == 2:
-            print("PASSED: Generated 2 fallback personas.")
-            print(f"Persona 1 Label: {personas[0].get('label')}")
-            print(f"Persona 1 Reasoning: {personas[0].get('reasoning')}")
-        else:
-            print(f"FAILED: Expected 2 fallback personas, got {len(personas) if personas else 'None'}")
-
 def test_persist_active_dataset():
     print("\n--- Testing Dataset Persistence (Test 5) ---")
     import tempfile
@@ -108,7 +79,6 @@ def test_persist_active_dataset():
 
 if __name__ == "__main__":
     test_persona_json_extraction()
-    test_persona_fallback_no_json()
     test_persist_active_dataset()
 
 

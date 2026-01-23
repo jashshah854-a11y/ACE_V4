@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { ChartWrapper } from "@/components/report/ChartWrapper";
 import { ExplanationBlock } from "@/components/report/ExplanationBlock";
 import { getSectionCopy } from "@/lib/reportCopy";
+import { isValidArtifact } from "@/lib/artifactGuard";
 
 interface TopDriversCardProps {
   data?: EnhancedAnalyticsData["feature_importance"];
@@ -12,7 +13,7 @@ interface TopDriversCardProps {
 }
 
 export function TopDriversCard({ data, safeMode, onViewEvidence }: TopDriversCardProps) {
-  if (!data?.available || !Array.isArray(data.feature_importance) || data.feature_importance.length === 0) {
+  if (!data || !isValidArtifact(data) || !Array.isArray(data.feature_importance) || data.feature_importance.length === 0) {
     return null;
   }
 
@@ -74,7 +75,6 @@ export function TopDriversCard({ data, safeMode, onViewEvidence }: TopDriversCar
         title={`Top Drivers: ${data.target || "Primary Outcome"}`}
         questionAnswered="Which features have the strongest influence on outcomes?"
         source={data.task_type || "Feature importance analysis"}
-        confidence={data.confidence}
         chart={chartContent}
         caption={
           data.insights?.[0]

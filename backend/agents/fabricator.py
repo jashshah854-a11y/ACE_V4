@@ -5,7 +5,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from utils.logging import log_launch, log_ok, log_warn
+from utils.logging import log_launch, log_ok
 from core.state_manager import StateManager
 from core.schema import SchemaMap, ensure_schema_map
 
@@ -47,7 +47,7 @@ class Fabricator:
         personas = personas_data.get("personas", [])
         
         if not personas:
-            log_warn("No personas found. Strategies may be generic.")
+            raise RuntimeError("No personas available for strategy generation.")
             
         strategies = []
 
@@ -101,13 +101,6 @@ class Fabricator:
             "Collect more data through surveys or feedback flows"
         ]
 
-    def fallback(self, error):
-        log_warn(f"Fabricator fallback triggered: {error}")
-        return {
-            "strategies": [],
-            "meta": {"global_theme": "Fallback Strategy", "reason": str(error)}
-        }
-
 def main():
     if len(sys.argv) < 2:
         print("Usage: python fabricator.py <run_path>")
@@ -125,8 +118,6 @@ def main():
         agent.run()
     except Exception as e:
         print(f"[ERROR] Fabricator agent failed: {e}")
-        fallback_output = agent.fallback(e)
-        state.write("strategies", fallback_output)
         sys.exit(1)
 
 if __name__ == "__main__":

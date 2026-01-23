@@ -11,7 +11,6 @@ interface NarrativeStreamProps {
 interface ParsedClaim {
     id: string;
     text: string;
-    confidence?: number;
     startIndex: number;
     endIndex: number;
 }

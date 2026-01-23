@@ -6,7 +6,6 @@
  */
 
 export type RunMode = 'normal' | 'limitations' | 'failed';
-export type TrustLabel = 'low' | 'moderate' | 'high';
 export type TimeCoverage = 'unknown' | 'partial' | 'sufficient';
 export type IssueSeverity = 'info' | 'warning' | 'critical';
 export type KPIStatus = 'good' | 'warning' | 'bad';
@@ -59,13 +58,6 @@ export interface RunSummaryViewModel {
         createdAt: string;
         mode: RunMode;
         statusLabel: string;
-    };
-
-    /** Trust and confidence signals */
-    trust: {
-        score: number;  // 0-1
-        label: TrustLabel;
-        guidance: string;
     };
 
     /** Dataset characteristics */

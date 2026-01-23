@@ -1,90 +1,55 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { NarrativeProvider } from "@/components/narrative/NarrativeContext";
-import { StoryCanvas } from "@/components/story/StoryCanvas";
-import { TrustBreakdown } from "@/components/trust/TrustBreakdown";
-import type { TrustScore } from "@/types/trust";
-import type { Story } from "@/types/StoryTypes";
+import { TrustSummary } from "@/components/trust/TrustSummary";
+import type { TrustModel } from "@/types/trust";
 
-const cautionTrust: TrustScore = {
-  score: 0.32,
-  band: "caution",
-  factors: ["Data quality limits confidence."],
-  positives: [],
-  negatives: ["Data quality limits confidence."],
-  risks: ["Validation gaps weaken trust."],
-  improvements: ["Improve data completeness and consistency."],
+const trust: TrustModel = {
+  overall_confidence: 52,
   components: {
-    dataQuality: 0.4,
-    validation: 0,
-    sampleSize: 0.3,
-    stability: 0.2,
-    featureDominance: 0.4,
-    assumptionRisk: 0.4,
+    data_quality: {
+      score: 70,
+      status: "medium",
+      evidence: ["steps.validator"],
+      notes: "Validator completed successfully.",
+    },
+    model_fit: {
+      score: null,
+      status: "unknown",
+      evidence: ["steps.regression"],
+      notes: "Regression did not complete.",
+    },
+    stability: {
+      score: 40,
+      status: "low",
+      evidence: [],
+      notes: "Stability diagnostics missing.",
+    },
+    validation_strength: {
+      score: 60,
+      status: "medium",
+      evidence: ["steps.validator"],
+      notes: "Validation checks completed.",
+    },
+    leakage_risk: {
+      score: 10,
+      status: "low",
+      evidence: [],
+      notes: "No leakage warning detected.",
+    },
   },
-  certification: {
-    certified: false,
-    rulesetVersion: "v1.0",
-    inputs: {},
-  },
+  applied_caps: [{ code: "UNKNOWN_COMPONENTS", max: 60 }],
 };
 
-describe("Phase 7 trust behaviors", () => {
-  it("softens narrative language for caution insights", () => {
-    const story: Story = {
-      run_id: "run-1",
-      title: "Trust Story",
-      summary: "Summary",
-      tone: "formal",
-      points: [
-        {
-          id: "insight-1",
-          sequence: 1,
-          headline: "Risk Signal",
-          narrative: "The churn driver shows a spike.",
-          narrative_variations: {
-            executive: "Churn driver spiked.",
-            analyst: "Churn driver spiked with cohort concentration.",
-            expert: "Churn driver spiked with cohort concentration and missing cohort size.",
-          },
-          trust: cautionTrust,
-          explanation: {
-            what_happened: "Churn spiked.",
-            why_it_happened: "Drivers were concentrated.",
-            why_it_matters: "Retention risk.",
-            what_to_watch: "Sample coverage.",
-          },
-          visual: { type: "table", data: [], config: {} },
-          evidence: [],
-          interactions: [],
-          metadata: {
-            storyType: "contrast",
-            tone: "formal",
-            confidence: 0.4,
-            timestamp: "2025-01-01",
-          },
-        },
-      ],
-      metadata: { created_at: "2025-01-01" },
-    };
+describe("Trust summary", () => {
+  it("renders a single overall confidence entry with evidence references", () => {
+    render(<TrustSummary trust={trust} />);
 
-    render(
-      <NarrativeProvider>
-        <StoryCanvas story={story} onToneChange={() => undefined} />
-      </NarrativeProvider>
-    );
-
-    expect(screen.getByText(/preliminary/i)).toBeInTheDocument();
+    expect(screen.getByText(/Overall confidence:/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/out of 100/i)).toHaveLength(1);
+    expect(screen.getByText(/steps\.validator/i)).toBeInTheDocument();
   });
 
-  it("renders expert trust breakdown details", async () => {
-    const user = userEvent.setup();
-    render(
-      <TrustBreakdown trust={cautionTrust} mode="expert" insightId="insight-1" />
-    );
-
-    await user.click(screen.getByRole("button", { name: /trust breakdown/i }));
-    expect(screen.getByText(/data quality/i)).toBeInTheDocument();
-    expect(screen.getByText(/sample sufficiency/i)).toBeInTheDocument();
+  it("does not render certified language", () => {
+    render(<TrustSummary trust={trust} />);
+    expect(screen.queryByText(/certified/i)).toBeNull();
   });
 });

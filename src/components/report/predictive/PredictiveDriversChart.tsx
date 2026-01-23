@@ -2,14 +2,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FeatureImportance } from "@/types/reportTypes";
 import { cn } from "@/lib/utils";
-import { BrainCircuit, Target, TrendingUp, AlertCircle } from "lucide-react";
+import { BrainCircuit, Target, TrendingUp, AlertCircle } from "lucide-react";
+import { isValidArtifact } from "@/lib/artifactGuard";
 
 interface PredictiveDriversChartProps {
     data: FeatureImportance;
 }
 
 export function PredictiveDriversChart({ data }: PredictiveDriversChartProps) {
-    if (!data?.available || !data.feature_importance) return null;
+    if (!data || !isValidArtifact(data) || !data.feature_importance) return null;
 
     const { target, task_type, feature_importance, insights } = data;
 

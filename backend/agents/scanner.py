@@ -18,8 +18,7 @@ class ScannerAgent:
         dataset_info = self.state.read("active_dataset") or {}
         data_path = dataset_info.get("source") or dataset_info.get("path") or self.state.get_file_path("cleaned_uploaded.csv")
         if not Path(data_path).exists():
-            # Fallback to default for testing
-            data_path = "data/customer_data.csv"
+            raise ValueError(f"Dataset not found at {data_path}")
             
         print(f"Scanning: {data_path}")
         scan = scan_dataset(data_path)
@@ -58,17 +57,6 @@ class ScannerAgent:
         self.state.write("schema_scan_output", scan)
         print("Scanner complete.")
 
-    def fallback(self, error):
-        print(f"Scanner failed: {error}")
-        return {
-            "error": str(error),
-            "status": "failed",
-            "columns": {}, # Changed from [] to {} to match scan output structure
-            "row_count": 0,
-            "column_count": 0,
-            "quality_score": 0.4 # Maintain system floor even on scanner failure
-        }
-
 def main():
     if len(sys.argv) < 2:
         print("Usage: python scanner.py <run_path>")
@@ -83,8 +71,6 @@ def main():
         agent.run()
     except Exception as e:
         print(f"[ERROR] Scanner agent failed: {e}")
-        fallback_output = agent.fallback(e)
-        state.write("schema_scan_output", fallback_output)
         sys.exit(1)
 
 if __name__ == "__main__":

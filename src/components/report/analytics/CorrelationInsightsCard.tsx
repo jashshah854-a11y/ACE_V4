@@ -1,8 +1,8 @@
-import { Activity, Info } from "lucide-react";
 import type { EnhancedAnalyticsData } from "@/types/reportTypes";
 import { ChartWrapper } from "@/components/report/ChartWrapper";
 import { ExplanationBlock } from "@/components/report/ExplanationBlock";
 import { getSectionCopy } from "@/lib/reportCopy";
+import { isValidArtifact } from "@/lib/artifactGuard";
 
 interface CorrelationInsightsCardProps {
   data?: EnhancedAnalyticsData["correlation_analysis"];
@@ -10,7 +10,7 @@ interface CorrelationInsightsCardProps {
 }
 
 export function CorrelationInsightsCard({ data, onViewEvidence }: CorrelationInsightsCardProps) {
-  if (!data?.available || !Array.isArray(data.strong_correlations) || data.strong_correlations.length === 0) {
+  if (!data || !isValidArtifact(data) || !Array.isArray(data.strong_correlations) || data.strong_correlations.length === 0) {
     return null;
   }
 

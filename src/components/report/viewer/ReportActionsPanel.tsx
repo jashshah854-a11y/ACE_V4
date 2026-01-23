@@ -5,13 +5,11 @@ import { cn } from "@/lib/utils";
 interface Action {
   title?: string;
   description?: string;
-  confidence?: number;
 }
 
 interface ReportActionsPanelProps {
   actions: Action[];
   hideActions: boolean;
-  confidenceLevel: number | undefined;
   showAllActions: boolean;
   onToggleShowAll: () => void;
 }
@@ -19,7 +17,6 @@ interface ReportActionsPanelProps {
 export function ReportActionsPanel({
   actions,
   hideActions,
-  confidenceLevel,
   showAllActions,
   onToggleShowAll,
 }: ReportActionsPanelProps) {
@@ -30,7 +27,7 @@ export function ReportActionsPanel({
       <div className="flex items-center justify-between mb-3">
         <div>
           <div className="text-xs uppercase text-muted-foreground">Actions</div>
-          <div className="text-sm font-semibold">Impact x Confidence (Top 3)</div>
+          <div className="text-sm font-semibold">Top 3 Actions</div>
         </div>
         <Button size="sm" variant="ghost" onClick={onToggleShowAll}>
           {showAllActions ? "Hide full list" : "Expand full list"}
@@ -38,12 +35,11 @@ export function ReportActionsPanel({
       </div>
       <div className="grid gap-2 sm:grid-cols-3">
         {actions.slice(0, 3).map((a, idx) => (
-          <div key={idx} className={cn("border rounded-md p-2 text-sm", hideActions && "opacity-60")}>
-            <div className="font-semibold">{a.title || `Action ${idx + 1}`}</div>
-            <div className="text-xs text-muted-foreground line-clamp-2">{a.description || String(a)}</div>
-            <div className="mt-1 text-xs">Confidence: {a.confidence ?? confidenceLevel ?? "n/a"}%</div>
-            {hideActions && <div className="text-xs text-amber-700">Hidden in strict mode</div>}
-          </div>
+            <div key={idx} className={cn("border rounded-md p-2 text-sm", hideActions && "opacity-60")}>
+              <div className="font-semibold">{a.title || `Action ${idx + 1}`}</div>
+              <div className="text-xs text-muted-foreground line-clamp-2">{a.description || String(a)}</div>
+              {hideActions && <div className="text-xs text-amber-700">Hidden in strict mode</div>}
+            </div>
         ))}
       </div>
       {showAllActions && actions.length > 3 && (

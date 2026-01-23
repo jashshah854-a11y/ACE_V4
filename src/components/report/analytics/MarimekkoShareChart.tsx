@@ -1,10 +1,14 @@
 ﻿import type { BusinessIntelligence } from "@/types/reportTypes";
+import { isValidArtifact } from "@/lib/artifactGuard";
 
 interface MarimekkoShareChartProps {
   data?: BusinessIntelligence;
 }
 
 export function MarimekkoShareChart({ data }: MarimekkoShareChartProps) {
+  if (!data || !isValidArtifact(data)) {
+    return null;
+  }
   const segments = data?.segment_value;
   if (!segments || segments.length === 0) {
     return null;

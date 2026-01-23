@@ -10,8 +10,6 @@ interface Section {
 
 interface ReportInsightStoryboardProps {
   sections: Section[];
-  confidenceLevel: number | undefined;
-  safeMode: boolean;
   hideActions: boolean;
   getSectionLimitations: (section: Section) => string[];
   onInspectEvidence: (payload: { content: string; id?: string; title?: string }) => void;
@@ -19,8 +17,6 @@ interface ReportInsightStoryboardProps {
 
 export function ReportInsightStoryboard({
   sections,
-  confidenceLevel,
-  safeMode,
   hideActions,
   getSectionLimitations,
   onInspectEvidence,
@@ -46,17 +42,11 @@ export function ReportInsightStoryboard({
               <div key={idx} className="border rounded-md p-3">
                 <div className="flex items-center justify-between">
                   <div className="text-sm font-semibold">{sec.title}</div>
-                  <Badge variant="secondary">Confidence: {confidenceLevel ?? "n/a"}%</Badge>
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{sec.content}</p>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs">
                   <Badge variant="outline">Evidence-linked</Badge>
                   {!hideActions && <Badge variant="outline">Actionable</Badge>}
-                  {safeMode && (
-                    <Badge variant="outline" className="border-amber-500 text-amber-700">
-                      Safe Mode
-                    </Badge>
-                  )}
                 </div>
                 {limitationNotes.length > 0 && (
                   <div className="mt-2 text-xs text-muted-foreground space-y-1">

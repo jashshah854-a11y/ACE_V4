@@ -2,17 +2,11 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, FileText, Calendar, Clock, Shield } from "lucide-react"; // Added icons
-import { ConfidenceSignal } from "@/components/report/ConfidenceSignal";
-import { ReportViewModel } from "@/lib/reportViewModel";
+import { FileText, Clock, Shield } from "lucide-react"; // Added icons
 
 interface ReportHeroProps {
   title: string;
   runId?: string;
-  safeMode: boolean;
-  confidenceLevel: number | undefined;
-  signal: ReportViewModel['header']['signal'];
-  limitationsReason?: string | null;
   taskContractSummary?: string;
   decisionSummary?: string;
   runContext: { mode: string; freshness: string; scopeLimits: string[] };
@@ -24,10 +18,6 @@ interface ReportHeroProps {
 export function ReportHero({
   title,
   runId,
-  safeMode,
-  confidenceLevel,
-  signal,
-  limitationsReason,
   taskContractSummary,
   decisionSummary,
   runContext,
@@ -52,14 +42,11 @@ export function ReportHero({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <ConfidenceSignal signal={signal} limitationsReason={limitationsReason} />
-          {onPdfExport && (
-            <Button variant="ghost" size="icon" onClick={onPdfExport} className="text-muted-foreground hover:text-foreground">
-              <FileText className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
+        {onPdfExport && (
+          <Button variant="ghost" size="icon" onClick={onPdfExport} className="text-muted-foreground hover:text-foreground">
+            <FileText className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {primaryQuestion && (

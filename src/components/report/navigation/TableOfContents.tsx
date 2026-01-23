@@ -14,8 +14,17 @@ interface TableOfContentsProps {
 
 export function TableOfContents({ items, className }: TableOfContentsProps) {
     const [activeId, setActiveId] = useState<string>("");
+    const [renderedItems, setRenderedItems] = useState<TOCItem[]>([]);
 
     useEffect(() => {
+        const resolved = items.filter((item) => Boolean(document.getElementById(item.id)));
+        setRenderedItems(resolved);
+    }, [items]);
+
+    useEffect(() => {
+        if (!renderedItems.length) {
+            return;
+        }
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
@@ -30,13 +39,13 @@ export function TableOfContents({ items, className }: TableOfContentsProps) {
             }
         );
 
-        items.forEach((item) => {
+        renderedItems.forEach((item) => {
             const element = document.getElementById(item.id);
             if (element) observer.observe(element);
         });
 
         return () => observer.disconnect();
-    }, [items]);
+    }, [renderedItems]);
 
     const handleScroll = (id: string, e: React.MouseEvent) => {
         e.preventDefault();
@@ -50,7 +59,7 @@ export function TableOfContents({ items, className }: TableOfContentsProps) {
         }
     };
 
-    if (!items.length) return null;
+    if (!renderedItems.length) return null;
 
     return (
         <nav className={cn("space-y-1", className)}>
@@ -62,7 +71,7 @@ export function TableOfContents({ items, className }: TableOfContentsProps) {
                 <div className="absolute left-0 top-0 bottom-0 w-px bg-border ml-0.5" />
 
                 <ul className="space-y-1">
-                    {items.map((item) => {
+                    {renderedItems.map((item) => {
                         const isActive = activeId === item.id;
                         return (
                             <li key={item.id} className="relative">

@@ -17,7 +17,6 @@ interface IntelligenceRailProps {
     };
     quickStats?: {
         dataQuality?: number;
-        confidence?: number;
         anomalies?: number;
     };
     sections?: Array<{
@@ -134,25 +133,6 @@ export function IntelligenceRail({
                                         className={cn(
                                             "h-full rounded-full",
                                             quickStats.dataQuality >= 70 ? "bg-teal-500" : "bg-copper-400"
-                                        )}
-                                    />
-                                </div>
-                            </div>
-                        )}
-                        {quickStats.confidence !== undefined && (
-                            <div>
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-xs font-medium text-muted-foreground">Confidence</span>
-                                    <span className="text-sm font-bold text-navy-900">{quickStats.confidence}%</span>
-                                </div>
-                                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                                    <motion.div
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${quickStats.confidence}%` }}
-                                        transition={{ duration: 0.8, delay: 0.5 }}
-                                        className={cn(
-                                            "h-full rounded-full",
-                                            quickStats.confidence >= 70 ? "bg-teal-500" : "bg-copper-400"
                                         )}
                                     />
                                 </div>

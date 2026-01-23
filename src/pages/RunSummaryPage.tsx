@@ -17,6 +17,7 @@ import { KpiRow } from '@/components/run-summary/KpiRow';
 import { AccordionGroup } from '@/components/run-summary/AccordionGroup';
 import { NextStepCard } from '@/components/run-summary/NextStepCard';
 import { mapToRunSummaryViewModel } from '@/lib/runSummaryMapper';
+import { useRunManifest } from '@/hooks/useRunManifest';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -38,6 +39,7 @@ async function fetchRunData(runId: string) {
  */
 export default function RunSummaryPage() {
     const { runId } = useParams<{ runId: string }>();
+    const { data: manifest, loading: manifestLoading, compatible: manifestCompatible } = useRunManifest(runId);
 
     // Fetch and map data
     const { data: rawData, isLoading, error } = useQuery({
@@ -50,7 +52,7 @@ export default function RunSummaryPage() {
     const viewModel = rawData ? mapToRunSummaryViewModel(rawData) : null;
 
     // Loading state
-    if (isLoading) {
+    if (isLoading || manifestLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">
@@ -59,6 +61,26 @@ export default function RunSummaryPage() {
                 </div>
             </div>
         );
+    }
+
+    if (!manifestCompatible) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center max-w-md">
+                    <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+                    <h1 className="text-xl font-bold text-foreground mb-2">
+                        Manifest Incompatible
+                    </h1>
+                    <p className="text-sm text-muted-foreground">
+                        This report was generated with an unsupported manifest version.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (manifest?.render_policy && !manifest.render_policy.allow_report) {
+        return null;
     }
 
     // Error state

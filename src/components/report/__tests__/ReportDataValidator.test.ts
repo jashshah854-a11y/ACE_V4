@@ -17,11 +17,12 @@ function createValidReportData(overrides: Partial<ReportDataResult> = {}): Repor
     },
     governanceWarnings: [],
     guidanceNotes: [],
-    confidenceValue: 85,
     dataQualityValue: 80,
     sections: [{ title: 'Section 1', content: 'Content' }],
     safeMode: false,
     anomalies: { count: 2, items: [] },
+    manifestLoading: false,
+    manifestCompatible: true,
     ...overrides,
   } as ReportDataResult;
 }
@@ -178,48 +179,6 @@ describe('validateReportData', () => {
     });
   });
 
-  describe('confidence value validation', () => {
-    it('should warn when confidence is undefined', () => {
-      const data = createValidReportData({ confidenceValue: undefined });
-      const result = validateReportData(data, 'Valid content');
-      
-      expect(result.issues).toContainEqual(
-        expect.objectContaining({
-          field: 'confidence',
-          severity: 'warning',
-          message: 'Confidence score not calculated',
-        })
-      );
-    });
-
-    it('should show info when confidence is low (below 40)', () => {
-      const data = createValidReportData({ confidenceValue: 30 });
-      const result = validateReportData(data, 'Valid content');
-      
-      expect(result.issues).toContainEqual(
-        expect.objectContaining({
-          field: 'confidence',
-          severity: 'info',
-          message: 'Low confidence score (30%)',
-        })
-      );
-    });
-
-    it('should pass when confidence is 40 or above', () => {
-      const data = createValidReportData({ confidenceValue: 40 });
-      const result = validateReportData(data, 'Valid content');
-      
-      expect(result.issues.find(i => i.field === 'confidence')).toBeUndefined();
-    });
-
-    it('should pass when confidence is high', () => {
-      const data = createValidReportData({ confidenceValue: 95 });
-      const result = validateReportData(data, 'Valid content');
-      
-      expect(result.issues.find(i => i.field === 'confidence')).toBeUndefined();
-    });
-  });
-
   describe('data quality validation', () => {
     it('should warn when dataQuality is undefined', () => {
       const data = createValidReportData({ dataQualityValue: undefined });
@@ -370,7 +329,6 @@ describe('validateReportData', () => {
         metrics: undefined,
         executiveBrief: undefined,
         sections: undefined,
-        confidenceValue: undefined,
         dataQualityValue: undefined,
         anomalies: { count: 20, items: [] },
       });

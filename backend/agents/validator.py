@@ -93,20 +93,6 @@ def main():
     except Exception as e:
         log_warn(f"Validation failed: {e}")
         tracker.update("validator", {"status": "failed", "error": str(e)})
-        fallback_report = {
-            "allow_insights": False,
-            "mode": "limitations",
-            "blocked_agents": [
-                "overseer",
-                "regression",
-                "sentry",
-                "personas",
-                "fabricator",
-            ],
-            "error": str(e),
-        }
-        state.write("validation_report", fallback_report)
-        state.write("data_validation_report", fallback_report)
         sys.exit(1)
 
 

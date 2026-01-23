@@ -4,16 +4,7 @@
  * Translates raw backend metrics into consistent KPI cards.
  */
 
-import type { KPI, KPIStatus, TrustLabel } from '@/types/RunSummaryViewModel';
-
-/**
- * Translate confidence score to label
- */
-export function translateConfidence(score: number): TrustLabel {
-    if (score >= 0.7) return 'high';
-    if (score >= 0.4) return 'moderate';
-    return 'low';
-}
+import type { KPI, KPIStatus } from '@/types/RunSummaryViewModel';
 
 /**
  * Translate score to KPI status
@@ -30,21 +21,7 @@ export function translateKPIStatus(score: number): KPIStatus {
 export function normalizeKPIs(rawPayload: any): KPI[] {
     const kpis: KPI[] = [];
 
-    // KPI 1: Confidence
-    const confidence = rawPayload.confidence || rawPayload.data_confidence || 0;
-    kpis.push({
-        key: 'confidence',
-        label: 'Confidence',
-        value: `${Math.round(confidence * 100)}%`,
-        status: translateKPIStatus(confidence),
-        meaning: confidence >= 0.7
-            ? 'Suitable for planning and evaluation'
-            : confidence >= 0.4
-                ? 'Use for directional insight only'
-                : 'Exploratory results, not decision-ready',
-    });
-
-    // KPI 2: Data Clarity
+    // KPI 1: Data Clarity
     const quality = rawPayload.quality_score || rawPayload.data_quality || 0;
     kpis.push({
         key: 'data_clarity',
@@ -58,7 +35,7 @@ export function normalizeKPIs(rawPayload: any): KPI[] {
                 : 'Significant data quality concerns',
     });
 
-    // KPI 3: Records Analyzed
+    // KPI 2: Records Analyzed
     const rows = rawPayload.row_count || 0;
     kpis.push({
         key: 'records_analyzed',
@@ -72,7 +49,7 @@ export function normalizeKPIs(rawPayload: any): KPI[] {
                 : 'Insufficient data for reliability',
     });
 
-    // KPI 4 (optional): Features
+    // KPI 3 (optional): Features
     const columns = rawPayload.column_count || 0;
     if (columns > 0) {
         kpis.push({

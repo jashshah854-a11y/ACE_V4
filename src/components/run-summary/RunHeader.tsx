@@ -1,7 +1,7 @@
 /**
  * Run Header Component
  * 
- * Displays run metadata, mode badge, trust signals, and dataset facts.
+ * Displays run metadata, mode badge, and dataset facts.
  * This is the first thing users see (above the fold).
  */
 
@@ -15,7 +15,7 @@ interface RunHeaderProps {
 }
 
 export function RunHeader({ viewModel }: RunHeaderProps) {
-    const { run, trust, dataset } = viewModel;
+    const { run, dataset } = viewModel;
 
     // Copy run ID to clipboard
     const copyRunId = () => {
@@ -28,13 +28,6 @@ export function RunHeader({ viewModel }: RunHeaderProps) {
         limitations: 'secondary' as const,
         failed: 'destructive' as const,
     }[run.mode];
-
-    // Trust badge styling
-    const trustBadgeVariant = {
-        high: 'default' as const,
-        moderate: 'secondary' as const,
-        low: 'destructive' as const,
-    }[trust.label];
 
     return (
         <header className="border-b bg-background pb-6">
@@ -63,26 +56,8 @@ export function RunHeader({ viewModel }: RunHeaderProps) {
                     </Badge>
                 </div>
 
-                {/* Trust and Dataset Facts */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Trust Badge */}
-                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                        <div className="flex-shrink-0">
-                            <Badge variant={trustBadgeVariant}>
-                                {Math.round(trust.score * 100)}%
-                            </Badge>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground">
-                                {trust.label.charAt(0).toUpperCase() + trust.label.slice(1)} Confidence
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
-                                {trust.guidance}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Dataset Facts */}
+                {/* Dataset Facts */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                         <Database className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                         <div className="flex-1 min-w-0">

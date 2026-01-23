@@ -3,7 +3,6 @@ import { PersonaCard, PERSONA_GRADIENTS } from "./PersonaCard";
 import { PersonaData } from "@/lib/reportParser";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { motion } from "framer-motion";
-import { ScopePlaceholder } from "./ScopePlaceholder";
 import type { AnalysisIntent, ScopeConstraint, TargetCandidate } from "@/types/analysisIntent";
 
 interface PersonaSectionProps {
@@ -23,15 +22,7 @@ export function PersonaSection({ personas, scopeConstraints = [], analysisIntent
         : [];
 
     if (validPersonas.length === 0) {
-        return (
-            <ScopePlaceholder
-                sectionName="Personas & Strategies"
-                agentKey="fabricator"
-                scopeConstraints={scopeConstraints}
-                analysisIntent={analysisIntent}
-                targetCandidate={targetCandidate}
-            />
-        );
+        return null;
     }
 
     // Prepare data for pie chart

@@ -1,6 +1,8 @@
 import json
 import os
+import re
 import shutil
+import warnings
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
@@ -16,6 +18,61 @@ def _ensure_dirs(run_path: str):
     Path(run_path).mkdir(parents=True, exist_ok=True)
     Path(run_path, "artifacts").mkdir(parents=True, exist_ok=True)
     Path(run_path, "cache").mkdir(parents=True, exist_ok=True)
+
+
+def _coerce_datetime(series: pd.Series) -> pd.Series:
+    version_parts = pd.__version__.split(".")
+    try:
+        major = int(version_parts[0])
+    except ValueError:
+        major = 0
+    if major >= 2:
+        return pd.to_datetime(series, errors="coerce", utc=False, format="mixed")
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="Could not infer format",
+            category=UserWarning,
+        )
+        return pd.to_datetime(series, errors="coerce", utc=False)
+
+
+def _is_datetime_candidate(column_name: str) -> bool:
+    name = column_name.lower()
+    tokens = (
+        "date",
+        "time",
+        "timestamp",
+        "year",
+        "month",
+        "day",
+        "created",
+        "updated",
+        "joined",
+    )
+    return any(token in name for token in tokens)
+
+
+_DATE_LIKE_PATTERN = re.compile(
+    r"\b(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\b",
+    flags=re.IGNORECASE,
+)
+
+
+def _datetime_like_fraction(series: pd.Series, sample_size: int = 50) -> tuple[float, int]:
+    sample = series.dropna().astype(str).head(sample_size)
+    if sample.empty:
+        return 0.0, 0
+    matches = sample.str.contains(_DATE_LIKE_PATTERN, na=False)
+    count = int(matches.sum())
+    return count / len(sample), count
+
+
+def _datetime_candidate_values(series: pd.Series) -> pd.Series:
+    values = series.dropna().astype(str)
+    if values.empty:
+        return values
+    return values[values.str.contains(_DATE_LIKE_PATTERN, na=False)]
 
 
 def prepare_run_data(
@@ -148,12 +205,23 @@ def prepare_run_data(
         numeric_coerced = pd.to_numeric(series, errors="coerce")
         num_rate = 1 - numeric_coerced.isna().mean()
 
-        dt_coerced = pd.to_datetime(series, errors="coerce", utc=False, format=None)
-        dt_rate = 1 - dt_coerced.isna().mean()
+        dt_rate = None
+        if _is_datetime_candidate(col):
+            dt_candidates = _datetime_candidate_values(series)
+            if not dt_candidates.empty:
+                dt_coerced = _coerce_datetime(dt_candidates)
+                dt_rate = 1 - dt_coerced.isna().mean()
+        else:
+            fraction, count = _datetime_like_fraction(series)
+            if fraction >= 0.2 and count >= 3:
+                dt_candidates = _datetime_candidate_values(series)
+                if not dt_candidates.empty:
+                    dt_coerced = _coerce_datetime(dt_candidates)
+                    dt_rate = 1 - dt_coerced.isna().mean()
 
         coercion[col] = {
             "numeric_parse_rate": round(float(num_rate), 3),
-            "datetime_parse_rate": round(float(dt_rate), 3),
+            "datetime_parse_rate": round(float(dt_rate), 3) if dt_rate is not None else None,
         }
 
     coercion_path = artifacts_dir / "coercion_report.json"

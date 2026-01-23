@@ -1,0 +1,147 @@
+{
+  "manifest_version": "1.0",
+  "run_id": "snapshot-run",
+  "created_at": "2025-01-01T00:00:00Z",
+  "pipeline_version": "ace_v4_pipeline",
+  "code_commit_hash": "REDACTED",
+  "dataset_fingerprint": "snapshot-fingerprint",
+  "steps": {
+    "ingestion": {
+      "status": "not_started",
+      "started_at": null,
+      "ended_at": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "type_identifier": {
+      "status": "not_started",
+      "started_at": null,
+      "ended_at": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "validator": {
+      "status": "not_started",
+      "started_at": null,
+      "ended_at": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "scanner": {
+      "status": "not_started",
+      "started_at": null,
+      "ended_at": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "interpreter": {
+      "status": "not_started",
+      "started_at": null,
+      "ended_at": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "overseer": {
+      "status": "not_started",
+      "started_at": null,
+      "ended_at": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "regression": {
+      "status": "not_started",
+      "started_at": null,
+      "ended_at": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "sentry": {
+      "status": "not_started",
+      "started_at": null,
+      "ended_at": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "personas": {
+      "status": "not_started",
+      "started_at": null,
+      "ended_at": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "fabricator": {
+      "status": "not_started",
+      "started_at": null,
+      "ended_at": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "expositor": {
+      "status": "not_started",
+      "started_at": null,
+      "ended_at": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "trust_evaluation": {
+      "status": "not_started",
+      "started_at": null,
+      "ended_at": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "correlation_analysis": {
+      "status": "not_started",
+      "started_at": null,
+      "ended_at": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "distribution_analysis": {
+      "status": "not_started",
+      "started_at": null,
+      "ended_at": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "quality_metrics": {
+      "status": "not_started",
+      "started_at": null,
+      "ended_at": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "business_intelligence": {
+      "status": "not_started",
+      "started_at": null,
+      "ended_at": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "feature_importance": {
+      "status": "not_started",
+      "started_at": null,
+      "ended_at": null,
+      "error_code": null,
+      "error_message": null
+    }
+  },
+  "artifacts": {},
+  "warnings": [],
+  "trust": null,
+  "render_policy": {
+    "allow_report": false,
+    "allow_regression_sections": false,
+    "allow_forecasting": false,
+    "allow_simulation": false,
+    "allow_personas": false,
+    "allow_strategies": false,
+    "allow_anomalies": false,
+    "allow_correlation_analysis": false,
+    "allow_distribution_analysis": false,
+    "allow_quality_metrics": false,
+    "allow_business_intelligence": false,
+    "allow_feature_importance": false
+  },
+  "updated_at": "REDACTED"
+}

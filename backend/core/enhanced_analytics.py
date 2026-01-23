@@ -29,6 +29,10 @@ from .evidence_standards import (
     get_analysis_mode,
     QUALITY_THRESHOLD
 )
+from .analytics_validation import (
+    validate_correlation_analysis,
+    validate_feature_importance,
+)
 
 if TYPE_CHECKING:  # pragma: no cover
     from .state_manager import StateManager
@@ -105,7 +109,10 @@ class EnhancedAnalytics:
                     suspicious_leakage.append(f"{col1} ↔ {col2} (r={max_corr:.4f})")
                     # Downgrade reliability context in metadata if state manager exists
                     if self.state_manager:
-                         self.state_manager.add_warning(f"Likely data leakage detected: {col1} and {col2} are perfectly correlated.")
+                        self.state_manager.add_warning(
+                            "DATA_LEAKAGE_POSSIBLE",
+                            f"Likely data leakage detected: {col1} and {col2} are perfectly correlated.",
+                        )
 
                 # Consider correlation strong if |r| > 0.5
                 if max_corr > 0.5:
@@ -263,7 +270,6 @@ class EnhancedAnalytics:
             "feature_importance": importances[:15],
             "total_features": len(feature_cols),
             "confidence_interval": confidence_interval,
-            "confidence": evidence["confidence_level"],
             "evidence": evidence,
             "evidence_id": evidence_id,
             "coefficients": artifacts.get("coefficients") if isinstance(artifacts, dict) else None,
@@ -685,22 +691,96 @@ def run_enhanced_analytics(
         "predictive_enabled": enable_predictive,
     }
     
+    def _record_validation(name: str, validation: Dict[str, Any]) -> None:
+        if state_manager is None:
+            return
+        existing = state_manager.read("analytics_validation")
+        if not isinstance(existing, dict):
+            existing = {}
+        existing[name] = validation
+        state_manager.write("analytics_validation", existing)
+        for warning in validation.get("warnings", []):
+            warning_type = warning.get("type")
+            if not warning_type:
+                continue
+            message = warning.get("note") or f"{warning_type}: {warning.get('metric')}"
+            state_manager.add_warning(warning_type, message, details=warning)
+
+    def _apply_validation(name: str, payload: Dict[str, Any], validator) -> Optional[Dict[str, Any]]:
+        if not payload or payload.get("available") is False:
+            _record_validation(
+                name,
+                {
+                    "valid": False,
+                    "errors": [
+                        {
+                            "type": "ARTIFACT_UNAVAILABLE",
+                            "metric": name,
+                            "value": None,
+                            "allowed_range": "computed",
+                            "path": None,
+                        }
+                    ],
+                    "warnings": [],
+                },
+            )
+            return None
+        validation = validator(payload)
+        payload = dict(payload)
+        payload["valid"] = validation["valid"]
+        payload["errors"] = validation["errors"]
+        payload["warnings"] = validation["warnings"]
+        payload["status"] = "success" if validation["valid"] else "failed"
+        _record_validation(name, validation)
+        return payload if validation["valid"] else None
+
+    def _attach_available(name: str, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        if not payload or payload.get("available") is False:
+            _record_validation(
+                name,
+                {
+                    "valid": False,
+                    "errors": [
+                        {
+                            "type": "ARTIFACT_UNAVAILABLE",
+                            "metric": name,
+                            "value": None,
+                            "allowed_range": "computed",
+                            "path": None,
+                        }
+                    ],
+                    "warnings": [],
+                },
+            )
+            return None
+        payload = dict(payload)
+        payload["valid"] = True
+        payload["errors"] = []
+        payload["warnings"] = []
+        payload["status"] = "success"
+        _record_validation(name, {"valid": True, "errors": [], "warnings": []})
+        return payload
+
     # Always run descriptive analytics
-    results["correlation_analysis"] = analytics.compute_correlation_matrix()
-    results["distribution_analysis"] = analytics.analyze_distributions()
-    results["quality_metrics"] = analytics.compute_advanced_quality_metrics()
-    results["business_intelligence"] = analytics.compute_business_intelligence(cluster_labels)
+    results["correlation_analysis"] = _apply_validation(
+        "correlation_analysis",
+        analytics.compute_correlation_matrix(),
+        validate_correlation_analysis,
+    )
+    results["distribution_analysis"] = _attach_available("distribution_analysis", analytics.analyze_distributions())
+    results["quality_metrics"] = _attach_available("quality_metrics", analytics.compute_advanced_quality_metrics())
+    results["business_intelligence"] = _attach_available("business_intelligence", analytics.compute_business_intelligence(cluster_labels))
     
     # Only run predictive analytics if quality threshold met
     if enable_predictive:
         print("[ENHANCED_ANALYTICS] ✓ Quality threshold met - enabling feature importance")
-        results["feature_importance"] = analytics.compute_feature_importance()
+        results["feature_importance"] = _apply_validation(
+            "feature_importance",
+            analytics.compute_feature_importance(),
+            validate_feature_importance,
+        )
     else:
         print(f"[ENHANCED_ANALYTICS] ⚠️ Quality < {QUALITY_THRESHOLD} - skipping predictive analysis (fail-safe mode)")
-        results["feature_importance"] = {
-            "available": False,
-            "reason": f"Data quality ({quality_score:.2f}) below threshold ({QUALITY_THRESHOLD}) - fail-safe mode active",
-            "mode": "descriptive_only"
-        }
+        results["feature_importance"] = None
     
     return results

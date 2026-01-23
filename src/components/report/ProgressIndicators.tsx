@@ -30,20 +30,17 @@ function getColorClass(percentage: number): string {
 
 interface ProgressIndicatorsProps {
     completeness?: number;
-    confidence?: number;
     validRecords?: number;
     className?: string;
 }
 
 export function ProgressIndicators({
     completeness,
-    confidence,
     validRecords,
     className
 }: ProgressIndicatorsProps) {
     const indicators = [
         { label: "Completeness", value: completeness },
-        { label: "Confidence Level", value: confidence },
         { label: "Valid Records", value: validRecords },
     ].filter(indicator => indicator.value !== undefined && indicator.value !== null);
 

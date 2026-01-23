@@ -116,7 +116,7 @@ export function EnhancedReportViewer({
             )}
 
             {/* Progress Indicators */}
-            {(progressMetrics.completeness || progressMetrics.confidence || progressMetrics.validRecords) && (
+            {(progressMetrics.completeness || progressMetrics.validRecords) && (
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -124,7 +124,10 @@ export function EnhancedReportViewer({
                     className="bg-muted/30 p-6 rounded-lg"
                 >
                     <h3 className="text-lg font-semibold mb-4">Quality Metrics</h3>
-                    <ProgressIndicators {...progressMetrics} />
+                    <ProgressIndicators
+                        completeness={progressMetrics.completeness}
+                        validRecords={progressMetrics.validRecords}
+                    />
                 </motion.div>
             )}
 

@@ -11,7 +11,6 @@ import {
   Send,
   Sparkles,
   CheckCircle,
-  HelpCircle,
   Activity,
   BarChart3,
   Layers,
@@ -27,7 +26,7 @@ import { MarimekkoShareChart } from "./analytics/MarimekkoShareChart";
 import { EvidenceLineageModal } from "./EvidenceLineageModal";
 import type { SimulationResult, Modification } from "@/lib/api-client";
 import { focusGuidance } from "@/lib/guidanceFocus";
-import { GuidanceOverlay } from "@/components/report/GuidanceOverlay";
+import { isValidArtifact } from "@/lib/artifactGuard";
 
 interface EvidenceRailProps {
   mode?: "inline" | "overlay";
@@ -37,7 +36,6 @@ interface EvidenceRailProps {
   activeEvidence?: "business_pulse" | "predictive_drivers" | null;
   data: ReportDataResult;
   runId: string;
-  onFocusGuidance?: () => void;
   simulationResult?: SimulationResult | null;
   simulationModifications?: Modification[];
 }
@@ -53,8 +51,6 @@ const SUGGESTION_CHIPS = {
   ],
 };
 
-const MIN_CONFIDENCE = 50;
-
 export default function EvidenceRail(props: EvidenceRailProps) {
   const {
     mode,
@@ -64,7 +60,6 @@ export default function EvidenceRail(props: EvidenceRailProps) {
     isOpen = false,
     onClose = () => undefined,
     activeEvidence = null,
-    onFocusGuidance,
     simulationResult,
     simulationModifications,
   } = props;
@@ -76,14 +71,13 @@ export default function EvidenceRail(props: EvidenceRailProps) {
   if (resolvedMode === "inline") {
     return (
       <InlineEvidenceRail
-        data={data}
-        runId={runId}
-        className={className}
-        numericColumns={numericColumns}
-        onFocusGuidance={onFocusGuidance}
-        simulationResult={simulationResult}
-        simulationModifications={simulationModifications}
-      />
+    data={data}
+    runId={runId}
+    className={className}
+    numericColumns={numericColumns}
+    simulationResult={simulationResult}
+    simulationModifications={simulationModifications}
+  />
     );
   }
 
@@ -268,7 +262,6 @@ interface InlineEvidenceProps {
   runId: string;
   className?: string;
   numericColumns: string[];
-  onFocusGuidance?: () => void;
   simulationResult?: SimulationResult | null;
   simulationModifications?: Modification[];
 }
@@ -276,7 +269,6 @@ interface InlineEvidenceProps {
 function InlineEvidenceRail({
   data,
   className,
-  onFocusGuidance,
   simulationResult,
   simulationModifications,
 }: InlineEvidenceProps) {
@@ -296,16 +288,9 @@ function InlineEvidenceRail({
     "feature_importance",
   );
 
-  const showBusiness = Boolean(
-    data.enhancedAnalytics?.business_intelligence?.available &&
-    businessEvidence?.confidence &&
-    businessEvidence.confidence >= MIN_CONFIDENCE,
-  );
-  const showPredictive = Boolean(
-    data.enhancedAnalytics?.feature_importance?.available &&
-    predictiveEvidence?.confidence &&
-    predictiveEvidence.confidence >= MIN_CONFIDENCE,
-  );
+  const regressionStatus = data.diagnostics?.regression_status;
+  const showBusiness = isValidArtifact(data.enhancedAnalytics?.business_intelligence);
+  const showPredictive = isValidArtifact(data.enhancedAnalytics?.feature_importance) && regressionStatus === "success";
 
   const businessData = data.enhancedAnalytics?.business_intelligence;
   const predictiveData = data.enhancedAnalytics?.feature_importance;
@@ -369,25 +354,7 @@ function InlineEvidenceRail({
           </p>
           <h3 className="font-mono text-lg text-foreground">Evidence Console</h3>
         </div>
-        {onFocusGuidance && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-amber-600 hover:text-amber-700"
-            onClick={onFocusGuidance}
-            data-guidance-context="global"
-          >
-            <HelpCircle className="mr-2 h-4 w-4" /> Why Safe Mode?
-          </Button>
-        )}
       </div>
-      {data.safeMode && (
-        <div className="px-5 py-3 text-xs text-amber-900 bg-amber-50/70 border-b border-amber-200/60">
-          Safe Mode is active here because predictive evidence requires traceable, decision-grade support.
-          Descriptive insights elsewhere in the report remain available.
-        </div>
-      )}
-
       {nudgeChips.length > 0 && (
         <div className="px-5 pt-4 flex flex-wrap gap-2">
           {nudgeChips.map((chip) => (
@@ -404,84 +371,68 @@ function InlineEvidenceRail({
       )}
 
       <div className="space-y-6 p-5">
-        <section
-          ref={registerSectionRef("business_intelligence")}
-          data-evidence-section="business_intelligence"
-          className={cn(
-            "rounded-2xl border border-border/50 bg-background/70 p-4",
-            highlightedSection === "business_intelligence" &&
-            "ring-2 ring-offset-2 ring-[#005eb8] ring-offset-background",
-          )}
-        >
-          {showBusiness && businessData ? (
-            <>
-              <SectionHeader
-                title="Governed Signals"
-                description="Value, churn, and retention diagnostics"
-                icon={<Activity className="h-4 w-4 text-blue-500" />}
-                onViewSource={
-                  businessEvidence
-                    ? () => setLineageEvidence(businessEvidence)
-                    : undefined
-                }
-              />
-              <BusinessPulse
-                data={businessData}
-                onViewEvidence={
-                  businessEvidence
-                    ? () => setLineageEvidence(businessEvidence)
-                    : undefined
-                }
-              />
-              {simulationResult?.delta && (
-                <SimulationDeltaCard
-                  result={simulationResult}
-                  modifications={simulationModifications ?? []}
-                />
-              )}
-            </>
-          ) : (
-            <EvidenceGate
-              title="Evidence not applicable for this run"
-              message="Business intelligence in the Lab requires traceable, decision-grade evidence. Descriptive insights in the report remain available."
-              onWhy={onFocusGuidance}
+        {showBusiness && businessData && (
+          <section
+            ref={registerSectionRef("business_intelligence")}
+            data-evidence-section="business_intelligence"
+            className={cn(
+              "rounded-2xl border border-border/50 bg-background/70 p-4",
+              highlightedSection === "business_intelligence" &&
+              "ring-2 ring-offset-2 ring-[#005eb8] ring-offset-background",
+            )}
+          >
+            <SectionHeader
+              title="Governed Signals"
+              description="Value, churn, and retention diagnostics"
+              icon={<Activity className="h-4 w-4 text-blue-500" />}
+              onViewSource={
+                businessEvidence
+                  ? () => setLineageEvidence(businessEvidence)
+                  : undefined
+              }
             />
-          )}
-        </section>
-
-        <section
-          ref={registerSectionRef("feature_importance")}
-          data-evidence-section="feature_importance"
-          className={cn(
-            "rounded-2xl border border-border/50 bg-background/70 p-4",
-            highlightedSection === "feature_importance" &&
-            "ring-2 ring-offset-2 ring-[#005eb8] ring-offset-background",
-          )}
-        >
-          {showPredictive && predictiveData ? (
-            <>
-              <SectionHeader
-                title="Governed Drivers"
-                description="Feature importance audit"
-                icon={<BarChart3 className="h-4 w-4 text-emerald-500" />}
-                onViewSource={
-                  predictiveEvidence
-                    ? () => setLineageEvidence(predictiveEvidence)
-                    : undefined
-                }
-              />
-              <PredictiveDriversChart data={predictiveData} />
-            </>
-          ) : (
-            <EvidenceGate
-              title="Evidence not applicable for this run"
-              message="Predictive drivers in the Lab require traceable, decision-grade evidence. Descriptive insights in the report remain available."
-              onWhy={onFocusGuidance}
+            <BusinessPulse
+              data={businessData}
+              onViewEvidence={
+                businessEvidence
+                  ? () => setLineageEvidence(businessEvidence)
+                  : undefined
+              }
             />
-          )}
-        </section>
+            {simulationResult?.delta && (
+              <SimulationDeltaCard
+                result={simulationResult}
+                modifications={simulationModifications ?? []}
+              />
+            )}
+          </section>
+        )}
 
-        {businessData && (
+        {showPredictive && predictiveData && (
+          <section
+            ref={registerSectionRef("feature_importance")}
+            data-evidence-section="feature_importance"
+            className={cn(
+              "rounded-2xl border border-border/50 bg-background/70 p-4",
+              highlightedSection === "feature_importance" &&
+              "ring-2 ring-offset-2 ring-[#005eb8] ring-offset-background",
+            )}
+          >
+            <SectionHeader
+              title="Governed Drivers"
+              description="Feature importance audit"
+              icon={<BarChart3 className="h-4 w-4 text-emerald-500" />}
+              onViewSource={
+                predictiveEvidence
+                  ? () => setLineageEvidence(predictiveEvidence)
+                  : undefined
+              }
+            />
+            <PredictiveDriversChart data={predictiveData} />
+          </section>
+        )}
+
+        {showBusiness && businessData && (
           <section
             data-evidence-section="variance"
             className="rounded-2xl border border-border/50 bg-background/70 p-4"
@@ -500,7 +451,7 @@ function InlineEvidenceRail({
           </section>
         )}
 
-        {businessData?.segment_value?.length ? (
+        {showBusiness && businessData?.segment_value?.length ? (
           <section
             data-evidence-section="marimekko"
             className="rounded-2xl border border-border/50 bg-background/70 p-4"
@@ -564,33 +515,6 @@ function SectionHeader({
         <Button variant="outline" size="sm" onClick={onViewSource} className="text-xs">
           View Source
         </Button>
-      )}
-    </div>
-  );
-}
-
-function EvidenceGate({
-  title = "Evidence not applicable for this run",
-  message,
-  onWhy,
-}: {
-  title?: string;
-  message: string;
-  onWhy?: () => void;
-}) {
-  return (
-    <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/70 p-4 text-sm text-amber-900">
-      <p className="text-sm font-semibold">{title}</p>
-      <p className="mt-1 text-amber-900/90">{message}</p>
-      {onWhy && (
-        <button
-          type="button"
-          onClick={onWhy}
-          className="mt-3 inline-flex items-center gap-2 text-[12px] font-semibold text-amber-700"
-          data-guidance-context="global"
-        >
-          <HelpCircle className="h-3.5 w-3.5" /> Why am I seeing this?
-        </button>
       )}
     </div>
   );
@@ -760,12 +684,12 @@ function buildNudgeChips(data: ReportDataResult): string[] {
   if ((data.profile?.numericColumns?.length ?? 0) > 0) {
     chips.push("Open What-If Cockpit");
   }
-  if (data.enhancedAnalytics?.feature_importance?.available) {
+  if (isValidArtifact(data.enhancedAnalytics?.feature_importance)) {
     chips.push("Explain top driver");
   }
   if (
-    (data.enhancedAnalytics?.business_intelligence?.value_metrics?.value_concentration ??
-      0) > 0.5
+    isValidArtifact(data.enhancedAnalytics?.business_intelligence) &&
+    (data.enhancedAnalytics?.business_intelligence?.value_metrics?.value_concentration ?? 0) > 0.5
   ) {
     chips.push("Inspect ghost revenue");
   }

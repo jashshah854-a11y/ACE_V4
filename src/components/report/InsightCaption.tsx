@@ -6,7 +6,6 @@ export type InsightSeverity = "positive" | "neutral" | "warning" | "risk";
 export interface InsightCaptionProps {
     text: string;
     severity?: InsightSeverity;
-    confidence?: number;
     className?: string;
 }
 
@@ -14,12 +13,11 @@ export interface InsightCaptionProps {
  * InsightCaption - One-line plain language takeaway
  * 
  * Displays under charts to provide immediate interpretation.
- * Supports severity indicators and confidence levels.
+ * Supports severity indicators only.
  */
 export function InsightCaption({
     text,
     severity = "neutral",
-    confidence,
     className,
 }: InsightCaptionProps) {
     const severityConfig = {
@@ -64,11 +62,6 @@ export function InsightCaption({
             <Icon className={cn("w-4 h-4 mt-0.5 shrink-0", config.color)} />
             <div className="flex-1 space-y-1">
                 <p className="font-medium text-foreground leading-snug">{text}</p>
-                {confidence !== undefined && (
-                    <p className="text-xs text-muted-foreground">
-                        Confidence: {Math.round(confidence)}%
-                    </p>
-                )}
             </div>
         </div>
     );

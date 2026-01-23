@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Set
 import pandas as pd
 
 from core.data_typing import confidence_label
+from core.datetime_utils import coerce_datetime
 
 
 def _detect_target(df: pd.DataFrame, run_config: Dict, schema_map: Optional[Dict]) -> Optional[str]:
@@ -36,7 +37,7 @@ def _time_coverage_days(df: pd.DataFrame) -> Optional[float]:
     datetime_cols = [c for c in df.columns if "date" in c.lower() or "time" in c.lower()]
     for col in datetime_cols:
         try:
-            series = pd.to_datetime(df[col], errors="coerce")
+            series = coerce_datetime(df[col])
             if series.notna().sum() < 2:
                 continue
             span = (series.max() - series.min()).total_seconds() / 86400

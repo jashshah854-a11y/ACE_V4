@@ -19,18 +19,26 @@ from core.pipeline_map import PIPELINE_SEQUENCE, PIPELINE_DESCRIPTIONS
 # --- PROTOCOL 1000: FORCE EXPOSITOR INCLUSION ---
 # Ensure expositor is ALWAYS in the execution sequence
 if "expositor" not in PIPELINE_SEQUENCE:
-    print("[ORCHESTRATOR] âš ï¸ 'expositor' missing from PIPELINE_SEQUENCE. FORCING INCLUSION.", file=sys.stderr, flush=True)
-    # This shouldn't happen, but if it does, we fix it at runtime
+    print("[ORCHESTRATOR] WARNING: 'expositor' missing from PIPELINE_SEQUENCE. Forcing inclusion.", file=sys.stderr, flush=True)
     PIPELINE_SEQUENCE.append("expositor")
 
-# Double-check: Ensure expositor is the LAST step
-if PIPELINE_SEQUENCE[-1] != "expositor":
-    print(f"[ORCHESTRATOR] âš ï¸ 'expositor' is not the final step (current: {PIPELINE_SEQUENCE[-1]}). Reordering...", file=sys.stderr, flush=True)
+# Ensure trust_evaluation (if present) runs after expositor
+if "trust_evaluation" in PIPELINE_SEQUENCE:
     if "expositor" in PIPELINE_SEQUENCE:
-        PIPELINE_SEQUENCE.remove("expositor")
-    PIPELINE_SEQUENCE.append("expositor")
+        PIPELINE_SEQUENCE = [step for step in PIPELINE_SEQUENCE if step != "expositor"]
+        trust_index = PIPELINE_SEQUENCE.index("trust_evaluation")
+        PIPELINE_SEQUENCE.insert(trust_index, "expositor")
+    if PIPELINE_SEQUENCE[-1] != "trust_evaluation":
+        PIPELINE_SEQUENCE = [step for step in PIPELINE_SEQUENCE if step != "trust_evaluation"]
+        PIPELINE_SEQUENCE.append("trust_evaluation")
+else:
+    # Double-check: Ensure expositor is the LAST step when trust evaluation is absent
+    if PIPELINE_SEQUENCE[-1] != "expositor":
+        print(f"[ORCHESTRATOR] WARNING: 'expositor' is not the final step (current: {PIPELINE_SEQUENCE[-1]}). Reordering...", file=sys.stderr, flush=True)
+        PIPELINE_SEQUENCE = [step for step in PIPELINE_SEQUENCE if step != "expositor"]
+        PIPELINE_SEQUENCE.append("expositor")
 
-print(f"[ORCHESTRATOR] ðŸ“‹ Final Pipeline Sequence: {PIPELINE_SEQUENCE}", file=sys.stderr, flush=True)
+print(f"[ORCHESTRATOR] Final Pipeline Sequence: {PIPELINE_SEQUENCE}", file=sys.stderr, flush=True)
 # ------------------------------------------------
 
 from core.run_utils import create_run_folder
@@ -45,6 +53,7 @@ from ace_v4.performance.config import PerformanceConfig
 from intake.stream_loader import prepare_run_data
 from intake.profiling import profile_dataframe, compute_drift_report, save_json
 from jobs.progress import ProgressTracker
+from core.run_manifest import initialize_manifest, compute_dataset_fingerprint, update_step_status
 
 POLL_TIME = 0.5  # seconds
 MAX_STEP_ATTEMPTS = 3
@@ -89,6 +98,83 @@ def save_state(state_path, state):
 
 def iso_now():
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
+
+
+def _sync_regression_status(state: dict, state_manager: StateManager) -> None:
+    """Single source of truth for regression_status based on orchestrator step state."""
+    status_map = {
+        None: "not_started",
+        "pending": "not_started",
+        "running": "running",
+        "completed": "success",
+        "failed": "failed",
+        "skipped": "failed",
+        "not_applicable": "failed",
+    }
+    step_status = (state.get("steps") or {}).get("regression", {}).get("status")
+    state_manager.write("regression_status", status_map.get(step_status, "not_started"))
+
+
+def _finalize_regression_artifacts(state_manager: StateManager, success: bool) -> None:
+    pending = state_manager.read("regression_insights_pending")
+    if not success:
+        state_manager.delete("regression_insights_pending")
+        return
+    if not pending:
+        raise RuntimeError("Regression succeeded but no pending artifact found.")
+    state_manager.write("regression_insights", pending)
+    if not state_manager.exists("regression_insights"):
+        raise RuntimeError("Regression artifacts failed validation and were discarded.")
+    state_manager.delete("regression_insights_pending")
+
+
+def _finalize_expositor_artifacts(state_manager: StateManager, run_path: str, success: bool) -> None:
+    pending_report = state_manager.read("final_report_pending")
+    pending_analytics = state_manager.read("enhanced_analytics_pending")
+    pending_path = Path(run_path) / "final_report.pending.md"
+    final_path = Path(run_path) / "final_report.md"
+
+    if not success:
+        state_manager.delete("final_report_pending")
+        state_manager.delete("enhanced_analytics_pending")
+        if pending_path.exists():
+            pending_path.unlink()
+        return
+
+    if not pending_report:
+        raise RuntimeError("Expositor succeeded but no pending report found.")
+
+    if not pending_path.exists():
+        raise RuntimeError("Expositor succeeded but pending report file missing.")
+
+    final_path.parent.mkdir(parents=True, exist_ok=True)
+    os.replace(pending_path, final_path)
+
+    state_manager.write("final_report", pending_report)
+    if not state_manager.exists("final_report"):
+        raise RuntimeError("Final report failed validation and was discarded.")
+    state_manager.delete("final_report_pending")
+
+    if pending_analytics:
+        state_manager.write("enhanced_analytics", pending_analytics)
+        if not state_manager.exists("enhanced_analytics"):
+            raise RuntimeError("Enhanced analytics failed validation and were discarded.")
+        state_manager.delete("enhanced_analytics_pending")
+
+
+def _finalize_trust_artifacts(state_manager: StateManager, run_path: str, success: bool) -> None:
+    pending = state_manager.read("trust_object_pending")
+    if not success:
+        state_manager.delete("trust_object_pending")
+        return
+    if not pending:
+        raise RuntimeError("Trust evaluation succeeded but no pending artifact found.")
+    state_manager.write("trust_object", pending)
+    if not state_manager.exists("trust_object"):
+        raise RuntimeError("Trust artifact failed validation and was discarded.")
+    state_manager.delete("trust_object_pending")
+    from core.run_manifest import update_trust
+    update_trust(run_path, pending)
 
 
 def initialize_state(run_id, state_path, data_path):
@@ -158,6 +244,9 @@ def mark_step_running(state, step):
     state.update(progress_info)
 
     update_history(state, f"{step} started")
+    run_path = state.get("run_path")
+    if run_path:
+        update_step_status(run_path, step, "running")
 
 
 def finalize_step(state, step, success, stdout, stderr):
@@ -187,6 +276,9 @@ def finalize_step(state, step, success, stdout, stderr):
 
     event = "completed" if success else "failed"
     update_history(state, f"{step} {event}", returncode=0 if success else 1)
+    run_path = state.get("run_path")
+    if run_path:
+        update_step_status(run_path, step, "success" if success else "failed")
 
 
 def calculate_agent_timeout(run_path, agent_name):
@@ -226,12 +318,13 @@ def run_agent(agent_name, run_path):
         "personas": "persona_engine",
         "fabricator": "fabricator",
         "expositor": "expositor",
+        "trust_evaluation": "trust_evaluation",
     }
     
     script_name = agent_script_map.get(agent_name, agent_name)
     
     # Data type guardrails before launching heavy agents
-    if agent_name not in {"type_identifier", "validator", "scanner", "interpreter"}:
+    if agent_name not in {"type_identifier", "validator", "scanner", "interpreter", "trust_evaluation"}:
         sm = StateManager(run_path)
         dtype_info = sm.read("data_type_identification") or {}
         data_type = dtype_info.get("primary_type")
@@ -398,6 +491,11 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
             manifest = json.load(f)
 
         active_path = manifest.get("parquet_path") or manifest.get("source_path")
+        dataset_fingerprint = compute_dataset_fingerprint(
+            manifest.get("sha256", ""),
+            manifest.get("columns", []),
+            manifest.get("row_count_estimate", 0),
+        )
         state_manager.write(
             "active_dataset",
             {
@@ -407,6 +505,7 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
                 "manifest": str(manifest_path),
             },
         )
+        initialize_manifest(run_path, run_id, dataset_fingerprint, created_at=iso_now())
         print(f"Dataset manifest ready: {manifest_path}")
 
     except Exception as e:
@@ -417,6 +516,7 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
     # 3. Init State
     state_path = os.path.join(run_path, "orchestrator_state.json")
     state = initialize_state(run_id, state_path, manifest.get("source_path", data_path))
+    state["run_path"] = run_path
     state["start_epoch"] = time.time()
     state["artifacts"] = {
         "dataset_manifest": os.path.basename(manifest_path),
@@ -474,6 +574,16 @@ def main_loop(run_path):
         if not state:
             time.sleep(POLL_TIME)
             continue
+
+        _sync_regression_status(state, state_manager)
+        regression_status = state_manager.read("regression_status") or "not_started"
+        if regression_status != "success" and state_manager.exists("regression_insights"):
+            update_history(state, "Regression status mismatch: artifacts present while status != success", returncode=1)
+            state["status"] = "failed"
+            state["failure_reason"] = "regression_status_mismatch"
+            save_state(state_path, state)
+            _record_final_status(run_path, "failed", reason="regression_status_mismatch")
+            break
 
         # STABILITY LAW 1: ABSOLUTE REPORT ENFORCEMENT
         # The pipeline SHALL NOT complete without a physical final_report.md
@@ -545,6 +655,9 @@ def main_loop(run_path):
                             step_state["message"] = "Skipped due to fast-mode time budget"
                             state["steps"][step] = step_state
                             state.setdefault("failed_steps", []).append(step)
+                            run_path = state.get("run_path")
+                            if run_path:
+                                update_step_status(run_path, step, "skipped")
                 update_history(state, f"Fast-mode budget exceeded ({elapsed:.1f}s); jumping to expositor")
                 state["current_step"] = "expositor"
                 state["next_step"] = "expositor"
@@ -559,6 +672,9 @@ def main_loop(run_path):
         if eligibility["status"] != "eligible":
             step_state = state["steps"].setdefault(current, {"name": current})
             step_state["status"] = "not_applicable" if eligibility["status"] == "not_applicable" else "skipped"
+            run_path = state.get("run_path")
+            if run_path:
+                update_step_status(run_path, current, "skipped")
             step_state["eligibility_status"] = eligibility["status"]
             step_state["reason_code"] = eligibility.get("reason_code")
             step_state["message"] = eligibility.get("message") or "Agent not applicable for this run."
@@ -608,6 +724,9 @@ def main_loop(run_path):
                 # Non-drift block OR drift blocking is enabled - SKIP
                 step_state = state["steps"].setdefault(current, {"name": current})
                 step_state["status"] = "skipped"
+                run_path = state.get("run_path")
+                if run_path:
+                    update_step_status(run_path, current, "skipped")
                 step_state["message"] = "Skipped by validation guard"
                 state["steps"][current] = step_state
                 state["steps_completed"].append(current)
@@ -679,6 +798,9 @@ def main_loop(run_path):
             if blocked:
                 step_state = state["steps"].setdefault(current, {"name": current})
                 step_state["status"] = "skipped"
+                run_path = state.get("run_path")
+                if run_path:
+                    update_step_status(run_path, current, "skipped")
                 step_state["message"] = reason
                 state["steps_completed"].append(current)
                 state["steps"][current] = step_state
@@ -703,34 +825,37 @@ def main_loop(run_path):
         print(f"[ORCHESTRATOR DEBUG] Quality score for agent filtering: {quality_score}", flush=True)
         
         # Lowered threshold from 0.75 to 0.4 to match scanner minimum floor
-        if quality_score < 0.4:
-                step_state = state["steps"].setdefault(current, {"name": current})
-                step_state["status"] = "skipped"
-                step_state["message"] = f"Quality score {quality_score:.2f} < 0.40: Agent disabled by fail-safe"
-                state["steps"][current] = step_state
-                state["steps_completed"].append(current)
-                
-                append_limitation(
-                    state_manager,
-                    f"{current} disabled: Quality score {quality_score:.2f} below 0.40 threshold. "
-                    f"Predictive analysis requires higher data quality to prevent hallucinations.",
-                    agent=current,
-                    severity="error"
-                )
-                
-                update_history(state, f"{current} blocked by quality fail-safe (score: {quality_score:.2f})")
-                
-                # Advance to next step
-                idx = PIPELINE_SEQUENCE.index(current)
-                if idx + 1 < len(PIPELINE_SEQUENCE):
-                    state["current_step"] = PIPELINE_SEQUENCE[idx + 1]
-                    state["next_step"] = PIPELINE_SEQUENCE[idx + 1]
-                else:
-                    state["status"] = "complete_with_errors"
-                    state["next_step"] = "complete"
-                
-                save_state(state_path, state)
-                continue
+        if current != "trust_evaluation" and quality_score < 0.4:
+            step_state = state["steps"].setdefault(current, {"name": current})
+            step_state["status"] = "skipped"
+            run_path = state.get("run_path")
+            if run_path:
+                update_step_status(run_path, current, "skipped")
+            step_state["message"] = f"Quality score {quality_score:.2f} < 0.40: Agent disabled by fail-safe"
+            state["steps"][current] = step_state
+            state["steps_completed"].append(current)
+            
+            append_limitation(
+                state_manager,
+                f"{current} disabled: Quality score {quality_score:.2f} below 0.40 threshold. "
+                f"Predictive analysis requires higher data quality to prevent hallucinations.",
+                agent=current,
+                severity="error"
+            )
+            
+            update_history(state, f"{current} blocked by quality fail-safe (score: {quality_score:.2f})")
+            
+            # Advance to next step
+            idx = PIPELINE_SEQUENCE.index(current)
+            if idx + 1 < len(PIPELINE_SEQUENCE):
+                state["current_step"] = PIPELINE_SEQUENCE[idx + 1]
+                state["next_step"] = PIPELINE_SEQUENCE[idx + 1]
+            else:
+                state["status"] = "complete_with_errors"
+                state["next_step"] = "complete"
+            
+            save_state(state_path, state)
+            continue
 
         attempts = 0
         success = False
@@ -756,6 +881,37 @@ def main_loop(run_path):
                 time.sleep(RETRY_BACKOFF)
 
         finalize_step(state, current, success, stdout, stderr)
+        if current == "regression":
+            try:
+                _sync_regression_status(state, state_manager)
+                _finalize_regression_artifacts(state_manager, success)
+            except Exception as exc:
+                update_history(state, f"Regression artifact promotion failed: {exc}", returncode=1)
+                state["status"] = "failed"
+                state["failure_reason"] = "regression_artifact_promotion_failed"
+                save_state(state_path, state)
+                _record_final_status(run_path, "failed", reason="regression_artifact_promotion_failed")
+                break
+        if current == "expositor":
+            try:
+                _finalize_expositor_artifacts(state_manager, run_path, success)
+            except Exception as exc:
+                update_history(state, f"Expositor artifact promotion failed: {exc}", returncode=1)
+                state["status"] = "failed"
+                state["failure_reason"] = "expositor_artifact_promotion_failed"
+                save_state(state_path, state)
+                _record_final_status(run_path, "failed", reason="expositor_artifact_promotion_failed")
+                break
+        if current == "trust_evaluation":
+            try:
+                _finalize_trust_artifacts(state_manager, run_path, success)
+            except Exception as exc:
+                update_history(state, f"Trust artifact promotion failed: {exc}", returncode=1)
+                state["status"] = "failed"
+                state["failure_reason"] = "trust_artifact_promotion_failed"
+                save_state(state_path, state)
+                _record_final_status(run_path, "failed", reason="trust_artifact_promotion_failed")
+                break
 
         # Refresh governance artifacts whenever upstream schema context changes
         if success and current in GOVERNANCE_REFRESH_STEPS:
@@ -796,6 +952,9 @@ def main_loop(run_path):
                 # Skip this agent and continue to next step instead of blocking
                 step_state = state["steps"].setdefault(current, {"name": current})
                 step_state["status"] = "skipped"
+                run_path = state.get("run_path")
+                if run_path:
+                    update_step_status(run_path, current, "skipped")
                 step_state["message"] = reason
                 state["steps"][current] = step_state
                 state["steps_completed"].append(current)

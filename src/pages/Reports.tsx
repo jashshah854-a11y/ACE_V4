@@ -23,7 +23,6 @@ import {
   removeDiagnosticsCache,
   extractDiagnosticsNotes
 } from "@/lib/localStorage";
-import { getRunTrust } from "@/lib/trustCache";
 
 const Reports = () => {
   const [searchParams] = useSearchParams();
@@ -139,14 +138,6 @@ const Reports = () => {
     return recentReports.filter(r => (diagnosticHints[r.runId]?.length ?? 0) > 0);
   }, [recentReports, diagnosticHints]);
 
-  const trustSummaries = useMemo(() => {
-    const map: Record<string, ReturnType<typeof getRunTrust>> = {};
-    recentReports.forEach((report) => {
-      map[report.runId] = getRunTrust(report.runId);
-    });
-    return map;
-  }, [recentReports]);
-
   // --- Views ---
 
   // [MAGNA CARTA] V4: Active Report View (Full Screen Canvas)
@@ -248,7 +239,6 @@ const Reports = () => {
                       key={report.runId}
                       report={report}
                       diagnosticHint={diagnosticHints[report.runId]?.[0]}
-                      trustSummary={trustSummaries[report.runId]}
                       onClick={() => handleCardClick(report.runId)}
                     />
                   ))}
@@ -270,7 +260,6 @@ const Reports = () => {
                       key={report.runId}
                       report={report}
                       diagnosticHint={diagnosticHints[report.runId]?.[0]}
-                      trustSummary={trustSummaries[report.runId]}
                       onClick={() => handleCardClick(report.runId)}
                     />
                   ))}
