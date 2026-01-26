@@ -16,6 +16,7 @@ from scipy import stats
 from scipy.stats import pearsonr, spearmanr, chi2_contingency
 from sklearn.preprocessing import StandardScaler
 import warnings
+import re
 import math
 
 warnings.filterwarnings('ignore')
@@ -33,6 +34,7 @@ from .analytics_validation import (
     validate_correlation_analysis,
     validate_correlation_ci,
     validate_feature_importance,
+    validate_redundancy_report,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -52,6 +54,16 @@ def safe_float(val: Any) -> float:
         return 0.0
 
 
+def _is_number(value: Any) -> bool:
+    try:
+        if value is None:
+            return False
+        float(value)
+        return True
+    except (TypeError, ValueError):
+        return False
+
+
 def _is_id_column(name: str) -> bool:
     lowered = name.lower()
     if lowered in {"id", "index", "uuid", "guid"}:
@@ -67,6 +79,11 @@ def _near_constant(series: pd.Series, threshold: float = 0.98) -> bool:
         return True
     top_ratio = values.value_counts(normalize=True).iloc[0]
     return float(top_ratio) >= threshold
+
+
+def _coerce_numeric(series: pd.Series) -> pd.Series:
+    cleaned = series.astype(str).str.replace(r"[,$]", "", regex=True)
+    return pd.to_numeric(cleaned, errors="coerce")
 
 
 class EnhancedAnalytics:
@@ -258,6 +275,48 @@ class EnhancedAnalytics:
             "insights": self._generate_distribution_insights(distributions)
         }
 
+    def compute_redundancy_report(self) -> Dict[str, Any]:
+        """
+        Identify redundant features based on constants, near-constants, and high correlations.
+        """
+        constants = []
+        near_constants = []
+        for col in self.df.columns:
+            series = self.df[col]
+            if series.dropna().nunique() <= 1:
+                constants.append(col)
+            elif _near_constant(series):
+                near_constants.append(col)
+
+        redundant_pairs = []
+        if len(self.numeric_cols) >= 2:
+            numeric_df = self.df[self.numeric_cols].fillna(self.df[self.numeric_cols].mean())
+            corr = numeric_df.corr(method="pearson")
+            cols = list(corr.columns)
+            for i in range(len(cols)):
+                for j in range(i + 1, len(cols)):
+                    value = corr.iloc[i, j]
+                    if not _is_number(value):
+                        continue
+                    if abs(float(value)) >= 0.98:
+                        redundant_pairs.append(
+                            {
+                                "feature1": cols[i],
+                                "feature2": cols[j],
+                                "correlation": float(value),
+                            }
+                        )
+            redundant_pairs.sort(key=lambda x: abs(x["correlation"]), reverse=True)
+
+        return {
+            "available": True,
+            "constants": constants,
+            "near_constants": near_constants,
+            "redundant_pairs": redundant_pairs[:10],
+            "redundant_pair_count": len(redundant_pairs),
+            "thresholds": {"near_constant": 0.98, "correlation": 0.98},
+        }
+
     def compute_feature_importance(self, target_col: Optional[str] = None) -> Dict[str, Any]:
         """Compute feature importance via white-box models enforced by governance."""
         if len(self.numeric_cols) < 2:
@@ -347,7 +406,7 @@ class EnhancedAnalytics:
         time_col = self._find_column_by_role(['date', 'time', 'timestamp', 'created', 'month'])
 
         if value_col:
-            values = self.df[value_col].fillna(0)
+            values = _coerce_numeric(self.df[value_col]).fillna(0)
             metrics["evidence"]["value_column"] = value_col
 
             metrics['value_metrics'] = {
@@ -395,7 +454,7 @@ class EnhancedAnalytics:
         # Churn risk proxy (if we have activity/engagement metrics)
         activity_col = self._find_column_by_role(['activity', 'engagement', 'visits', 'sessions', 'transactions'])
         if activity_col:
-            activity = self.df[activity_col].fillna(0)
+            activity = _coerce_numeric(self.df[activity_col]).fillna(0)
 
             # Low activity as churn risk
             low_activity_threshold = activity.quantile(0.25)
@@ -414,7 +473,7 @@ class EnhancedAnalytics:
             # High-engagement users with zero revenue = monetization opportunities
             revenue_col = self._find_column_by_role(['revenue', 'spend', 'payment', 'purchase', 'sales'])
             if revenue_col:
-                revenue = self.df[revenue_col].fillna(0)
+                revenue = _coerce_numeric(self.df[revenue_col]).fillna(0)
                 activity_threshold_75 = activity.quantile(0.75)
                 
                 # Ghost users: High activity BUT zero revenue
@@ -447,7 +506,7 @@ class EnhancedAnalytics:
                         # Assume 'active', 'Active', 'true', 'True', 1 mean active
                         is_active = self.df[active_col].astype(str).str.lower().isin(['active', 'true', '1'])
                     
-                    total_value = self.df[value_col].fillna(0)
+                    total_value = _coerce_numeric(self.df[value_col]).fillna(0)
                     
                     # Zombies: Active BUT zero value
                     zombies = is_active & (total_value == 0)
@@ -466,6 +525,26 @@ class EnhancedAnalytics:
                     # Silently skip if zombie detection fails
                     pass
 
+        restaurant_risk = self._compute_restaurant_risk()
+        if restaurant_risk:
+            metrics["restaurant_risk"] = restaurant_risk
+            evidence_cols = restaurant_risk.get("evidence_columns")
+            if evidence_cols:
+                metrics["evidence"]["restaurant_risk_columns"] = evidence_cols
+
+        marketing_risk = self._compute_marketing_risk()
+        if marketing_risk:
+            metrics["marketing_risk"] = marketing_risk
+            evidence_cols = marketing_risk.get("evidence_columns")
+            if evidence_cols:
+                metrics["evidence"]["marketing_risk_columns"] = evidence_cols
+
+        marketing_simulation = self._compute_marketing_simulation()
+        if marketing_simulation:
+            metrics["marketing_simulation"] = marketing_simulation
+            evidence_cols = marketing_simulation.get("evidence_columns")
+            if evidence_cols:
+                metrics["evidence"]["marketing_simulation_columns"] = evidence_cols
 
         if len([k for k in metrics.keys() if k != "evidence"]) == 0:
             return {"available": False, "reason": "Insufficient business-related columns"}
@@ -678,7 +757,566 @@ class EnhancedAnalytics:
             if cr['at_risk_percentage'] > 25:
                 insights.append(f"Warning: {cr['at_risk_percentage']:.1f}% of records show low activity (churn risk)")
 
+        if "restaurant_risk" in metrics:
+            rr = metrics["restaurant_risk"]
+            at_risk_pct = rr.get("at_risk_percentage")
+            at_risk_count = rr.get("restaurants_at_risk")
+            total = rr.get("restaurants_total")
+            if at_risk_count is not None and total:
+                insights.append(f"{at_risk_count:,} of {total:,} restaurants have critical violations in their most recent inspection")
+            elif at_risk_pct is not None:
+                insights.append(f"{at_risk_pct:.1f}% of restaurants have critical violations in their most recent inspection")
+
+        if "marketing_risk" in metrics:
+            mr = metrics["marketing_risk"]
+            total = mr.get("total_entities") or mr.get("total_rows")
+            risk_count = mr.get("risk_items")
+            if isinstance(risk_count, list) and total:
+                insights.append(f"{len(risk_count)} marketing risks flagged across {total:,} records")
+            elif isinstance(risk_count, list):
+                insights.append(f"{len(risk_count)} marketing risks flagged from available signals")
+
         return insights
+
+    def _normalize_column_token(self, name: str) -> str:
+        return re.sub(r"[^a-z0-9]+", "", str(name).lower())
+
+    def _find_column_by_name(self, candidates: List[str]) -> Optional[str]:
+        if not candidates:
+            return None
+        normalized_map = {self._normalize_column_token(col): col for col in self.df.columns}
+        for candidate in candidates:
+            key = self._normalize_column_token(candidate)
+            if key in normalized_map:
+                return normalized_map[key]
+        return None
+
+    def _compute_marketing_risk(self) -> Optional[Dict[str, Any]]:
+        role_map = {
+            "impressions": ["impression", "impressions", "views", "view"],
+            "clicks": ["click", "clicks", "tap", "taps"],
+            "conversions": ["conversion", "conversions", "purchase", "purchases", "order", "orders", "signup", "signups"],
+            "spend": ["spend", "cost", "budget", "adspend", "ad_spend", "media_cost"],
+            "revenue": ["revenue", "sales", "value", "gmv", "amount"],
+            "campaign": ["campaign", "adgroup", "ad_group", "adgroup_id", "campaign_id"],
+            "channel": ["channel", "source", "medium", "platform", "network", "placement"],
+            "date": ["date", "timestamp", "time", "hour", "day", "week", "month"],
+        }
+
+        impressions_col = self._find_column_by_role(role_map["impressions"])
+        clicks_col = self._find_column_by_role(role_map["clicks"])
+        conversions_col = self._find_column_by_role(role_map["conversions"])
+        spend_col = self._find_column_by_role(role_map["spend"])
+        revenue_col = self._find_column_by_role(role_map["revenue"])
+        campaign_col = self._find_column_by_role(role_map["campaign"])
+        channel_col = self._find_column_by_role(role_map["channel"])
+        date_col = self._find_column_by_role(role_map["date"])
+
+        available_metrics: Dict[str, Any] = {}
+        evidence_columns: List[str] = []
+        for col in [impressions_col, clicks_col, conversions_col, spend_col, revenue_col, campaign_col, channel_col, date_col]:
+            if col and col not in evidence_columns:
+                evidence_columns.append(col)
+
+        df = self.df.copy()
+        if date_col:
+            df["_event_time"] = pd.to_datetime(df[date_col], errors="coerce")
+            df = df.dropna(subset=["_event_time"])
+        else:
+            df["_event_time"] = None
+
+        def _to_num(col: Optional[str]) -> Optional[pd.Series]:
+            if not col or col not in df.columns:
+                return None
+            return pd.to_numeric(df[col], errors="coerce")
+
+        impressions = _to_num(impressions_col)
+        clicks = _to_num(clicks_col)
+        conversions = _to_num(conversions_col)
+        spend = _to_num(spend_col)
+        revenue = _to_num(revenue_col)
+
+        spend_columns = []
+        if spend_col:
+            spend_columns = [spend_col]
+        else:
+            channel_tokens = ("facebook", "youtube", "instagram", "tiktok", "snap", "google", "search", "display", "social", "bing")
+            numeric_candidates = []
+            for col in self.numeric_cols:
+                if col == revenue_col or col == conversions_col or col == clicks_col or col == impressions_col:
+                    continue
+                if _is_id_column(col):
+                    continue
+                if date_col and col == date_col:
+                    continue
+                numeric_candidates.append(col)
+            channel_like = [col for col in numeric_candidates if any(tok in col.lower() for tok in channel_tokens)]
+            spend_columns = channel_like or numeric_candidates[:5]
+
+        def _safe_divide(numer: pd.Series, denom: pd.Series) -> pd.Series:
+            denom = denom.replace(0, np.nan)
+            return (numer / denom).replace([np.inf, -np.inf], np.nan).fillna(0)
+
+        spend_total = None
+        if spend_columns:
+            spend_total = df[spend_columns].apply(pd.to_numeric, errors="coerce").sum(axis=1)
+            available_metrics["spend_total"] = safe_float(spend_total.mean())
+
+        if impressions is not None and clicks is not None:
+            ctr = _safe_divide(clicks, impressions)
+            available_metrics["ctr"] = safe_float(ctr.mean())
+        if clicks is not None and conversions is not None:
+            cvr = _safe_divide(conversions, clicks)
+            available_metrics["cvr"] = safe_float(cvr.mean())
+        if spend is not None and revenue is not None:
+            roas = _safe_divide(revenue, spend)
+            available_metrics["roas"] = safe_float(roas.mean())
+        if spend is not None and conversions is not None:
+            cac = _safe_divide(spend, conversions)
+            available_metrics["cac"] = safe_float(cac.replace(0, np.nan).mean())
+        if spend_total is not None and revenue is not None:
+            roas = _safe_divide(revenue, spend_total)
+            available_metrics["roas"] = safe_float(roas.mean())
+        if spend_total is not None and conversions is not None:
+            cac = _safe_divide(spend_total, conversions)
+            available_metrics["cac"] = safe_float(cac.replace(0, np.nan).mean())
+
+        if not available_metrics:
+            return None
+
+        def _split_by_time(frame: pd.DataFrame) -> Optional[Tuple[pd.DataFrame, pd.DataFrame]]:
+            if "_event_time" not in frame.columns or frame["_event_time"].isna().all():
+                return None
+            sorted_frame = frame.sort_values("_event_time")
+            cutoff_index = int(len(sorted_frame) * 0.7)
+            cutoff_index = max(cutoff_index, 1)
+            prior = sorted_frame.iloc[:cutoff_index]
+            recent = sorted_frame.iloc[cutoff_index:]
+            if prior.empty or recent.empty:
+                return None
+            return prior, recent
+
+        def _metric_change(numer_col: Optional[str], denom_col: Optional[str]) -> Optional[Dict[str, Any]]:
+            if numer_col is None or denom_col is None:
+                return None
+            numer = pd.to_numeric(df[numer_col], errors="coerce")
+            denom = pd.to_numeric(df[denom_col], errors="coerce")
+            rate = _safe_divide(numer, denom)
+            split = _split_by_time(df)
+            if not split:
+                return None
+            prior_frame, recent_frame = split
+            prior_rate = _safe_divide(
+                pd.to_numeric(prior_frame[numer_col], errors="coerce"),
+                pd.to_numeric(prior_frame[denom_col], errors="coerce"),
+            ).mean()
+            recent_rate = _safe_divide(
+                pd.to_numeric(recent_frame[numer_col], errors="coerce"),
+                pd.to_numeric(recent_frame[denom_col], errors="coerce"),
+            ).mean()
+            if prior_rate == 0 or np.isnan(prior_rate):
+                return None
+            delta_pct = float((recent_rate - prior_rate) / prior_rate * 100)
+            return {
+                "prior": safe_float(prior_rate),
+                "recent": safe_float(recent_rate),
+                "delta_pct": safe_float(delta_pct),
+            }
+
+        risk_items: List[Dict[str, Any]] = []
+
+        if date_col and impressions_col and clicks_col:
+            change = _metric_change(clicks_col, impressions_col)
+            if change and change["delta_pct"] <= -15:
+                risk_items.append(
+                    {
+                        "type": "ctr_decline",
+                        "severity": "high" if change["delta_pct"] <= -30 else "medium",
+                        "metric": "CTR",
+                        "prior": change["prior"],
+                        "recent": change["recent"],
+                        "delta_pct": change["delta_pct"],
+                        "evidence_columns": [clicks_col, impressions_col, date_col],
+                    }
+                )
+
+        if date_col and clicks_col and conversions_col:
+            change = _metric_change(conversions_col, clicks_col)
+            if change and change["delta_pct"] <= -15:
+                risk_items.append(
+                    {
+                        "type": "cvr_decline",
+                        "severity": "high" if change["delta_pct"] <= -30 else "medium",
+                        "metric": "CVR",
+                        "prior": change["prior"],
+                        "recent": change["recent"],
+                        "delta_pct": change["delta_pct"],
+                        "evidence_columns": [conversions_col, clicks_col, date_col],
+                    }
+                )
+
+        if date_col and spend_col and revenue_col:
+            change = _metric_change(revenue_col, spend_col)
+            if change and change["delta_pct"] <= -20:
+                risk_items.append(
+                    {
+                        "type": "roas_decline",
+                        "severity": "high" if change["delta_pct"] <= -35 else "medium",
+                        "metric": "ROAS",
+                        "prior": change["prior"],
+                        "recent": change["recent"],
+                        "delta_pct": change["delta_pct"],
+                        "evidence_columns": [revenue_col, spend_col, date_col],
+                    }
+                )
+
+        if date_col and spend_col and conversions_col:
+            change = _metric_change(spend_col, conversions_col)
+            if change and change["delta_pct"] >= 20:
+                risk_items.append(
+                    {
+                        "type": "cac_spike",
+                        "severity": "high" if change["delta_pct"] >= 40 else "medium",
+                        "metric": "CAC",
+                        "prior": change["prior"],
+                        "recent": change["recent"],
+                        "delta_pct": change["delta_pct"],
+                        "evidence_columns": [spend_col, conversions_col, date_col],
+                    }
+                )
+
+        segment_col = campaign_col or channel_col
+        if segment_col and impressions is not None and clicks is not None:
+            grouped = df.groupby(segment_col, dropna=False)
+            clicks_sum = pd.to_numeric(grouped[clicks_col].sum(), errors="coerce")
+            impressions_sum = pd.to_numeric(grouped[impressions_col].sum(), errors="coerce")
+            group_rates = _safe_divide(clicks_sum, impressions_sum)
+            if not group_rates.empty:
+                worst_segments = group_rates.sort_values().head(5)
+                risk_items.append(
+                    {
+                        "type": "segment_ctr_underperform",
+                        "severity": "medium",
+                        "metric": "CTR",
+                        "segments": [
+                            {"segment": str(idx), "value": safe_float(val)} for idx, val in worst_segments.items()
+                        ],
+                        "evidence_columns": [segment_col, clicks_col, impressions_col],
+                    }
+                )
+
+        if segment_col and spend is not None and revenue is not None:
+            grouped = df.groupby(segment_col, dropna=False)
+            revenue_sum = pd.to_numeric(grouped[revenue_col].sum(), errors="coerce")
+            spend_sum = pd.to_numeric(grouped[spend_col].sum(), errors="coerce")
+            group_roas = _safe_divide(revenue_sum, spend_sum)
+            if not group_roas.empty:
+                worst_segments = group_roas.sort_values().head(5)
+                risk_items.append(
+                    {
+                        "type": "segment_roas_underperform",
+                        "severity": "medium",
+                        "metric": "ROAS",
+                        "segments": [
+                            {"segment": str(idx), "value": safe_float(val)} for idx, val in worst_segments.items()
+                        ],
+                        "evidence_columns": [segment_col, revenue_col, spend_col],
+                    }
+                )
+
+        if spend_columns and revenue_col:
+            spend_frame = df[spend_columns].apply(pd.to_numeric, errors="coerce")
+            spend_share = spend_frame.sum(axis=0)
+            spend_total_sum = spend_share.sum()
+            if spend_total_sum > 0:
+                spend_share = (spend_share / spend_total_sum).sort_values(ascending=False)
+                top_col = spend_share.index[0]
+                if spend_share.iloc[0] >= 0.6:
+                    risk_items.append(
+                        {
+                            "type": "channel_spend_concentration",
+                            "severity": "medium",
+                            "metric": "Spend Concentration",
+                            "segments": [
+                                {"segment": str(col), "value": safe_float(val)} for col, val in spend_share.head(3).items()
+                            ],
+                            "evidence_columns": list(spend_columns),
+                        }
+                    )
+                for col in spend_columns[:5]:
+                    try:
+                        corr = df[[col, revenue_col]].corr().iloc[0, 1]
+                    except Exception:
+                        corr = None
+                    if corr is not None and corr < -0.2:
+                        risk_items.append(
+                            {
+                                "type": "negative_channel_correlation",
+                                "severity": "medium",
+                                "metric": "Revenue vs Spend",
+                                "segments": [
+                                    {"segment": str(col), "value": safe_float(corr)}
+                                ],
+                                "evidence_columns": [col, revenue_col],
+                            }
+                        )
+
+        missing_signals = []
+        if not impressions_col or not clicks_col:
+            missing_signals.append("ctr")
+        if not conversions_col or not clicks_col:
+            missing_signals.append("cvr")
+        if not revenue_col or (not spend_col and not spend_columns):
+            missing_signals.append("roas")
+        if (not spend_col and not spend_columns) or not conversions_col:
+            missing_signals.append("cac")
+
+        return {
+            "available": True,
+            "definition": "Marketing risk is flagged when performance ratios (CTR/CVR/ROAS/CAC) decline materially in the most recent period or when segments underperform.",
+            "metrics": available_metrics,
+            "risk_items": risk_items,
+            "segment_dimension": segment_col,
+            "time_dimension": date_col,
+            "missing_signals": missing_signals,
+            "total_rows": int(len(df)),
+            "evidence_columns": evidence_columns + spend_columns,
+        }
+
+    def _compute_marketing_simulation(self) -> Optional[Dict[str, Any]]:
+        role_map = {
+            "impressions": ["impression", "impressions", "views", "view"],
+            "clicks": ["click", "clicks", "tap", "taps"],
+            "conversions": ["conversion", "conversions", "purchase", "purchases", "order", "orders", "signup", "signups"],
+            "spend": ["spend", "cost", "budget", "adspend", "ad_spend", "media_cost"],
+            "revenue": ["revenue", "sales", "value", "gmv", "amount"],
+        }
+
+        impressions_col = self._find_column_by_role(role_map["impressions"])
+        clicks_col = self._find_column_by_role(role_map["clicks"])
+        conversions_col = self._find_column_by_role(role_map["conversions"])
+        spend_col = self._find_column_by_role(role_map["spend"])
+        revenue_col = self._find_column_by_role(role_map["revenue"])
+
+        def _total(col: Optional[str]) -> Optional[float]:
+            if not col or col not in self.df.columns:
+                return None
+            series = pd.to_numeric(self.df[col], errors="coerce").fillna(0)
+            return float(series.sum())
+
+        impressions_total = _total(impressions_col)
+        clicks_total = _total(clicks_col)
+        conversions_total = _total(conversions_col)
+        spend_total = _total(spend_col)
+        revenue_total = _total(revenue_col)
+
+        if all(value is None for value in [impressions_total, clicks_total, conversions_total, spend_total, revenue_total]):
+            return None
+
+        def _safe_ratio(numer: Optional[float], denom: Optional[float]) -> Optional[float]:
+            if numer is None or denom is None or denom == 0:
+                return None
+            return float(numer / denom)
+
+        baseline = {
+            "impressions_total": safe_float(impressions_total) if impressions_total is not None else None,
+            "clicks_total": safe_float(clicks_total) if clicks_total is not None else None,
+            "conversions_total": safe_float(conversions_total) if conversions_total is not None else None,
+            "spend_total": safe_float(spend_total) if spend_total is not None else None,
+            "revenue_total": safe_float(revenue_total) if revenue_total is not None else None,
+            "ctr": safe_float(_safe_ratio(clicks_total, impressions_total)) if clicks_total is not None and impressions_total is not None else None,
+            "cvr": safe_float(_safe_ratio(conversions_total, clicks_total)) if conversions_total is not None and clicks_total is not None else None,
+            "roas": safe_float(_safe_ratio(revenue_total, spend_total)) if revenue_total is not None and spend_total is not None else None,
+            "cac": safe_float(_safe_ratio(spend_total, conversions_total)) if spend_total is not None and conversions_total is not None else None,
+        }
+
+        scenarios = []
+
+        if conversions_total is not None and spend_total is not None and conversions_total > 0:
+            new_conversions = conversions_total * 1.05
+            scenario_metrics = {
+                "conversions_total": safe_float(new_conversions),
+                "cvr": safe_float(_safe_ratio(new_conversions, clicks_total)) if clicks_total is not None else None,
+                "cac": safe_float(_safe_ratio(spend_total, new_conversions)),
+            }
+            if revenue_total is not None and conversions_total > 0:
+                revenue_per_conversion = revenue_total / conversions_total
+                scenario_revenue = revenue_per_conversion * new_conversions
+                scenario_metrics["revenue_total"] = safe_float(scenario_revenue)
+                scenario_metrics["roas"] = safe_float(_safe_ratio(scenario_revenue, spend_total))
+            scenarios.append(
+                {
+                    "name": "Increase conversions by 5%",
+                    "assumptions": [
+                        "Spend held constant",
+                        "Revenue per conversion held constant (if revenue available)",
+                    ],
+                    "metrics": scenario_metrics,
+                }
+            )
+
+        if spend_total is not None:
+            reduced_spend = spend_total * 0.9
+            scenario_metrics = {
+                "spend_total": safe_float(reduced_spend),
+                "cac": safe_float(_safe_ratio(reduced_spend, conversions_total)) if conversions_total is not None else None,
+                "roas": safe_float(_safe_ratio(revenue_total, reduced_spend)) if revenue_total is not None else None,
+            }
+            scenarios.append(
+                {
+                    "name": "Reduce spend by 10%",
+                    "assumptions": [
+                        "Conversions held constant",
+                        "Revenue held constant (if revenue available)",
+                    ],
+                    "metrics": scenario_metrics,
+                }
+            )
+
+        if not scenarios:
+            return None
+
+        evidence_columns = [col for col in [impressions_col, clicks_col, conversions_col, spend_col, revenue_col] if col]
+
+        return {
+            "available": True,
+            "baseline": baseline,
+            "scenarios": scenarios,
+            "evidence_columns": evidence_columns,
+        }
+
+    def _compute_restaurant_risk(self) -> Optional[Dict[str, Any]]:
+        id_col = self._find_column_by_name(["CAMIS", "restaurant_id"])
+        date_col = self._find_column_by_name(["INSPECTION DATE", "inspection_date"])
+        critical_col = self._find_column_by_name(["CRITICAL FLAG", "critical_flag", "critical"])
+
+        if not id_col or not date_col or not critical_col:
+            return None
+
+        df = self.df.copy()
+        df["_inspection_date"] = pd.to_datetime(df[date_col], errors="coerce")
+        df = df.dropna(subset=[id_col, "_inspection_date"])
+        if df.empty:
+            return None
+
+        latest_dates = df.groupby(id_col)["_inspection_date"].max()
+        df_latest = df.merge(latest_dates.rename("_latest_date"), left_on=id_col, right_index=True)
+        df_latest = df_latest[df_latest["_inspection_date"] == df_latest["_latest_date"]]
+
+        if df_latest.empty:
+            return None
+
+        df_latest["_is_critical"] = df_latest[critical_col].astype(str).str.strip().str.upper().eq("Y")
+
+        name_col = self._find_column_by_name(["DBA", "restaurant_name"])
+        boro_col = self._find_column_by_name(["BORO", "borough"])
+        cuisine_col = self._find_column_by_name(["CUISINE DESCRIPTION", "cuisine", "cuisine_description"])
+        score_col = self._find_column_by_name(["SCORE", "score"])
+        grade_col = self._find_column_by_name(["GRADE", "grade"])
+        building_col = self._find_column_by_name(["BUILDING", "building"])
+        street_col = self._find_column_by_name(["STREET", "street"])
+        zipcode_col = self._find_column_by_name(["ZIPCODE", "zip", "zip_code"])
+
+        def _clean(value: Any) -> str:
+            if value is None or (isinstance(value, float) and math.isnan(value)):
+                return ""
+            return str(value).strip()
+
+        restaurants = []
+        for camis, group in df_latest.groupby(id_col):
+            critical_count = int(group["_is_critical"].sum())
+            if critical_count <= 0:
+                continue
+            last_date = group["_inspection_date"].max()
+            score_val = None
+            if score_col and score_col in group.columns:
+                scores = pd.to_numeric(group[score_col], errors="coerce")
+                if scores.notna().any():
+                    score_val = float(scores.max())
+            grade_val = None
+            if grade_col and grade_col in group.columns:
+                grade_series = group[grade_col].dropna()
+                if not grade_series.empty:
+                    grade_val = str(grade_series.iloc[0])
+            name_val = _clean(group[name_col].iloc[0]) if name_col else ""
+            boro_val = _clean(group[boro_col].iloc[0]) if boro_col else ""
+            cuisine_val = _clean(group[cuisine_col].iloc[0]) if cuisine_col else ""
+            building_val = _clean(group[building_col].iloc[0]) if building_col else ""
+            street_val = _clean(group[street_col].iloc[0]) if street_col else ""
+            zipcode_val = _clean(group[zipcode_col].iloc[0]) if zipcode_col else ""
+            address_parts = [part for part in [building_val, street_val] if part]
+            address = " ".join(address_parts).strip()
+            if zipcode_val:
+                address = f"{address}, {zipcode_val}" if address else zipcode_val
+
+            restaurants.append(
+                {
+                    "restaurant_id": str(camis),
+                    "name": name_val,
+                    "boro": boro_val,
+                    "cuisine": cuisine_val,
+                    "address": address,
+                    "last_inspection_date": last_date.isoformat(),
+                    "critical_count": critical_count,
+                    "score": score_val,
+                    "grade": grade_val,
+                }
+            )
+
+        total_restaurants = int(df_latest[id_col].nunique())
+        at_risk_count = len(restaurants)
+        if at_risk_count == 0:
+            return None
+
+        restaurants.sort(
+            key=lambda entry: (
+                entry.get("critical_count", 0),
+                entry.get("score") if entry.get("score") is not None else -1,
+                entry.get("last_inspection_date", ""),
+            ),
+            reverse=True,
+        )
+
+        def _aggregate_group(column: Optional[str], label: str) -> List[Dict[str, Any]]:
+            if not column:
+                return []
+            summary = []
+            grouped = df_latest.groupby(column)
+            for key, group in grouped:
+                key_label = _clean(key) or "Unknown"
+                total = int(group[id_col].nunique())
+                at_risk = int(group[group["_is_critical"]].groupby(id_col).ngroups)
+                if total == 0:
+                    continue
+                summary.append(
+                    {
+                        label: key_label,
+                        "total_restaurants": total,
+                        "at_risk_count": at_risk,
+                        "at_risk_percentage": safe_float(at_risk / total * 100),
+                    }
+                )
+            summary.sort(key=lambda item: (item["at_risk_count"], item["at_risk_percentage"]), reverse=True)
+            return summary[:10]
+
+        risk_by_boro = _aggregate_group(boro_col, "boro")
+        risk_by_cuisine = _aggregate_group(cuisine_col, "cuisine")
+
+        return {
+            "available": True,
+            "definition": "Most recent inspection includes at least one CRITICAL FLAG = 'Y' violation.",
+            "restaurant_id_column": id_col,
+            "inspection_date_column": date_col,
+            "critical_flag_column": critical_col,
+            "restaurants_total": total_restaurants,
+            "restaurants_at_risk": at_risk_count,
+            "at_risk_percentage": safe_float(at_risk_count / total_restaurants * 100),
+            "as_of": df_latest["_inspection_date"].max().isoformat(),
+            "top_risk_restaurants": restaurants[:20],
+            "risk_by_boro": risk_by_boro,
+            "risk_by_cuisine": risk_by_cuisine,
+            "evidence_columns": [col for col in [id_col, date_col, critical_col, name_col, boro_col, cuisine_col] if col],
+        }
 
     def _generate_quality_insights(self, completeness: Dict, consistency: Dict) -> List[str]:
         """Generate data quality insights"""
@@ -834,6 +1472,11 @@ def run_enhanced_analytics(
         results["correlation_ci"] = None
     results["distribution_analysis"] = _attach_available("distribution_analysis", analytics.analyze_distributions())
     results["quality_metrics"] = _attach_available("quality_metrics", analytics.compute_advanced_quality_metrics())
+    results["redundancy_report"] = _apply_validation(
+        "redundancy_report",
+        analytics.compute_redundancy_report(),
+        validate_redundancy_report,
+    )
     results["business_intelligence"] = _attach_available("business_intelligence", analytics.compute_business_intelligence(cluster_labels))
     
     # Only run predictive analytics if quality threshold met
