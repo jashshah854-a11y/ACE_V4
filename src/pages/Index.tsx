@@ -15,8 +15,6 @@ import { BackgroundMesh } from "@/components/ui/BackgroundMesh";
 import { AceLogo } from "@/components/ui/AceLogo";
 import { ConfettiExplosion } from "@/components/ui/ConfettiExplosion";
 import { useTaskContext } from "@/context/TaskContext";
-import { QuickViewToggle } from "@/components/quick-summary/QuickViewToggle";
-import { AnalysisMode } from "@/types/QuickSummaryTypes";
 
 type AnalysisStage = "upload" | "scanning" | "identity" | "contract" | "processing";
 
@@ -61,7 +59,6 @@ const Index = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [recentRuns, setRecentRuns] = useState(() => getRecentReports());
   const [recentHints, setRecentHints] = useState<Record<string, string[]>>({});
-  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>('full'); // NEW: Quick View mode
   const { updateTaskContract } = useTaskContext();
 
 
@@ -160,12 +157,7 @@ const Index = () => {
       });
       setShowConfetti(true);
 
-      // Navigate based on selected mode
-      const targetRoute = analysisMode === 'summary'
-        ? `/summary/${result.run_id}`
-        : `/pipeline/${result.run_id}`;
-
-      setTimeout(() => navigate(targetRoute), 1500);
+      setTimeout(() => navigate(`/pipeline/${result.run_id}`), 1500);
     } catch (error) {
       toast.error("Mission Aborted", {
         description: "Failed to submit analysis contract.",
@@ -210,6 +202,25 @@ const Index = () => {
                 <p className="text-lg md:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
                   Upload your data. The <span className="text-teal-600 dark:text-teal-400 font-medium">Sentry</span> verifies integrity, and the <span className="text-teal-600 dark:text-teal-400 font-medium">Overseer</span> orchestrates the analysis.
                 </p>
+
+                <div className="mt-10 grid gap-6 md:grid-cols-2 text-left">
+                  <div className="rounded-2xl border border-slate-200 bg-white/70 px-6 py-5 text-sm text-slate-700 shadow-sm">
+                    <p className="text-[11px] uppercase tracking-widest text-slate-500 mb-3">What ACE does</p>
+                    <ul className="space-y-2 list-disc list-inside">
+                      <li>Profiles your dataset and reports quality, schema, and routing decisions.</li>
+                      <li>Generates an executive summary only when validation gates succeed.</li>
+                      <li>Links key findings to evidence and shows uncertainty when it matters.</li>
+                    </ul>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white/70 px-6 py-5 text-sm text-slate-700 shadow-sm">
+                    <p className="text-[11px] uppercase tracking-widest text-slate-500 mb-3">What ACE does not do</p>
+                    <ul className="space-y-2 list-disc list-inside">
+                      <li>Does not prove causation or replace domain expertise.</li>
+                      <li>Does not guarantee predictive accuracy or outcomes.</li>
+                      <li>Does not hide failed steps or fabricate missing evidence.</li>
+                    </ul>
+                  </div>
+                </div>
 
                 <div
                   data-guidance-context="global"
@@ -366,10 +377,6 @@ const Index = () => {
 
                   {/* Quick View Toggle */}
                   <div className="mb-6">
-                    <QuickViewToggle
-                      mode={analysisMode}
-                      onModeChange={setAnalysisMode}
-                    />
                   </div>
 
                   <DatasetUnderstanding

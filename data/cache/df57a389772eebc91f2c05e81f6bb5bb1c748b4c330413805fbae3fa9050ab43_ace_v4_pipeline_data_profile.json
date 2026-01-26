@@ -1,0 +1,108 @@
+{
+  "row_count": 5,
+  "column_count": 4,
+  "column_types": {
+    "numeric": [
+      "feature_a",
+      "feature_b",
+      "feature_c",
+      "target"
+    ],
+    "categorical": [],
+    "datetime": [],
+    "text": [],
+    "boolean": []
+  },
+  "columns": {
+    "feature_a": {
+      "dtype": "int64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 5,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 30.0,
+        "median": 30.0,
+        "std": 14.142135623730951,
+        "min": 10.0,
+        "max": 50.0,
+        "skew": 0.0,
+        "q25": 20.0,
+        "q75": 40.0
+      }
+    },
+    "feature_b": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 5,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 30.3,
+        "median": 30.3,
+        "std": 14.283556979968262,
+        "min": 10.1,
+        "max": 50.5,
+        "skew": -3.7219864582719463e-16,
+        "q25": 20.2,
+        "q75": 40.4
+      }
+    },
+    "feature_c": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 5,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 29.7,
+        "median": 29.7,
+        "std": 14.00071426749364,
+        "min": 9.9,
+        "max": 49.5,
+        "skew": 4.940186439880961e-16,
+        "q25": 19.8,
+        "q75": 39.6
+      }
+    },
+    "target": {
+      "dtype": "int64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 5,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 65.0,
+        "median": 65.0,
+        "std": 28.284271247461902,
+        "min": 25.0,
+        "max": 105.0,
+        "skew": 0.0,
+        "q25": 45.0,
+        "q75": 85.0
+      }
+    }
+  },
+  "missingness_summary": {
+    "avg_missing_pct": 0.0,
+    "max_missing_pct": 0.0
+  },
+  "constant_columns": [],
+  "near_constant_columns": [],
+  "status": "success",
+  "valid": true,
+  "errors": [],
+  "warnings": []
+}

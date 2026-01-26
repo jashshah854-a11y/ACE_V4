@@ -34,6 +34,7 @@ def _register_enhanced_sections(
 ) -> None:
     section_steps = (
         "correlation_analysis",
+        "correlation_ci",
         "distribution_analysis",
         "quality_metrics",
         "business_intelligence",
@@ -42,30 +43,27 @@ def _register_enhanced_sections(
     for section_name in section_steps:
         section = payload.get(section_name)
         if section is None:
+            if section_name == "correlation_ci":
+                continue
             update_step_status(run_path, section_name, "skipped")
             continue
         if not isinstance(section, dict):
             update_step_status(run_path, section_name, "failed")
-            register_artifact(
-                run_path,
-                section_name,
-                get_artifact_type(section_name),
-                section_name,
-                "failed",
-                False,
-                [{"type": "ARTIFACT_INVALID", "metric": section_name, "value": section}],
-                [],
-                dataset_fingerprint,
-            )
             continue
         valid = section.get("valid") is True
         status = section.get("status") or ("success" if valid else "failed")
-        update_step_status(run_path, section_name, "success" if valid else "failed")
+        step_name = "correlation_analysis" if section_name == "correlation_ci" else section_name
+        if section_name != "correlation_ci":
+            update_step_status(run_path, step_name, "success" if valid else "failed")
+        elif valid:
+            update_step_status(run_path, step_name, "success")
+        if not valid:
+            continue
         register_artifact(
             run_path,
             section_name,
             get_artifact_type(section_name),
-            section_name,
+            step_name,
             status,
             bool(valid),
             section.get("errors") or [],
@@ -98,7 +96,9 @@ class StateManager:
         Writes data to a JSON file in the run folder AND Redis (if available).
         """
         from core.run_manifest import get_artifact_step, get_artifact_type, register_artifact
-        from core.run_manifest import update_render_policy, update_step_status, _read_manifest
+        from core.run_manifest import update_render_policy, update_step_status, _read_manifest, remove_artifact
+        from core.invariants import run_invariants
+        from core.run_manifest import read_manifest
         if name == "regression_insights":
             regression_status = self.read("regression_status") or "not_started"
             if regression_status != "success":
@@ -117,6 +117,9 @@ class StateManager:
             if step_status != "success":
                 print(f"[StateManager] Refusing to persist artifact {name}; step not successful.")
                 return
+        if artifact_step and isinstance(data, dict) and data.get("valid") is False:
+            print(f"[StateManager] Refusing to persist invalid artifact: {name}")
+            return
         # 1. Write to Disk
         filename = f"{name}.json"
         path = self.run_path / filename
@@ -176,6 +179,40 @@ class StateManager:
                     get_artifact_type,
                 )
             update_render_policy(self.run_path)
+        # Ensure trust is recorded in the manifest before invariants run.
+        if name == "trust_object" and isinstance(data, dict):
+            from core.run_manifest import update_trust
+            update_trust(self.run_path, data)
+        enforce_invariants_for = {"final_report", "enhanced_analytics", "trust_object", "regression_insights"}
+        if name in enforce_invariants_for:
+            manifest_after = read_manifest(self.run_path)
+            if manifest_after:
+                invariant_result = run_invariants(manifest_after)
+                if not invariant_result.get("ok"):
+                    print("[StateManager] Invariant violations detected; refusing to persist critical artifact.")
+                    remove_artifact(self.run_path, name)
+                    if name == "enhanced_analytics":
+                        for section_name in (
+                            "correlation_analysis",
+                            "correlation_ci",
+                            "distribution_analysis",
+                            "quality_metrics",
+                            "business_intelligence",
+                            "feature_importance",
+                        ):
+                            remove_artifact(self.run_path, section_name)
+                    if self.redis_client:
+                        try:
+                            key = self._get_redis_key(name)
+                            self.redis_client.delete(key)
+                        except Exception:
+                            pass
+                    if path.exists():
+                        try:
+                            path.unlink()
+                        except Exception:
+                            pass
+                    return
 
     def read(self, name: str) -> Optional[Any]:
         """

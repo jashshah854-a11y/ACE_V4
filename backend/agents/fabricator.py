@@ -5,7 +5,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from utils.logging import log_launch, log_ok
+from utils.logging import log_launch, log_ok, log_warn
 from core.state_manager import StateManager
 from core.schema import SchemaMap, ensure_schema_map
 
@@ -47,7 +47,8 @@ class Fabricator:
         personas = personas_data.get("personas", [])
         
         if not personas:
-            raise RuntimeError("No personas available for strategy generation.")
+            log_warn("No personas available for strategy generation; skipping strategies.")
+            return []
             
         strategies = []
 

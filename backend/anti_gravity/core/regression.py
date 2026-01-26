@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from scipy import stats
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor, RandomForestClassifier
+from sklearn.inspection import permutation_importance
+from sklearn.linear_model import LinearRegression, Ridge, LogisticRegression
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, accuracy_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
@@ -54,6 +56,74 @@ def _coerce_numeric(df: pd.DataFrame, column: str) -> pd.Series:
     return pd.to_numeric(series, errors="coerce")
 
 
+def _is_id_column(name: str) -> bool:
+    lowered = name.lower()
+    if lowered in {"id", "index", "uuid", "guid"}:
+        return True
+    if lowered.endswith("_id") or lowered.startswith("id_"):
+        return True
+    return any(token in lowered for token in ("uuid", "guid", "identifier"))
+
+
+def _near_constant(series: pd.Series, threshold: float = 0.98) -> bool:
+    values = series.dropna()
+    if values.empty:
+        return True
+    top_ratio = values.value_counts(normalize=True).iloc[0]
+    return float(top_ratio) >= threshold
+
+
+def _infer_target_type(series: pd.Series) -> str:
+    values = series.dropna().unique()
+    unique_count = len(values)
+    if unique_count <= 2:
+        return "binary"
+    if unique_count <= 10:
+        return "multiclass"
+    return "continuous"
+
+
+def _compute_vif(frame: pd.DataFrame) -> Dict[str, float]:
+    if frame.shape[1] < 2:
+        return {}
+    filled = frame.fillna(frame.median(numeric_only=True))
+    vif_by_feature: Dict[str, float] = {}
+    for col in filled.columns:
+        y = filled[col]
+        x = filled.drop(columns=[col])
+        if x.shape[1] == 0:
+            vif_by_feature[col] = 1.0
+            continue
+        model = LinearRegression()
+        model.fit(x, y)
+        r2 = model.score(x, y)
+        if r2 >= 0.9999:
+            vif = float("inf")
+        else:
+            vif = 1.0 / (1.0 - r2)
+        vif_by_feature[col] = float(vif)
+    return vif_by_feature
+
+
+def _linear_relation(series_x: pd.Series, series_y: pd.Series) -> Tuple[float, float, float]:
+    aligned = pd.concat([series_x, series_y], axis=1).dropna()
+    if aligned.empty:
+        return 0.0, 0.0, float("inf")
+    x = aligned.iloc[:, 0].values
+    y = aligned.iloc[:, 1].values
+    coeffs = np.polyfit(x, y, 1)
+    y_pred = coeffs[0] * x + coeffs[1]
+    residual_std = float(np.std(y - y_pred))
+    return float(coeffs[0]), float(coeffs[1]), residual_std
+
+
+def _standardize_frame(frame: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, float], Dict[str, float]]:
+    means = frame.mean()
+    stds = frame.std(ddof=0).replace(0, 1.0)
+    standardized = (frame - means) / stds
+    return standardized, means.to_dict(), stds.to_dict()
+
+
 def _candidate_columns(schema_blob: Dict[str, Any], key: str) -> Iterable[str]:
     blob = schema_blob.get(key) or {}
     if hasattr(blob, "model_dump"):
@@ -95,10 +165,19 @@ def select_regression_target(df: pd.DataFrame, schema_map: Any, config: Regressi
             candidates.append(col)
 
     numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+    target_tokens = ("target", "outcome", "label", "response", "y")
+    target_named = [
+        col
+        for col in numeric_cols
+        if col.lower() in target_tokens or any(token in col.lower() for token in target_tokens)
+    ]
+    candidates.extend([col for col in target_named if col not in candidates])
     candidates.extend([col for col in numeric_cols if col not in candidates])
 
     for col in candidates:
         if col not in df.columns:
+            continue
+        if _is_id_column(col):
             continue
         series = _coerce_numeric(df, col)
         usable = series.dropna()
@@ -161,11 +240,11 @@ def select_regression_features(
 
 def describe_model_quality(r2: float) -> str:
     if r2 >= 0.75:
-        return "Model captures the majority of the target variance."
+        return "Holdout fit is strong relative to the mean baseline."
     if r2 >= 0.5:
-        return "Model explains a meaningful portion of the variance but can improve."
+        return "Holdout fit is moderate relative to the mean baseline."
     if r2 > 0:
-        return "Signal is weak; consider feature engineering or alternative targets."
+        return "Holdout fit is weak; consider feature engineering or alternative targets."
     return "Model could not learn predictive signal from the available fields."
 
 
@@ -199,16 +278,60 @@ def compute_regression_insights(
 
     allow_non_numeric = include_categoricals
     if whitelist:
-        feature_cols = [col for col in whitelist if col != target_col]
+        candidate_features = [col for col in whitelist if col != target_col]
     else:
-        feature_cols = select_regression_features(
+        candidate_features = select_regression_features(
             df, target_col, schema_map, config, allow_non_numeric=allow_non_numeric
         )
-    if not feature_cols:
+    if not candidate_features:
         return {"status": "skipped", "target_column": target_col, "reason": "No usable predictors were found."}
 
     target_series = _coerce_numeric(df, target_col)
-    base_frame = df[feature_cols].copy()
+    target_type = _infer_target_type(target_series)
+
+    detected_types = {"numeric": [], "boolean": [], "categorical": []}
+    excluded: List[Dict[str, str]] = []
+    included: List[str] = []
+
+    for col in candidate_features:
+        series = df[col]
+        if _is_id_column(col):
+            excluded.append({"feature": col, "reason": "id_field"})
+            continue
+        if pd.api.types.is_datetime64_any_dtype(series) or any(token in col.lower() for token in ("date", "time", "timestamp")):
+            excluded.append({"feature": col, "reason": "raw_timestamp"})
+            continue
+        numeric_series = _coerce_numeric(df, col)
+        if numeric_series.dropna().nunique() <= 1:
+            excluded.append({"feature": col, "reason": "constant"})
+            continue
+        if _near_constant(series):
+            excluded.append({"feature": col, "reason": "near_constant"})
+            continue
+        if pd.api.types.is_bool_dtype(series):
+            detected_types["boolean"].append(col)
+        elif pd.api.types.is_numeric_dtype(series):
+            detected_types["numeric"].append(col)
+        else:
+            detected_types["categorical"].append(col)
+        included.append(col)
+
+    feature_governance_report = {
+        "included_features": included,
+        "excluded_features": excluded,
+        "detected_types": detected_types,
+    }
+
+    if not included:
+        return {
+            "status": "skipped",
+            "target_column": target_col,
+            "target_type": target_type,
+            "reason": "All candidate features were excluded by governance rules.",
+            "feature_governance_report": feature_governance_report,
+        }
+
+    base_frame = df[included].copy()
     numeric_subset = base_frame.select_dtypes(include=np.number).columns.tolist()
     for col in numeric_subset:
         base_frame[col] = pd.to_numeric(base_frame[col], errors="coerce")
@@ -220,19 +343,29 @@ def compute_regression_insights(
     else:
         base_frame = base_frame.apply(pd.to_numeric, errors="coerce")
 
+    total_rows = len(base_frame)
     mask = target_series.notna()
+    missing_target = int((~mask).sum())
     base_frame = base_frame.loc[mask]
     target_series = target_series.loc[mask]
     model_feature_names = list(base_frame.columns)
 
     if not model_feature_names:
-        return {"status": "skipped", "target_column": target_col, "reason": "Selected features could not be encoded."}
+        return {
+            "status": "skipped",
+            "target_column": target_col,
+            "target_type": target_type,
+            "reason": "Selected features could not be encoded.",
+            "feature_governance_report": feature_governance_report,
+        }
 
     if len(base_frame) < config.min_samples:
         return {
             "status": "skipped",
             "target_column": target_col,
+            "target_type": target_type,
             "reason": f"Need at least {config.min_samples} rows with target values; found {len(base_frame)}.",
+            "feature_governance_report": feature_governance_report,
         }
 
     sample_limit = 2000
@@ -241,6 +374,61 @@ def compute_regression_insights(
         target_series = target_series.loc[sampled.index]
         base_frame = sampled
         model_feature_names = list(base_frame.columns)
+
+    vif_by_feature = _compute_vif(base_frame[numeric_subset]) if numeric_subset else {}
+    max_vif = max(vif_by_feature.values()) if vif_by_feature else None
+    collinearity_decision = "standard"
+    if max_vif is not None and max_vif >= 20:
+        collinearity_decision = "suppress_coefficients"
+    elif max_vif is not None and max_vif >= 10:
+        collinearity_decision = "use_ridge_and_permutation"
+
+    collinearity_report = {
+        "vif_by_feature": vif_by_feature,
+        "max_vif": max_vif,
+        "decision": collinearity_decision,
+    }
+
+    leakage_pairs: List[Dict[str, Any]] = []
+    target_pairs: List[Dict[str, Any]] = []
+    leakage_features = base_frame.select_dtypes(include=np.number)
+    if leakage_features.shape[1] >= 2:
+        corr_matrix = leakage_features.corr()
+        for i, col1 in enumerate(corr_matrix.columns):
+            for col2 in corr_matrix.columns[i + 1:]:
+                corr_val = float(corr_matrix.loc[col1, col2])
+                if abs(corr_val) >= 0.995:
+                    slope, intercept, residual_std = _linear_relation(leakage_features[col1], leakage_features[col2])
+                    leakage_pairs.append(
+                        {
+                            "feature1": col1,
+                            "feature2": col2,
+                            "correlation": corr_val,
+                            "linear_relation": {"slope": slope, "intercept": intercept, "residual_std": residual_std},
+                        }
+                    )
+    for col in leakage_features.columns:
+        corr_val = leakage_features[col].corr(target_series)
+        if pd.notna(corr_val) and abs(float(corr_val)) >= 0.995:
+            slope, intercept, residual_std = _linear_relation(leakage_features[col], target_series)
+            target_pairs.append(
+                {
+                    "feature": col,
+                    "target": target_col,
+                    "correlation": float(corr_val),
+                    "linear_relation": {"slope": slope, "intercept": intercept, "residual_std": residual_std},
+                }
+            )
+
+    suppression_actions = []
+    if target_pairs:
+        suppression_actions.append("suppress_predictive_language")
+
+    leakage_report = {
+        "flagged_pairs": leakage_pairs,
+        "flagged_target_pairs": target_pairs,
+        "suppression_actions_taken": suppression_actions,
+    }
 
     X_train, X_test, y_train, y_test = train_test_split(
         base_frame,
@@ -253,67 +441,133 @@ def compute_regression_insights(
         return {
             "status": "skipped",
             "target_column": target_col,
+            "target_type": target_type,
             "reason": "Holdout split too small for evaluation.",
+            "feature_governance_report": feature_governance_report,
         }
 
     normalized_model = (model_type or "random_forest").lower()
-    if normalized_model == "linear":
-        estimator = LinearRegression()
-        steps = [
-            ("imputer", SimpleImputer(strategy="median")),
-            ("scaler", StandardScaler(with_mean=False)),
-            ("regressor", estimator),
-        ]
-    elif normalized_model == "gradient_boosting":
-        estimator = GradientBoostingRegressor(random_state=config.random_state)
-        steps = [("imputer", SimpleImputer(strategy="median")), ("regressor", estimator)]
+    is_classification = target_type in {"binary", "multiclass"}
+    if is_classification:
+        if target_type == "binary":
+            estimator = LogisticRegression(max_iter=500)
+            normalized_model = "logistic_regression"
+        else:
+            estimator = RandomForestClassifier(n_estimators=200, random_state=config.random_state)
+            normalized_model = "random_forest_classifier"
+        steps = [("imputer", SimpleImputer(strategy="most_frequent")), ("scaler", StandardScaler()), ("model", estimator)]
     else:
-        n_estimators = 100 if fast_mode else 200
-        estimator = RandomForestRegressor(
-            n_estimators=n_estimators,
-            random_state=config.random_state,
-            n_jobs=-1,
-        )
-        normalized_model = "random_forest"
-        steps = [("imputer", SimpleImputer(strategy="median")), ("regressor", estimator)]
+        if collinearity_decision in {"use_ridge_and_permutation", "suppress_coefficients"}:
+            estimator = Ridge(alpha=1.0)
+            normalized_model = "ridge"
+            steps = [("imputer", SimpleImputer(strategy="median")), ("scaler", StandardScaler()), ("model", estimator)]
+        elif normalized_model == "linear":
+            estimator = LinearRegression()
+            steps = [
+                ("imputer", SimpleImputer(strategy="median")),
+                ("scaler", StandardScaler()),
+                ("model", estimator),
+            ]
+        elif normalized_model == "gradient_boosting":
+            estimator = GradientBoostingRegressor(random_state=config.random_state)
+            steps = [("imputer", SimpleImputer(strategy="median")), ("model", estimator)]
+        else:
+            n_estimators = 100 if fast_mode else 200
+            estimator = RandomForestRegressor(
+                n_estimators=n_estimators,
+                random_state=config.random_state,
+                n_jobs=-1,
+            )
+            normalized_model = "random_forest"
+            steps = [("imputer", SimpleImputer(strategy="median")), ("model", estimator)]
 
     pipeline = Pipeline(steps=steps)
     pipeline.fit(X_train, y_train)
     y_pred = pipeline.predict(X_test)
 
-    r2 = float(r2_score(y_test, y_pred))
-    mae = float(mean_absolute_error(y_test, y_pred))
-    rmse = float(np.sqrt(mean_squared_error(y_test, y_pred)))
+    metrics: Dict[str, Any] = {}
+    baseline_metrics: Dict[str, Any] = {}
+    if is_classification:
+        y_pred_labels = estimator.predict(X_test)
+        accuracy = float(accuracy_score(y_test, y_pred_labels))
+        metrics["accuracy"] = accuracy
+        if target_type == "binary":
+            try:
+                y_proba = estimator.predict_proba(X_test)[:, 1]
+                metrics["auc"] = float(roc_auc_score(y_test, y_proba))
+            except Exception:
+                metrics["auc"] = None
+        baseline_label = y_train.value_counts().idxmax()
+        baseline_pred = np.full_like(y_test, baseline_label)
+        baseline_metrics["accuracy"] = float(accuracy_score(y_test, baseline_pred))
+    else:
+        r2 = float(r2_score(y_test, y_pred))
+        mae = float(mean_absolute_error(y_test, y_pred))
+        rmse = float(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics.update({"r2": r2, "mae": mae, "rmse": rmse})
+        baseline_pred = np.full_like(y_test, y_train.mean())
+        baseline_metrics["mae"] = float(mean_absolute_error(y_test, baseline_pred))
+        baseline_metrics["rmse"] = float(np.sqrt(mean_squared_error(y_test, baseline_pred)))
 
-    regressor = pipeline.named_steps["regressor"]
-    driver_pairs: List[Dict[str, float]] = []
-    weights = None
-    if hasattr(regressor, "feature_importances_"):
-        weights = regressor.feature_importances_
-    elif hasattr(regressor, "coef_"):
-        coef = getattr(regressor, "coef_")
-        if isinstance(coef, np.ndarray):
-            if coef.ndim > 1:
-                coef = coef[0]
-            weights = np.abs(coef)
-    if weights is not None and len(weights) == len(model_feature_names):
-        # Normalize weights if they are raw coefficients (Linear Regression)
-        total_weight = np.sum(np.abs(weights))
-        if total_weight > 0 and normalized_model == "linear":
-            weights = np.abs(weights) / total_weight
-        
-        # Guard: If R2 is very poor, don't claim to know the drivers
-        if r2 < 0.05:
-            driver_pairs = []
-        else:
-            driver_pairs = sorted(
-                (
-                    {"feature": model_feature_names[idx], "importance": float(weight)}
-                    for idx, weight in enumerate(weights)
-                ),
-                key=lambda item: item["importance"],
-                reverse=True,
-            )[: min(10, len(model_feature_names))]
+    scoring = "accuracy" if is_classification else "r2"
+    repeats = 5 if fast_mode else 10
+    perm = permutation_importance(pipeline, X_test, y_test, n_repeats=repeats, random_state=config.random_state, scoring=scoring)
+    raw_importance = np.maximum(perm.importances_mean, 0)
+    total_importance = float(raw_importance.sum()) if raw_importance.sum() > 0 else 1.0
+    normalized_importance = raw_importance / total_importance
+    importance_report = {
+        "method": "permutation_importance",
+        "scoring": scoring,
+        "n_repeats": repeats,
+        "target_column": target_col,
+        "target_type": target_type,
+        "features": [
+            {
+                "feature": model_feature_names[idx],
+                "importance": float(normalized_importance[idx] * 100),
+                "ci_low": float(max(0.0, (perm.importances_mean[idx] - 1.96 * perm.importances_std[idx]) / total_importance * 100)),
+                "ci_high": float(max(0.0, (perm.importances_mean[idx] + 1.96 * perm.importances_std[idx]) / total_importance * 100)),
+            }
+            for idx in range(len(model_feature_names))
+        ],
+        "dataset_split": {"train_rows": int(len(X_train)), "test_rows": int(len(X_test))},
+    }
+    importance_report["features"].sort(key=lambda item: item["importance"], reverse=True)
+
+    coefficient_report = None
+    if not is_classification and collinearity_decision != "suppress_coefficients" and normalized_model in {"linear", "ridge"}:
+        try:
+            standardized, means, stds = _standardize_frame(X_train)
+            X_mat = np.column_stack([np.ones(len(standardized)), standardized.values])
+            y_vec = y_train.values
+            beta, _, _, _ = np.linalg.lstsq(X_mat, y_vec, rcond=None)
+            predictions = X_mat @ beta
+            residuals = y_vec - predictions
+            dof = max(1, len(y_vec) - X_mat.shape[1])
+            mse = np.sum(residuals ** 2) / dof
+            cov = mse * np.linalg.inv(X_mat.T @ X_mat)
+            se = np.sqrt(np.diag(cov))
+            t_stats = beta / se
+            p_values = 2 * (1 - stats.t.cdf(np.abs(t_stats), df=dof))
+            ci_low = beta - stats.t.ppf(0.975, df=dof) * se
+            ci_high = beta + stats.t.ppf(0.975, df=dof) * se
+            coefficient_report = {
+                "method": "standardized_linear_coefficients",
+                "n_used": int(len(y_vec)),
+                "features": [
+                    {
+                        "feature": "intercept" if idx == 0 else model_feature_names[idx - 1],
+                        "beta": float(beta[idx]),
+                        "standard_error": float(se[idx]),
+                        "p_value": float(p_values[idx]),
+                        "ci_low": float(ci_low[idx]),
+                        "ci_high": float(ci_high[idx]),
+                    }
+                    for idx in range(len(beta))
+                ],
+            }
+        except Exception:
+            coefficient_report = None
 
     preview = pd.DataFrame({"actual": y_test, "predicted": y_pred})
     preview["error"] = preview["predicted"] - preview["actual"]
@@ -334,22 +588,63 @@ def compute_regression_insights(
         "max": float(target_series.max()),
     }
 
+    model_fit_report = {
+        "model": normalized_model,
+        "target_column": target_col,
+        "target_type": target_type,
+        "metrics": metrics,
+        "baseline_metrics": baseline_metrics,
+        "dataset_split": {"train_rows": int(len(X_train)), "test_rows": int(len(X_test))},
+    }
+
+    target_governance = {
+        "target_column": target_col,
+        "target_type": target_type,
+        "n_used": int(len(base_frame)),
+        "n_dropped": int(total_rows - len(base_frame)),
+        "n_dropped_target_missing": missing_target,
+    }
+
+    narrative = ""
+    if is_classification:
+        accuracy = metrics.get("accuracy")
+        if isinstance(accuracy, (int, float)):
+            if accuracy >= 0.75:
+                narrative = "Holdout accuracy is strong relative to the baseline."
+            elif accuracy >= 0.6:
+                narrative = "Holdout accuracy is moderate relative to the baseline."
+            elif accuracy > 0:
+                narrative = "Holdout accuracy is weak; treat classifications as exploratory."
+            else:
+                narrative = "Model could not learn predictive signal from the available fields."
+    else:
+        narrative = describe_model_quality(metrics.get("r2", 0.0))
+
     return {
         "status": "ok",
         "target_column": target_col,
-        "feature_columns": feature_cols,
+        "target_type": target_type,
+        "feature_columns": included,
         "row_count": int(len(base_frame)),
         "model": normalized_model,
-        "metrics": {"r2": r2, "mae": mae, "rmse": rmse},
-        "drivers": driver_pairs,
+        "metrics": metrics,
+        "drivers": importance_report["features"][:10],
         "predictions": preview_records,
         "split": {"train_rows": int(len(X_train)), "test_rows": int(len(X_test))},
         "target_stats": target_stats,
-        "narrative": describe_model_quality(r2),
+        "narrative": narrative,
         "input_config": {
             "preferred_target": preferred_target,
             "feature_whitelist": whitelist,
             "include_categoricals": include_categoricals,
             "fast_mode": fast_mode,
         },
+        "feature_governance_report": feature_governance_report,
+        "target_governance": target_governance,
+        "baseline_metrics": baseline_metrics,
+        "model_fit_report": model_fit_report,
+        "collinearity_report": collinearity_report,
+        "leakage_report": leakage_report,
+        "importance_report": importance_report,
+        "regression_coefficients_report": coefficient_report,
     }

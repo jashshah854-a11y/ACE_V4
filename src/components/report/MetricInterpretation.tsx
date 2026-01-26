@@ -90,11 +90,11 @@ export function interpretSilhouetteScore(score: number): string {
 }
 
 export function interpretR2Score(score: number): string {
-    if (score >= 0.9) return "Excellent fit - model explains 90%+ of variance in outcomes";
-    if (score >= 0.7) return "Good fit - model captures most key patterns and relationships";
-    if (score >= 0.5) return "Moderate fit - model captures some patterns but may miss key drivers";
-    if (score >= 0) return "Poor fit - model struggles to explain outcomes, key features may be missing";
-    return "Negative fit - model performs worse than baseline, suggesting wrong target or features";
+    if (score >= 0.9) return "Excellent holdout fit - model performance is well above baseline.";
+    if (score >= 0.7) return "Good holdout fit - model captures most key patterns.";
+    if (score >= 0.5) return "Moderate holdout fit - model captures some patterns but may miss key drivers.";
+    if (score >= 0) return "Weak holdout fit - model struggles to outperform baseline.";
+    return "Negative fit - model performs worse than baseline, suggesting wrong target or features.";
 }
 
 export function interpretDataQuality(score: number): string {

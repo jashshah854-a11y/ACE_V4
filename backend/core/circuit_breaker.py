@@ -11,7 +11,7 @@ Enforces caps to prevent runaway growth:
 All caps fail closed and trigger audit logging.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Tuple, Dict, List
 from collections import defaultdict, deque
 from dataclasses import dataclass
@@ -72,7 +72,7 @@ class CircuitBreaker:
         Returns:
             (can_proceed, reason_code)
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         window_start = now - timedelta(days=90)
         
         # Prune old entries
@@ -95,7 +95,7 @@ class CircuitBreaker:
         Args:
             user_id: User who received reflection
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         self.user_reflections[user_id].append(now)
         self.user_last_reflection[user_id] = now
     
@@ -115,7 +115,7 @@ class CircuitBreaker:
             return (True, "ok")
         
         last_reflection = self.user_last_reflection[user_id]
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         days_since = (now - last_reflection).total_seconds() / 86400
         
         if days_since < REFLECTION_COOLDOWN_DAYS:
@@ -165,7 +165,7 @@ class CircuitBreaker:
         Returns:
             (can_proceed, reason_code)
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         window_start = now - timedelta(days=30)
         
         # Prune old entries
@@ -188,7 +188,7 @@ class CircuitBreaker:
         Args:
             user_id: User for candidate
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         self.user_candidates[user_id].append(now)
     
     def check_global_reflection_emission_cap(self) -> Tuple[bool, str]:
@@ -200,7 +200,7 @@ class CircuitBreaker:
         Returns:
             (can_proceed, reason_code)
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         day_start = now - timedelta(days=1)
         
         # Prune old entries
@@ -220,7 +220,7 @@ class CircuitBreaker:
         
         Call this AFTER successful emission (shown to user).
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         self.global_reflection_emissions.append(now)
     
     def check_global_assertion_creation_cap(self) -> Tuple[bool, str]:
@@ -232,7 +232,7 @@ class CircuitBreaker:
         Returns:
             (can_proceed, reason_code)
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         day_start = now - timedelta(days=1)
         
         # Prune old entries
@@ -252,7 +252,7 @@ class CircuitBreaker:
         
         Call this AFTER successful assertion creation.
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         self.global_assertion_creations.append(now)
     
     def get_user_stats(self, user_id: str) -> Dict[str, any]:
@@ -265,7 +265,7 @@ class CircuitBreaker:
         Returns:
             Dictionary with current counts and limits
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         # Prune before counting
         self._prune_old_entries(
@@ -304,7 +304,7 @@ class CircuitBreaker:
         Returns:
             Dictionary with global counts and limits
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         # Prune before counting
         self._prune_old_entries(

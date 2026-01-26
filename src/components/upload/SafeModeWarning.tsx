@@ -27,7 +27,7 @@ export function SafeModeWarning({ onAccept, onCancel, qualityScore }: SafeModeWa
                     <ul className="list-disc pl-5 space-y-1 mb-4 text-sm">
                         <li>Predictive models disabled (forecasting, churn)</li>
                         <li>Persona segmentation disabled</li>
-                        <li>Only high-confidence descriptive insights will be shown</li>
+                        <li>Only validated descriptive insights will be shown</li>
                     </ul>
                 </AlertDescription>
             </Alert>

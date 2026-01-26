@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { TrustSummary } from "@/components/trust/TrustSummary";
 import type { TrustModel } from "@/types/trust";
 
@@ -40,12 +41,13 @@ const trust: TrustModel = {
 };
 
 describe("Trust summary", () => {
-  it("renders a single overall confidence entry with evidence references", () => {
+  it("renders a single overall confidence entry with evidence references", async () => {
     render(<TrustSummary trust={trust} />);
 
     expect(screen.getByText(/Overall confidence:/i)).toBeInTheDocument();
     expect(screen.getAllByText(/out of 100/i)).toHaveLength(1);
-    expect(screen.getByText(/steps\.validator/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /view details/i }));
+    expect(screen.getAllByText(/steps\.validator/i).length).toBeGreaterThan(0);
   });
 
   it("does not render certified language", () => {

@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Tuple
 
+from core.analysis_routing import agent_analysis_map
+from core.run_manifest import read_manifest
+from core.state_manager import StateManager
+
 SUPPORTED_DATA_TYPES: List[str] = [
     "marketing_performance",
     "technical_metrics",
@@ -114,6 +118,17 @@ def is_agent_allowed(agent: str, data_type: Optional[str]) -> Tuple[bool, str]:
         return True, ""
 
     return False, f"Agent '{agent}' not allowed for data type '{data_type}'."
+
+
+def is_agent_allowed_for_run(agent: str, state_manager: StateManager, data_type: Optional[str]) -> Tuple[bool, str]:
+    manifest = read_manifest(state_manager.run_path) or {}
+    allowed = set(manifest.get("analysis_allowed") or [])
+    suppressed = manifest.get("analysis_suppressed") or {}
+    analysis = agent_analysis_map(agent)
+    if analysis and allowed and analysis not in allowed:
+        reason = suppressed.get(analysis, f"{analysis} suppressed by routing.")
+        return False, reason
+    return is_agent_allowed(agent, data_type)
 
 
 def get_domain_constraints(data_type: Optional[str]) -> Dict[str, str]:

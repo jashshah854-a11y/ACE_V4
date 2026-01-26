@@ -33,6 +33,7 @@ export interface RunManifestRenderPolicy {
   allow_regression_sections: boolean;
   allow_forecasting: boolean;
   allow_simulation: boolean;
+  allow_trust_summary: boolean;
   allow_personas: boolean;
   allow_strategies: boolean;
   allow_anomalies: boolean;
@@ -45,6 +46,11 @@ export interface RunManifestRenderPolicy {
 
 import type { TrustModel } from "@/types/trust";
 
+export interface RunManifestViewPolicy {
+  allowed_sections: string[];
+  default_collapsed_sections: string[];
+}
+
 export interface RunManifest {
   manifest_version: string;
   run_id: string;
@@ -56,6 +62,13 @@ export interface RunManifest {
   artifacts: Record<string, RunManifestArtifact>;
   warnings: RunManifestWarning[];
   trust?: TrustModel | null;
+  analysis_allowed?: string[];
+  analysis_suppressed?: Record<string, string>;
   render_policy: RunManifestRenderPolicy;
+  view_policies?: {
+    executive: RunManifestViewPolicy;
+    analyst: RunManifestViewPolicy;
+    expert: RunManifestViewPolicy;
+  };
   updated_at: string;
 }

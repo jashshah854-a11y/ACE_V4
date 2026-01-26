@@ -2,11 +2,10 @@
 import { motion } from "framer-motion";
 
 const paragraphs = [
-  "We built ACE to replace the noise of dashboards with the clarity of decisions. Every run begins with a contract because meaning requires boundaries, and every governing thought is written before the charts appear.",
-  "The Neural Refinery is not a black box. It exposes its lineage, its doubts, and its evidence. If a claim cannot be traced to code, data, and confidence metrics, it has no place in the report.",
-  "Safe Mode is not a warning banner—it is a promise. When data is incomplete or governance restricts a claim, ACE slows down, states the limitation, and refuses to bluff.",
-  "The What-If cockpit exists so leaders can test their intuition safely. Scenarios run in RAM-only sandboxes, deltas stream in real time, and experiment history becomes institutional knowledge.",
-  "Meaning without craft is forgettable, and craft without meaning is decoration. The Lab & Library aesthetic—serif narratives paired with monospace evidence—reminds us which voice is storytelling and which voice is measurement.",
+  "We built ACE to replace the noise of dashboards with the clarity of bounded decisions. Every run begins with a contract because meaning requires constraints, and the governing thought is written before the charts appear.",
+  "ACE is not a black box. Each run produces a manifest that records what executed, what was valid, and what is allowed to render. If a claim cannot be traced to code and data, it does not appear.",
+  "When data is incomplete or a step fails, ACE slows down, states the limitation, and suppresses the section. Silence is preferred to speculation.",
+  "The report stays minimal by design. Executive summaries are shown only when validation gates succeed; diagnostics explain failures without polluting the main narrative.",
 ];
 
 export default function FoundersLetter() {

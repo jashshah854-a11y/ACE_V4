@@ -1,4 +1,5 @@
 from typing import Any, List
+from contextlib import asynccontextmanager
 import os
 import pickle
 from pathlib import Path
@@ -6,8 +7,6 @@ from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
-
-app = FastAPI(title="ACE Serving", version="0.2.0")
 
 def _get_model_path():
     return os.getenv("ACE_MODEL_PATH", "model.pkl")
@@ -20,6 +19,15 @@ MODEL_PATH = _get_model_path()
 auth_header = APIKeyHeader(name="X-API-Token", auto_error=False)
 
 model = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    load_model()
+    yield
+
+
+app = FastAPI(title="ACE Serving", version="0.2.0", lifespan=lifespan)
 
 
 def load_model():
@@ -52,11 +60,6 @@ class PredictRequest(BaseModel):
 
 class PredictResponse(BaseModel):
     outputs: List[Any]
-
-
-@app.on_event("startup")
-def _startup():
-    load_model()
 
 
 @app.get("/health")

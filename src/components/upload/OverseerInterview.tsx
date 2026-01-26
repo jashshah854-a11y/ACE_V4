@@ -521,7 +521,7 @@ function buildContractSuggestion(
       : "Which cohorts drive the majority of attrition so we can stabilize them first?";
 
   const successCriteria = hasFinancial
-    ? "Success = isolate segments causing >10% of revenue variance so we can intervene with pricing or retention plays."
+    ? "Success = isolate segments causing >10% of revenue variation so we can intervene with pricing or retention plays."
     : hasTime
       ? "Success = confirm the top inflection points in activity so we can explain the change in direction."
       : "Success = surface one segment responsible for at least 15% of churn so we can deploy a save plan.";

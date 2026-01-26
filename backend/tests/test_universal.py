@@ -44,19 +44,19 @@ def run_test(dataset_path, test_name):
         return False
 
 def test_banking_data():
-    return run_test("data/test_sets/banking_tiny.csv", "Banking Data")
+    assert run_test("data/test_sets/banking_tiny.csv", "Banking Data")
 
 def test_ecommerce_data():
-    return run_test("data/test_sets/ecommerce_small.csv", "Ecommerce Data")
+    assert run_test("data/test_sets/ecommerce_small.csv", "Ecommerce Data")
 
 def test_telecom_data():
-    return run_test("data/test_sets/telecom_churn_small.csv", "Telecom Data")
+    assert run_test("data/test_sets/telecom_churn_small.csv", "Telecom Data")
 
 def test_random_data():
-    return run_test("data/test_sets/random_generic.csv", "Random Data")
+    assert run_test("data/test_sets/random_generic.csv", "Random Data")
 
 def test_minimal_data():
-    return run_test("data/test_sets/minimal.csv", "Minimal Data")
+    assert run_test("data/test_sets/minimal.csv", "Minimal Data")
 
 if __name__ == "__main__":
     tests = [

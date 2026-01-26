@@ -64,7 +64,9 @@ class RegressionAgent:
         if insights.get("status") != "ok":
             reason = insights.get("reason", "regression skipped")
             log_warn(f"Regression agent skipped: {reason}")
-            raise RuntimeError(reason)
+            self.state.write("regression_status", "skipped")
+            self.state.write("regression_skip_reason", reason)
+            return
         if run_config:
             insights.setdefault("applied_config", run_config)
         
@@ -76,6 +78,19 @@ class RegressionAgent:
 
         insights = validated
 
+        artifact_payloads = {
+            "feature_governance_report": insights.get("feature_governance_report"),
+            "baseline_metrics": insights.get("baseline_metrics"),
+            "model_fit_report": insights.get("model_fit_report"),
+            "collinearity_report": insights.get("collinearity_report"),
+            "leakage_report": insights.get("leakage_report"),
+            "importance_report": insights.get("importance_report"),
+            "regression_coefficients_report": insights.get("regression_coefficients_report"),
+        }
+        for key in artifact_payloads:
+            insights.pop(key, None)
+        insights["artifact_refs"] = [key for key, payload in artifact_payloads.items() if payload is not None]
+
         for warning in insights.get("warnings", []):
             warning_type = warning.get("type")
             if warning_type:
@@ -86,6 +101,25 @@ class RegressionAgent:
                 )
 
         self.state.write("regression_insights_pending", insights)
+        for name, payload in artifact_payloads.items():
+            if payload is None:
+                if name != "regression_coefficients_report":
+                    raise RuntimeError(f"Missing required artifact: {name}")
+                continue
+            payload = dict(payload)
+            payload.setdefault("status", "success")
+            validated_payload = apply_artifact_validation(name, payload)
+            if not validated_payload:
+                raise RuntimeError(f"Validation failed for artifact: {name}")
+            for warning in validated_payload.get("warnings", []):
+                warning_type = warning.get("type")
+                if warning_type:
+                    self.state.add_warning(
+                        warning_type,
+                        warning.get("note") or f"{warning_type}: {warning.get('metric')}",
+                        details=warning,
+                    )
+            self.state.write(f"{name}_pending", validated_payload)
 
         if insights.get("status") == "success":
             target = insights.get('target_column') or 'target'

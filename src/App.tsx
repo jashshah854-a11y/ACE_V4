@@ -1,9 +1,10 @@
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NarrativeProvider } from "@/components/narrative/NarrativeContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { GlobalErrorOverlay } from "@/components/ui/GlobalErrorOverlay";
 import Index from "./pages/Index";
@@ -13,53 +14,46 @@ import Pipeline from "./pages/Pipeline";
 import DemoPipelineStatus from "./pages/DemoPipelineStatus";
 import NotFound from "./pages/NotFound";
 import FoundersLetter from "./pages/FoundersLetter";
-import ReportPage from "./pages/ReportPage";
-import RunSummaryPage from "./pages/RunSummaryPage";
-import QuickSummaryView from "./pages/QuickSummaryView";  // NEW: Quick View mode
 import LandingPage from "./pages/LandingPage";
-import LabPage from "./pages/LabPage";
-import DiagnosticsPage from "./pages/DiagnosticsPage";
-import { SimulationSafeModeBanner } from "@/components/trust/SafeModeBanner";
-
-import { SimulationProvider } from "./context/SimulationContext";
+const DiagnosticsPage = lazy(() => import("./pages/DiagnosticsPage"));
 
 const queryClient = new QueryClient();
+
+const ReportRedirect = () => {
+  const { runId } = useParams<{ runId: string }>();
+  if (!runId) return <Navigate to="/app" replace />;
+  return <Navigate to={`/app?run=${runId}`} replace />;
+};
 
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
-      <SimulationProvider>
-        <TooltipProvider>
-          <NarrativeProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <SimulationSafeModeBanner />
+      <TooltipProvider>
+        <NarrativeProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading...</div>}>
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/app" element={<ExecutivePulse />} />
                 <Route path="/report/summary" element={<ExecutivePulse />} />
-                {/* NEW: Simplified Run Overview */}
-                <Route path="/report/:runId" element={<RunSummaryPage />} />
-                {/* NEW: Quick Summary View */}
-                <Route path="/summary/:runId" element={<QuickSummaryView />} />
+                <Route path="/report/:runId" element={<ReportRedirect />} />
                 <Route path="/upload" element={<Index />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/pipeline/:runId" element={<Pipeline />} />
                 <Route path="/pipeline" element={<Pipeline />} />
-                <Route path="/lab" element={<LabPage />} />
-                <Route path="/lab/:runId" element={<LabPage />} />
                 <Route path="/diagnostics/:runId" element={<DiagnosticsPage />} />
                 <Route path="/about" element={<FoundersLetter />} />
                 <Route path="/logs/:runId" element={<Pipeline />} /> {/* Fallback to Pipeline view for logs */}
                 <Route path="/demo/pipeline-status" element={<DemoPipelineStatus />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </BrowserRouter>
-          </NarrativeProvider>
-          <GlobalErrorOverlay />
-        </TooltipProvider>
-      </SimulationProvider>
+            </Suspense>
+          </BrowserRouter>
+        </NarrativeProvider>
+        <GlobalErrorOverlay />
+      </TooltipProvider>
     </QueryClientProvider>
   </ErrorBoundary>
 );

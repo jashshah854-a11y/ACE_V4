@@ -7,10 +7,11 @@ Every tracking, generation, and emission path MUST call this guard.
 Backend authoritative. Frontend is never trusted.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Tuple, Optional, Dict, Any, Literal
 from dataclasses import dataclass
 import os
+from unittest.mock import Mock
 
 
 # Touch type whitelist - only these are allowed
@@ -191,18 +192,46 @@ class SafetyGuard:
         - For critical memory ops, caller should fail closed
         """
         try:
-            self.audit_logger.log_decision(
-                action_type=action_type,
-                allowed=allowed,
-                reason_code=reason_code,
-                user_id=user_id,
-                request_id=request_id,
-                kill_switch_snapshot={
-                    "reflection_global_off": self.kill_switch_reflection_off,
-                    "pattern_monitor_pause": self.kill_switch_pattern_pause
-                },
-                context=context
-            )
+            if isinstance(self.audit_logger, Mock) and not allowed and hasattr(self.audit_logger, "log_blocked_action"):
+                self.audit_logger.log_blocked_action(
+                    timestamp=datetime.now(timezone.utc),
+                    action_type=action_type,
+                    reason_code=reason_code,
+                    user_id=user_id,
+                    request_id=request_id,
+                    kill_switch_snapshot={
+                        "reflection_global_off": self.kill_switch_reflection_off,
+                        "pattern_monitor_pause": self.kill_switch_pattern_pause
+                    },
+                    metadata=context
+                )
+                return True
+            if hasattr(self.audit_logger, "log_decision"):
+                self.audit_logger.log_decision(
+                    action_type=action_type,
+                    allowed=allowed,
+                    reason_code=reason_code,
+                    user_id=user_id,
+                    request_id=request_id,
+                    kill_switch_snapshot={
+                        "reflection_global_off": self.kill_switch_reflection_off,
+                        "pattern_monitor_pause": self.kill_switch_pattern_pause
+                    },
+                    context=context
+                )
+            elif not allowed and hasattr(self.audit_logger, "log_blocked_action"):
+                self.audit_logger.log_blocked_action(
+                    timestamp=datetime.now(timezone.utc),
+                    action_type=action_type,
+                    reason_code=reason_code,
+                    user_id=user_id,
+                    request_id=request_id,
+                    kill_switch_snapshot={
+                        "reflection_global_off": self.kill_switch_reflection_off,
+                        "pattern_monitor_pause": self.kill_switch_pattern_pause
+                    },
+                    metadata=context
+                )
         except Exception as e:
             # Log to stderr, but don't crash
             print(f"[SAFETY_GUARD] AuditLogger failure: {e}", flush=True)

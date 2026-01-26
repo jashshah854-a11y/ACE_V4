@@ -64,6 +64,56 @@ export interface FeatureImportanceItem {
   rank?: number;
 }
 
+export interface ImportanceReport {
+  valid?: boolean;
+  status?: "success" | "failed";
+  method?: string;
+  scoring?: string;
+  n_repeats?: number;
+  target_column?: string;
+  target_type?: "continuous" | "binary" | "multiclass";
+  dataset_split?: {
+    train_rows?: number;
+    test_rows?: number;
+  };
+  features: Array<{
+    feature: string;
+    importance: number;
+    ci_low?: number | null;
+    ci_high?: number | null;
+  }>;
+}
+
+export interface ModelFitReport {
+  valid?: boolean;
+  status?: "success" | "failed";
+  model?: string;
+  target_column?: string;
+  target_type?: "continuous" | "binary" | "multiclass";
+  metrics?: Record<string, number | null>;
+  baseline_metrics?: Record<string, number | null>;
+  dataset_split?: {
+    train_rows?: number;
+    test_rows?: number;
+  };
+}
+
+export interface CollinearityReport {
+  valid?: boolean;
+  status?: "success" | "failed";
+  vif_by_feature?: Record<string, number>;
+  max_vif?: number | null;
+  decision?: string;
+}
+
+export interface LeakageReport {
+  valid?: boolean;
+  status?: "success" | "failed";
+  flagged_pairs?: any[];
+  flagged_target_pairs?: any[];
+  suppression_actions_taken?: string[];
+}
+
 export interface FeatureImportance {
   available: boolean;
   valid?: boolean;
@@ -84,8 +134,12 @@ export interface CorrelationPair {
   feature2: string;
   pearson: number;
   spearman: number;
+  pearson_ci_low?: number | null;
+  pearson_ci_high?: number | null;
+  n?: number;
   strength?: string;
   direction?: string;
+  is_leakage?: boolean;
 }
 
 export interface EnhancedAnalyticsData {
@@ -115,6 +169,21 @@ export interface EnhancedAnalyticsData {
     total_correlations?: number;
     insights?: string[];
   };
+  correlation_ci?: {
+    available?: boolean;
+    valid?: boolean;
+    status?: "success" | "failed";
+    errors?: any[];
+    warnings?: any[];
+    pairs?: Array<{
+      feature1: string;
+      feature2: string;
+      pearson: number;
+      ci_low?: number | null;
+      ci_high?: number | null;
+      n?: number;
+    }>;
+  } | null;
   distribution_analysis?: {
     available: boolean;
     valid?: boolean;
@@ -257,6 +326,9 @@ export interface ReportDataResult {
   manifestLoading: boolean;
   manifestCompatible: boolean;
   renderPolicy?: RunManifestRenderPolicy;
+  viewPolicies?: RunManifest["view_policies"];
+  analysisAllowed?: RunManifest["analysis_allowed"];
+  analysisSuppressed?: RunManifest["analysis_suppressed"];
 }
 
 

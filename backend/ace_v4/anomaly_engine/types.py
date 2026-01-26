@@ -60,7 +60,7 @@ class TypeInferer:
         if sample.empty: return False
         
         try:
-            pd.to_datetime(sample, errors='raise')
+            pd.to_datetime(sample, errors='raise', format='mixed')
             return True
         except:
             return False

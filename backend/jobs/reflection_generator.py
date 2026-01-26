@@ -9,7 +9,7 @@ Detailed Logic:
 """
 
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 from backend.api.decision_models import PatternCandidate, Reflection
 
@@ -84,7 +84,7 @@ class ReflectionGenerator:
         if not user_max_date:
             return False
         # 14 days cooldown rule
-        delta = datetime.utcnow() - user_max_date
+        delta = datetime.now(timezone.utc) - user_max_date
         return delta.days < 14
 
     def generate(self, target_run_id: str, target_user_id: str) -> Optional[Reflection]:
@@ -195,4 +195,3 @@ class ReflectionGenerator:
             self.circuit_breaker.record_reflection(target_user_id)
         
         return reflection
-

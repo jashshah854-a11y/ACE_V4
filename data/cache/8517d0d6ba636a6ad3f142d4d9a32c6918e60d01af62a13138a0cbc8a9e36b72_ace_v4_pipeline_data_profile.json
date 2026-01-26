@@ -1,0 +1,87 @@
+{
+  "row_count": 5,
+  "column_count": 3,
+  "column_types": {
+    "numeric": [
+      "feature_a",
+      "feature_b",
+      "target"
+    ],
+    "categorical": [],
+    "datetime": [],
+    "text": [],
+    "boolean": []
+  },
+  "columns": {
+    "feature_a": {
+      "dtype": "int64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 5,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 3.0,
+        "median": 3.0,
+        "std": 1.4142135623730951,
+        "min": 1.0,
+        "max": 5.0,
+        "skew": 0.0,
+        "q25": 2.0,
+        "q75": 4.0
+      }
+    },
+    "feature_b": {
+      "dtype": "int64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 5,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 4.0,
+        "median": 4.0,
+        "std": 1.4142135623730951,
+        "min": 2.0,
+        "max": 6.0,
+        "skew": 0.0,
+        "q25": 3.0,
+        "q75": 5.0
+      }
+    },
+    "target": {
+      "dtype": "int64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 5,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 13.2,
+        "median": 13.0,
+        "std": 2.1354156504062622,
+        "min": 10.0,
+        "max": 16.0,
+        "skew": -0.20575279705556831,
+        "q25": 12.0,
+        "q75": 15.0
+      }
+    }
+  },
+  "missingness_summary": {
+    "avg_missing_pct": 0.0,
+    "max_missing_pct": 0.0
+  },
+  "constant_columns": [],
+  "near_constant_columns": [],
+  "status": "success",
+  "valid": true,
+  "errors": [],
+  "warnings": []
+}

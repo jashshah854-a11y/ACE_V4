@@ -2,7 +2,7 @@ import json
 import os
 import random
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -127,7 +127,7 @@ def read_audit_events(log_dir: Path):
 
 
 def make_pattern(user_id: str, days_old: float, occurrences: int = 3):
-    last_seen = datetime.utcnow()
+    last_seen = datetime.now(timezone.utc)
     first_seen = last_seen - timedelta(days=days_old)
     return PatternCandidate(
         user_id=user_id,
@@ -177,7 +177,7 @@ def test_precheck_defaults_and_paths(tmp_path, monkeypatch):
 
     audit_logger = AuditLogger(log_dir=tmp_path / "audit_logs", mode="file")
     audit_logger.log_blocked_action(
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         action_type="precheck",
         reason_code="test_write",
         user_id="user_precheck",
@@ -435,7 +435,7 @@ def test_synthetic_load_safety_guards(tmp_path):
 def test_chaos_audit_logger_failure(tmp_path):
     log_dir = tmp_path / "audit_logs"
     log_dir.mkdir(parents=True, exist_ok=True)
-    log_file = log_dir / f"safety_audit_{datetime.utcnow().strftime('%Y-%m-%d')}.jsonl"
+    log_file = log_dir / f"safety_audit_{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.jsonl"
     log_file.write_text("", encoding="utf-8")
     os.chmod(log_file, 0o444)
 

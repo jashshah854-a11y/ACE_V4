@@ -1,0 +1,129 @@
+{
+  "row_count": 180,
+  "column_count": 5,
+  "column_types": {
+    "numeric": [
+      "user_id",
+      "feature_a",
+      "feature_b",
+      "feature_c",
+      "revenue"
+    ],
+    "categorical": [],
+    "datetime": [],
+    "text": [],
+    "boolean": []
+  },
+  "columns": {
+    "user_id": {
+      "dtype": "int64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 180,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 90.5,
+        "median": 90.5,
+        "std": 51.96072234550504,
+        "min": 1.0,
+        "max": 180.0,
+        "skew": 0.0,
+        "q25": 45.75,
+        "q75": 135.25
+      }
+    },
+    "feature_a": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 180,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 9.872298928611624,
+        "median": 9.831767950573717,
+        "std": 2.10619092526963,
+        "min": 2.281444970567048,
+        "max": 15.634418032968489,
+        "skew": -0.07036005789135395,
+        "q25": 8.761682626018143,
+        "q75": 11.212964958270778
+      }
+    },
+    "feature_b": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 180,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 20.190504795240308,
+        "median": 20.217876667000606,
+        "std": 2.9519076893942517,
+        "min": 11.473596332944451,
+        "max": 27.671336629285825,
+        "skew": -0.11731226486824403,
+        "q25": 18.081379701105522,
+        "q75": 22.309106504472336
+      }
+    },
+    "feature_c": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 180,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 29.974374069522916,
+        "median": 30.265603489897707,
+        "std": 4.116173019874299,
+        "min": 18.35402152296163,
+        "max": 42.834368544130925,
+        "skew": -0.001654120464625046,
+        "q25": 27.017239544334526,
+        "q75": 32.87370540574164
+      }
+    },
+    "revenue": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 180,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 40.1388136124154,
+        "median": 39.968526832786495,
+        "std": 4.9492688462848555,
+        "min": 29.546502756937027,
+        "max": 53.86384818278704,
+        "skew": 0.053734452441363253,
+        "q25": 36.280681182668225,
+        "q75": 44.03448844822546
+      }
+    }
+  },
+  "missingness_summary": {
+    "avg_missing_pct": 0.0,
+    "max_missing_pct": 0.0
+  },
+  "constant_columns": [],
+  "near_constant_columns": [],
+  "status": "success",
+  "valid": true,
+  "errors": [],
+  "warnings": []
+}

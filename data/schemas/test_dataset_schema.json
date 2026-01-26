@@ -1,0 +1,249 @@
+{
+  "dataset_info": {
+    "name": "test_dataset",
+    "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\test_dataset.csv",
+    "row_count": 9,
+    "column_count": 7,
+    "sample_rows": [
+      {
+        "date": "2024-01-01",
+        "campaign_id": "CMP_001",
+        "impressions": 1000,
+        "clicks": 50,
+        "conversions": 5,
+        "spend": 100.0,
+        "revenue": 250.0
+      },
+      {
+        "date": "2024-01-02",
+        "campaign_id": "CMP_001",
+        "impressions": 1200,
+        "clicks": 60,
+        "conversions": 6,
+        "spend": 120.0,
+        "revenue": 300.0
+      },
+      {
+        "date": "2024-01-03",
+        "campaign_id": "CMP_001",
+        "impressions": 1100,
+        "clicks": 55,
+        "conversions": 5,
+        "spend": 110.0,
+        "revenue": 275.0
+      },
+      {
+        "date": "2024-01-01",
+        "campaign_id": "CMP_002",
+        "impressions": 5000,
+        "clicks": 100,
+        "conversions": 2,
+        "spend": 500.0,
+        "revenue": 150.0
+      },
+      {
+        "date": "2024-01-02",
+        "campaign_id": "CMP_002",
+        "impressions": 5200,
+        "clicks": 110,
+        "conversions": 3,
+        "spend": 520.0,
+        "revenue": 200.0
+      }
+    ]
+  },
+  "basic_types": {
+    "numeric": [
+      "impressions",
+      "clicks",
+      "conversions",
+      "spend",
+      "revenue"
+    ],
+    "categorical": [
+      "campaign_id"
+    ],
+    "datetime": [
+      "date"
+    ],
+    "text": []
+  },
+  "stats": {
+    "impressions": {
+      "mean": 2766.6666666666665,
+      "median": 2100.0,
+      "std": 1804.8545647780045,
+      "min": 1000.0,
+      "max": 5200.0,
+      "skew": 0.526182527756076,
+      "missing_rate": 0.0
+    },
+    "clicks": {
+      "mean": 123.33333333333333,
+      "median": 105.0,
+      "std": 68.78408246098802,
+      "min": 50.0,
+      "max": 220.0,
+      "skew": 0.41398763863656235,
+      "missing_rate": 0.0
+    },
+    "conversions": {
+      "mean": 16.555555555555557,
+      "median": 5.0,
+      "std": 19.15796904104863,
+      "min": 2.0,
+      "max": 44.0,
+      "skew": 0.6997226586923849,
+      "missing_rate": 0.0
+    },
+    "spend": {
+      "mean": 276.6666666666667,
+      "median": 210.0,
+      "std": 180.48545647780045,
+      "min": 100.0,
+      "max": 520.0,
+      "skew": 0.5261825277560757,
+      "missing_rate": 0.0
+    },
+    "revenue": {
+      "mean": 850.5555555555555,
+      "median": 275.0,
+      "std": 939.5492418057596,
+      "min": 150.0,
+      "max": 2200.0,
+      "skew": 0.7084369128641286,
+      "missing_rate": 0.0
+    }
+  },
+  "semantic_roles": {
+    "id_fields": [],
+    "time_fields": [],
+    "income_like": [
+      "revenue"
+    ],
+    "spend_like": [
+      "spend"
+    ],
+    "risk_like": [],
+    "value_like": [],
+    "activity_like": [],
+    "frequency_like": [],
+    "volume_like": [],
+    "demographic_like": [],
+    "categorical_descriptors": []
+  },
+  "role_confidence": {
+    "income_like": 0.9,
+    "spend_like": 0.9,
+    "risk_like": 0.0,
+    "value_like": 0.0,
+    "activity_like": 0.0,
+    "frequency_like": 0.0,
+    "volume_like": 0.0,
+    "demographic_like": 0.0
+  },
+  "domain_guess": {
+    "domain": "marketing analytics",
+    "confidence": 0.8
+  },
+  "feature_quality_scores": {},
+  "relationships": {
+    "correlations": {
+      "impressions": {
+        "clicks": 0.04430293809859665,
+        "conversions": -0.3388538273327356,
+        "spend": 1.0,
+        "revenue": -0.31758322270562145
+      },
+      "clicks": {
+        "impressions": 0.04430293809859665,
+        "conversions": 0.9247044943819227,
+        "spend": 0.04430293809859663,
+        "revenue": 0.9330766459132686
+      },
+      "conversions": {
+        "impressions": -0.3388538273327356,
+        "clicks": 0.9247044943819227,
+        "spend": -0.33885382733273567,
+        "revenue": 0.9996762468817253
+      },
+      "spend": {
+        "impressions": 1.0,
+        "clicks": 0.04430293809859663,
+        "conversions": -0.33885382733273567,
+        "revenue": -0.31758322270562145
+      },
+      "revenue": {
+        "impressions": -0.31758322270562145,
+        "clicks": 0.9330766459132686,
+        "conversions": 0.9996762468817253,
+        "spend": -0.31758322270562145
+      }
+    },
+    "strong_pairs": [
+      [
+        "impressions",
+        "spend"
+      ],
+      [
+        "clicks",
+        "conversions"
+      ],
+      [
+        "clicks",
+        "revenue"
+      ],
+      [
+        "conversions",
+        "clicks"
+      ],
+      [
+        "conversions",
+        "revenue"
+      ],
+      [
+        "spend",
+        "impressions"
+      ],
+      [
+        "revenue",
+        "clicks"
+      ],
+      [
+        "revenue",
+        "conversions"
+      ]
+    ]
+  },
+  "normalization_plan": {},
+  "feature_plan": {
+    "clustering_features": [
+      "impressions",
+      "clicks",
+      "conversions",
+      "spend",
+      "revenue"
+    ],
+    "persona_features": [
+      "impressions",
+      "clicks",
+      "conversions",
+      "spend",
+      "revenue"
+    ],
+    "risk_features": [],
+    "value_features": [],
+    "anomaly_features": [
+      "impressions",
+      "clicks",
+      "conversions",
+      "spend",
+      "revenue"
+    ]
+  },
+  "warnings": {
+    "missing_numeric": false,
+    "low_row_count": false,
+    "suspected_data_issues": []
+  }
+}

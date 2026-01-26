@@ -25,6 +25,9 @@ export function TableOfContents({ items, className }: TableOfContentsProps) {
         if (!renderedItems.length) {
             return;
         }
+        if (typeof IntersectionObserver === "undefined") {
+            return;
+        }
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {

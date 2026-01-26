@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
@@ -12,7 +12,7 @@ def make_snapshot(sid, schema, rows, anoms):
     return DatasetSnapshot(
         snapshot_id=sid,
         project_id="p1",
-        created_at=datetime.utcnow().isoformat(),
+        created_at=datetime.now(timezone.utc).isoformat(),
         schema_signature=schema,
         table_row_counts=rows,
         data_hash="hash",

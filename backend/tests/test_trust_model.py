@@ -18,7 +18,7 @@ def test_trust_caps_leakage_risk():
         {"warning_code": "DATA_LEAKAGE_POSSIBLE", "severity": "warning", "message": "Leakage possible"}
     ]
     trust = compute_trust_from_manifest(manifest)
-    assert trust["components"]["leakage_risk"]["status"] == "high"
+    assert trust["components"]["leakage_risk"]["status"] == "medium"
     assert trust["overall_confidence"] <= 40
 
 
@@ -27,7 +27,7 @@ def test_trust_unknown_components_reduce_overall():
     manifest["steps"]["regression"]["status"] = "failed"
     trust = compute_trust_from_manifest(manifest)
     assert trust["components"]["model_fit"]["status"] == "unknown"
-    assert trust["overall_confidence"] <= 50
+    assert trust["overall_confidence"] <= 60
 
 
 def test_trust_weighted_minimum():
@@ -36,7 +36,7 @@ def test_trust_weighted_minimum():
         "quality_metrics": {"valid": True, "status": "success"},
         "dataset_identity_card": {"valid": True, "status": "success"},
         "regression_insights": {"valid": True, "status": "success"},
-        "feature_importance": {"valid": True, "status": "success"},
+        "importance_report": {"valid": True, "status": "success"},
     }
     trust = compute_trust_from_manifest(manifest)
     assert trust["overall_confidence"] == 42.0

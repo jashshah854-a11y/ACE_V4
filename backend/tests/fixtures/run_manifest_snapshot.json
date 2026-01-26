@@ -129,11 +129,14 @@
   "artifacts": {},
   "warnings": [],
   "trust": null,
+  "analysis_allowed": [],
+  "analysis_suppressed": {},
   "render_policy": {
     "allow_report": false,
     "allow_regression_sections": false,
     "allow_forecasting": false,
     "allow_simulation": false,
+    "allow_trust_summary": false,
     "allow_personas": false,
     "allow_strategies": false,
     "allow_anomalies": false,
@@ -142,6 +145,20 @@
     "allow_quality_metrics": false,
     "allow_business_intelligence": false,
     "allow_feature_importance": false
+  },
+  "view_policies": {
+    "executive": {
+      "allowed_sections": [],
+      "default_collapsed_sections": []
+    },
+    "analyst": {
+      "allowed_sections": [],
+      "default_collapsed_sections": []
+    },
+    "expert": {
+      "allowed_sections": [],
+      "default_collapsed_sections": []
+    }
   },
   "updated_at": "REDACTED"
 }

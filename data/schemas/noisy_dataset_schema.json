@@ -1,0 +1,704 @@
+{
+  "dataset_info": {
+    "name": "noisy_dataset",
+    "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\truth_test\\noisy_dataset.csv",
+    "row_count": 500,
+    "column_count": 28,
+    "sample_rows": [
+      {
+        "CAMIS": NaN,
+        "DBA": NaN,
+        "BORO": "Queens",
+        "BUILDING": "9712",
+        "STREET": NaN,
+        "ZIPCODE": 11416.0,
+        "PHONE": 3475138265.0,
+        "CUISINE DESCRIPTION": "Latin American",
+        "INSPECTION DATE": "09/15/2023",
+        "ACTION": "Establishment Closed by DOHMH. Violations were cited in the following area(s) and those requiring immediate action were addressed.",
+        "VIOLATION CODE": "04H",
+        "VIOLATION DESCRIPTION": "Raw, cooked or prepared food is adulterated, contaminated, cross-contaminated, or not discarded in accordance with HACCP plan.",
+        "CRITICAL FLAG": "Critical",
+        "SCORE": 17.0,
+        "GRADE": NaN,
+        "GRADE DATE": NaN,
+        "RECORD DATE": "11/14/2025",
+        "INSPECTION TYPE": "Pre-permit (Operational) / Reopening Inspection",
+        "Latitude": 40.68481727985,
+        "Longitude": -73.84400934386,
+        "Community Board": 409.0,
+        "Council District": 32.0,
+        "Census Tract": 4001.0,
+        "BIN": 4189376.0,
+        "BBL": 4091040005.0,
+        "NTA": "QN53",
+        "Location": "POINT (-73.844009343859 40.684817279847)",
+        "noisy_zero_mean": 1.0
+      },
+      {
+        "CAMIS": NaN,
+        "DBA": NaN,
+        "BORO": NaN,
+        "BUILDING": NaN,
+        "STREET": "BEDFORD AVENUE",
+        "ZIPCODE": 11249.0,
+        "PHONE": NaN,
+        "CUISINE DESCRIPTION": NaN,
+        "INSPECTION DATE": "11/13/2024",
+        "ACTION": "Violations were cited in the following area(s).",
+        "VIOLATION CODE": "10F",
+        "VIOLATION DESCRIPTION": "Non-food contact surface or equipment made of unacceptable material, not kept clean, or not properly sealed, raised, spaced or movable to allow accessibility for cleaning on all sides, above and underneath the unit.",
+        "CRITICAL FLAG": "Not Critical",
+        "SCORE": 13.0,
+        "GRADE": "A",
+        "GRADE DATE": "11/13/2024",
+        "RECORD DATE": "11/14/2025",
+        "INSPECTION TYPE": "Cycle Inspection / Re-inspection",
+        "Latitude": 40.71347097019,
+        "Longitude": -73.96196217323,
+        "Community Board": 301.0,
+        "Council District": 34.0,
+        "Census Tract": 55100.0,
+        "BIN": 3256375.0,
+        "BBL": 3024050027.0,
+        "NTA": "BK73",
+        "Location": "POINT (-73.961962173226 40.713470970194)",
+        "noisy_zero_mean": -1.0
+      },
+      {
+        "CAMIS": 41423481.99505936,
+        "DBA": NaN,
+        "BORO": NaN,
+        "BUILDING": NaN,
+        "STREET": "ROCKEFLLER PLAZA",
+        "ZIPCODE": NaN,
+        "PHONE": 2126644454.0,
+        "CUISINE DESCRIPTION": NaN,
+        "INSPECTION DATE": "06/24/2024",
+        "ACTION": "Violations were cited in the following area(s).",
+        "VIOLATION CODE": "10F",
+        "VIOLATION DESCRIPTION": "Non-food contact surface or equipment made of unacceptable material, not kept clean, or not properly sealed, raised, spaced or movable to allow accessibility for cleaning on all sides, above and underneath the unit.",
+        "CRITICAL FLAG": "Not Critical",
+        "SCORE": 3.0,
+        "GRADE": "A",
+        "GRADE DATE": "06/24/2024",
+        "RECORD DATE": "11/14/2025",
+        "INSPECTION TYPE": "Cycle Inspection / Initial Inspection",
+        "Latitude": 0.0,
+        "Longitude": 0.0,
+        "Community Board": NaN,
+        "Council District": NaN,
+        "Census Tract": NaN,
+        "BIN": NaN,
+        "BBL": 1.0,
+        "NTA": NaN,
+        "Location": NaN,
+        "noisy_zero_mean": 1.0
+      },
+      {
+        "CAMIS": NaN,
+        "DBA": NaN,
+        "BORO": NaN,
+        "BUILDING": NaN,
+        "STREET": "39 STREET",
+        "ZIPCODE": NaN,
+        "PHONE": 7183071115.0,
+        "CUISINE DESCRIPTION": NaN,
+        "INSPECTION DATE": "05/30/2023",
+        "ACTION": "Violations were cited in the following area(s).",
+        "VIOLATION CODE": "02G",
+        "VIOLATION DESCRIPTION": "Cold TCS food item held above 41 \u00b0F; smoked or processed fish held above 38 \u00b0F; intact raw eggs held above 45 \u00b0F; or reduced oxygen packaged (ROP) TCS foods held above required temperatures except during active necessary preparation.",
+        "CRITICAL FLAG": "Critical",
+        "SCORE": 30.0,
+        "GRADE": NaN,
+        "GRADE DATE": NaN,
+        "RECORD DATE": "11/14/2025",
+        "INSPECTION TYPE": "Cycle Inspection / Initial Inspection",
+        "Latitude": 40.6477014721,
+        "Longitude": -73.99800359387,
+        "Community Board": 307.0,
+        "Council District": 38.0,
+        "Census Tract": 9000.0,
+        "BIN": 3017722.0,
+        "BBL": 3009030043.0,
+        "NTA": "BK34",
+        "Location": "POINT (-73.998003593873 40.647701472102)",
+        "noisy_zero_mean": -1.0
+      },
+      {
+        "CAMIS": NaN,
+        "DBA": "THE OFFICE",
+        "BORO": NaN,
+        "BUILDING": "1744",
+        "STREET": NaN,
+        "ZIPCODE": 10128.0,
+        "PHONE": NaN,
+        "CUISINE DESCRIPTION": NaN,
+        "INSPECTION DATE": "06/09/2025",
+        "ACTION": "Violations were cited in the following area(s).",
+        "VIOLATION CODE": "10F",
+        "VIOLATION DESCRIPTION": "Non-food contact surface or equipment made of unacceptable material, not kept clean, or not properly sealed, raised, spaced or movable to allow accessibility for cleaning on all sides, above and underneath the unit.",
+        "CRITICAL FLAG": "Not Critical",
+        "SCORE": 11.0,
+        "GRADE": "A",
+        "GRADE DATE": "06/09/2025",
+        "RECORD DATE": "11/14/2025",
+        "INSPECTION TYPE": "Pre-permit (Operational) / Initial Inspection",
+        "Latitude": 40.78091868593,
+        "Longitude": -73.94950936117,
+        "Community Board": 108.0,
+        "Council District": 5.0,
+        "Census Tract": 15400.0,
+        "BIN": 1050201.0,
+        "BBL": 1015530050.0,
+        "NTA": "MN32",
+        "Location": "POINT (-73.949509361168 40.780918685933)",
+        "noisy_zero_mean": 1.0
+      }
+    ]
+  },
+  "basic_types": {
+    "numeric": [
+      "CAMIS",
+      "ZIPCODE",
+      "PHONE",
+      "SCORE",
+      "Latitude",
+      "Longitude",
+      "Community Board",
+      "Council District",
+      "Census Tract",
+      "BIN",
+      "BBL",
+      "noisy_zero_mean"
+    ],
+    "categorical": [
+      "DBA",
+      "BORO",
+      "BUILDING",
+      "STREET",
+      "CUISINE DESCRIPTION",
+      "ACTION",
+      "VIOLATION CODE",
+      "VIOLATION DESCRIPTION",
+      "CRITICAL FLAG",
+      "GRADE",
+      "INSPECTION TYPE",
+      "NTA"
+    ],
+    "datetime": [
+      "INSPECTION DATE",
+      "GRADE DATE",
+      "RECORD DATE"
+    ],
+    "text": [
+      "Location"
+    ]
+  },
+  "stats": {
+    "CAMIS": {
+      "mean": 271964636.40441346,
+      "median": 48895691.85874355,
+      "std": 694186427.4929917,
+      "min": 34588741.022152305,
+      "max": 2746510119.1071844,
+      "skew": 2.7965308288250412,
+      "missing_rate": 0.626
+    },
+    "ZIPCODE": {
+      "mean": 10685.78,
+      "median": 10470.0,
+      "std": 609.3550603283269,
+      "min": 10001.0,
+      "max": 11435.0,
+      "skew": -0.023515510531710714,
+      "missing_rate": 0.6
+    },
+    "PHONE": {
+      "mean": 6036064826.092784,
+      "median": 7183050648.0,
+      "std": 2414759106.55666,
+      "min": 2015391206.0,
+      "max": 9299231320.0,
+      "skew": -0.4243826429128776,
+      "missing_rate": 0.612
+    },
+    "SCORE": {
+      "mean": 24.724946695095948,
+      "median": 20.0,
+      "std": 18.707688334702105,
+      "min": 0.0,
+      "max": 132.0,
+      "skew": 1.6059230285289516,
+      "missing_rate": 0.062
+    },
+    "Latitude": {
+      "mean": 40.075181821221875,
+      "median": 40.728577119355,
+      "std": 5.115759505647194,
+      "min": 0.0,
+      "max": 40.90549012121,
+      "skew": -7.712617133468409,
+      "missing_rate": 0.0
+    },
+    "Longitude": {
+      "mean": -72.75573086815234,
+      "median": -73.954879140645,
+      "std": 9.287098854719646,
+      "min": -74.24843447346,
+      "max": 0.0,
+      "skew": 7.713814566563839,
+      "missing_rate": 0.0
+    },
+    "Community Board": {
+      "mean": 253.46625766871165,
+      "median": 302.0,
+      "std": 131.36929935886863,
+      "min": 101.0,
+      "max": 503.0,
+      "skew": 0.07994781253503855,
+      "missing_rate": 0.022
+    },
+    "Council District": {
+      "mean": 20.437627811860942,
+      "median": 20.0,
+      "std": 15.91282267571448,
+      "min": 1.0,
+      "max": 51.0,
+      "skew": 0.2832550127271532,
+      "missing_rate": 0.022
+    },
+    "Census Tract": {
+      "mean": 33111.44989775051,
+      "median": 18700.0,
+      "std": 34486.60937284038,
+      "min": 100.0,
+      "max": 157903.0,
+      "skew": 1.473306767852664,
+      "missing_rate": 0.022
+    },
+    "BIN": {
+      "mean": 2567198.901234568,
+      "median": 3028054.0,
+      "std": 1367336.5192985036,
+      "min": 1000000.0,
+      "max": 5174856.0,
+      "skew": 0.11113039713138405,
+      "missing_rate": 0.028
+    },
+    "BBL": {
+      "mean": 2438133994.2132797,
+      "median": 3007570104.0,
+      "std": 1358398353.2813647,
+      "min": 1.0,
+      "max": 5080080134.0,
+      "skew": 0.0812885046295553,
+      "missing_rate": 0.006
+    },
+    "noisy_zero_mean": {
+      "mean": 0.0,
+      "median": 0.0,
+      "std": 1.0010015025043828,
+      "min": -1.0,
+      "max": 1.0,
+      "skew": 0.0,
+      "missing_rate": 0.0
+    }
+  },
+  "semantic_roles": {
+    "id_fields": [],
+    "time_fields": [],
+    "income_like": [],
+    "spend_like": [],
+    "risk_like": [
+      "SCORE"
+    ],
+    "value_like": [],
+    "activity_like": [],
+    "frequency_like": [],
+    "volume_like": [],
+    "demographic_like": [],
+    "categorical_descriptors": []
+  },
+  "role_confidence": {
+    "income_like": 0.0,
+    "spend_like": 0.0,
+    "risk_like": 0.7,
+    "value_like": 0.0,
+    "activity_like": 0.0,
+    "frequency_like": 0.0,
+    "volume_like": 0.0,
+    "demographic_like": 0.0
+  },
+  "domain_guess": {
+    "domain": "generic",
+    "confidence": 0.8
+  },
+  "feature_quality_scores": {},
+  "relationships": {
+    "correlations": {
+      "CAMIS": {
+        "ZIPCODE": -0.15126266641997205,
+        "PHONE": -0.04546254125619649,
+        "SCORE": -0.02214962043019944,
+        "Latitude": -0.11543772043421921,
+        "Longitude": 0.11585260172632865,
+        "Community Board": -0.11958083754271259,
+        "Council District": -0.06643942028002575,
+        "Census Tract": -0.1283989340656165,
+        "BIN": -0.11441596579779431,
+        "BBL": -0.121699205226054,
+        "noisy_zero_mean": 0.14476377300293314
+      },
+      "ZIPCODE": {
+        "CAMIS": -0.15126266641997205,
+        "PHONE": 0.15952288278669421,
+        "SCORE": 0.009961783874725728,
+        "Latitude": -0.36431764605592265,
+        "Longitude": 0.5646693984382145,
+        "Community Board": 0.8764509502301389,
+        "Council District": 0.7817370028680244,
+        "Census Tract": 0.6352360140726832,
+        "BIN": 0.8771216849026191,
+        "BBL": 0.8338009657053981,
+        "noisy_zero_mean": -0.03511872769615846
+      },
+      "PHONE": {
+        "CAMIS": -0.04546254125619649,
+        "ZIPCODE": 0.15952288278669421,
+        "SCORE": 0.008587110823823624,
+        "Latitude": 0.11324497149241518,
+        "Longitude": -0.11654175019248493,
+        "Community Board": 0.3030486402532543,
+        "Council District": 0.2658164098175926,
+        "Census Tract": 0.14671290618066538,
+        "BIN": 0.2949678380112898,
+        "BBL": 0.3144692644003017,
+        "noisy_zero_mean": -0.026216284681083658
+      },
+      "SCORE": {
+        "CAMIS": -0.02214962043019944,
+        "ZIPCODE": 0.009961783874725728,
+        "PHONE": 0.008587110823823624,
+        "Latitude": 0.03180369825731689,
+        "Longitude": -0.030759446897756042,
+        "Community Board": 0.095662289290365,
+        "Council District": 0.03267665156315369,
+        "Census Tract": 0.08497975254561257,
+        "BIN": 0.08543353628363227,
+        "BBL": 0.07985486448090542,
+        "noisy_zero_mean": -0.11514423284494042
+      },
+      "Latitude": {
+        "CAMIS": -0.11543772043421921,
+        "ZIPCODE": -0.36431764605592265,
+        "PHONE": 0.11324497149241518,
+        "SCORE": 0.03180369825731689,
+        "Longitude": -0.9998353295405281,
+        "Community Board": -0.43306114585658795,
+        "Council District": -0.6878973322368235,
+        "Census Tract": -0.06256844484580625,
+        "BIN": -0.43410779577252945,
+        "BBL": 0.22442984343280278,
+        "noisy_zero_mean": -0.06342675050625689
+      },
+      "Longitude": {
+        "CAMIS": 0.11585260172632865,
+        "ZIPCODE": 0.5646693984382145,
+        "PHONE": -0.11654175019248493,
+        "SCORE": -0.030759446897756042,
+        "Latitude": -0.9998353295405281,
+        "Community Board": 0.37135911360201007,
+        "Council District": 0.008975433355946475,
+        "Census Tract": 0.6357830245878429,
+        "BIN": 0.37088377028099095,
+        "BBL": -0.22704135583931404,
+        "noisy_zero_mean": 0.06396929464942885
+      },
+      "Community Board": {
+        "CAMIS": -0.11958083754271259,
+        "ZIPCODE": 0.8764509502301389,
+        "PHONE": 0.3030486402532543,
+        "SCORE": 0.095662289290365,
+        "Latitude": -0.43306114585658795,
+        "Longitude": 0.37135911360201007,
+        "Council District": 0.7955545981032727,
+        "Census Tract": 0.54980990979577,
+        "BIN": 0.996784387701026,
+        "BBL": 0.974657445629599,
+        "noisy_zero_mean": -0.038281118039607334
+      },
+      "Council District": {
+        "CAMIS": -0.06643942028002575,
+        "ZIPCODE": 0.7817370028680244,
+        "PHONE": 0.2658164098175926,
+        "SCORE": 0.03267665156315369,
+        "Latitude": -0.6878973322368235,
+        "Longitude": 0.008975433355946475,
+        "Community Board": 0.7955545981032727,
+        "Census Tract": 0.37818051238919087,
+        "BIN": 0.7882141027883866,
+        "BBL": 0.7723510404860037,
+        "noisy_zero_mean": -0.03610930157758917
+      },
+      "Census Tract": {
+        "CAMIS": -0.1283989340656165,
+        "ZIPCODE": 0.6352360140726832,
+        "PHONE": 0.14671290618066538,
+        "SCORE": 0.08497975254561257,
+        "Latitude": -0.06256844484580625,
+        "Longitude": 0.6357830245878429,
+        "Community Board": 0.54980990979577,
+        "Council District": 0.37818051238919087,
+        "BIN": 0.5468830629098813,
+        "BBL": 0.5120205697333137,
+        "noisy_zero_mean": -0.03311551544670783
+      },
+      "BIN": {
+        "CAMIS": -0.11441596579779431,
+        "ZIPCODE": 0.8771216849026191,
+        "PHONE": 0.2949678380112898,
+        "SCORE": 0.08543353628363227,
+        "Latitude": -0.43410779577252945,
+        "Longitude": 0.37088377028099095,
+        "Community Board": 0.996784387701026,
+        "Council District": 0.7882141027883866,
+        "Census Tract": 0.5468830629098813,
+        "BBL": 0.9971541515108296,
+        "noisy_zero_mean": -0.04386739833764054
+      },
+      "BBL": {
+        "CAMIS": -0.121699205226054,
+        "ZIPCODE": 0.8338009657053981,
+        "PHONE": 0.3144692644003017,
+        "SCORE": 0.07985486448090542,
+        "Latitude": 0.22442984343280278,
+        "Longitude": -0.22704135583931404,
+        "Community Board": 0.974657445629599,
+        "Council District": 0.7723510404860037,
+        "Census Tract": 0.5120205697333137,
+        "BIN": 0.9971541515108296,
+        "noisy_zero_mean": -0.05679731785459351
+      },
+      "noisy_zero_mean": {
+        "CAMIS": 0.14476377300293314,
+        "ZIPCODE": -0.03511872769615846,
+        "PHONE": -0.026216284681083658,
+        "SCORE": -0.11514423284494042,
+        "Latitude": -0.06342675050625689,
+        "Longitude": 0.06396929464942885,
+        "Community Board": -0.038281118039607334,
+        "Council District": -0.03610930157758917,
+        "Census Tract": -0.03311551544670783,
+        "BIN": -0.04386739833764054,
+        "BBL": -0.05679731785459351
+      }
+    },
+    "strong_pairs": [
+      [
+        "ZIPCODE",
+        "Longitude"
+      ],
+      [
+        "ZIPCODE",
+        "Community Board"
+      ],
+      [
+        "ZIPCODE",
+        "Council District"
+      ],
+      [
+        "ZIPCODE",
+        "Census Tract"
+      ],
+      [
+        "ZIPCODE",
+        "BIN"
+      ],
+      [
+        "ZIPCODE",
+        "BBL"
+      ],
+      [
+        "Latitude",
+        "Longitude"
+      ],
+      [
+        "Latitude",
+        "Community Board"
+      ],
+      [
+        "Latitude",
+        "Council District"
+      ],
+      [
+        "Latitude",
+        "BIN"
+      ],
+      [
+        "Longitude",
+        "ZIPCODE"
+      ],
+      [
+        "Longitude",
+        "Latitude"
+      ],
+      [
+        "Longitude",
+        "Census Tract"
+      ],
+      [
+        "Community Board",
+        "ZIPCODE"
+      ],
+      [
+        "Community Board",
+        "Latitude"
+      ],
+      [
+        "Community Board",
+        "Council District"
+      ],
+      [
+        "Community Board",
+        "Census Tract"
+      ],
+      [
+        "Community Board",
+        "BIN"
+      ],
+      [
+        "Community Board",
+        "BBL"
+      ],
+      [
+        "Council District",
+        "ZIPCODE"
+      ],
+      [
+        "Council District",
+        "Latitude"
+      ],
+      [
+        "Council District",
+        "Community Board"
+      ],
+      [
+        "Council District",
+        "BIN"
+      ],
+      [
+        "Council District",
+        "BBL"
+      ],
+      [
+        "Census Tract",
+        "ZIPCODE"
+      ],
+      [
+        "Census Tract",
+        "Longitude"
+      ],
+      [
+        "Census Tract",
+        "Community Board"
+      ],
+      [
+        "Census Tract",
+        "BIN"
+      ],
+      [
+        "Census Tract",
+        "BBL"
+      ],
+      [
+        "BIN",
+        "ZIPCODE"
+      ],
+      [
+        "BIN",
+        "Latitude"
+      ],
+      [
+        "BIN",
+        "Community Board"
+      ],
+      [
+        "BIN",
+        "Council District"
+      ],
+      [
+        "BIN",
+        "Census Tract"
+      ],
+      [
+        "BIN",
+        "BBL"
+      ],
+      [
+        "BBL",
+        "ZIPCODE"
+      ],
+      [
+        "BBL",
+        "Community Board"
+      ],
+      [
+        "BBL",
+        "Council District"
+      ],
+      [
+        "BBL",
+        "Census Tract"
+      ],
+      [
+        "BBL",
+        "BIN"
+      ]
+    ]
+  },
+  "normalization_plan": {},
+  "feature_plan": {
+    "clustering_features": [
+      "ZIPCODE",
+      "Latitude",
+      "Longitude",
+      "Community Board",
+      "Council District",
+      "Census Tract"
+    ],
+    "persona_features": [
+      "CUISINE DESCRIPTION",
+      "VIOLATION CODE",
+      "CRITICAL FLAG",
+      "GRADE",
+      "INSPECTION TYPE"
+    ],
+    "risk_features": [
+      "SCORE"
+    ],
+    "value_features": [],
+    "anomaly_features": [
+      "CAMIS",
+      "ZIPCODE",
+      "PHONE",
+      "SCORE",
+      "Latitude",
+      "Longitude",
+      "Community Board",
+      "Council District",
+      "Census Tract",
+      "BIN",
+      "BBL",
+      "noisy_zero_mean"
+    ]
+  },
+  "warnings": {
+    "missing_numeric": false,
+    "low_row_count": false,
+    "suspected_data_issues": [
+      "High missing ratios in some numeric columns. Consider imputation or removal.",
+      "Categorical columns have missing values, which might need handling."
+    ]
+  }
+}

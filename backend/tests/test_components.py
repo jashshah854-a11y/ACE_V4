@@ -73,9 +73,10 @@ def test_persist_active_dataset():
             active = state.read('active_dataset')
             if active and active.get('path') == saved_path:
                 print('PASSED: Dataset persisted to run directory.')
-                return True
+                assert True
+                return
         print('FAILED: Dataset persistence validation failed.')
-        return False
+        assert False
 
 if __name__ == "__main__":
     test_persona_json_extraction()

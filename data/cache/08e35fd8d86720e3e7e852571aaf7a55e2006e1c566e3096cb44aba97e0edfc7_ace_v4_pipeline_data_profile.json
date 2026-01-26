@@ -1,0 +1,531 @@
+{
+  "row_count": 500,
+  "column_count": 28,
+  "column_types": {
+    "numeric": [
+      "CAMIS",
+      "ZIPCODE",
+      "PHONE",
+      "SCORE",
+      "Latitude",
+      "Longitude",
+      "Community Board",
+      "Council District",
+      "Census Tract",
+      "BIN",
+      "BBL",
+      "noisy_zero_mean"
+    ],
+    "categorical": [
+      "DBA",
+      "BORO",
+      "BUILDING",
+      "STREET",
+      "CUISINE DESCRIPTION",
+      "ACTION",
+      "VIOLATION CODE",
+      "VIOLATION DESCRIPTION",
+      "CRITICAL FLAG",
+      "GRADE",
+      "INSPECTION TYPE",
+      "NTA"
+    ],
+    "datetime": [
+      "INSPECTION DATE",
+      "GRADE DATE",
+      "RECORD DATE"
+    ],
+    "text": [
+      "Location"
+    ],
+    "boolean": []
+  },
+  "columns": {
+    "CAMIS": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 313,
+      "missing_pct": 0.626,
+      "distinct_count": 187,
+      "distinct_pct": 0.374,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 271964636.40441346,
+        "median": 48895691.85874355,
+        "std": 692327825.9583018,
+        "min": 34588741.022152305,
+        "max": 2746510119.1071844,
+        "skew": 2.8191952714707065,
+        "q25": 44412889.5700752,
+        "q75": 52340731.74600436
+      }
+    },
+    "DBA": {
+      "dtype": "object",
+      "inferred_type": "categorical",
+      "missing_count": 313,
+      "missing_pct": 0.626,
+      "distinct_count": 178,
+      "distinct_pct": 0.356,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "DUNKIN": 5,
+        "STARBUCKS": 3,
+        "FLATLANDS BUFFET": 2
+      }
+    },
+    "BORO": {
+      "dtype": "object",
+      "inferred_type": "categorical",
+      "missing_count": 294,
+      "missing_pct": 0.588,
+      "distinct_count": 5,
+      "distinct_pct": 0.01,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "Manhattan": 79,
+        "Brooklyn": 55,
+        "Queens": 51
+      }
+    },
+    "BUILDING": {
+      "dtype": "object",
+      "inferred_type": "categorical",
+      "missing_count": 307,
+      "missing_pct": 0.614,
+      "distinct_count": 188,
+      "distinct_pct": 0.376,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "215": 2,
+        "15": 2,
+        "225": 2
+      }
+    },
+    "STREET": {
+      "dtype": "object",
+      "inferred_type": "categorical",
+      "missing_count": 306,
+      "missing_pct": 0.612,
+      "distinct_count": 153,
+      "distinct_pct": 0.306,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "BROADWAY": 7,
+        "2 AVENUE": 4,
+        "LEXINGTON AVENUE": 3
+      }
+    },
+    "ZIPCODE": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 300,
+      "missing_pct": 0.6,
+      "distinct_count": 105,
+      "distinct_pct": 0.21,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 10685.78,
+        "median": 10470.0,
+        "std": 607.8297636674271,
+        "min": 10001.0,
+        "max": 11435.0,
+        "skew": -0.02369358392436361,
+        "q25": 10021.0,
+        "q75": 11237.25
+      }
+    },
+    "PHONE": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 306,
+      "missing_pct": 0.612,
+      "distinct_count": 194,
+      "distinct_pct": 0.388,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 6036064826.092784,
+        "median": 7183050648.0,
+        "std": 2408527459.7639503,
+        "min": 2015391206.0,
+        "max": 9299231320.0,
+        "skew": -0.42769670444890656,
+        "q25": 3476086721.75,
+        "q75": 7188854276.25
+      }
+    },
+    "CUISINE DESCRIPTION": {
+      "dtype": "object",
+      "inferred_type": "categorical",
+      "missing_count": 305,
+      "missing_pct": 0.61,
+      "distinct_count": 45,
+      "distinct_pct": 0.09,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "American": 39,
+        "Chinese": 14,
+        "Pizza": 14
+      }
+    },
+    "INSPECTION DATE": {
+      "dtype": "object",
+      "inferred_type": "datetime",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 397,
+      "distinct_pct": 0.794,
+      "constant": false,
+      "near_constant": false,
+      "min": "1900-01-01T00:00:00+00:00",
+      "max": "2025-11-12T00:00:00+00:00",
+      "unique_count": 397
+    },
+    "ACTION": {
+      "dtype": "object",
+      "inferred_type": "categorical",
+      "missing_count": 10,
+      "missing_pct": 0.02,
+      "distinct_count": 5,
+      "distinct_pct": 0.01,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "Violations were cited in the following area(s).": 460,
+        "Establishment Closed by DOHMH. Violations were cited in the following area(s) and those requiring immediate action were addressed.": 22,
+        "Establishment re-opened by DOHMH.": 5
+      }
+    },
+    "VIOLATION CODE": {
+      "dtype": "object",
+      "inferred_type": "categorical",
+      "missing_count": 13,
+      "missing_pct": 0.026,
+      "distinct_count": 47,
+      "distinct_pct": 0.094,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "10F": 79,
+        "10B": 42,
+        "08A": 40
+      }
+    },
+    "VIOLATION DESCRIPTION": {
+      "dtype": "object",
+      "inferred_type": "categorical",
+      "missing_count": 13,
+      "missing_pct": 0.026,
+      "distinct_count": 71,
+      "distinct_pct": 0.142,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "Non-food contact surface or equipment made of unacceptable material, not kept clean, or not properly sealed, raised, spaced or movable to allow accessibility for cleaning on all sides, above and underneath the unit.": 71,
+        "Anti-siphonage or back-flow prevention device not provided where required; equipment or floor not properly drained; sewage disposal system in disrepair or not functioning properly. Condensation or liquid waste improperly disposed of.": 39,
+        "Establishment is not free of harborage or conditions conducive to rodents, insects or other pests.": 33
+      }
+    },
+    "CRITICAL FLAG": {
+      "dtype": "object",
+      "inferred_type": "categorical",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 3,
+      "distinct_pct": 0.006,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "Critical": 250,
+        "Not Critical": 235,
+        "Not Applicable": 15
+      }
+    },
+    "SCORE": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 31,
+      "missing_pct": 0.062,
+      "distinct_count": 73,
+      "distinct_pct": 0.146,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 24.724946695095948,
+        "median": 20.0,
+        "std": 18.687733461466006,
+        "min": 0.0,
+        "max": 132.0,
+        "skew": 1.6110803220364693,
+        "q25": 12.0,
+        "q75": 33.0
+      }
+    },
+    "GRADE": {
+      "dtype": "object",
+      "inferred_type": "categorical",
+      "missing_count": 255,
+      "missing_pct": 0.51,
+      "distinct_count": 6,
+      "distinct_pct": 0.012,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "A": 160,
+        "C": 32,
+        "B": 26
+      }
+    },
+    "GRADE DATE": {
+      "dtype": "object",
+      "inferred_type": "datetime",
+      "missing_count": 267,
+      "missing_pct": 0.534,
+      "distinct_count": 206,
+      "distinct_pct": 0.412,
+      "constant": false,
+      "near_constant": false,
+      "min": "2017-04-19T00:00:00+00:00",
+      "max": "2025-11-12T00:00:00+00:00",
+      "unique_count": 206
+    },
+    "RECORD DATE": {
+      "dtype": "object",
+      "inferred_type": "datetime",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 1,
+      "distinct_pct": 0.002,
+      "constant": true,
+      "near_constant": true,
+      "min": "2025-11-14T00:00:00+00:00",
+      "max": "2025-11-14T00:00:00+00:00",
+      "unique_count": 1
+    },
+    "INSPECTION TYPE": {
+      "dtype": "object",
+      "inferred_type": "categorical",
+      "missing_count": 10,
+      "missing_pct": 0.02,
+      "distinct_count": 14,
+      "distinct_pct": 0.028,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "Cycle Inspection / Initial Inspection": 255,
+        "Cycle Inspection / Re-inspection": 98,
+        "Pre-permit (Operational) / Initial Inspection": 66
+      }
+    },
+    "Latitude": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 490,
+      "distinct_pct": 0.98,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 40.075181821221875,
+        "median": 40.728577119355,
+        "std": 5.110641185700712,
+        "min": 0.0,
+        "max": 40.90549012121,
+        "skew": -7.735844032294417,
+        "q25": 40.6853671518,
+        "q75": 40.759229409985
+      }
+    },
+    "Longitude": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 490,
+      "distinct_pct": 0.98,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": -72.75573086815234,
+        "median": -73.954879140645,
+        "std": 9.277807107666137,
+        "min": -74.24843447346,
+        "max": 0.0,
+        "skew": 7.737045071514314,
+        "q25": -73.9886272096775,
+        "q75": -73.8859306687425
+      }
+    },
+    "Community Board": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 11,
+      "missing_pct": 0.022,
+      "distinct_count": 58,
+      "distinct_pct": 0.116,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 253.46625766871165,
+        "median": 302.0,
+        "std": 131.23490617856362,
+        "min": 101.0,
+        "max": 503.0,
+        "skew": 0.08019401635705525,
+        "q25": 105.0,
+        "q75": 402.0
+      }
+    },
+    "Council District": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 11,
+      "missing_pct": 0.022,
+      "distinct_count": 49,
+      "distinct_pct": 0.098,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 20.437627811860942,
+        "median": 20.0,
+        "std": 15.896543568971463,
+        "min": 1.0,
+        "max": 51.0,
+        "skew": 0.2841273126003768,
+        "q25": 4.0,
+        "q75": 34.0
+      }
+    },
+    "Census Tract": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 11,
+      "missing_pct": 0.022,
+      "distinct_count": 310,
+      "distinct_pct": 0.62,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 33111.44989775051,
+        "median": 18700.0,
+        "std": 34451.32894480909,
+        "min": 100.0,
+        "max": 157903.0,
+        "skew": 1.4778438995858107,
+        "q25": 8300.0,
+        "q75": 48500.0
+      }
+    },
+    "BIN": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 14,
+      "missing_pct": 0.028,
+      "distinct_count": 482,
+      "distinct_pct": 0.964,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 2567198.901234568,
+        "median": 3028054.0,
+        "std": 1365929.070115107,
+        "min": 1000000.0,
+        "max": 5174856.0,
+        "skew": 0.1114747504027308,
+        "q25": 1051790.5,
+        "q75": 4028591.5
+      }
+    },
+    "BBL": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 3,
+      "missing_pct": 0.006,
+      "distinct_count": 485,
+      "distinct_pct": 0.97,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 2438133994.2132797,
+        "median": 3007570104.0,
+        "std": 1357031067.2244823,
+        "min": 1.0,
+        "max": 5080080134.0,
+        "skew": 0.08153479208724276,
+        "q25": 1010430064.0,
+        "q75": 4006540067.0
+      }
+    },
+    "NTA": {
+      "dtype": "object",
+      "inferred_type": "categorical",
+      "missing_count": 11,
+      "missing_pct": 0.022,
+      "distinct_count": 139,
+      "distinct_pct": 0.278,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "MN17": 29,
+        "MN27": 16,
+        "QN22": 15
+      }
+    },
+    "Location": {
+      "dtype": "object",
+      "inferred_type": "text",
+      "missing_count": 8,
+      "missing_pct": 0.016,
+      "distinct_count": 489,
+      "distinct_pct": 0.978,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "POINT (-73.921977302231 40.62986676946)": 2,
+        "POINT (-73.833241808988 40.758501995257)": 2,
+        "POINT (-73.788281497594 40.648312826068)": 2
+      }
+    },
+    "noisy_zero_mean": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 2,
+      "distinct_pct": 0.004,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 0.0,
+        "median": 0.0,
+        "std": 1.0,
+        "min": -1.0,
+        "max": 1.0,
+        "skew": 0.0,
+        "q25": -1.0,
+        "q75": 1.0
+      }
+    }
+  },
+  "missingness_summary": {
+    "avg_missing_pct": 0.2223,
+    "max_missing_pct": 0.626
+  },
+  "constant_columns": [
+    "RECORD DATE"
+  ],
+  "near_constant_columns": [],
+  "status": "success",
+  "valid": true,
+  "errors": [],
+  "warnings": []
+}

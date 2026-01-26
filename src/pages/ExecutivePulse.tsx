@@ -5,44 +5,29 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { StoryHeadline } from "@/components/report/story/StoryHeadline";
 import { SentimentBlock } from "@/components/report/story/SentimentBlock";
 import { ActionChecklist } from "@/components/report/story/ActionChecklist";
-import { PersonaDeck } from "@/components/report/story/PersonaDeck";
-import { StorySkeleton } from "@/components/report/story/StorySkeleton";
 import { StoryControlBar } from "@/components/report/story/StoryControlBar";
 import ReactMarkdown from "react-markdown";
 import { motion } from "framer-motion";
 import {
   Upload,
   FileText,
-  Clock,
   Sparkles,
   BarChart3,
-  TrendingUp,
-  Zap,
-  Lightbulb,
   Shield,
-  Activity,
-  Users
+  Users,
+  Loader2
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { getReport } from "@/lib/api-client";
-import type { SimulationResult, Modification } from "@/lib/api-client";
-import { getRecentReports, getDiagnosticsCache, extractDiagnosticsNotes } from "@/lib/localStorage";
+import { getRunSnapshot } from "@/lib/api-client";
+import { focusEvidenceSection } from "@/lib/guidanceFocus";
+import { getRecentReports } from "@/lib/localStorage";
 import { useReportData } from "@/hooks/useReportData";
-import { useGovernedReport } from "@/hooks/useGovernedReport";
 import { SafeIcon } from "@/components/ui/SafeIcon";
 import { TopDriversCard } from "@/components/report/analytics/TopDriversCard";
 import { CorrelationInsightsCard } from "@/components/report/analytics/CorrelationInsightsCard";
-import { useSimulation } from "@/context/SimulationContext";
-import { cn } from "@/lib/utils";
-import EvidenceRail from "@/components/report/EvidenceRail";
-import SimulationControls from "@/components/report/SimulationControls";
-import { focusEvidenceSection } from "@/lib/guidanceFocus";
 import { useTaskContext } from "@/context/TaskContext";
 import { ExecutiveKpiGrid } from "@/components/report/ExecutiveKpiGrid"; // New Component
-import { NarrativeModeSelector } from "@/components/narrative/NarrativeModeSelector";
-import { useNarrative } from "@/components/narrative/NarrativeContext";
 import { ExplanationBlock } from "@/components/report/ExplanationBlock";
 import { getSectionCopy } from "@/lib/reportCopy";
 import { CollapsibleSection } from "@/components/report/CollapsibleSection";
@@ -50,22 +35,14 @@ import { RunWarningsBanner } from "@/components/report/RunWarningsBanner";
 import { isValidArtifact } from "@/lib/artifactGuard";
 import { TableOfContents } from "@/components/report/navigation/TableOfContents";
 import { TrustSummary } from "@/components/trust/TrustSummary";
+import { useDevReportInvariants } from "@/hooks/useDevReportInvariants";
 
 const ExecutivePulse = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [recentReports, setRecentReports] = useState(() => getRecentReports());
-  const [recentReportHints, setRecentReportHints] = useState<Record<string, string[]>>({});
   const initialRun = searchParams.get("run") || recentReports[0]?.runId || "";
-  const [runInput, setRunInput] = useState(initialRun);
   const [activeRun, setActiveRun] = useState(initialRun);
-  const [simulationEvidence, setSimulationEvidence] = useState<{
-    result: SimulationResult | null;
-    modifications: Modification[];
-  }>({
-    result: null,
-    modifications: [],
-  });
 
   // --- Effects ---
   useEffect(() => {
@@ -80,28 +57,22 @@ const ExecutivePulse = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const map: Record<string, string[]> = {};
-    recentReports.forEach((report) => {
-      const notes = extractDiagnosticsNotes(getDiagnosticsCache(report.runId));
-      if (notes.length) {
-        map[report.runId] = notes;
-      }
-    });
-    setRecentReportHints(map);
-  }, [recentReports]);
-
   // --- Queries ---
-  const reportQuery = useQuery({
-    queryKey: ["executive-pulse", activeRun],
-    queryFn: () => getReport(activeRun),
+  const snapshotQuery = useQuery({
+    queryKey: ["run-snapshot", activeRun],
+    queryFn: () => getRunSnapshot(activeRun),
     enabled: Boolean(activeRun),
     staleTime: 30000,
     retry: false,
   });
 
-  const { data: governedReport } = useGovernedReport(activeRun);
-  const reportData = useReportData(reportQuery.data || "", activeRun, "strict", governedReport);
+  const reportData = useReportData(
+    snapshotQuery.data?.report_markdown || "",
+    activeRun,
+    "strict",
+    snapshotQuery.data?.governed_report,
+    snapshotQuery.data
+  );
   const storyData = reportData.viewModel;
 
   // --- Evidence Scoping ---
@@ -115,9 +86,6 @@ const ExecutivePulse = () => {
     return scopeIndex;
   }, [reportData.evidenceMap]);
 
-  const { setSafeMode } = useSimulation();
-  const { mode: narrativeMode } = useNarrative();
-
   const handleEvidenceFocus = useCallback(
     ({ section, evidenceId }: { section: string; evidenceId?: string }) => {
       const scopedEvidence = evidenceId ?? evidenceScopeMap[section];
@@ -126,22 +94,12 @@ const ExecutivePulse = () => {
     [evidenceScopeMap],
   );
 
-  const handleSimulationReport = useCallback(
-    (result: SimulationResult | null, context?: { modifications: Modification[] }) => {
-      setSimulationEvidence({
-        result,
-        modifications: context?.modifications ?? [],
-      });
-      if (result) {
-        focusEvidenceSection("business_intelligence");
-      }
-    },
-    [],
-  );
-
   const businessEvidenceId = evidenceScopeMap["business_intelligence"];
   const predictiveEvidenceId = evidenceScopeMap["feature_importance"];
   const clusteringEvidenceId = evidenceScopeMap["clustering"];
+  const importanceReport = reportData.modelArtifacts?.importance_report;
+  const modelFitReport = reportData.modelArtifacts?.model_fit_report;
+  const collinearityReport = reportData.modelArtifacts?.collinearity_report;
 
   const { updateTaskContract } = useTaskContext();
 
@@ -155,28 +113,6 @@ const ExecutivePulse = () => {
   }, [reportData.primaryQuestion, reportData.successCriteria, updateTaskContract]);
 
   // --- Computed Values ---
-  const guidanceHint = useMemo(() => {
-    if (Array.isArray(reportData.guidanceNotes) && reportData.guidanceNotes.length) {
-      return reportData.guidanceNotes[0];
-    }
-    const fallback = recentReportHints[activeRun]?.[0];
-    if (fallback) {
-      return {
-        id: `cached-${activeRun}`,
-        message: fallback,
-        severity: "warning" as const,
-        source: "Diagnostics",
-      };
-    }
-    return null;
-  }, [reportData.guidanceNotes, recentReportHints, activeRun]);
-
-  // Sync Safe Mode
-  useEffect(() => {
-    setSafeMode(reportData.safeMode);
-  }, [reportData.safeMode, setSafeMode]);
-
-  const scqaModules = reportData.narrativeModules || [];
   const scopeLocks = reportData.scopeLocks || [];
   const profileMeta = (reportData.profile ?? {}) as Record<string, any>;
   const identityRows = typeof reportData.identityStats?.rows === "number"
@@ -184,22 +120,10 @@ const ExecutivePulse = () => {
     : reportData.identityStats?.rows || "n/a";
   const columnCount = profileMeta.column_count ?? profileMeta.columnCount ?? (reportData.profile?.columns ? Object.keys(reportData.profile.columns).length : undefined);
   const dataClarityPercent = Math.round(reportData.dataQualityValue || 0);
-  const numericColumns = Array.isArray(reportData.profile?.numericColumns)
-    ? (reportData.profile?.numericColumns as string[])
-    : Array.isArray(profileMeta.numericColumns)
-      ? (profileMeta.numericColumns as string[])
-      : [];
-
-  const handleSwitchRun = () => {
-    const sanitized = runInput.trim();
-    if (!sanitized) return;
-    setActiveRun(sanitized);
-    navigate(`/app?run=${sanitized}`);
-  };
-
-  const hasData = activeRun && reportQuery.data;
+  const hasData = activeRun && snapshotQuery.data;
   const trustScore = reportData.trustModel?.overall_confidence;
   const lowTrust = typeof trustScore === "number" && trustScore < 60;
+  const narrativeMode = "executive";
   const executiveBrief = lowTrust
     ? ["Executive summary withheld until reliability improves. Review diagnostics for constraints."]
     : storyData.executiveBrief;
@@ -210,14 +134,8 @@ const ExecutivePulse = () => {
     return first.length > 240 ? `${first.slice(0, 237)}...` : first;
   };
 
-  const contentForMode = (content: string, impact?: string, isRecommendation?: boolean) => {
-    if (narrativeMode === "executive") {
-      return summarizedContent(applyTrustTone(content, isRecommendation));
-    }
-    if (narrativeMode === "expert" && impact) {
-      return `${applyTrustTone(content, isRecommendation)}\n\nAssumptions & caveats: ${impact}`;
-    }
-    return applyTrustTone(content, isRecommendation);
+  const contentForMode = (content: string, isRecommendation?: boolean) => {
+    return summarizedContent(applyTrustTone(content, isRecommendation));
   };
 
   const applyTrustTone = (content: string, isRecommendation?: boolean) => {
@@ -235,35 +153,6 @@ const ExecutivePulse = () => {
     }
     return content;
   };
-
-  if (reportQuery.isLoading || reportData.manifestLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-sm text-muted-foreground">Loading run manifest...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!reportData.manifestCompatible) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center max-w-md">
-          <Shield className="w-10 h-10 text-amber-500 mx-auto mb-4" />
-          <h1 className="text-lg font-semibold mb-2">Manifest Incompatible</h1>
-          <p className="text-sm text-muted-foreground">
-            This report was generated with an unsupported manifest version. Please refresh after updating.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (reportData.renderPolicy && !reportData.renderPolicy.allow_report) {
-    return null;
-  }
 
   // --- New KPI Grid Data ---
   const executiveMetrics = [
@@ -290,24 +179,91 @@ const ExecutivePulse = () => {
     },
   ];
 
-  const regressionReady = reportData.diagnostics?.regression_status === "success";
+  const regressionReady = reportData.renderPolicy?.allow_regression_sections === true;
   const actionSections = storyData.sections.filter(
     (section) => section.type === "recommendation" && section.listItems?.length,
   );
-  const showGoverningThought = Boolean(reportData.governingThought || storyData.heroInsight?.keyInsight);
-  const showKeyMetrics = executiveMetrics.length > 0;
-  const showActionItems = actionSections.length > 0;
-  const showSupportingEvidence = Boolean(
+  const viewPolicies = reportData.viewPolicies;
+  const activePolicy = viewPolicies?.[narrativeMode];
+  const allowedSections = new Set(activePolicy?.allowed_sections || []);
+  const sectionAllowed = (id: string) => !activePolicy || allowedSections.has(id);
+  const showGoverningThought = sectionAllowed("governing_thought") &&
+    Boolean(reportData.governingThought || storyData.heroInsight?.keyInsight);
+  const showKeyMetrics = sectionAllowed("key_metrics") && executiveMetrics.length > 0;
+  const showActionItems = sectionAllowed("action_items") && actionSections.length > 0;
+  const showSupportingEvidence = sectionAllowed("supporting_evidence") && Boolean(
     storyData.sections.length ||
       isValidArtifact(reportData.enhancedAnalytics?.correlation_analysis) ||
-      (regressionReady && isValidArtifact(reportData.enhancedAnalytics?.feature_importance)),
+      (regressionReady && isValidArtifact(importanceReport)),
   );
+  const showTrustSummary = sectionAllowed("trust_summary") && reportData.renderPolicy?.allow_trust_summary === true;
+  const showTools = false;
   const tocItems = [
     { id: "governing-thought", label: "Governing Thought", visible: showGoverningThought },
     { id: "key-metrics", label: "Key Metrics", visible: showKeyMetrics },
     { id: "action-items", label: "Prioritized Actions", visible: showActionItems },
     { id: "supporting-evidence", label: "Analysis & Evidence", visible: showSupportingEvidence },
   ].filter((item) => item.visible);
+
+  const renderedSectionIds = [
+    showGoverningThought ? "governing_thought" : null,
+    showKeyMetrics ? "key_metrics" : null,
+    showActionItems ? "action_items" : null,
+    showSupportingEvidence ? "supporting_evidence" : null,
+    showTrustSummary ? "trust_summary" : null,
+    showTools ? "tools" : null,
+  ].filter(Boolean) as string[];
+
+  useDevReportInvariants({
+    rootSelector: "[data-report-root]",
+    tocItems,
+    renderedSectionIds,
+    viewPolicy: activePolicy || null,
+    maxPrimarySections: 7,
+  });
+
+  if (snapshotQuery.isLoading || reportData.manifestLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-sm text-muted-foreground">Loading run manifest...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (snapshotQuery.error || !snapshotQuery.data) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center max-w-md">
+          <Shield className="w-10 h-10 text-amber-500 mx-auto mb-4" />
+          <h1 className="text-lg font-semibold mb-2">Snapshot Unavailable</h1>
+          <p className="text-sm text-muted-foreground">
+            This report requires a run snapshot. Please refresh or rerun the analysis.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!reportData.manifestCompatible) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center max-w-md">
+          <Shield className="w-10 h-10 text-amber-500 mx-auto mb-4" />
+          <h1 className="text-lg font-semibold mb-2">Manifest Incompatible</h1>
+          <p className="text-sm text-muted-foreground">
+            This report was generated with an unsupported manifest version. Please refresh after updating.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (reportData.renderPolicy && !reportData.renderPolicy.allow_report) {
+    return null;
+  }
 
 
   // --- Empty State ---
@@ -346,7 +302,7 @@ const ExecutivePulse = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" data-report-root>
       <Navbar />
 
       <main className="pt-24 pb-12">
@@ -363,12 +319,10 @@ const ExecutivePulse = () => {
                   </span>
                 )}
               </div>
-              <p className="text-muted-foreground">Strategic intelligence readout and simulation lab.</p>
+              <p className="text-muted-foreground">Strategic intelligence readout.</p>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-4 items-end md:items-center">
-              <NarrativeModeSelector />
-            </div>
+            <div className="flex flex-col md:flex-row gap-4 items-end md:items-center" />
           </div>
 
           {!hasData ? (
@@ -376,9 +330,9 @@ const ExecutivePulse = () => {
           ) : (
             <div className="animate-in fade-in duration-500">
               <RunWarningsBanner warnings={reportData.runWarnings} className="mb-6" />
-              <TrustSummary trust={reportData.trustModel} className="mb-6" />
-              {/* 3-Column Layout: Nav | Content | Context */}
-              <div className="grid gap-6 lg:gap-10 grid-cols-1 lg:grid-cols-[1fr_340px] xl:grid-cols-[220px_1fr_340px] items-start">
+              {showTrustSummary ? <TrustSummary trust={reportData.trustModel} className="mb-6" /> : null}
+              {/* 2-Column Layout: Nav | Content */}
+              <div className="grid gap-6 lg:gap-10 grid-cols-1 xl:grid-cols-[220px_1fr] items-start">
 
                 {/* Left Rail: Navigation (Visible on XL+) */}
                 <aside className="hidden xl:block sticky top-24 self-start space-y-6">
@@ -462,15 +416,13 @@ const ExecutivePulse = () => {
 
                   {/* 4. Supporting Evidence - Progressive Disclosure */}
                   {showSupportingEvidence && (
-                  <section id="supporting-evidence" className="scroll-mt-24">
-                    {narrativeMode === "executive" ? (
+                    <section id="supporting-evidence" className="scroll-mt-24">
                       <CollapsibleSection
-                        title="View Supporting Analysis & Evidence"
-                        subtitle="Detailed narrative, drivers, and correlations"
-                        defaultOpen={false}
+                        title="Supporting Analysis & Evidence"
+                        subtitle="Drivers, correlations, and narrative context"
+                        defaultOpen={!activePolicy?.default_collapsed_sections?.includes("supporting_evidence")}
                       >
                         <div className="space-y-8 pt-4">
-                          {/* Headline & Evidence Link */}
                           <div className="rounded-3xl border border-border/40 bg-card p-6 shadow-sm">
                             <StoryHeadline data={storyDataForBrief} onHighlight={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })} />
                             <div className="mt-8 flex justify-center">
@@ -478,22 +430,23 @@ const ExecutivePulse = () => {
                             </div>
                           </div>
 
-                          {/* Interactive Charts */}
                           <div className="grid gap-6 md:grid-cols-2">
-                          {regressionReady && reportData.enhancedAnalytics?.feature_importance ? (
+                            {regressionReady && importanceReport ? (
                               <TopDriversCard
-                                data={reportData.enhancedAnalytics?.feature_importance}
+                                importanceReport={importanceReport}
+                                modelFitReport={modelFitReport}
+                                collinearityReport={collinearityReport}
                                 safeMode={reportData.safeMode}
                                 onViewEvidence={() => handleEvidenceFocus({ section: "feature_importance", evidenceId: predictiveEvidenceId })}
                               />
                             ) : null}
                             <CorrelationInsightsCard
                               data={reportData.enhancedAnalytics?.correlation_analysis}
+                              correlationCi={reportData.enhancedAnalytics?.correlation_ci}
                               onViewEvidence={() => handleEvidenceFocus({ section: "feature_importance", evidenceId: predictiveEvidenceId })}
                             />
                           </div>
 
-                          {/* Narrative Blocks */}
                           {storyData.sections.filter(s => s.type !== "recommendation").map((section, idx) => (
                             <SentimentBlock
                               key={`narrative-${idx}`}
@@ -501,125 +454,15 @@ const ExecutivePulse = () => {
                               sentiment={section.sentiment}
                               impact={section.impact}
                             >
-                              <ReactMarkdown>{contentForMode(section.content, section.impact, section.type === "recommendation")}</ReactMarkdown>
+                              <ReactMarkdown>{contentForMode(section.content, section.type === "recommendation")}</ReactMarkdown>
                             </SentimentBlock>
                           ))}
                         </div>
                       </CollapsibleSection>
-                    ) : (
-                      // Analyst Mode: Everything expanded
-                      <div className="space-y-12">
-                        {/* Headline */}
-                        <div className="rounded-3xl border border-border/40 bg-card p-6 shadow-sm">
-                          <StoryHeadline data={storyDataForBrief} onHighlight={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })} />
-                          <div className="mt-8 flex justify-center">
-                            <StoryControlBar data={storyDataForBrief} />
-                          </div>
-                        </div>
-
-                        {/* Charts */}
-                        <div className="grid gap-6 md:grid-cols-2">
-                          {regressionReady && reportData.enhancedAnalytics?.feature_importance ? (
-                            <TopDriversCard
-                              data={reportData.enhancedAnalytics?.feature_importance}
-                              safeMode={reportData.safeMode}
-                              onViewEvidence={() => handleEvidenceFocus({ section: "feature_importance", evidenceId: predictiveEvidenceId })}
-                            />
-                          ) : null}
-                          <CorrelationInsightsCard
-                            data={reportData.enhancedAnalytics?.correlation_analysis}
-                            onViewEvidence={() => handleEvidenceFocus({ section: "feature_importance", evidenceId: predictiveEvidenceId })}
-                          />
-                        </div>
-
-                        {/* All Narratives */}
-                        {storyData.sections.map((section, idx) => {
-                          if (section.type === "recommendation" && section.listItems?.length) {
-                            const items = narrativeMode === "executive"
-                              ? section.listItems.slice(0, 3)
-                              : section.listItems;
-                            return (
-                              <ActionChecklist
-                                key={idx}
-                                title={section.title}
-                                items={items}
-                                onViewEvidence={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })}
-                              />
-                            );
-                          }
-                          return (
-                            <SentimentBlock
-                              key={idx}
-                              title={section.title}
-                              sentiment={section.sentiment}
-                              impact={section.impact}
-                            >
-                              <ReactMarkdown>{contentForMode(section.content, section.impact, section.type === "recommendation")}</ReactMarkdown>
-                            </SentimentBlock>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </section>
+                    </section>
                   )}
                 </div>
 
-                {/* Right Column: Lab & Controls */}
-                <aside className="space-y-6 lg:sticky lg:top-24 self-start h-fit">
-                  <div className="rounded-2xl border border-border/40 bg-card shadow-sm overflow-hidden">
-                    <div className="p-4 border-b border-border/40 bg-muted/20">
-                      <h3 className="text-sm font-semibold">Run Controls</h3>
-                    </div>
-                    <div className="p-4 space-y-3">
-                      <div className="relative">
-                        <Input
-                          value={runInput}
-                          onChange={(e) => setRunInput(e.target.value)}
-                          placeholder="Run ID"
-                          className="font-mono text-sm w-full pl-8"
-                          onKeyDown={(e) => e.key === "Enter" && handleSwitchRun()}
-                        />
-                        <FileText className="w-3.5 h-3.5 absolute left-2.5 top-3 text-muted-foreground" />
-                      </div>
-                      <Button onClick={handleSwitchRun} disabled={!runInput.trim()} className="w-full">
-                        Load Run
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Lab Controls */}
-                  {numericColumns.length > 0 ? (
-                    <div className="rounded-2xl border border-border/40 bg-card shadow-sm overflow-hidden">
-                      <div className="p-4 border-b border-border/40 bg-muted/20 flex items-center justify-between">
-                        <h3 className="font-semibold text-sm flex items-center gap-2">
-                          <Zap className="w-4 h-4 text-primary" /> Strategy Lab
-                        </h3>
-                        <span className="text-[10px] uppercase font-mono text-muted-foreground">v4.0</span>
-                      </div>
-                      <SimulationControls
-                        runId={activeRun}
-                        availableColumns={numericColumns}
-                        hint={guidanceHint?.message}
-                        onSimulationResult={handleSimulationReport}
-                      />
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl border border-border/40 bg-muted/30 p-5 text-center">
-                      <Zap className="w-8 h-8 mx-auto mb-3 text-muted-foreground/50" />
-                      <p className="text-sm text-muted-foreground font-medium mb-1">Strategy Lab Unavailable</p>
-                      <p className="text-xs text-muted-foreground/70">Requires numeric fields for simulation</p>
-                    </div>
-                  )}
-
-                  {/* Evidence Rail */}
-                  <EvidenceRail
-                    mode="inline"
-                    data={reportData}
-                    runId={activeRun}
-                    simulationResult={simulationEvidence.result}
-                    simulationModifications={simulationEvidence.modifications}
-                  />
-                </aside>
 
               </div>
             </div>

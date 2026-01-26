@@ -6,15 +6,17 @@ import { isValidArtifact } from "@/lib/artifactGuard";
 
 interface CorrelationInsightsCardProps {
   data?: EnhancedAnalyticsData["correlation_analysis"];
+  correlationCi?: EnhancedAnalyticsData["correlation_ci"];
   onViewEvidence?: () => void;
 }
 
-export function CorrelationInsightsCard({ data, onViewEvidence }: CorrelationInsightsCardProps) {
+export function CorrelationInsightsCard({ data, correlationCi, onViewEvidence }: CorrelationInsightsCardProps) {
   if (!data || !isValidArtifact(data) || !Array.isArray(data.strong_correlations) || data.strong_correlations.length === 0) {
     return null;
   }
 
   const correlations = data.strong_correlations.slice(0, 4);
+  const ciAvailable = Boolean(correlationCi && isValidArtifact(correlationCi));
 
   const directionGlyph = (direction?: string) => {
     if (direction === "negative") return "↓ NEG";
@@ -39,10 +41,10 @@ export function CorrelationInsightsCard({ data, onViewEvidence }: CorrelationIns
           </div>
           <div className="text-xs text-muted-foreground mt-2 flex items-center justify-between">
             <div className="flex gap-3">
-              <span title="Linear relationship strength">pearson: {Number(pair.pearson).toFixed(2)}</span>
-              <span title="Rank/Non-linear relationship strength">spearman: {Number(pair.spearman).toFixed(2)}</span>
+              <span title="Linear relationship strength">pearson: {Number(pair.pearson).toFixed(4)}</span>
+              <span title="Rank/Non-linear relationship strength">spearman: {Number(pair.spearman).toFixed(4)}</span>
             </div>
-            {pair.strength && (
+            {pair.strength && ciAvailable && (
               <span className="uppercase tracking-wide text-[10px] font-semibold opacity-70">{pair.strength}</span>
             )}
           </div>
@@ -57,18 +59,29 @@ export function CorrelationInsightsCard({ data, onViewEvidence }: CorrelationIns
             <div className="space-y-1 mb-2">
               <div className="flex justify-between">
                 <span className="text-slate-400">Pearson (Linear):</span>
-                <span className="font-mono">{Number(pair.pearson).toFixed(3)}</span>
+                <span className="font-mono">{Number(pair.pearson).toFixed(4)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Spearman (Rank):</span>
-                <span className="font-mono">{Number(pair.spearman).toFixed(3)}</span>
+                <span className="font-mono">{Number(pair.spearman).toFixed(4)}</span>
               </div>
+              {pair.pearson_ci_low != null && pair.pearson_ci_high != null && (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">95% CI:</span>
+                  <span className="font-mono">{Number(pair.pearson_ci_low).toFixed(4)} - {Number(pair.pearson_ci_high).toFixed(4)}</span>
+                </div>
+              )}
             </div>
             <div className="text-slate-300 text-[10px] leading-tight bg-white/5 p-2 rounded">
               {pair.direction === "negative"
                 ? "Negative Correlation: As one variable increases, the other tends to decrease (inverse relationship)."
                 : "Positive Correlation: As one variable increases, the other tends to increase as well."}
             </div>
+            {pair.is_leakage && (
+              <div className="mt-2 text-[10px] text-amber-200">
+                Potential leakage: near-perfect correlation detected.
+              </div>
+            )}
           </div>
         </div>
       ))}
@@ -98,7 +111,9 @@ export function CorrelationInsightsCard({ data, onViewEvidence }: CorrelationIns
           "Spearman": "Rank correlation (-1 to +1). Captures non-linear patterns.",
           "Positive (POS)": "Variables move in the same direction.",
           "Negative (NEG)": "Variables move in opposite directions.",
-          "How to read": "Hover over any pair to see detailed breakdown of the relationship.",
+          "How to read": ciAvailable
+            ? "Hover over any pair to see the correlation and its 95% confidence interval."
+            : "Confidence intervals unavailable; interpret relationships cautiously.",
         }}
       />
     </div>

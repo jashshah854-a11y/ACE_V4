@@ -1,0 +1,509 @@
+{
+  "row_count": 50,
+  "column_count": 27,
+  "column_types": {
+    "numeric": [
+      "CAMIS",
+      "ZIPCODE",
+      "PHONE",
+      "SCORE",
+      "Latitude",
+      "Longitude",
+      "Community Board",
+      "Council District",
+      "Census Tract",
+      "BIN",
+      "BBL"
+    ],
+    "categorical": [
+      "BORO",
+      "CUISINE DESCRIPTION",
+      "ACTION",
+      "CRITICAL FLAG",
+      "GRADE",
+      "INSPECTION TYPE"
+    ],
+    "datetime": [
+      "INSPECTION DATE",
+      "GRADE DATE",
+      "RECORD DATE"
+    ],
+    "text": [
+      "DBA",
+      "BUILDING",
+      "STREET",
+      "VIOLATION CODE",
+      "VIOLATION DESCRIPTION",
+      "NTA",
+      "Location"
+    ],
+    "boolean": []
+  },
+  "columns": {
+    "CAMIS": {
+      "dtype": "int64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 50,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 48006369.1,
+        "median": 50100105.5,
+        "std": 3742030.109967226,
+        "min": 40625667.0,
+        "max": 50175461.0,
+        "skew": -1.262404929036781,
+        "q25": 50003244.5,
+        "q75": 50134464.0
+      }
+    },
+    "DBA": {
+      "dtype": "object",
+      "inferred_type": "text",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 50,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "YAN WO DOU BUN": 1,
+        "CLEMENTE'S MARYLAND CRAB HOUSE": 1,
+        "HARD TO EXPLAIN": 1
+      }
+    },
+    "BORO": {
+      "dtype": "object",
+      "inferred_type": "categorical",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 4,
+      "distinct_pct": 0.08,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "Brooklyn": 17,
+        "Manhattan": 16,
+        "Queens": 12
+      }
+    },
+    "BUILDING": {
+      "dtype": "object",
+      "inferred_type": "text",
+      "missing_count": 1,
+      "missing_pct": 0.02,
+      "distinct_count": 49,
+      "distinct_pct": 0.98,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "98": 1,
+        "3939": 1,
+        "224": 1
+      }
+    },
+    "STREET": {
+      "dtype": "object",
+      "inferred_type": "text",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 47,
+      "distinct_pct": 0.94,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "BROADWAY": 3,
+        "PITKIN AVENUE": 2,
+        "MOTT STREET": 1
+      }
+    },
+    "ZIPCODE": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 41,
+      "distinct_pct": 0.82,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 10769.16,
+        "median": 11104.0,
+        "std": 569.161079484534,
+        "min": 10001.0,
+        "max": 11430.0,
+        "skew": -0.410882789056056,
+        "q25": 10022.0,
+        "q75": 11223.75
+      }
+    },
+    "PHONE": {
+      "dtype": "int64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 50,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 6559562524.52,
+        "median": 7186319121.0,
+        "std": 2382631997.99562,
+        "min": 2122421803.0,
+        "max": 9727693100.0,
+        "skew": -0.7385445732792346,
+        "q25": 6462930320.5,
+        "q75": 8611978454.5
+      }
+    },
+    "CUISINE DESCRIPTION": {
+      "dtype": "object",
+      "inferred_type": "categorical",
+      "missing_count": 1,
+      "missing_pct": 0.02,
+      "distinct_count": 22,
+      "distinct_pct": 0.44,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "American": 8,
+        "Chinese": 6,
+        "Pizza": 5
+      }
+    },
+    "INSPECTION DATE": {
+      "dtype": "object",
+      "inferred_type": "datetime",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 48,
+      "distinct_pct": 0.96,
+      "constant": false,
+      "near_constant": false,
+      "min": "1900-01-01T00:00:00+00:00",
+      "max": "2025-10-15T00:00:00+00:00",
+      "unique_count": 48
+    },
+    "ACTION": {
+      "dtype": "object",
+      "inferred_type": "categorical",
+      "missing_count": 1,
+      "missing_pct": 0.02,
+      "distinct_count": 1,
+      "distinct_pct": 0.02,
+      "constant": true,
+      "near_constant": true,
+      "top_values": {
+        "Violations were cited in the following area(s).": 49
+      }
+    },
+    "VIOLATION CODE": {
+      "dtype": "object",
+      "inferred_type": "text",
+      "missing_count": 1,
+      "missing_pct": 0.02,
+      "distinct_count": 26,
+      "distinct_pct": 0.52,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "10F": 7,
+        "02G": 4,
+        "02B": 4
+      }
+    },
+    "VIOLATION DESCRIPTION": {
+      "dtype": "object",
+      "inferred_type": "text",
+      "missing_count": 1,
+      "missing_pct": 0.02,
+      "distinct_count": 27,
+      "distinct_pct": 0.54,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "Non-food contact surface or equipment made of unacceptable material, not kept clean, or not properly sealed, raised, spaced or movable to allow accessibility for cleaning on all sides, above and underneath the unit.": 6,
+        "Hot TCS food item not held at or above 140 \u00b0F.": 4,
+        "Cold TCS food item held above 41 \u00b0F; smoked or processed fish held above 38 \u00b0F; intact raw eggs held above 45 \u00b0F; or reduced oxygen packaged (ROP) TCS foods held above required temperatures except during active necessary preparation.": 4
+      }
+    },
+    "CRITICAL FLAG": {
+      "dtype": "object",
+      "inferred_type": "categorical",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 3,
+      "distinct_pct": 0.06,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "Critical": 25,
+        "Not Critical": 23,
+        "Not Applicable": 2
+      }
+    },
+    "SCORE": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 5,
+      "missing_pct": 0.1,
+      "distinct_count": 27,
+      "distinct_pct": 0.54,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 25.711111111111112,
+        "median": 22.0,
+        "std": 17.053669819748112,
+        "min": 2.0,
+        "max": 68.0,
+        "skew": 0.7255157076639674,
+        "q25": 12.0,
+        "q75": 35.0
+      }
+    },
+    "GRADE": {
+      "dtype": "object",
+      "inferred_type": "categorical",
+      "missing_count": 26,
+      "missing_pct": 0.52,
+      "distinct_count": 3,
+      "distinct_pct": 0.06,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "A": 18,
+        "C": 4,
+        "B": 2
+      }
+    },
+    "GRADE DATE": {
+      "dtype": "object",
+      "inferred_type": "datetime",
+      "missing_count": 26,
+      "missing_pct": 0.52,
+      "distinct_count": 23,
+      "distinct_pct": 0.46,
+      "constant": false,
+      "near_constant": false,
+      "min": "2022-03-18T00:00:00+00:00",
+      "max": "2025-10-15T00:00:00+00:00",
+      "unique_count": 23
+    },
+    "RECORD DATE": {
+      "dtype": "object",
+      "inferred_type": "datetime",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 1,
+      "distinct_pct": 0.02,
+      "constant": true,
+      "near_constant": true,
+      "min": "2025-11-14T00:00:00+00:00",
+      "max": "2025-11-14T00:00:00+00:00",
+      "unique_count": 1
+    },
+    "INSPECTION TYPE": {
+      "dtype": "object",
+      "inferred_type": "categorical",
+      "missing_count": 1,
+      "missing_pct": 0.02,
+      "distinct_count": 7,
+      "distinct_pct": 0.14,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "Cycle Inspection / Initial Inspection": 26,
+        "Cycle Inspection / Re-inspection": 8,
+        "Pre-permit (Operational) / Initial Inspection": 8
+      }
+    },
+    "Latitude": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 50,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 40.7277884446172,
+        "median": 40.736488802435,
+        "std": 0.06126232364660799,
+        "min": 40.58507013985,
+        "max": 40.85380525507,
+        "skew": -0.1505283863480628,
+        "q25": 40.67855480039,
+        "q75": 40.7645247507225
+      }
+    },
+    "Longitude": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 50,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": -73.93767821755979,
+        "median": -73.957075897885,
+        "std": 0.06146620419239584,
+        "min": -74.02904394399,
+        "max": -73.76892901048,
+        "skew": 1.0021276441890759,
+        "q25": -73.982253256955,
+        "q75": -73.89587228914
+      }
+    },
+    "Community Board": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 1,
+      "missing_pct": 0.02,
+      "distinct_count": 32,
+      "distinct_pct": 0.64,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 254.12244897959184,
+        "median": 302.0,
+        "std": 119.01597091473904,
+        "min": 101.0,
+        "max": 480.0,
+        "skew": -0.07399487534854807,
+        "q25": 106.0,
+        "q75": 315.0
+      }
+    },
+    "Council District": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 1,
+      "missing_pct": 0.02,
+      "distinct_count": 25,
+      "distinct_pct": 0.5,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 21.20408163265306,
+        "median": 21.0,
+        "std": 14.978868914324599,
+        "min": 1.0,
+        "max": 48.0,
+        "skew": 0.09920637330523648,
+        "q25": 4.0,
+        "q75": 35.0
+      }
+    },
+    "Census Tract": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 1,
+      "missing_pct": 0.02,
+      "distinct_count": 49,
+      "distinct_pct": 0.98,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 28440.95918367347,
+        "median": 15300.0,
+        "std": 32709.662682055347,
+        "min": 700.0,
+        "max": 144700.0,
+        "skew": 1.837407225213588,
+        "q25": 6900.0,
+        "q75": 37700.0
+      }
+    },
+    "BIN": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 1,
+      "missing_pct": 0.02,
+      "distinct_count": 49,
+      "distinct_pct": 0.98,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 2546985.612244898,
+        "median": 3029660.0,
+        "std": 1203531.0627379143,
+        "min": 1001178.0,
+        "max": 4430607.0,
+        "skew": -0.13130980295819603,
+        "q25": 1044032.0,
+        "q75": 3324833.0
+      }
+    },
+    "BBL": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 1,
+      "missing_pct": 0.02,
+      "distinct_count": 49,
+      "distinct_pct": 0.98,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 2493706960.6734695,
+        "median": 3011810052.0,
+        "std": 1172018196.3784292,
+        "min": 1000760007.0,
+        "max": 4118640013.0,
+        "skew": -0.13366382539704388,
+        "q25": 1012657501.0,
+        "q75": 3064400028.0
+      }
+    },
+    "NTA": {
+      "dtype": "object",
+      "inferred_type": "text",
+      "missing_count": 1,
+      "missing_pct": 0.02,
+      "distinct_count": 42,
+      "distinct_pct": 0.84,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "MN17": 4,
+        "MN22": 3,
+        "QN31": 2
+      }
+    },
+    "Location": {
+      "dtype": "object",
+      "inferred_type": "text",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 50,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "top_values": {
+        "POINT (-73.997478430369 40.717245818058)": 1,
+        "POINT (-73.92773980431 40.585070139845)": 1,
+        "POINT (-73.985434325926 40.729176422599)": 1
+      }
+    }
+  },
+  "missingness_summary": {
+    "avg_missing_pct": 0.0511,
+    "max_missing_pct": 0.52
+  },
+  "constant_columns": [
+    "ACTION",
+    "RECORD DATE"
+  ],
+  "near_constant_columns": [],
+  "status": "success",
+  "valid": true,
+  "errors": [],
+  "warnings": []
+}

@@ -1,0 +1,44 @@
+{
+  "domain_tags": [
+    {
+      "tag": "customer_behavior",
+      "confidence": 0.7
+    },
+    {
+      "tag": "finance",
+      "confidence": 0.5
+    }
+  ],
+  "temporal_structure": {
+    "tag": "cross_sectional",
+    "confidence": 0.6
+  },
+  "observation_unit": {
+    "tag": "customer",
+    "confidence": 0.75
+  },
+  "target_presence": {
+    "tag": "single_target",
+    "confidence": 0.4
+  },
+  "notes": [],
+  "signals": {
+    "customer_behavior": {
+      "id_fields": [
+        "user_id"
+      ],
+      "demographics": [
+        "leakage_feature"
+      ]
+    },
+    "finance": {
+      "fields": [
+        "revenue"
+      ]
+    }
+  },
+  "status": "success",
+  "valid": true,
+  "errors": [],
+  "warnings": []
+}

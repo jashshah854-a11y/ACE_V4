@@ -1,6 +1,6 @@
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -376,7 +376,7 @@ def build_task_contract(
                 "confidence_threshold": user_intent.get("confidence_threshold", 80.0),
                 "out_of_scope_dimensions": user_intent.get("out_of_scope_dimensions", []),
                 "is_signed": True,
-                "signed_at": datetime.utcnow().isoformat() + "Z",
+                "signed_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             }
         )
         user_claims = user_intent.get("forbidden_claims", []) or []

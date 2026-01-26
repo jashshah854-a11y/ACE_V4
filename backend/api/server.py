@@ -1,5 +1,5 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Form
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Form, Response
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -13,8 +13,11 @@ import uuid
 import re
 import logging
 import threading
+import hashlib
+import time
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
+from contextlib import asynccontextmanager
 from typing import Any, Dict, Optional, List
 
 # Add project root to path
@@ -39,9 +42,6 @@ from jobs.models import JobStatus
 from jobs.progress import ProgressTracker
 from core.config import settings
 from core.task_contract import parse_task_intent, TaskIntentValidationError
-from api.contextual_intelligence import AskRequest, process_ask_query
-from core.simulation import SimulationEngine
-from core.enhanced_analytics import EnhancedAnalytics
 from core.governance import rebuild_governance_artifacts
 from core.analytics_validation import apply_artifact_validation
 import pandas as pd
@@ -52,6 +52,245 @@ logger = logging.getLogger("ace.api")
 
 # Global Redis queue instance (initialized on startup)
 job_queue: Optional[RedisJobQueue] = None
+snapshot_redis = None
+snapshot_metrics = {"redis_hit": 0, "memory_hit": 0, "miss": 0}
+
+
+class SnapshotCache:
+    def __init__(self, max_entries: int = 50, ttl_seconds: int = 30):
+        self.max_entries = max_entries
+        self.ttl_seconds = ttl_seconds
+        self._store: Dict[str, Dict[str, Any]] = {}
+
+    def _cleanup(self) -> None:
+        now = time.time()
+        expired = [key for key, entry in self._store.items() if entry["expires_at"] <= now]
+        for key in expired:
+            self._store.pop(key, None)
+        if len(self._store) <= self.max_entries:
+            return
+        # Trim oldest entries
+        items = sorted(self._store.items(), key=lambda item: item[1]["expires_at"])
+        for key, _entry in items[: max(0, len(self._store) - self.max_entries)]:
+            self._store.pop(key, None)
+
+    def get(self, key: str, etag: Optional[str]) -> Optional[Dict[str, Any]]:
+        self._cleanup()
+        entry = self._store.get(key)
+        if not entry:
+            return None
+        if etag and entry.get("etag") != etag:
+            return None
+        return entry.get("payload")
+
+    def set(self, key: str, payload: Dict[str, Any], etag: str) -> None:
+        self._cleanup()
+        self._store[key] = {
+            "etag": etag,
+            "payload": payload,
+            "expires_at": time.time() + self.ttl_seconds,
+        }
+
+
+snapshot_cache = SnapshotCache()
+
+
+def _snapshot_redis_get(key: str) -> tuple[Optional[str], Optional[str]]:
+    if snapshot_redis is None:
+        return None, None
+    try:
+        payload = snapshot_redis.get(f"{key}:payload")
+        etag = snapshot_redis.get(f"{key}:etag")
+        if payload and etag:
+            return payload, etag
+    except Exception:
+        return None, None
+    return None, None
+
+
+def _snapshot_redis_set(key: str, payload: str, etag: str, ttl_seconds: int = 30) -> None:
+    if snapshot_redis is None:
+        return
+    try:
+        snapshot_redis.setex(f"{key}:payload", ttl_seconds, payload)
+        snapshot_redis.setex(f"{key}:etag", ttl_seconds, etag)
+    except Exception:
+        return
+
+
+def _snapshot_etag(run_path: Path, lite: bool) -> str:
+    files = [
+        run_path / "run_manifest.json",
+        run_path / "validation_report.json",
+        run_path / "confidence_report.json",
+        run_path / "dataset_identity_card.json",
+    ]
+    if not lite:
+        files.extend(
+            [
+                run_path / "final_report.md",
+                run_path / "enhanced_analytics.json",
+                run_path / "artifacts" / "governed_report.json",
+            ]
+        )
+    hasher = hashlib.sha1()
+    for path in files:
+        if not path.exists():
+            continue
+        stat = path.stat()
+        hasher.update(f"{path.name}:{stat.st_mtime_ns}:{stat.st_size}".encode("utf-8"))
+    return f"\"{hasher.hexdigest()}\""
+
+
+def _load_json_file(path: Path) -> Optional[Dict[str, Any]]:
+    if not path.exists():
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _build_identity_payload(state: StateManager, run_path: Path) -> Dict[str, Any]:
+    identity = _ensure_identity_card(state, run_path)
+    columns = _normalize_columns(identity.get("columns") or identity.get("fields") or {})
+    numeric_columns = [name for name, meta in columns.items() if _is_numeric_dtype(meta)]
+    summary = {
+        "row_count": identity.get("row_count"),
+        "column_count": identity.get("column_count"),
+        "critical_gap_score": identity.get("critical_gap_score"),
+        "is_safe_mode": identity.get("is_safe_mode"),
+        "drift_status": identity.get("drift_status"),
+        "quality": identity.get("quality"),
+        "data_type": identity.get("data_type"),
+    }
+    return {
+        "identity": identity,
+        "profile": {
+            "columns": columns,
+            "numericColumns": numeric_columns,
+        },
+        "summary": summary,
+    }
+
+
+def _build_diagnostics_payload(state: StateManager, run_path: Path) -> Dict[str, Any]:
+    validation = state.read("validation_report") or {}
+    identity = _ensure_identity_card(state, run_path)
+    confidence = state.read("confidence_report") or {}
+    mode = state.read("run_mode") or "strict"
+    analysis_intent = state.read("analysis_intent") or {}
+    analysis_intent_value = analysis_intent.get("intent") or "exploratory"
+    regression_status = state.read("regression_status") or "not_started"
+    run_health = state.read("run_health_summary") or {}
+    target_candidate = analysis_intent.get("target_candidate") or {
+        "column": None,
+        "reason": "no_usable_target_found",
+        "confidence": 0.0,
+        "detected": False,
+    }
+
+    columns = _normalize_columns(identity.get("columns") or identity.get("fields") or {})
+    time_tokens = ("date", "time", "day", "week", "month", "quarter", "year", "period", "timestamp")
+
+    def _column_has_time(name: str, meta: dict | None) -> bool:
+        label = (name or '').lower()
+        dtype = str((meta or {}).get('dtype') or (meta or {}).get('type') or '').lower()
+        return any(token in label for token in time_tokens) or any(token in dtype for token in time_tokens)
+
+    has_time = any(_column_has_time(name, meta if isinstance(meta, dict) else None) for name, meta in columns.items())
+
+    reasons = []
+    if validation.get("mode") == "limitations":
+        reasons.append("Validation: limitations mode")
+    if validation.get("target_column") in [None, ""]:
+        reasons.append("Validation: missing target column")
+    if not has_time:
+        reasons.append("Identity: time fields not detected")
+    if confidence.get("confidence_label") == "low":
+        reasons.append("Confidence: low")
+
+    schema_scan = state.read("schema_scan_output")
+    if not isinstance(schema_scan, dict):
+        schema_scan = {}
+    warnings = state.get_warnings()
+
+    return {
+        "mode": mode,
+        "validation": validation,
+        "identity": identity,
+        "confidence": confidence,
+        "analysis_intent": analysis_intent_value,
+        "target_candidate": target_candidate,
+        "reasons": reasons,
+        "regression_status": regression_status,
+        "run_health_summary": run_health,
+        "warnings": warnings,
+        "data_quality": {
+            "score": schema_scan.get("quality_score", 0.4)
+        }
+    }
+
+
+def _build_snapshot_payload(run_id: str, lite: bool) -> tuple[Dict[str, Any], str]:
+    run_path = DATA_DIR / "runs" / run_id
+    state = StateManager(str(run_path))
+    manifest = _load_json_file(run_path / "run_manifest.json")
+    if not manifest:
+        raise FileNotFoundError("Run manifest not found")
+
+    diagnostics = _build_diagnostics_payload(state, run_path)
+    identity_payload = _build_identity_payload(state, run_path)
+    curated_kpis = {
+        "rows": identity_payload.get("summary", {}).get("row_count"),
+        "columns": identity_payload.get("summary", {}).get("column_count"),
+        "data_quality_score": diagnostics.get("data_quality", {}).get("score")
+            or identity_payload.get("identity", {}).get("quality_score"),
+        "completeness": identity_payload.get("summary", {}).get("quality", {}).get("avg_null_pct"),
+    }
+
+    payload: Dict[str, Any] = {
+        "run_id": run_id,
+        "generated_at": _iso_now(),
+        "lite": lite,
+        "manifest": manifest,
+        "diagnostics": diagnostics,
+        "identity": identity_payload,
+        "curated_kpis": curated_kpis,
+        "render_policy": manifest.get("render_policy"),
+        "view_policies": manifest.get("view_policies"),
+        "trust": manifest.get("trust"),
+        "run_warnings": manifest.get("warnings"),
+    }
+
+    if not lite:
+        report_path = run_path / "final_report.md"
+        payload["report_markdown"] = report_path.read_text(encoding="utf-8") if report_path.exists() else ""
+        governed_report = _load_json_file(run_path / "artifacts" / "governed_report.json")
+        if governed_report:
+            payload["governed_report"] = governed_report
+            payload["evidence_map"] = governed_report.get("evidence") or {}
+        else:
+            payload["governed_report"] = None
+            payload["evidence_map"] = {}
+        payload["enhanced_analytics"] = state.read("enhanced_analytics") or None
+        payload["model_artifacts"] = {
+            "importance_report": state.read("importance_report"),
+            "regression_coefficients_report": state.read("regression_coefficients_report"),
+            "baseline_metrics": state.read("baseline_metrics"),
+            "model_fit_report": state.read("model_fit_report"),
+            "collinearity_report": state.read("collinearity_report"),
+            "leakage_report": state.read("leakage_report"),
+            "feature_governance_report": state.read("feature_governance_report"),
+            "feature_importance": (state.read("regression_insights") or {}).get("feature_importance")
+                or (state.read("enhanced_analytics") or {}).get("feature_importance"),
+            "coefficients": (state.read("regression_insights") or {}).get("coefficients")
+                or (state.read("enhanced_analytics") or {}).get("coefficients"),
+        }
+
+    etag = _snapshot_etag(run_path, lite)
+    return payload, etag
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -125,8 +364,7 @@ app.add_middleware(
 )
 
 
-@app.on_event("startup")
-async def startup_event():
+async def _initialize_app():
     """Initialize Redis queue, background worker, and safety infrastructure on application startup."""
     global job_queue, safety_guard, consent_provider, audit_logger, circuit_breaker
     
@@ -176,6 +414,9 @@ async def startup_event():
         job_queue = RedisJobQueue(redis_url)
         logger.info("[API] ✅ Redis queue initialized successfully")
         
+        global snapshot_redis
+        snapshot_redis = job_queue.redis if job_queue and getattr(job_queue, 'redis', None) else None
+        
         # Start background worker thread
         logger.info("[API] Starting background worker thread...")
         from jobs.worker import worker_loop
@@ -188,6 +429,37 @@ async def startup_event():
         logger.error(f"[API] Error: {e}")
         logger.error("[API] Job queue will not be available - /run endpoint will return 503")
         # Don't raise - let app start but /run will return 503
+
+    # Pre-warm snapshot cache with recent runs (lite payloads)
+    try:
+        def _prewarm():
+            runs_dir = DATA_DIR / "runs"
+            if not runs_dir.exists():
+                return
+            run_dirs = sorted(
+                [p for p in runs_dir.iterdir() if p.is_dir()],
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+            for run_path in run_dirs[:10]:
+                run_id = run_path.name
+                try:
+                    payload, etag = _build_snapshot_payload(run_id, lite=True)
+                    snapshot_cache.set(f"{run_id}:lite", payload, etag)
+                    _snapshot_redis_set(f"{run_id}:lite", json.dumps(payload), etag)
+                except Exception:
+                    continue
+        threading.Thread(target=_prewarm, daemon=True, name="ACE-Snapshot-Prewarm").start()
+    except Exception:
+        logger.warning("[API] Snapshot cache prewarm failed")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await _initialize_app()
+    yield
+
+
+app.router.lifespan_context = lifespan
 
 # FORCE REBUILD 2026-01-05T02:28:00
 
@@ -308,7 +580,7 @@ class TimelineSelection(BaseModel):
 
 
 def _iso_now():
-    return datetime.utcnow().isoformat(timespec='seconds') + 'Z'
+    return datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
 
 
 def _safe_upload_path(original_name: str) -> Path:
@@ -702,6 +974,23 @@ async def debug_redis():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/debug/snapshot-cache", tags=["System"])
+async def debug_snapshot_cache():
+    """Debug endpoint to check snapshot cache health."""
+    redis_ok = False
+    if snapshot_redis is not None:
+        try:
+            snapshot_redis.ping()
+            redis_ok = True
+        except Exception:
+            redis_ok = False
+    return {
+        "redis_available": snapshot_redis is not None,
+        "redis_ping": "success" if redis_ok else "failed",
+        "metrics": snapshot_metrics,
+    }
+
+
 class RunResponse(BaseModel):
     run_id: str
     message: str
@@ -733,10 +1022,10 @@ async def trigger_run(
     logger.info(f"[API] confidence_acknowledged received: {confidence_acknowledged}")
     
     # Validate mode parameter
-    if mode not in ["full", "summary"]:
+    if mode not in ["full"]:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid mode '{mode}'. Must be 'full' or 'summary'."
+            detail=f"Invalid mode '{mode}'. Must be 'full'."
         )
     
     try:
@@ -939,66 +1228,6 @@ async def get_enhanced_analytics(run_id: str):
     return enhanced_analytics
 
 
-@app.get("/run/{run_id}/summary", tags=["Artifacts"])
-async def get_quick_summary(run_id: str):
-    """
-    Get quick summary data for Quick View mode.
-    
-    Returns:
-        Schema, basic statistics, correlations, and suggested questions
-    """
-    from core.summary_engine import compute_summary
-    
-    _validate_run_id(run_id)
-    
-    run_path = DATA_DIR / "runs" / run_id
-    if not run_path.exists():
-        raise HTTPException(status_code=404, detail="Run not found")
-    
-    state = StateManager(str(run_path))
-    
-    # Check if summary already exists
-    existing_summary = state.read("quick_summary")
-    if existing_summary:
-        logger.info(f"[API] Returning cached summary for {run_id}")
-        return existing_summary
-    
-    # Compute summary from dataset
-    try:
-        # Find the dataset file
-        active_dataset = state.read("active_dataset") or {}
-        dataset_path = active_dataset.get("path")
-        
-        if not dataset_path or not Path(dataset_path).exists():
-            raise HTTPException(status_code=404, detail="Dataset not found for this run")
-        
-        # Read dataset
-        logger.info(f"[API] Computing summary for {run_id} from {dataset_path}")
-        if str(dataset_path).lower().endswith(".parquet"):
-            df = pd.read_parquet(dataset_path)
-        elif str(dataset_path).lower().endswith((".csv", ".txt", ".tsv")):
-            df = pd.read_csv(dataset_path)
-        elif str(dataset_path).lower().endswith((".xlsx", ".xls")):
-            df = pd.read_excel(dataset_path)
-        else:
-            raise HTTPException(status_code=400, detail="Unsupported file format")
-        
-        # Compute summary
-        summary = compute_summary(df)
-        summary["run_id"] = run_id
-        summary["status"] = "completed"
-        
-        # Store summary for future requests
-        state.write("quick_summary", summary)
-        logger.info(f"[API] Summary computed and cached for {run_id}")
-        
-        return summary
-        
-    except Exception as e:
-        logger.error(f"[API] Failed to compute summary for {run_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Summary computation failed: {str(e)}")
-
-
 # REMOVED: Plural route - evidence system deprecated
 async def get_evidence_sample(run_id: str, rows: int = 5):
     """
@@ -1032,74 +1261,6 @@ async def get_evidence_sample(run_id: str, rows: int = 5):
     return {"rows": sample, "row_count": len(sample)}
 
 
-@app.get("/run/{run_id}/story", tags=["Artifacts"])
-async def get_story(run_id: str, tone: str = 'conversational'):
-    """Get narrative story for a run.
-    
-    Args:
-        run_id: Unique run identifier
-        tone: Narrative tone ('formal' or 'conversational')
-    
-    Returns:
-        Story structure with narrative points, headlines, and visualizations
-    """
-    _validate_run_id(run_id)
-    
-    # Validate tone parameter
-    if tone not in ['formal', 'conversational']:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid tone. Must be 'formal' or 'conversational'"
-        )
-    
-    run_path = DATA_DIR / "runs" / run_id
-    state = StateManager(str(run_path))
-    
-    # Check for cached story with this tone
-    cache_key = f"story_{tone}"
-    cached_story = state.read(cache_key)
-    
-    if cached_story:
-        logger.info(f"Returning cached {tone} story for run {run_id}")
-        return cached_story
-    
-    # Get enhanced analytics and dataset profile
-    enhanced_analytics = state.read("enhanced_analytics")
-    dataset_identity = state.read("dataset_identity_card")
-    
-    if not enhanced_analytics:
-        raise HTTPException(
-            status_code=404,
-            detail="Enhanced analytics not available. Run must complete first."
-        )
-    
-    # Generate story
-    from core.story_generator import StoryGenerator
-    
-    generator = StoryGenerator()
-    
-    try:
-        story = generator.generate_story(
-            run_id=run_id,
-            analytics_data=enhanced_analytics,
-            dataset_profile=dataset_identity or {},
-            tone=tone
-        )
-        
-        # Cache the story
-        state.write(cache_key, story)
-        
-        logger.info(f"Generated and cached {tone} story for run {run_id}")
-        return story
-        
-    except Exception as e:
-        logger.error(f"Failed to generate story for run {run_id}: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to generate story: {str(e)}"
-        )
-
-
 @app.get("/run/{run_id}/timeline", tags=["Run"])
 async def get_timeline_selection(run_id: str):
     """Return the synthetic timeline selection for a run."""
@@ -1131,61 +1292,7 @@ async def get_diagnostics(run_id: str):
     _validate_run_id(run_id)
     run_path = DATA_DIR / "runs" / run_id
     state = StateManager(str(run_path))
-
-    validation = state.read("validation_report") or {}
-    identity = _ensure_identity_card(state, run_path)
-    confidence = state.read("confidence_report") or {}
-    mode = state.read("run_mode") or "strict"
-    analysis_intent = state.read("analysis_intent") or {}
-    analysis_intent_value = analysis_intent.get("intent") or "exploratory"
-    regression_status = state.read("regression_status") or "not_started"
-    target_candidate = analysis_intent.get("target_candidate") or {
-        "column": None,
-        "reason": "no_usable_target_found",
-        "confidence": 0.0,
-        "detected": False,
-    }
-
-    columns = _normalize_columns(identity.get("columns") or identity.get("fields") or {})
-    time_tokens = ("date", "time", "day", "week", "month", "quarter", "year", "period", "timestamp")
-
-    def _column_has_time(name: str, meta: dict | None) -> bool:
-        label = (name or '').lower()
-        dtype = str((meta or {}).get('dtype') or (meta or {}).get('type') or '').lower()
-        return any(token in label for token in time_tokens) or any(token in dtype for token in time_tokens)
-
-    has_time = any(_column_has_time(name, meta if isinstance(meta, dict) else None) for name, meta in columns.items())
-
-    reasons = []
-    if validation.get("mode") == "limitations":
-        reasons.append("Validation: limitations mode")
-    if validation.get("target_column") in [None, ""]:
-        reasons.append("Validation: missing target column")
-    if not has_time:
-        reasons.append("Identity: time fields not detected")
-    if confidence.get("confidence_label") == "low":
-        reasons.append("Confidence: low")
-
-    schema_scan = state.read("schema_scan_output")
-    if not isinstance(schema_scan, dict):
-        schema_scan = {}
-    warnings = state.get_warnings()
-
-    return {
-        "mode": mode,
-        "validation": validation,
-        "identity": identity,
-        "confidence": confidence,
-        "analysis_intent": analysis_intent_value,
-        "target_candidate": target_candidate,
-        "reasons": reasons,
-        "regression_status": regression_status,
-        "warnings": warnings,
-        # CRITICAL FIX: Frontend expects data_quality.score here
-        "data_quality": {
-            "score": schema_scan.get("quality_score", 0.4)
-        }
-    }
+    return _build_diagnostics_payload(state, run_path)
 
 @app.get("/run/{run_id}/identity", tags=["Run"])
 async def get_identity_card(run_id: str):
@@ -1197,28 +1304,7 @@ async def get_identity_card(run_id: str):
     identity = _ensure_identity_card(state, run_path)
     if not identity:
         raise HTTPException(status_code=404, detail="Identity card not found")
-
-    columns = _normalize_columns(identity.get("columns") or identity.get("fields") or {})
-    numeric_columns = [name for name, meta in columns.items() if _is_numeric_dtype(meta)]
-
-    summary = {
-        "row_count": identity.get("row_count"),
-        "column_count": identity.get("column_count"),
-        "critical_gap_score": identity.get("critical_gap_score"),
-        "is_safe_mode": identity.get("is_safe_mode"),
-        "drift_status": identity.get("drift_status"),
-        "quality": identity.get("quality"),
-        "data_type": identity.get("data_type"),
-    }
-
-    return {
-        "identity": identity,
-        "profile": {
-            "columns": columns,
-            "numericColumns": numeric_columns,
-        },
-        "summary": summary,
-    }
+    return _build_identity_payload(state, run_path)
 
 
 @app.get("/run/{run_id}/model-artifacts", tags=["Artifacts"])
@@ -1233,16 +1319,92 @@ async def get_model_artifacts(run_id: str):
     regression = state.read("regression_insights") or {}
     enhanced = state.read("enhanced_analytics") or {}
 
+    importance_report = state.read("importance_report")
+    coefficients_report = state.read("regression_coefficients_report")
+    baseline_metrics = state.read("baseline_metrics")
+    model_fit_report = state.read("model_fit_report")
+    collinearity_report = state.read("collinearity_report")
+    leakage_report = state.read("leakage_report")
+    feature_governance_report = state.read("feature_governance_report")
+
     feature_importance = regression.get("feature_importance") or enhanced.get("feature_importance")
     coefficients = regression.get("coefficients") or enhanced.get("coefficients")
 
-    if not feature_importance and not coefficients:
+    if not any(
+        [
+            importance_report,
+            coefficients_report,
+            baseline_metrics,
+            model_fit_report,
+            collinearity_report,
+            leakage_report,
+            feature_governance_report,
+            feature_importance,
+            coefficients,
+        ]
+    ):
         raise HTTPException(status_code=404, detail="Model artifacts not found")
 
     return {
+        "importance_report": importance_report,
+        "regression_coefficients_report": coefficients_report,
+        "baseline_metrics": baseline_metrics,
+        "model_fit_report": model_fit_report,
+        "collinearity_report": collinearity_report,
+        "leakage_report": leakage_report,
+        "feature_governance_report": feature_governance_report,
         "feature_importance": feature_importance,
         "coefficients": coefficients,
     }
+
+
+@app.get("/run/{run_id}/snapshot", tags=["Run"])
+async def get_run_snapshot(request: Request, run_id: str, lite: bool = False):
+    """Return a consolidated snapshot for Executive Pulse."""
+    _validate_run_id(run_id)
+    run_path = DATA_DIR / "runs" / run_id
+    if not run_path.exists():
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    etag = _snapshot_etag(run_path, lite)
+    if_none_match = request.headers.get("if-none-match")
+    headers = {
+        "ETag": etag,
+        "Cache-Control": "private, max-age=30",
+    }
+
+    cache_key = f"{run_id}:{'lite' if lite else 'full'}"
+    if if_none_match and if_none_match == etag:
+        return Response(status_code=304, headers=headers)
+
+    redis_payload, redis_etag = _snapshot_redis_get(cache_key)
+    if redis_payload and redis_etag:
+        snapshot_metrics["redis_hit"] += 1
+        headers["ETag"] = redis_etag
+        if if_none_match and if_none_match == redis_etag:
+            return Response(status_code=304, headers=headers)
+        try:
+            return JSONResponse(content=json.loads(redis_payload), headers=headers)
+        except Exception:
+            pass
+
+    cached = snapshot_cache.get(cache_key, etag)
+    if cached is not None:
+        snapshot_metrics["memory_hit"] += 1
+        return JSONResponse(content=cached, headers=headers)
+    snapshot_metrics["miss"] += 1
+
+    try:
+        payload, payload_etag = _build_snapshot_payload(run_id, lite)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Snapshot unavailable")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Snapshot build failed: {exc}")
+
+    snapshot_cache.set(cache_key, payload, payload_etag)
+    _snapshot_redis_set(cache_key, json.dumps(payload), payload_etag)
+    headers["ETag"] = payload_etag
+    return JSONResponse(content=payload, headers=headers)
 
 
 # REMOVED: Plural route - evidence system deprecated
@@ -1532,380 +1694,6 @@ async def list_runs(
     }
 
 
-@app.post("/api/ask", tags=["Intelligence"])
-async def ask_contextual_question(request: AskRequest):
-    """
-    Answer contextual questions about evidence with grounding.
-    Provides reasoning steps and evidence-based responses.
-    
-    IRON DOME: Never crashes. Returns safe fallback if Gemini unavailable.
-    ANTI-WRAPPER: Only responds based on Evidence Object (JSON), not raw data.
-    """
-    try:
-        logger.info(f"[ASK] Query: {request.query[:50]}... | Run: {request.run_id}")
-        result = await process_ask_query(request)
-        logger.info(f"[ASK] Success - Response generated")
-        return JSONResponse(content=result)
-    except HTTPException as e:
-        logger.warning(f"[ASK] HTTP error: {e.detail}")
-        raise e
-    except Exception as e:
-        # IRON DOME: Log but don't crash
-        logger.error(f"[ASK] Unexpected error: {e}", exc_info=True)
-        
-        # Return safe fallback response
-        return JSONResponse(
-            status_code=200,  # Don't return 500 - fail open
-            content={
-                "answer": "I encountered an issue processing your question. Please try rephrasing or contact support.",
-                "reasoning_steps": [
-                    {"step": "Error encountered", "status": "error"}
-                ],
-                "evidence_refs": [],
-                "confidence": 0.0,
-                "error_log": str(e)
-            }
-        )
-
-
-# NEURAL PULSE: Server-Sent Events (SSE) Streaming
-async def stream_ask_response(request: AskRequest):
-    """
-    Stream reasoning steps and response tokens in real-time using SSE.
-    
-    Format: data: {"type": "step", "content": "..."}
-    Format: data: {"type": "token", "content": "..."}
-    Format: data: {"type": "done", "content": {...}}
-    """
-    import asyncio
-    
-    try:
-        logger.info(f"[ASK-STREAM] Query: {request.query[:50]}... | Run: {request.run_id}")
-        
-        # Load evidence
-        from api.contextual_intelligence import (
-            load_evidence_object,
-            generate_reasoning_steps,
-            build_evidence_context
-        )
-        
-        evidence = load_evidence_object(request.run_id, request.evidence_type)
-        
-        if not evidence:
-            # Stream error
-            payload = {"type": "error", "content": f"Evidence not found for run {request.run_id}"}
-            yield f"data: {json.dumps(payload)}\n\n"
-            return
-        
-        # Generate and stream reasoning steps
-        steps = generate_reasoning_steps(request.query, request.evidence_type)
-        
-        for step in steps:
-            payload = {"type": "step", "content": step}
-            yield f"data: {json.dumps(payload)}\n\n"
-            await asyncio.sleep(0.3)  # 300ms delay between steps
-        
-        # Build evidence context
-        evidence_context = build_evidence_context(evidence, request.evidence_type)
-        
-        # Stream thinking indicator
-        payload = {"type": "thinking", "content": "Analyzing evidence..."}
-        yield f"data: {json.dumps(payload)}\n\n"
-        await asyncio.sleep(0.5)
-        
-        # Generate response using Gemini (if available)
-        try:
-            from api.gemini_client import generate_strategic_insight, is_gemini_available
-            
-            if is_gemini_available():
-                # Build prompt
-                prompt = f"""
-You are ACE, an AI data analyst. Answer this question based ONLY on the evidence provided.
-
-Question: {request.query}
-
-Evidence:
-{evidence_context}
-
-Rules:
-1. ONLY use information from the Evidence section
-2. If the evidence doesn't contain the answer, say "I cannot answer that based on the available data"
-3. Cite specific numbers from the evidence
-4. Be concise and direct
-"""
-                
-                # Generate response
-                response_text = generate_strategic_insight(prompt)
-                
-                # Stream response tokens (simulate streaming by chunking)
-                words = response_text.split()
-                for i in range(0, len(words), 3):  # Stream 3 words at a time
-                    chunk = " ".join(words[i:i+3])
-                    payload = {"type": "token", "content": f"{chunk} "}
-                    yield f"data: {json.dumps(payload)}\n\n"
-                    await asyncio.sleep(0.1)
-            else:
-                # Fallback template response
-                response_text = f"Based on the evidence: {evidence_context[:200]}..."
-                payload = {"type": "token", "content": response_text}
-                yield f"data: {json.dumps(payload)}\n\n"
-        
-        except Exception as e:
-            logger.error(f"[ASK-STREAM] Gemini error: {e}")
-            # Fallback response
-            response_text = "I encountered an issue generating a detailed response. Please try rephrasing your question."
-            payload = {"type": "token", "content": response_text}
-            yield f"data: {json.dumps(payload)}\n\n"
-        
-        # Stream completion
-        payload = {"type": "done", "content": {"status": "complete"}}
-        yield f"data: {json.dumps(payload)}\n\n"
-        logger.info(f"[ASK-STREAM] Success - Stream completed")
-        
-    except Exception as e:
-        # IRON DOME: Stream error but don't crash
-        logger.error(f"[ASK-STREAM] Unexpected error: {e}", exc_info=True)
-        payload = {"type": "error", "content": f"An error occurred: {str(e)}"}
-        yield f"data: {json.dumps(payload)}\n\n"
-
-
-@app.post("/api/ask/stream", tags=["Intelligence"])
-async def ask_contextual_question_stream(request: AskRequest):
-    """
-    Stream reasoning steps and response in real-time using Server-Sent Events.
-    
-    NEURAL PULSE: Streams thinking process visibly.
-    IRON DOME: Never crashes, streams errors gracefully.
-    ANTI-WRAPPER: Only responds based on Evidence Object (JSON), not raw data.
-    """
-    return StreamingResponse(
-        stream_ask_response(request),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"  # Disable nginx buffering
-        }
-    )
-
-
-class SimulationRequest(BaseModel):
-    target_column: str
-    modification_factor: float  # e.g., 1.1 for 10% increase
-
-
-# NEURAL PULSE: Streaming Simulation Progress
-async def stream_simulation_progress(run_id: str, request: SimulationRequest):
-    """
-    Stream simulation progress updates in real-time using SSE.
-    
-    Format: data: {"type": "progress", "content": "..."}
-    Format: data: {"type": "result", "content": {...}}
-    """
-    import asyncio
-    
-    try:
-        logger.info(f"[SIMULATE-STREAM] Run: {run_id} | Column: {request.target_column} | Factor: {request.modification_factor}")
-        
-        # Step 1: Initialize
-        payload = {"type": "progress", "content": "Initializing simulation engine..."}
-        yield f"data: {json.dumps(payload)}\n\n"
-        await asyncio.sleep(0.3)
-        
-        # Initialize simulation engine
-        engine = SimulationEngine(run_id)
-        
-        # Step 2: Load dataset
-        payload = {"type": "progress", "content": "Loading original dataset..."}
-        yield f"data: {json.dumps(payload)}\n\n"
-        await asyncio.sleep(0.3)
-        
-        df_original = engine.load_dataset()
-        
-        # Step 3: Clone dataset
-        payload = {"type": "progress", "content": "Cloning dataset to RAM (ephemeral copy)..."}
-        yield f"data: {json.dumps(payload)}\n\n"
-        await asyncio.sleep(0.3)
-        
-        # Step 4: Apply modification
-        modification_pct = (request.modification_factor - 1) * 100
-        payload = {
-            "type": "progress",
-            "content": f"Applying modification: {request.target_column} {modification_pct:+.1f}%...",
-        }
-        yield f"data: {json.dumps(payload)}\n\n"
-        await asyncio.sleep(0.5)
-        
-        df_simulated = engine.apply_modification(
-            df_original,
-            request.target_column,
-            request.modification_factor
-        )
-        
-        # Step 5: Load original analytics
-        payload = {"type": "progress", "content": "Loading baseline analytics..."}
-        yield f"data: {json.dumps(payload)}\n\n"
-        await asyncio.sleep(0.3)
-        
-        original_analytics = engine.load_original_analytics()
-        
-        # Step 6: Re-run analytics
-        payload = {"type": "progress", "content": "Re-running churn risk analysis on modified data..."}
-        yield f"data: {json.dumps(payload)}\n\n"
-        await asyncio.sleep(0.5)
-        
-        analyzer = EnhancedAnalytics(df_simulated)
-        simulated_bi = analyzer.compute_business_intelligence()
-        
-        # Step 7: Calculate delta
-        payload = {"type": "progress", "content": "Calculating delta (before vs after)..."}
-        yield f"data: {json.dumps(payload)}\n\n"
-        await asyncio.sleep(0.3)
-        
-        delta = engine.calculate_delta(
-            original_analytics.get('business_intelligence', {}),
-            simulated_bi
-        )
-        
-        # Step 8: Format result
-        if delta.get('churn_risk'):
-            delta_value = delta['churn_risk']['delta']
-            direction = "decreased" if delta_value < 0 else "increased"
-            payload = {
-                "type": "progress",
-                "content": f"Delta detected: Churn risk {direction} by {abs(delta_value):.1f}%",
-            }
-            yield f"data: {json.dumps(payload)}\n\n"
-            await asyncio.sleep(0.3)
-        
-        # Step 9: Stream final result
-        result = {
-            "run_id": run_id,
-            "modification": {
-                "column": request.target_column,
-                "factor": request.modification_factor,
-                "description": f"{request.target_column} modified by {modification_pct:.1f}%"
-            },
-            "delta": delta
-        }
-        
-        import json
-        payload = {"type": "result", "content": result}
-        yield f"data: {json.dumps(payload)}\n\n"
-        
-        logger.info(f"[SIMULATE-STREAM] Success - Simulation completed")
-        
-    except FileNotFoundError as e:
-        # IRON DOME: Stream error gracefully
-        logger.error(f"[SIMULATE-STREAM] File not found: {e}")
-        payload = {"type": "error", "content": "Dataset or analytics not found for this run"}
-        yield f"data: {json.dumps(payload)}\n\n"
-    except ValueError as e:
-        # IRON DOME: Stream validation error
-        logger.error(f"[SIMULATE-STREAM] Invalid parameter: {e}")
-        payload = {"type": "error", "content": str(e)}
-        yield f"data: {json.dumps(payload)}\n\n"
-    except MemoryError as e:
-        # IRON DOME: Safe Mode for RAM overflow
-        logger.error(f"[SIMULATE-STREAM] Memory error: {e}")
-        payload = {
-            "type": "error",
-            "content": "Safe Mode: Dataset too large for simulation. Try with a smaller dataset.",
-        }
-        yield f"data: {json.dumps(payload)}\n\n"
-    except Exception as e:
-        # IRON DOME: Catch-all fail-open
-        logger.error(f"[SIMULATE-STREAM] Unexpected error: {e}", exc_info=True)
-        payload = {"type": "error", "content": "Simulation failed. Please check parameters and try again."}
-        yield f"data: {json.dumps(payload)}\n\n"
-
-
-@app.post("/run/{run_id}/simulate/stream", tags=["Intelligence"])
-async def simulate_scenario_stream(run_id: str, request: SimulationRequest):
-    """
-    Stream simulation progress in real-time using Server-Sent Events.
-    
-    NEURAL PULSE: Streams simulation steps visibly.
-    IRON DOME: Never crashes, streams errors gracefully.
-    EPHEMERAL: All simulations are RAM-only, never modify original data.
-    """
-    return StreamingResponse(
-        stream_simulation_progress(run_id, request),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"
-        }
-    )
-
-
-@app.post("/run/{run_id}/simulate", tags=["Intelligence"])
-async def simulate_scenario(run_id: str, request: SimulationRequest):
-    """
-    Run What-If scenario simulation
-    
-    Returns delta between original and simulated analytics.
-    CONSTRAINT: All simulations are ephemeral (RAM only) - never modify original data.
-    """
-    try:
-        logger.info(f"[SIMULATE] Run: {run_id} | Column: {request.target_column} | Factor: {request.modification_factor}")
-        
-        # Initialize simulation engine
-        engine = SimulationEngine(run_id)
-        
-        # Load original dataset
-        df_original = engine.load_dataset()
-        
-        # Apply modification (ephemeral copy)
-        df_simulated = engine.apply_modification(
-            df_original,
-            request.target_column,
-            request.modification_factor
-        )
-        
-        # Load original analytics
-        original_analytics = engine.load_original_analytics()
-        
-        # Re-run analytics on simulated data
-        analyzer = EnhancedAnalytics(df_simulated)
-        simulated_bi = analyzer.compute_business_intelligence()
-        
-        # Calculate delta
-        delta = engine.calculate_delta(
-            original_analytics.get('business_intelligence', {}),
-            simulated_bi
-        )
-        
-        logger.info(f"[SIMULATE] Success - Delta calculated")
-        
-        return JSONResponse(content={
-            "run_id": run_id,
-            "modification": {
-                "column": request.target_column,
-                "factor": request.modification_factor,
-                "description": f"{request.target_column} modified by {(request.modification_factor - 1) * 100:.1f}%"
-            },
-            "delta": delta
-        })
-        
-    except FileNotFoundError as e:
-        logger.error(f"[SIMULATE] File not found: {e}")
-        raise HTTPException(status_code=404, detail=str(e))
-    except ValueError as e:
-        logger.error(f"[SIMULATE] Invalid parameter: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        # IRON DOME: Log but don't crash
-        logger.error(f"[SIMULATE] Unexpected error: {e}", exc_info=True)
-        return JSONResponse(
-            status_code=200,
-            content={
-                "error": str(e),
-                "message": "Simulation failed. Please check parameters."
-            }
-        )
-
 # --- Legacy / Alias Routes to fix Frontend 404s ---
 
 @app.get("/run/{run_id}/governed_report", tags=["Report"])
@@ -2013,7 +1801,7 @@ async def create_action_outcome(outcome_data: Dict[str, Any]):
             )
         
         logger.info(f"[OUTCOME] Marked outcome as {status} for decision {decision_touch_id}")
-        return {"status": "recorded", "timestamp": datetime.utcnow().isoformat()}
+        return {"status": "recorded", "timestamp": datetime.now(timezone.utc).isoformat()}
     except HTTPException:
         raise
     except Exception as e:
@@ -2147,7 +1935,7 @@ async def generate_reflections(payload: Dict[str, str]):
             return {"status": "generated_but_not_emitted", "reason": emission_decision.reason_code}
         
         # Mark as SHOWN immediately (Backend emission = Shown)
-        new_reflection.shown_at = datetime.utcnow()
+        new_reflection.shown_at = datetime.now(timezone.utc)
         
         # Record emission in circuit breaker
         circuit_breaker.record_global_reflection_emission()
@@ -2277,7 +2065,6 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
     # Use direct module reference since we're running from project root
     uvicorn.run("backend.api.server:app", host="0.0.0.0", port=port, reload=False)
-
 
 
 
