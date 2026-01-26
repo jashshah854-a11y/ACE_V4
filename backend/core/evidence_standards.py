@@ -13,7 +13,7 @@ Phase: Operation Iron Heart
 """
 
 from typing import TypedDict, Literal, Optional, List, Union, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 
 
@@ -175,7 +175,7 @@ def create_evidence(
         evidence["source_notes"] = source_notes
     
     # Always add timestamp
-    evidence["timestamp"] = datetime.utcnow().isoformat() + "Z"
+    evidence["timestamp"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     
     obj: EvidenceObject = {
         "claim": claim.strip(),

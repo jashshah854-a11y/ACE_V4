@@ -1,0 +1,247 @@
+{
+  "dataset_info": {
+    "name": "perfect_leakage",
+    "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\trust_edge_cases\\perfect_leakage.csv",
+    "row_count": 200,
+    "column_count": 5,
+    "sample_rows": [
+      {
+        "user_id": 1,
+        "feature_a": 43.58454859797242,
+        "revenue": 97.16909719594484,
+        "leakage_feature": 87.16909719594484,
+        "target": 87.16909719594484
+      },
+      {
+        "user_id": 2,
+        "feature_a": 39.40512803497484,
+        "revenue": 88.81025606994967,
+        "leakage_feature": 78.81025606994967,
+        "target": 78.81025606994967
+      },
+      {
+        "user_id": 3,
+        "feature_a": 48.013107023238014,
+        "revenue": 106.02621404647604,
+        "leakage_feature": 96.02621404647604,
+        "target": 96.02621404647604
+      },
+      {
+        "user_id": 4,
+        "feature_a": 53.363561904524175,
+        "revenue": 116.72712380904836,
+        "leakage_feature": 106.72712380904836,
+        "target": 106.72712380904836
+      },
+      {
+        "user_id": 5,
+        "feature_a": 59.08837225991714,
+        "revenue": 128.1767445198343,
+        "leakage_feature": 118.17674451983429,
+        "target": 118.17674451983429
+      }
+    ]
+  },
+  "basic_types": {
+    "numeric": [
+      "user_id",
+      "feature_a",
+      "revenue",
+      "leakage_feature",
+      "target"
+    ],
+    "categorical": [],
+    "datetime": [],
+    "text": []
+  },
+  "stats": {
+    "user_id": {
+      "mean": 100.5,
+      "median": 100.5,
+      "std": 57.879184513951124,
+      "min": 1.0,
+      "max": 200.0,
+      "skew": 0.0,
+      "missing_rate": 0.0
+    },
+    "feature_a": {
+      "mean": 49.48055410596502,
+      "median": 49.17935353952862,
+      "std": 7.713378366282145,
+      "min": 30.88357320258689,
+      "max": 71.54042517909485,
+      "skew": 0.3451113700311657,
+      "missing_rate": 0.0
+    },
+    "revenue": {
+      "mean": 108.96110821193004,
+      "median": 108.35870707905724,
+      "std": 15.426756732564284,
+      "min": 71.76714640517379,
+      "max": 153.0808503581897,
+      "skew": 0.34511137003116577,
+      "missing_rate": 0.0
+    },
+    "leakage_feature": {
+      "mean": 98.96110821193004,
+      "median": 98.35870707905724,
+      "std": 15.426756732564291,
+      "min": 61.76714640517379,
+      "max": 143.0808503581897,
+      "skew": 0.3451113700311659,
+      "missing_rate": 0.0
+    },
+    "target": {
+      "mean": 98.96110821193004,
+      "median": 98.35870707905724,
+      "std": 15.426756732564291,
+      "min": 61.76714640517379,
+      "max": 143.0808503581897,
+      "skew": 0.3451113700311659,
+      "missing_rate": 0.0
+    }
+  },
+  "semantic_roles": {
+    "id_fields": [],
+    "time_fields": [],
+    "income_like": [
+      "revenue"
+    ],
+    "spend_like": [],
+    "risk_like": [],
+    "value_like": [],
+    "activity_like": [],
+    "frequency_like": [],
+    "volume_like": [],
+    "demographic_like": [],
+    "categorical_descriptors": []
+  },
+  "role_confidence": {
+    "income_like": 0.95,
+    "spend_like": 0.0,
+    "risk_like": 0.0,
+    "value_like": 0.0,
+    "activity_like": 0.0,
+    "frequency_like": 0.0,
+    "volume_like": 0.0,
+    "demographic_like": 0.0
+  },
+  "domain_guess": {
+    "domain": "finance",
+    "confidence": 0.8
+  },
+  "feature_quality_scores": {},
+  "relationships": {
+    "correlations": {
+      "user_id": {
+        "feature_a": 0.14502121662882073,
+        "revenue": 0.14502121662882067,
+        "leakage_feature": 0.1450212166288207,
+        "target": 0.1450212166288207
+      },
+      "feature_a": {
+        "user_id": 0.14502121662882073,
+        "revenue": 0.9999999999999999,
+        "leakage_feature": 1.0,
+        "target": 1.0
+      },
+      "revenue": {
+        "user_id": 0.14502121662882067,
+        "feature_a": 0.9999999999999999,
+        "leakage_feature": 1.0,
+        "target": 1.0
+      },
+      "leakage_feature": {
+        "user_id": 0.1450212166288207,
+        "feature_a": 1.0,
+        "revenue": 1.0,
+        "target": 1.0
+      },
+      "target": {
+        "user_id": 0.1450212166288207,
+        "feature_a": 1.0,
+        "revenue": 1.0,
+        "leakage_feature": 1.0
+      }
+    },
+    "strong_pairs": [
+      [
+        "feature_a",
+        "revenue"
+      ],
+      [
+        "feature_a",
+        "leakage_feature"
+      ],
+      [
+        "feature_a",
+        "target"
+      ],
+      [
+        "revenue",
+        "feature_a"
+      ],
+      [
+        "revenue",
+        "leakage_feature"
+      ],
+      [
+        "revenue",
+        "target"
+      ],
+      [
+        "leakage_feature",
+        "feature_a"
+      ],
+      [
+        "leakage_feature",
+        "revenue"
+      ],
+      [
+        "leakage_feature",
+        "target"
+      ],
+      [
+        "target",
+        "feature_a"
+      ],
+      [
+        "target",
+        "revenue"
+      ],
+      [
+        "target",
+        "leakage_feature"
+      ]
+    ]
+  },
+  "normalization_plan": {},
+  "feature_plan": {
+    "clustering_features": [
+      "feature_a",
+      "revenue"
+    ],
+    "persona_features": [
+      "feature_a",
+      "revenue"
+    ],
+    "risk_features": [
+      "leakage_feature"
+    ],
+    "value_features": [],
+    "anomaly_features": [
+      "user_id",
+      "feature_a",
+      "revenue",
+      "leakage_feature",
+      "target"
+    ]
+  },
+  "warnings": {
+    "missing_numeric": false,
+    "low_row_count": false,
+    "suspected_data_issues": [
+      "leakage_feature and target are highly correlated, be careful"
+    ]
+  }
+}

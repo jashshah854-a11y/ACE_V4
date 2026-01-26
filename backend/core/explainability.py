@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import dataclass, field, asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol, Sequence, Tuple, runtime_checkable
 
@@ -36,7 +36,7 @@ class EvidenceObject:
         self.validate()
         payload = asdict(self)
         payload["evidence_id"] = evidence_id or str(uuid.uuid4())[:8]
-        payload["timestamp"] = datetime.utcnow().isoformat()
+        payload["timestamp"] = datetime.now(timezone.utc).isoformat()
         return payload
 
 
@@ -93,7 +93,7 @@ def record_trace(operation: str, columns: Sequence[str], result: Optional[Dict[s
             "operation": operation,
             "columns": list(columns),
             "result": result or {},
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     )
 

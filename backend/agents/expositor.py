@@ -30,6 +30,10 @@ class Expositor:
         overseer = self.state.read("overseer_output") or {}
         sentry = self.state.read("anomalies") or {}
         regression = self.state.read("regression_insights") or {}
+        model_fit = self.state.read("model_fit_report") or {}
+        importance_report = self.state.read("importance_report") or {}
+        collinearity_report = self.state.read("collinearity_report") or {}
+        leakage_report = self.state.read("leakage_report") or {}
         personas_data = self.state.read("personas") or {}
         strategies_data = self.state.read("strategies") or {}
         data_type = self.state.read("data_type") or {}
@@ -144,7 +148,9 @@ class Expositor:
         scan_output = self.state.read("schema_scan_output") or {}
         quality_score = scan_output.get("quality_score")
         if quality_score is None:
-            raise RuntimeError("Quality score missing from schema_scan_output")
+            identity_card = self.state.read("dataset_identity_card") or {}
+            quality_score = identity_card.get("quality_score", 0.05)
+            log_warn("Quality score missing from schema_scan_output; using fallback.")
         
         # CRITICAL: Ensure JSON-safe numeric value (fix for "No number after minus sign" error)
         try:
@@ -160,8 +166,9 @@ class Expositor:
         lines.append("## Run Metadata")
         # CRITICAL FIX: Frontend expects JSON in this section, not Markdown
         import json
-        row_count = self.state.read("dataset_identity_card").get("row_count", 0)
-        col_count = self.state.read("dataset_identity_card").get("column_count", 0)
+        identity_card = self.state.read("dataset_identity_card") or {}
+        row_count = identity_card.get("row_count", 0)
+        col_count = identity_card.get("column_count", 0)
         
         # Downgrade confidence if validation blockers exist
         final_confidence = confidence_score if confidence_score is not None else 1.0
@@ -211,7 +218,7 @@ class Expositor:
         lines.append("## Data Type Identification")
         lines.append(
             f"- **Primary Type:** {data_type.get('primary_type', 'unknown')} "
-            f"(confidence: {data_type.get('confidence_label', 'unknown')})"
+            f"(signal: {data_type.get('confidence_label', 'unknown')})"
         )
         if data_type.get("secondary_types"):
             lines.append(f"- **Secondary Signals:** {', '.join(data_type['secondary_types'])}")
@@ -226,13 +233,13 @@ class Expositor:
         lines.append("")
 
         lines.append("## Executive Summary")
-        lines.append(self._summary(overseer, personas, sentry, regression, validation, data_type))
+        lines.append(self._summary(overseer, personas, sentry, regression, model_fit, validation, data_type))
         lines.append("")
 
         # Validation / guardrails
         lines.append("## Validation & Guardrails")
         lines.append(f"- **Mode:** {validation.get('mode', 'unknown')}")
-        lines.append(f"- **Validation Confidence:** {validation.get('confidence_label', 'unknown')}")
+        lines.append(f"- **Validation Status:** {validation.get('confidence_label', 'unknown')}")
         lines.append(f"- **Rows:** {validation.get('row_count', 'n/a')} | **Columns:** {validation.get('column_count', 'n/a')}")
         if blocked_agents:
             lines.append(f"- **Blocked Agents:** {', '.join(sorted(blocked_agents))}")
@@ -280,7 +287,8 @@ class Expositor:
             lines.append("")
 
         # Enhanced Analytics Sections
-        if should_emit_insights and enhanced_analytics and "overseer" not in blocked_agents:
+        diagnostics_only = validation_mode == "limitations" and enhanced_analytics
+        if (should_emit_insights or diagnostics_only) and enhanced_analytics:
             # Data Quality & Overview
             quality_metrics = enhanced_analytics.get("quality_metrics")
             if _artifact_ready(quality_metrics):
@@ -289,10 +297,16 @@ class Expositor:
             # Statistical Analysis
             correlation_analysis = enhanced_analytics.get("correlation_analysis")
             if _artifact_ready(correlation_analysis):
+                if diagnostics_only and not should_emit_insights:
+                    lines.append("Diagnostics-only: correlation analysis is exploratory and not decision-grade.")
+                    lines.append("")
                 lines.extend(self._correlation_section(correlation_analysis))
 
             distribution_analysis = enhanced_analytics.get("distribution_analysis")
             if _artifact_ready(distribution_analysis):
+                if diagnostics_only and not should_emit_insights:
+                    lines.append("Diagnostics-only: distribution signals are descriptive only.")
+                    lines.append("")
                 lines.extend(self._distribution_section(distribution_analysis))
 
         if not should_emit_insights:
@@ -307,7 +321,7 @@ class Expositor:
             lines.extend(self._clusters_section(overseer))
 
         if regression_status == "success" and regression:
-            lines.extend(self._regression_section(regression))
+            lines.extend(self._regression_section(regression, model_fit, importance_report, collinearity_report, leakage_report))
 
         # Business Intelligence
         business_intelligence = enhanced_analytics.get("business_intelligence") if enhanced_analytics else None
@@ -319,14 +333,13 @@ class Expositor:
             lines.extend(self._business_intelligence_section(business_intelligence))
 
         # Feature Importance
-        feature_importance = enhanced_analytics.get("feature_importance") if enhanced_analytics else None
         if (
             should_emit_insights
             and regression_status == "success"
-            and _artifact_ready(feature_importance)
+            and _artifact_ready(importance_report)
             and "regression" not in blocked_agents
         ):
-            lines.extend(self._feature_importance_section(feature_importance))
+            lines.extend(self._feature_importance_section(importance_report))
 
         if not should_emit_insights:
             lines.append("## Generated Personas & Strategies")
@@ -354,6 +367,7 @@ class Expositor:
         
         # Save Report
         report_path = self.state.get_file_path("final_report.pending.md")
+        final_report_path = self.state.get_file_path("final_report.md")
         
         # LOGGING: Explicitly log the target path
         log_info(f"Saving final report to: {report_path}")
@@ -370,6 +384,12 @@ class Expositor:
             raise e
             
         self.state.write("final_report_pending", report)
+        try:
+            with open(final_report_path, "w", encoding="utf-8") as f:
+                f.write(report)
+            self.state.write("final_report", report)
+        except Exception as e:
+            log_warn(f"Failed to write final_report.md: {e}")
         
         # Verify file existence
         if Path(report_path).exists():
@@ -380,13 +400,12 @@ class Expositor:
              
         return "expositor done"
 
-    def _summary(self, overseer, personas, sentry, regression, validation=None, data_type=None):
+    def _summary(self, overseer, personas, sentry, regression, model_fit, validation=None, data_type=None):
         parts = []
 
         if validation:
             mode = validation.get("mode", "limitations")
-            conf = validation.get("confidence_label", "exploratory")
-            parts.append(f"Validation mode: {mode} (confidence: {conf}).")
+            parts.append(f"Validation mode: {mode}.")
 
             if validation.get("blocked_agents"):
                 parts.append(
@@ -395,7 +414,7 @@ class Expositor:
                 )
 
         if data_type and data_type.get("primary_type"):
-            parts.append(f"Dataset type: {data_type.get('primary_type')} ({data_type.get('confidence_label', 'unknown')} confidence).")
+            parts.append(f"Dataset type inferred: {data_type.get('primary_type')}.")
 
         if overseer and "stats" in overseer and "overseer" not in validation.get("blocked_agents", []):
             k = overseer["stats"].get("k", 0)
@@ -408,13 +427,14 @@ class Expositor:
             parts.append(f"Sentry flagged {sentry['anomaly_count']} anomalous records for review.")
 
         if regression and regression.get("status") == "success":
-            metrics = regression.get("metrics", {})
-            r2 = metrics.get("r2")
-            target = regression.get("target_column", "the outcome")
-            if r2 is not None:
-                parts.append(f"Regression modeled `{target}` with R² {r2:.2f}.")
+            metrics = model_fit.get("metrics", {}) if isinstance(model_fit, dict) else {}
+            target = model_fit.get("target_column") or regression.get("target_column", "the outcome")
+            if "r2" in metrics:
+                parts.append(f"Outcome model evaluated on holdout (R2 {metrics.get('r2'):.2f}).")
+            elif "accuracy" in metrics:
+                parts.append(f"Outcome model evaluated on holdout (accuracy {metrics.get('accuracy'):.2f}).")
             else:
-                parts.append(f"Regression produced signal for `{target}`.")
+                parts.append(f"Outcome model produced a measured fit for `{target}`.")
 
         if not parts:
             return "The engine completed with limited data and is reporting limitations only."
@@ -433,47 +453,73 @@ class Expositor:
         lines.append(f"| Data Quality | {stats.get('data_quality', 'N/A')} |")
         lines.append("")
         return lines
-
-    def _regression_section(self, regression):
+    
+    def _regression_section(self, regression, model_fit, importance_report, collinearity_report, leakage_report):
         lines = []
         lines.append("## Outcome Modeling")
         status = regression.get("status")
         if status != "success":
-            reason = regression.get("reason", "Regression modeling was skipped.")
-            lines.append(f"Regression modeling skipped: {reason}.")
+            reason = regression.get("reason", "Outcome modeling was skipped.")
+            lines.append(f"Outcome modeling skipped: {reason}.")
             lines.append("")
             return lines
 
-        target = regression.get("target_column", "value metric")
-        metrics = regression.get("metrics", {})
+        target = (model_fit or {}).get("target_column") or regression.get("target_column", "value metric")
+        metrics = (model_fit or {}).get("metrics", {})
+        baseline = (model_fit or {}).get("baseline_metrics", {})
+        split = (model_fit or {}).get("dataset_split", {})
         detail_bits = []
-        r2 = metrics.get("r2")
-        if r2 is not None:
-            detail_bits.append(f"R² {r2:.2f}")
-        rmse = metrics.get("rmse")
-        if rmse is not None:
-            detail_bits.append(f"RMSE {rmse:.2f}")
-        mae = metrics.get("mae")
-        if mae is not None:
-            detail_bits.append(f"MAE {mae:.2f}")
+
+        if "r2" in metrics and metrics.get("r2") is not None:
+            detail_bits.append(f"Holdout R2 {metrics.get('r2'):.2f}")
+        if "accuracy" in metrics and metrics.get("accuracy") is not None:
+            detail_bits.append(f"Holdout accuracy {metrics.get('accuracy'):.2f}")
+        if "rmse" in metrics and baseline.get("rmse") is not None:
+            detail_bits.append(f"RMSE {metrics.get('rmse'):.2f} vs baseline {baseline.get('rmse'):.2f}")
+        if "mae" in metrics and baseline.get("mae") is not None:
+            detail_bits.append(f"MAE {metrics.get('mae'):.2f} vs baseline {baseline.get('mae'):.2f}")
+        if "accuracy" in metrics and baseline.get("accuracy") is not None:
+            detail_bits.append(f"Baseline accuracy {baseline.get('accuracy'):.2f}")
 
         summary = f"- **Target:** `{target}`"
         if detail_bits:
             summary += " (" + ", ".join(detail_bits) + ")"
         lines.append(summary)
 
-        if regression.get("narrative"):
-            lines.append(f"- **Insight:** {regression['narrative']}")
+        if split:
+            lines.append(f"- **Split:** {split.get('train_rows', 'n/a')} train / {split.get('test_rows', 'n/a')} test")
 
-        drivers = regression.get("drivers") or []
+        if regression.get("narrative"):
+            lines.append(f"- **Interpretation:** {regression['narrative']}")
+
+        if collinearity_report and isinstance(collinearity_report, dict):
+            max_vif = collinearity_report.get("max_vif")
+            if isinstance(max_vif, (int, float)) and max_vif >= 10:
+                lines.append(f"- **Collinearity:** max VIF {max_vif:.1f} (coefficients downgraded).")
+
+        if leakage_report and isinstance(leakage_report, dict):
+            target_pairs = leakage_report.get("flagged_target_pairs") or []
+            if target_pairs:
+                lines.append("- **Leakage risk:** Near-perfect target correlations detected; predictive claims suppressed.")
+
+        method = (importance_report or {}).get("method") if isinstance(importance_report, dict) else None
+        if method:
+            lines.append(f"- **Driver method:** {method.replace('_', ' ').title()}")
+
+        drivers = (importance_report or {}).get("features") if isinstance(importance_report, dict) else None
         if drivers:
             lines.append("")
             lines.append("Top predictive drivers:")
             for driver in drivers[:5]:
                 feat = driver.get("feature", "feature")
                 imp = driver.get("importance")
+                ci_low = driver.get("ci_low")
+                ci_high = driver.get("ci_high")
                 if imp is not None:
-                    lines.append(f"- {feat}: importance {imp:.2f}")
+                    if ci_low is not None and ci_high is not None:
+                        lines.append(f"- {feat}: {imp:.1f} (95% CI {ci_low:.1f}-{ci_high:.1f})")
+                    else:
+                        lines.append(f"- {feat}: {imp:.1f}")
                 else:
                     lines.append(f"- {feat}")
 
@@ -483,23 +529,23 @@ class Expositor:
     def _personas_section(self, personas, strategies):
         lines = []
         lines.append("## Generated Personas & Strategies")
-        
+
         # Map strategies to personas
         strat_map = {s.get("persona_id"): s for s in strategies}
-        
+
         for p in personas:
             name = p.get("name", "Unknown")
             label = p.get("label", "")
             size = p.get("persona_size") or p.get("size", 0)
             pid = p.get("cluster_id")
-            
+
             lines.append(f"### {name} ({label})")
             lines.append(f"- **Size:** {size}")
             if "summary" in p:
                 lines.append(f"- **Summary:** {p['summary']}")
             if "motivation" in p:
                 lines.append(f"- **Motivation:** {p['motivation']}")
-            
+
             # Strategy Alignment
             strat = strat_map.get(pid)
             if strat:
@@ -507,7 +553,7 @@ class Expositor:
                 lines.append(f"**Strategic Approach:** {strat.get('headline', 'N/A')}")
                 for tactic in strat.get("tactics", []):
                     lines.append(f"- {tactic}")
-            
+
             lines.append("")
         return lines
 
@@ -516,7 +562,7 @@ class Expositor:
         lines.append("## Anomaly Detection")
         count = sentry.get("anomaly_count", 0)
         lines.append(f"**Total Anomalies Detected:** {count}")
-        
+
         if count > 0:
             lines.append("Top anomalies have been flagged in the system for review.")
             drivers = sentry.get("drivers", {})
@@ -524,7 +570,7 @@ class Expositor:
                 lines.append("")
                 lines.append("**Key Anomaly Drivers:**")
                 for col, score in list(drivers.items())[:5]:
-                     lines.append(f"- {col}: {score:.2f}")
+                    lines.append(f"- {col}: {score:.2f}")
 
         lines.append("")
         return lines
@@ -703,34 +749,36 @@ class Expositor:
         lines.append("## Predictive Feature Importance")
         lines.append("")
 
-        target = fi.get("target", "outcome")
-        task_type = fi.get("task_type", "regression")
-        cv_score = fi.get("cv_score_mean", 0)
+        target = fi.get("target_column", "outcome")
+        method = fi.get("method", "unknown method")
+        scoring = fi.get("scoring", "")
+        split = fi.get("dataset_split", {})
 
-        lines.append(f"**Target Variable:** `{target}` ({task_type})")
-        lines.append(f"**Model Performance (CV Score):** {cv_score:.3f}")
+        lines.append(f"**Target Variable:** `{target}`")
+        lines.append(f"**Method:** {method.replace('_', ' ').title()}")
+        if scoring:
+            lines.append(f"**Scoring:** {scoring}")
+        if split:
+            lines.append(f"**Holdout Split:** {split.get('train_rows', 'n/a')} train / {split.get('test_rows', 'n/a')} test")
         lines.append("")
 
-        feature_importance = fi.get("feature_importance", [])
+        feature_importance = fi.get("features", [])
         if feature_importance:
             lines.append("### Top Predictive Features")
             lines.append("")
-            lines.append("| Rank | Feature | Importance |")
-            lines.append("| :--- | :--- | :--- |")
+            lines.append("| Rank | Feature | Importance (0-100) | 95% CI |")
+            lines.append("| :--- | :--- | :--- | :--- |")
 
-            for feat in feature_importance[:10]:
-                rank = feat.get("rank", 0)
+            for rank, feat in enumerate(feature_importance[:10], start=1):
                 feature = feat.get("feature", "")
                 importance = feat.get("importance", 0)
-                lines.append(f"| {rank} | {feature} | {importance:.3f} |")
+                ci_low = feat.get("ci_low")
+                ci_high = feat.get("ci_high")
+                ci_display = "n/a"
+                if ci_low is not None and ci_high is not None:
+                    ci_display = f"{ci_low:.1f}-{ci_high:.1f}"
+                lines.append(f"| {rank} | {feature} | {importance:.1f} | {ci_display} |")
 
-            lines.append("")
-
-        insights = fi.get("insights", [])
-        if insights:
-            lines.append("**Predictive Insights:**")
-            for insight in insights:
-                lines.append(f"- {insight}")
             lines.append("")
 
         return lines

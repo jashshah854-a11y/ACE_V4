@@ -1,0 +1,214 @@
+[
+  {
+    "label": "cold_start",
+    "dataset": "C:\\Users\\jashs\\Downloads\\DOHMH_New_York_City_Restaurant_Inspection_Results_20251114.csv",
+    "run_id": "a841ccbc",
+    "run_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\backend\\data\\runs\\a841ccbc",
+    "status": "unknown",
+    "regression_status": "not_started",
+    "trust_overall": 35.0,
+    "warning_count": 1,
+    "warnings": [
+      {
+        "warning_code": "DATA_LEAKAGE_POSSIBLE",
+        "severity": "warning",
+        "message": "Likely data leakage detected: Latitude and Longitude are perfectly correlated.",
+        "related_step": null,
+        "blocking": false
+      }
+    ],
+    "render_policy": {
+      "allow_report": true,
+      "allow_regression_sections": false,
+      "allow_forecasting": false,
+      "allow_simulation": false,
+      "allow_trust_summary": true,
+      "allow_personas": false,
+      "allow_strategies": false,
+      "allow_anomalies": false,
+      "allow_correlation_analysis": true,
+      "allow_distribution_analysis": true,
+      "allow_quality_metrics": true,
+      "allow_business_intelligence": false,
+      "allow_feature_importance": false
+    },
+    "steps": {
+      "ingestion": "success",
+      "type_identifier": "success",
+      "validator": "success",
+      "scanner": "success",
+      "interpreter": "success",
+      "overseer": "not_started",
+      "regression": "not_started",
+      "sentry": "not_started",
+      "personas": "not_started",
+      "fabricator": "not_started",
+      "expositor": "success",
+      "trust_evaluation": "success",
+      "correlation_analysis": "success",
+      "distribution_analysis": "success",
+      "quality_metrics": "success",
+      "business_intelligence": "skipped",
+      "feature_importance": "skipped"
+    }
+  },
+  {
+    "label": "small_data",
+    "dataset": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\truth_test\\small_dataset.csv",
+    "run_id": "91beb9ea",
+    "run_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\backend\\data\\runs\\91beb9ea",
+    "status": "unknown",
+    "regression_status": "not_started",
+    "trust_overall": 18.3,
+    "warning_count": 1,
+    "warnings": [
+      {
+        "warning_code": "DATA_LEAKAGE_POSSIBLE",
+        "severity": "warning",
+        "message": "Likely data leakage detected: Community Board and BIN are perfectly correlated.",
+        "related_step": null,
+        "blocking": false
+      }
+    ],
+    "render_policy": {
+      "allow_report": true,
+      "allow_regression_sections": false,
+      "allow_forecasting": false,
+      "allow_simulation": false,
+      "allow_trust_summary": true,
+      "allow_personas": false,
+      "allow_strategies": false,
+      "allow_anomalies": false,
+      "allow_correlation_analysis": true,
+      "allow_distribution_analysis": true,
+      "allow_quality_metrics": true,
+      "allow_business_intelligence": false,
+      "allow_feature_importance": false
+    },
+    "steps": {
+      "ingestion": "success",
+      "type_identifier": "success",
+      "validator": "success",
+      "scanner": "success",
+      "interpreter": "success",
+      "overseer": "not_started",
+      "regression": "not_started",
+      "sentry": "not_started",
+      "personas": "not_started",
+      "fabricator": "not_started",
+      "expositor": "success",
+      "trust_evaluation": "success",
+      "correlation_analysis": "success",
+      "distribution_analysis": "success",
+      "quality_metrics": "success",
+      "business_intelligence": "skipped",
+      "feature_importance": "skipped"
+    }
+  },
+  {
+    "label": "noisy_data",
+    "dataset": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\truth_test\\noisy_dataset.csv",
+    "run_id": "9a412db1",
+    "run_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\backend\\data\\runs\\9a412db1",
+    "status": "unknown",
+    "regression_status": "not_started",
+    "trust_overall": 11.6,
+    "warning_count": 1,
+    "warnings": [
+      {
+        "warning_code": "DATA_LEAKAGE_POSSIBLE",
+        "severity": "warning",
+        "message": "Likely data leakage detected: Latitude and Longitude are perfectly correlated.",
+        "related_step": null,
+        "blocking": false
+      }
+    ],
+    "render_policy": {
+      "allow_report": true,
+      "allow_regression_sections": false,
+      "allow_forecasting": false,
+      "allow_simulation": false,
+      "allow_trust_summary": true,
+      "allow_personas": false,
+      "allow_strategies": false,
+      "allow_anomalies": false,
+      "allow_correlation_analysis": true,
+      "allow_distribution_analysis": true,
+      "allow_quality_metrics": true,
+      "allow_business_intelligence": false,
+      "allow_feature_importance": false
+    },
+    "steps": {
+      "ingestion": "success",
+      "type_identifier": "success",
+      "validator": "success",
+      "scanner": "success",
+      "interpreter": "success",
+      "overseer": "not_started",
+      "regression": "not_started",
+      "sentry": "not_started",
+      "personas": "not_started",
+      "fabricator": "not_started",
+      "expositor": "success",
+      "trust_evaluation": "success",
+      "correlation_analysis": "success",
+      "distribution_analysis": "success",
+      "quality_metrics": "success",
+      "business_intelligence": "skipped",
+      "feature_importance": "skipped"
+    }
+  },
+  {
+    "label": "leakage_data",
+    "dataset": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\truth_test\\leakage_dataset.csv",
+    "run_id": "11e7ed86",
+    "run_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\backend\\data\\runs\\11e7ed86",
+    "status": "unknown",
+    "regression_status": "not_started",
+    "trust_overall": 28.7,
+    "warning_count": 1,
+    "warnings": [
+      {
+        "warning_code": "DATA_LEAKAGE_POSSIBLE",
+        "severity": "warning",
+        "message": "Likely data leakage detected: Latitude and Longitude are perfectly correlated.",
+        "related_step": null,
+        "blocking": false
+      }
+    ],
+    "render_policy": {
+      "allow_report": true,
+      "allow_regression_sections": false,
+      "allow_forecasting": false,
+      "allow_simulation": false,
+      "allow_trust_summary": true,
+      "allow_personas": false,
+      "allow_strategies": false,
+      "allow_anomalies": false,
+      "allow_correlation_analysis": true,
+      "allow_distribution_analysis": true,
+      "allow_quality_metrics": true,
+      "allow_business_intelligence": false,
+      "allow_feature_importance": false
+    },
+    "steps": {
+      "ingestion": "success",
+      "type_identifier": "success",
+      "validator": "success",
+      "scanner": "success",
+      "interpreter": "success",
+      "overseer": "not_started",
+      "regression": "not_started",
+      "sentry": "not_started",
+      "personas": "not_started",
+      "fabricator": "not_started",
+      "expositor": "success",
+      "trust_evaluation": "success",
+      "correlation_analysis": "success",
+      "distribution_analysis": "success",
+      "quality_metrics": "success",
+      "business_intelligence": "skipped",
+      "feature_importance": "skipped"
+    }
+  }
+]

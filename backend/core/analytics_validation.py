@@ -162,6 +162,189 @@ def validate_feature_importance(payload: Dict[str, Any]) -> ValidationResult:
     return {"valid": not errors, "errors": errors, "warnings": warnings}
 
 
+def validate_data_profile(payload: Dict[str, Any]) -> ValidationResult:
+    errors: list = []
+    warnings: list = []
+    if not isinstance(payload, dict):
+        return {"valid": False, "errors": [{"type": "ARTIFACT_INVALID", "metric": "data_profile"}], "warnings": []}
+    for key in ("row_count", "column_count", "columns", "column_types"):
+        if key not in payload:
+            errors.append({"type": "MISSING_FIELD", "metric": key})
+    row_count = payload.get("row_count")
+    col_count = payload.get("column_count")
+    if not isinstance(row_count, int):
+        errors.append({"type": "INVALID_FIELD", "metric": "row_count", "value": row_count})
+    if not isinstance(col_count, int):
+        errors.append({"type": "INVALID_FIELD", "metric": "column_count", "value": col_count})
+    return {"valid": not errors, "errors": errors, "warnings": warnings}
+
+
+def validate_dataset_classification(payload: Dict[str, Any]) -> ValidationResult:
+    errors: list = []
+    warnings: list = []
+    if not isinstance(payload, dict):
+        return {"valid": False, "errors": [{"type": "ARTIFACT_INVALID", "metric": "dataset_classification"}], "warnings": []}
+    for key in ("domain_tags", "temporal_structure", "observation_unit", "target_presence"):
+        if key not in payload:
+            errors.append({"type": "MISSING_FIELD", "metric": key})
+    temporal = payload.get("temporal_structure") or {}
+    if isinstance(temporal, dict):
+        conf = temporal.get("confidence")
+        if conf is not None and not (0 <= float(conf) <= 1):
+            errors.append({"type": "METRIC_OUT_OF_BOUNDS", "metric": "temporal_confidence", "value": conf})
+    return {"valid": not errors, "errors": errors, "warnings": warnings}
+
+
+def validate_feature_governance_report(payload: Dict[str, Any]) -> ValidationResult:
+    errors: List[Dict[str, Any]] = []
+    warnings: List[Dict[str, Any]] = []
+
+    included = payload.get("included_features")
+    excluded = payload.get("excluded_features")
+    if not isinstance(included, list):
+        _add_error(errors, "ARTIFACT_INVALID", "included_features", included, "list", "included_features")
+    if not isinstance(excluded, list):
+        _add_error(errors, "ARTIFACT_INVALID", "excluded_features", excluded, "list", "excluded_features")
+    return {"valid": not errors, "errors": errors, "warnings": warnings}
+
+
+def validate_baseline_metrics(payload: Dict[str, Any]) -> ValidationResult:
+    errors: List[Dict[str, Any]] = []
+    warnings: List[Dict[str, Any]] = []
+
+    for metric, value in payload.items():
+        if metric in {"status", "valid", "errors", "warnings"}:
+            continue
+        if value is None:
+            continue
+        if not _is_number(value):
+            _add_error(errors, "METRIC_NOT_NUMERIC", metric, value, "numeric", metric)
+    return {"valid": not errors, "errors": errors, "warnings": warnings}
+
+
+def validate_model_fit_report(payload: Dict[str, Any]) -> ValidationResult:
+    errors: List[Dict[str, Any]] = []
+    warnings: List[Dict[str, Any]] = []
+
+    metrics = payload.get("metrics")
+    baseline = payload.get("baseline_metrics")
+    if not isinstance(metrics, dict):
+        _add_error(errors, "ARTIFACT_INVALID", "metrics", metrics, "dict", "metrics")
+    if not isinstance(baseline, dict):
+        _add_error(errors, "ARTIFACT_INVALID", "baseline_metrics", baseline, "dict", "baseline_metrics")
+    if isinstance(metrics, dict):
+        _validate_range(errors, "r_squared", metrics.get("r2"), 0.0, 1.0, "metrics.r2")
+        if _is_number(metrics.get("r2")) and float(metrics.get("r2")) >= 0.9:
+            _add_warning(warnings, "OVERFIT_RISK", "r_squared", metrics.get("r2"), "metrics.r2", "High R-squared may indicate overfitting.")
+    return {"valid": not errors, "errors": errors, "warnings": _dedupe_warnings(warnings)}
+
+
+def validate_collinearity_report(payload: Dict[str, Any]) -> ValidationResult:
+    errors: List[Dict[str, Any]] = []
+    warnings: List[Dict[str, Any]] = []
+
+    vif_by_feature = payload.get("vif_by_feature")
+    max_vif = payload.get("max_vif")
+    if vif_by_feature is not None and not isinstance(vif_by_feature, dict):
+        _add_error(errors, "ARTIFACT_INVALID", "vif_by_feature", vif_by_feature, "dict", "vif_by_feature")
+    if max_vif is not None:
+        if isinstance(max_vif, bool) or not isinstance(max_vif, (int, float)) or math.isnan(float(max_vif)):
+            _add_error(errors, "METRIC_NOT_NUMERIC", "max_vif", max_vif, "numeric", "max_vif")
+        else:
+            max_vif_value = float(max_vif)
+            if math.isinf(max_vif_value):
+                _add_warning(
+                    warnings,
+                    "CRITICAL_MULTICOLLINEARITY",
+                    "max_vif",
+                    max_vif,
+                    "max_vif",
+                    "VIF infinite indicates perfect multicollinearity.",
+                )
+            else:
+                if max_vif_value >= 10:
+                    _add_warning(warnings, "HIGH_MULTICOLLINEARITY", "max_vif", max_vif, "max_vif", "VIF >= 10 indicates multicollinearity.")
+                if max_vif_value >= 20:
+                    _add_warning(warnings, "CRITICAL_MULTICOLLINEARITY", "max_vif", max_vif, "max_vif", "VIF >= 20 indicates severe multicollinearity.")
+    return {"valid": not errors, "errors": errors, "warnings": _dedupe_warnings(warnings)}
+
+
+def validate_leakage_report(payload: Dict[str, Any]) -> ValidationResult:
+    errors: List[Dict[str, Any]] = []
+    warnings: List[Dict[str, Any]] = []
+
+    pairs = payload.get("flagged_pairs")
+    target_pairs = payload.get("flagged_target_pairs")
+    if pairs is not None and not isinstance(pairs, list):
+        _add_error(errors, "ARTIFACT_INVALID", "flagged_pairs", pairs, "list", "flagged_pairs")
+    if target_pairs is not None and not isinstance(target_pairs, list):
+        _add_error(errors, "ARTIFACT_INVALID", "flagged_target_pairs", target_pairs, "list", "flagged_target_pairs")
+    if isinstance(target_pairs, list) and target_pairs:
+        _add_warning(warnings, "DATA_LEAKAGE_POSSIBLE", "target_leakage", len(target_pairs), "flagged_target_pairs", "Target leakage candidates detected.")
+    return {"valid": not errors, "errors": errors, "warnings": _dedupe_warnings(warnings)}
+
+
+def validate_importance_report(payload: Dict[str, Any]) -> ValidationResult:
+    errors: List[Dict[str, Any]] = []
+    warnings: List[Dict[str, Any]] = []
+
+    features = payload.get("features")
+    if not isinstance(features, list):
+        _add_error(errors, "ARTIFACT_INVALID", "features", features, "list", "features")
+        return {"valid": False, "errors": errors, "warnings": warnings}
+    for idx, entry in enumerate(features):
+        if not isinstance(entry, dict):
+            _add_error(errors, "ARTIFACT_INVALID", "features", entry, "dict", f"features[{idx}]")
+            continue
+        _validate_range(errors, "importance", entry.get("importance"), 0.0, 100.0, f"features[{idx}].importance")
+        ci_low = entry.get("ci_low")
+        ci_high = entry.get("ci_high")
+        if _is_number(ci_low) and _is_number(ci_high) and float(ci_low) > float(ci_high):
+            _add_error(errors, "METRIC_OUT_OF_BOUNDS", "importance_ci", (ci_low, ci_high), "ci_low <= ci_high", f"features[{idx}]")
+    return {"valid": not errors, "errors": errors, "warnings": warnings}
+
+
+def validate_regression_coefficients_report(payload: Dict[str, Any]) -> ValidationResult:
+    errors: List[Dict[str, Any]] = []
+    warnings: List[Dict[str, Any]] = []
+
+    features = payload.get("features")
+    if not isinstance(features, list):
+        _add_error(errors, "ARTIFACT_INVALID", "features", features, "list", "features")
+        return {"valid": False, "errors": errors, "warnings": warnings}
+    for idx, entry in enumerate(features):
+        if not isinstance(entry, dict):
+            _add_error(errors, "ARTIFACT_INVALID", "features", entry, "dict", f"features[{idx}]")
+            continue
+        for field in ("beta", "standard_error", "p_value", "ci_low", "ci_high"):
+            if entry.get(field) is None:
+                _add_error(errors, "METRIC_NOT_NUMERIC", field, entry.get(field), "numeric", f"features[{idx}].{field}")
+            elif not _is_number(entry.get(field)):
+                _add_error(errors, "METRIC_NOT_NUMERIC", field, entry.get(field), "numeric", f"features[{idx}].{field}")
+    return {"valid": not errors, "errors": errors, "warnings": warnings}
+
+
+def validate_correlation_ci(payload: Dict[str, Any]) -> ValidationResult:
+    errors: List[Dict[str, Any]] = []
+    warnings: List[Dict[str, Any]] = []
+
+    pairs = payload.get("pairs")
+    if not isinstance(pairs, list):
+        _add_error(errors, "ARTIFACT_INVALID", "pairs", pairs, "list", "pairs")
+        return {"valid": False, "errors": errors, "warnings": warnings}
+    for idx, entry in enumerate(pairs):
+        if not isinstance(entry, dict):
+            _add_error(errors, "ARTIFACT_INVALID", "pair", entry, "dict", f"pairs[{idx}]")
+            continue
+        _validate_range(errors, "pearson", entry.get("pearson"), -1.0, 1.0, f"pairs[{idx}].pearson")
+        _validate_range(errors, "ci_low", entry.get("ci_low"), -1.0, 1.0, f"pairs[{idx}].ci_low")
+        _validate_range(errors, "ci_high", entry.get("ci_high"), -1.0, 1.0, f"pairs[{idx}].ci_high")
+        n = entry.get("n")
+        if n is not None and (not isinstance(n, int) or n < 3):
+            _add_error(errors, "METRIC_OUT_OF_BOUNDS", "n", n, ">=3", f"pairs[{idx}].n")
+    return {"valid": not errors, "errors": errors, "warnings": warnings}
+
+
 def _validate_confidence_field(payload: Dict[str, Any], field: str, errors: List[Dict[str, Any]]) -> None:
     value = payload.get(field)
     meaning = payload.get("confidence_meaning")
@@ -212,6 +395,7 @@ def validate_enhanced_analytics(payload: Dict[str, Any]) -> ValidationResult:
 
     for section_name in (
         "correlation_analysis",
+        "correlation_ci",
         "distribution_analysis",
         "quality_metrics",
         "business_intelligence",
@@ -240,6 +424,30 @@ def validate_artifact(name: str, payload: Dict[str, Any]) -> ValidationResult:
         return validate_correlation_analysis(payload)
     if name == "feature_importance":
         return validate_feature_importance(payload)
+    if name == "data_profile":
+        return validate_data_profile(payload)
+    if name == "dataset_classification":
+        return validate_dataset_classification(payload)
+    if name == "run_health_summary":
+        if not isinstance(payload, dict):
+            return {"valid": False, "errors": [{"type": "ARTIFACT_INVALID", "metric": "run_health_summary"}], "warnings": []}
+        return {"valid": True, "errors": [], "warnings": []}
+    if name == "feature_governance_report":
+        return validate_feature_governance_report(payload)
+    if name == "baseline_metrics":
+        return validate_baseline_metrics(payload)
+    if name == "model_fit_report":
+        return validate_model_fit_report(payload)
+    if name == "collinearity_report":
+        return validate_collinearity_report(payload)
+    if name == "leakage_report":
+        return validate_leakage_report(payload)
+    if name == "importance_report":
+        return validate_importance_report(payload)
+    if name == "regression_coefficients_report":
+        return validate_regression_coefficients_report(payload)
+    if name == "correlation_ci":
+        return validate_correlation_ci(payload)
     return {"valid": True, "errors": [], "warnings": []}
 
 

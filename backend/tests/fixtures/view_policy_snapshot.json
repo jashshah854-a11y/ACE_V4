@@ -1,0 +1,32 @@
+{
+  "executive": {
+    "allowed_sections": [
+      "governing_thought",
+      "key_metrics",
+      "supporting_evidence",
+      "action_items",
+      "trust_summary"
+    ],
+    "default_collapsed_sections": []
+  },
+  "analyst": {
+    "allowed_sections": [
+      "governing_thought",
+      "key_metrics",
+      "supporting_evidence",
+      "action_items",
+      "trust_summary"
+    ],
+    "default_collapsed_sections": []
+  },
+  "expert": {
+    "allowed_sections": [
+      "governing_thought",
+      "key_metrics",
+      "supporting_evidence",
+      "action_items",
+      "trust_summary"
+    ],
+    "default_collapsed_sections": []
+  }
+}

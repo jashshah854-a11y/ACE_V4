@@ -12,7 +12,7 @@ Every endpoint and pipeline job must call this guard.
 """
 
 from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 from enum import Enum
 import logging
@@ -201,7 +201,7 @@ class SafetyGuard:
     def _log_blocked_action(self, action: str, user_id: str, reason: BlockReasonCode, metadata: Dict = None):
         """Log blocked action with full context."""
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "action": action,
             "user_id": user_id,
             "reason": reason.value,

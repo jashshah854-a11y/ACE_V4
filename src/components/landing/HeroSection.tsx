@@ -43,7 +43,7 @@ export function HeroSection() {
                 >
                     <Sparkles className="w-4 h-4 text-[#2DD4BF]" />
                     <span className="text-sm font-mono text-[#E2E4E9]/80">
-                        Decision-Grade Intelligence
+                        Evidence-led analysis
                     </span>
                 </motion.div>
 
@@ -57,7 +57,7 @@ export function HeroSection() {
                 >
                     Turn raw data into{' '}
                     <span className="bg-gradient-to-r from-[#2DD4BF] to-[#3B82F6] bg-clip-text text-transparent">
-                        decision grade intelligence
+                        evidence-led decisions
                     </span>
                 </motion.h1>
 
@@ -69,7 +69,7 @@ export function HeroSection() {
                     className="text-xl md:text-2xl text-[#E2E4E9]/70 mb-12 max-w-3xl mx-auto"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                 >
-                    Your data is chaotic. ACE brings order.
+                    Your data is messy. ACE makes it legible.
                 </motion.p>
 
                 {/* CTA Button */}
@@ -94,7 +94,7 @@ export function HeroSection() {
                     transition={{ duration: 1, delay: 0.8 }}
                     className="mt-8 text-sm font-mono text-[#E2E4E9]/50"
                 >
-                    No guessing. No hallucinations. Only evidence.
+                    Evidence-first. Uncertainty visible. No bluffing.
                 </motion.p>
             </div>
 

@@ -59,10 +59,15 @@ function loadFixtureData(fixture: TuringFixture): LoadedFixture {
   };
 }
 
+const shouldLogGovernance = process.env.VITEST_LOG_GOVERNANCE === "1";
+
 function logGovernanceTrace(
   fixture: TuringFixture,
   loaded: LoadedFixture,
 ) {
+  if (!shouldLogGovernance) {
+    return;
+  }
   const { identityCard, confidenceReport, contract, report } = loaded;
   const locks = JSON.stringify(report.scopeLocks ?? []);
   const evidenceIds = collectEvidenceIds(report.enhancedAnalytics).join(", ") || "none";
@@ -98,7 +103,9 @@ describe("Turing harness", () => {
       if (fixture.refusalQuestion) {
         it("refuses forbidden questions", () => {
           const response = shouldRefuseQuestion(fixture.refusalQuestion!, report);
-          console.info(`[GovernanceTrace] refusal reason=${response.reason}`);
+          if (shouldLogGovernance) {
+            console.info(`[GovernanceTrace] refusal reason=${response.reason}`);
+          }
           expect(response.refuse).toBe(true);
           expect(response.reason).toBeTruthy();
         });

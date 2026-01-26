@@ -5,7 +5,7 @@ Prevents runaway growth and emission.
 Tracks counts and enforces caps to maintain system health.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 from dataclasses import dataclass
 import logging
@@ -29,7 +29,7 @@ class CircuitState:
         if self.per_user_candidate_count is None:
             self.per_user_candidate_count = {}
         if self.last_reset_at is None:
-            self.last_reset_at = datetime.utcnow()
+            self.last_reset_at = datetime.now(timezone.utc)
 
 
 class CircuitBreaker:
@@ -91,7 +91,7 @@ class CircuitBreaker:
     
     def _check_reset(self):
         """Reset counters if window has elapsed."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if now - self.state.last_reset_at >= self.reset_window:
             logger.info(f"[CIRCUIT] Resetting counters (window elapsed)")
             self.state.global_reflection_count = 0

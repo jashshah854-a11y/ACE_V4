@@ -9,7 +9,7 @@ Production: Database table or platform logs (documented path)
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, asdict
@@ -81,7 +81,7 @@ class AuditLogger:
     
     def _get_current_log_file(self) -> Path:
         """Get log file path for current date."""
-        date_str = datetime.utcnow().strftime("%Y-%m-%d")
+        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         return self.log_dir / f"safety_audit_{date_str}.jsonl"
     
     def sanitize_context(self, context: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -142,7 +142,7 @@ class AuditLogger:
         safe_context = self.sanitize_context(context)
         
         event = AuditEvent(
-            timestamp=datetime.utcnow().isoformat() + 'Z',
+            timestamp=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
             action_type=action_type,
             allowed=allowed,
             reason_code=reason_code,
@@ -340,10 +340,10 @@ class AuditLogger:
             Path to exported file
         """
         if output_path is None:
-            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
             output_path = self.log_dir / f"emergency_export_{timestamp}.jsonl"
         
-        start_time = datetime.utcnow() - (24 * 3600)  # 24 hours ago (in seconds)
+        start_time = datetime.now(timezone.utc) - (24 * 3600)  # 24 hours ago (in seconds)
         
         events = self.query_audit_logs(start_date=start_time, limit=100000)
         

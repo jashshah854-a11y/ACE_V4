@@ -9,6 +9,10 @@ from core.insights import validate_insights, load_insights
 from core.state_manager import StateManager
 from core.sentry import EvidenceSentry
 from core.analysis_intent import classify_analysis_intent
+from core.dataset_classification import classify_dataset_profile
+from core.analysis_routing import derive_routing
+from core.view_policies import build_view_policies
+from core.run_manifest import update_analysis_routing, update_view_policies, update_render_policy, read_manifest
 
 INSIGHT_AGENTS = {"overseer", "regression", "personas", "fabricator"}
 
@@ -113,6 +117,23 @@ def rebuild_governance_artifacts(state_manager: StateManager, user_intent: Optio
 
     analysis_intent = classify_analysis_intent(schema_profile or {}, run_config.get("target_column"))
     state_manager.write("analysis_intent", analysis_intent)
+
+    data_profile = state_manager.read("data_profile")
+    dataset_classification = state_manager.read("dataset_classification")
+    if isinstance(data_profile, dict):
+        dataset_classification = classify_dataset_profile(data_profile, analysis_intent=analysis_intent)
+        state_manager.write("dataset_classification", dataset_classification)
+
+    if isinstance(dataset_classification, dict):
+        routing = derive_routing(dataset_classification)
+        update_analysis_routing(run_path, routing.get("allowed", []), routing.get("suppressed", {}))
+        update_render_policy(run_path)
+        manifest = read_manifest(run_path) or {}
+        view_policies = build_view_policies(
+            manifest.get("render_policy", {}),
+            routing.get("allowed", []),
+        )
+        update_view_policies(run_path, view_policies)
 
     confidence = compute_data_confidence(identity_card, validation_report, ingestion_meta.get("drift_status", "none") if isinstance(ingestion_meta, dict) else "none")
     conf_path = artifacts_dir / "confidence_report.json"

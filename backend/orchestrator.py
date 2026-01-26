@@ -6,7 +6,7 @@ import sys
 import traceback
 import threading
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Add project root to path
@@ -43,7 +43,7 @@ print(f"[ORCHESTRATOR] Final Pipeline Sequence: {PIPELINE_SEQUENCE}", file=sys.s
 
 from core.run_utils import create_run_folder
 from core.state_manager import StateManager
-from core.data_guardrails import is_agent_allowed, append_limitation
+from core.data_guardrails import is_agent_allowed_for_run, append_limitation
 from core.insights import validate_insights
 from core.governance import rebuild_governance_artifacts, should_block_agent, render_governed_report, INSIGHT_AGENTS
 from core.agent_eligibility import resolve_agent_eligibility
@@ -53,12 +53,26 @@ from ace_v4.performance.config import PerformanceConfig
 from intake.stream_loader import prepare_run_data
 from intake.profiling import profile_dataframe, compute_drift_report, save_json
 from jobs.progress import ProgressTracker
-from core.run_manifest import initialize_manifest, compute_dataset_fingerprint, update_step_status
+from core.run_manifest import initialize_manifest, compute_dataset_fingerprint, update_step_status, read_manifest, seal_manifest
+from core.structured_logging import log_step_event
+from core.run_health import build_run_health_summary
+from core.invariants import run_invariants
 
 POLL_TIME = 0.5  # seconds
 MAX_STEP_ATTEMPTS = 3
 RETRY_BACKOFF = 2
 GOVERNANCE_REFRESH_STEPS = {"scanner", "type_identifier", "interpreter", "validator"}
+TIME_BUDGETS = {
+    "scanner": 120,
+    "type_identifier": 90,
+    "validator": 120,
+    "overseer": 300,
+    "regression": 420,
+    "personas": 300,
+    "fabricator": 300,
+    "expositor": 180,
+    "trust_evaluation": 90,
+}
 
 
 def _record_final_status(run_path: str, status: str, **extra):
@@ -97,7 +111,7 @@ def save_state(state_path, state):
 
 
 def iso_now():
-    return datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 def _sync_regression_status(state: dict, state_manager: StateManager) -> None:
@@ -126,6 +140,25 @@ def _finalize_regression_artifacts(state_manager: StateManager, success: bool) -
     if not state_manager.exists("regression_insights"):
         raise RuntimeError("Regression artifacts failed validation and were discarded.")
     state_manager.delete("regression_insights_pending")
+
+    required = [
+        "feature_governance_report",
+        "baseline_metrics",
+        "model_fit_report",
+        "collinearity_report",
+        "leakage_report",
+        "importance_report",
+    ]
+    optional = ["regression_coefficients_report"]
+    for name in required + optional:
+        pending_name = f"{name}_pending"
+        artifact = state_manager.read(pending_name)
+        if artifact is None:
+            if name in required:
+                raise RuntimeError(f"Regression succeeded but {name} missing.")
+            continue
+        state_manager.write(name, artifact)
+        state_manager.delete(pending_name)
 
 
 def _finalize_expositor_artifacts(state_manager: StateManager, run_path: str, success: bool) -> None:
@@ -175,6 +208,28 @@ def _finalize_trust_artifacts(state_manager: StateManager, run_path: str, succes
     state_manager.delete("trust_object_pending")
     from core.run_manifest import update_trust
     update_trust(run_path, pending)
+
+
+def _finalize_metadata_artifacts(state_manager: StateManager, step: str, success: bool) -> None:
+    pending_map = {
+        "scanner": ["data_profile"],
+        "type_identifier": ["dataset_classification"],
+    }
+    pending_names = pending_map.get(step, [])
+    if not pending_names:
+        return
+    if not success:
+        for name in pending_names:
+            state_manager.delete(f"{name}_pending")
+        return
+    for name in pending_names:
+        pending = state_manager.read(f"{name}_pending")
+        if not pending:
+            raise RuntimeError(f"{step} succeeded but {name}_pending missing.")
+        state_manager.write(name, pending)
+        if not state_manager.exists(name):
+            raise RuntimeError(f"{name} failed validation and was discarded.")
+        state_manager.delete(f"{name}_pending")
 
 
 def initialize_state(run_id, state_path, data_path):
@@ -328,7 +383,7 @@ def run_agent(agent_name, run_path):
         sm = StateManager(run_path)
         dtype_info = sm.read("data_type_identification") or {}
         data_type = dtype_info.get("primary_type")
-        allowed, reason = is_agent_allowed(agent_name, data_type)
+        allowed, reason = is_agent_allowed_for_run(agent_name, sm, data_type)
         if not allowed:
             msg = reason or "Agent not allowed for detected data type"
             append_limitation(sm, msg, agent=agent_name, severity="warning")
@@ -366,9 +421,13 @@ def run_agent(agent_name, run_path):
     
     # Calculate dynamic timeout based on data size
     agent_timeout = calculate_agent_timeout(run_path, agent_name)
+    budget = TIME_BUDGETS.get(agent_name)
+    if budget:
+        agent_timeout = min(agent_timeout, budget)
     
     # OPERATION GLASS HOUSE: Forensic Subprocess Wrapper
-    print(f"[ORCHESTRATOR] ðŸš€ Launching Agent: {agent_name}...", file=sys.stderr, flush=True)
+    print(f"[ORCHESTRATOR] Launching Agent: {agent_name}...", file=sys.stderr, flush=True)
+    start_time = time.time()
 
     try:
         # FORCE CAPTURE of both STDOUT and STDERR to expose hidden failures
@@ -382,22 +441,22 @@ def run_agent(agent_name, run_path):
 
         # Check return code manually (not using check=True to handle stderr better)
         if result.returncode != 0:
-            # ðŸš¨ THE SMOKING GUN REVEALED ðŸš¨
+            # CRITICAL FAILURE DETAILS
             print(f"\n{'='*80}", file=sys.stderr, flush=True)
-            print(f"ðŸ›‘ CRITICAL AGENT FAILURE: {agent_name}", file=sys.stderr, flush=True)
-            print(f"ðŸ›‘ EXIT CODE: {result.returncode}", file=sys.stderr, flush=True)
+            print(f"CRITICAL AGENT FAILURE: {agent_name}", file=sys.stderr, flush=True)
+            print(f"EXIT CODE: {result.returncode}", file=sys.stderr, flush=True)
             print(f"{'-'*80}", file=sys.stderr, flush=True)
             
             # PRINT THE HIDDEN TRACEBACK
             if result.stderr:
-                print(f"ðŸ” AGENT STDERR (The Root Cause):", file=sys.stderr, flush=True)
+                print("AGENT STDERR (root cause):", file=sys.stderr, flush=True)
                 print(result.stderr, file=sys.stderr, flush=True)
             else:
-                print(f"âš ï¸ NO STDERR CAPTURED (Process died instantly)", file=sys.stderr, flush=True)
+                print("NO STDERR CAPTURED (process died instantly)", file=sys.stderr, flush=True)
             
             if result.stdout:
                 print(f"{'-'*80}", file=sys.stderr, flush=True)
-                print(f"ðŸ“‹ AGENT STDOUT:", file=sys.stderr, flush=True)
+                print("AGENT STDOUT:", file=sys.stderr, flush=True)
                 print(result.stdout, file=sys.stderr, flush=True)
                 
             print(f"{'='*80}\n", file=sys.stderr, flush=True)
@@ -411,11 +470,43 @@ def run_agent(agent_name, run_path):
             )
 
             sanitized_stderr = result.stderr[:500] if result.stderr else ""
+            duration = time.time() - start_time
+            manifest = read_manifest(run_path) or {}
+            artifacts = manifest.get("artifacts") or {}
+            artifact_count = sum(1 for meta in artifacts.values() if meta.get("produced_by_step") == agent_name)
+            warning_count = len(manifest.get("warnings") or [])
+            log_step_event(
+                {
+                    "run_id": Path(run_path).name,
+                    "step_name": agent_name,
+                    "status": "failed",
+                    "duration": round(duration, 2),
+                    "artifact_count": artifact_count,
+                    "warning_count": warning_count,
+                    "error_code": "STEP_FAILED",
+                }
+            )
             return False, result.stdout, sanitized_stderr
         else:
             # Success case
             from utils.logging import log_ok
             log_ok(f"Agent {agent_name} completed", agent=agent_name, run_path=run_path)
+            duration = time.time() - start_time
+            manifest = read_manifest(run_path) or {}
+            artifacts = manifest.get("artifacts") or {}
+            artifact_count = sum(1 for meta in artifacts.values() if meta.get("produced_by_step") == agent_name)
+            warning_count = len(manifest.get("warnings") or [])
+            log_step_event(
+                {
+                    "run_id": Path(run_path).name,
+                    "step_name": agent_name,
+                    "status": "success",
+                    "duration": round(duration, 2),
+                    "artifact_count": artifact_count,
+                    "warning_count": warning_count,
+                    "error_code": None,
+                }
+            )
             return True, result.stdout, result.stderr
 
     except subprocess.TimeoutExpired as e:
@@ -425,6 +516,18 @@ def run_agent(agent_name, run_path):
             agent=agent_name,
             timeout=e.timeout,
             run_path=run_path
+        )
+        duration = time.time() - start_time
+        log_step_event(
+            {
+                "run_id": Path(run_path).name,
+                "step_name": agent_name,
+                "status": "failed",
+                "duration": round(duration, 2),
+                "artifact_count": 0,
+                "warning_count": 0,
+                "error_code": "TIMEOUT",
+            }
         )
         return False, "", f"Agent execution timed out. This may indicate a large dataset or processing issue."
     except Exception as e:
@@ -463,9 +566,9 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
     
     # OPERATION GLASS HOUSE: Path Verification
     run_path_obj = Path(run_path)
-    print(f"[ORCHESTRATOR] ðŸ” TARGET RUN DIR: {run_path_obj.resolve()}", file=sys.stderr, flush=True)
-    print(f"[ORCHESTRATOR] ðŸ” Exists? {run_path_obj.exists()}", file=sys.stderr, flush=True)
-    print(f"[ORCHESTRATOR] ðŸ” Is Directory? {run_path_obj.is_dir()}", file=sys.stderr, flush=True)
+    print(f"[ORCHESTRATOR] TARGET RUN DIR: {run_path_obj.resolve()}", file=sys.stderr, flush=True)
+    print(f"[ORCHESTRATOR] Exists? {run_path_obj.exists()}", file=sys.stderr, flush=True)
+    print(f"[ORCHESTRATOR] Is Directory? {run_path_obj.is_dir()}", file=sys.stderr, flush=True)
 
     
     # 2. Ingest Data (fast vs full). Respect fast_mode in run_config; default to fast for large files.
@@ -588,7 +691,11 @@ def main_loop(run_path):
         # STABILITY LAW 1: ABSOLUTE REPORT ENFORCEMENT
         # The pipeline SHALL NOT complete without a physical final_report.md
         # Using Report Enforcer module for absolute path verification
-        if state.get("status") in {"complete", "complete_with_errors", "failed"}:
+        if state.get("status") == "failed":
+            _record_final_status(run_path, "failed", reason=state.get("failure_reason") or "failed")
+            break
+
+        if state.get("status") in {"complete", "complete_with_errors"} and state.get("next_step") in {None, "complete"}:
             # Import at function scope
             from core.report_enforcer import enforce_report_existence
             
@@ -597,8 +704,14 @@ def main_loop(run_path):
             expositor_required = "expositor" in PIPELINE_SEQUENCE
             expositor_completed = "expositor" in state.get("steps_completed", [])
 
-            if expositor_required and not expositor_completed:
-                print(f"[ORCHESTRATOR] âš ï¸ Protocol 1100: Pipeline marked {state['status']} but EXPOSITOR hasn't run. FORCING CONTINUATION.", file=sys.stderr, flush=True)
+            if not expositor_required:
+                final_status = state.get("status", "unknown")
+                _record_final_status(run_path, final_status)
+                print(f"Pipeline finished with status: {state['status']}")
+                break
+
+            if expositor_required and not expositor_completed and state.get("next_step") == "complete":
+                print(f"[ORCHESTRATOR] Protocol 1100: Pipeline marked {state['status']} but expositor not run. Forcing continuation.", file=sys.stderr, flush=True)
                 # Override status back to running
                 state["status"] = "running"
                 state["current_step"] = "expositor"
@@ -616,7 +729,7 @@ def main_loop(run_path):
             
             if not report_verified:
                 # CRITICAL FAILURE - Report enforcer could not guarantee report
-                print(f"[ORCHESTRATOR] âŒ CRITICAL: Report enforcer failed. Blocking completion.")
+                print("[ORCHESTRATOR] CRITICAL: Report enforcer failed. Blocking completion.")
                 state["status"] = "failed"
                 state["failure_reason"] = "CRITICAL: Report generation failed after all retries"
                 update_history(state, "Report enforcer blocked completion - no valid report", returncode=1)
@@ -625,7 +738,7 @@ def main_loop(run_path):
                 break
             
             # Report verified - safe to complete
-            print(f"[ORCHESTRATOR] âœ“ Report verified. Pipeline completion authorized.")
+            print("[ORCHESTRATOR] Report verified. Pipeline completion authorized.")
             final_status = state.get("status", "unknown")
             _record_final_status(run_path, final_status)
             print(f"Pipeline finished with status: {state['status']}")
@@ -718,7 +831,7 @@ def main_loop(run_path):
             
             if drift_notes and not ENABLE_DRIFT_BLOCKING:
                 # Drift block but blocking is disabled - PROCEED
-                print(f"[ORCHESTRATOR] âš ï¸ Agent '{current}' blocked by drift, but ENABLE_DRIFT_BLOCKING={ENABLE_DRIFT_BLOCKING}. PROCEEDING.", file=sys.stderr, flush=True)
+                print(f"[ORCHESTRATOR] Agent '{current}' blocked by drift, but ENABLE_DRIFT_BLOCKING={ENABLE_DRIFT_BLOCKING}. Proceeding.", file=sys.stderr, flush=True)
                 # Don't skip - continue to agent execution
             else:
                 # Non-drift block OR drift blocking is enabled - SKIP
@@ -891,6 +1004,7 @@ def main_loop(run_path):
                 state["failure_reason"] = "regression_artifact_promotion_failed"
                 save_state(state_path, state)
                 _record_final_status(run_path, "failed", reason="regression_artifact_promotion_failed")
+                seal_manifest(run_path, reason="regression_artifact_promotion_failed")
                 break
         if current == "expositor":
             try:
@@ -901,6 +1015,7 @@ def main_loop(run_path):
                 state["failure_reason"] = "expositor_artifact_promotion_failed"
                 save_state(state_path, state)
                 _record_final_status(run_path, "failed", reason="expositor_artifact_promotion_failed")
+                seal_manifest(run_path, reason="expositor_artifact_promotion_failed")
                 break
         if current == "trust_evaluation":
             try:
@@ -911,6 +1026,19 @@ def main_loop(run_path):
                 state["failure_reason"] = "trust_artifact_promotion_failed"
                 save_state(state_path, state)
                 _record_final_status(run_path, "failed", reason="trust_artifact_promotion_failed")
+                seal_manifest(run_path, reason="trust_artifact_promotion_failed")
+                break
+
+        if current in {"scanner", "type_identifier"}:
+            try:
+                _finalize_metadata_artifacts(state_manager, current, success)
+            except Exception as exc:
+                update_history(state, f"Metadata artifact promotion failed: {exc}", returncode=1)
+                state["status"] = "failed"
+                state["failure_reason"] = "metadata_artifact_promotion_failed"
+                save_state(state_path, state)
+                _record_final_status(run_path, "failed", reason="metadata_artifact_promotion_failed")
+                seal_manifest(run_path, reason="metadata_artifact_promotion_failed")
                 break
 
         # Refresh governance artifacts whenever upstream schema context changes
@@ -942,12 +1070,12 @@ def main_loop(run_path):
         
         # Guard: Check domain constraints before running agents
         if current in ["overseer", "regression", "personas"]:
-            from core.data_guardrails import is_agent_allowed, get_domain_constraints
+            from core.data_guardrails import is_agent_allowed_for_run, get_domain_constraints
             state_mgr = StateManager(run_path)
             data_type_info = state_mgr.read("data_type_identification") or {}
             data_type = data_type_info.get("primary_type")
             
-            allowed, reason = is_agent_allowed(current, data_type)
+            allowed, reason = is_agent_allowed_for_run(current, state_mgr, data_type)
             if not allowed:
                 # Skip this agent and continue to next step instead of blocking
                 step_state = state["steps"].setdefault(current, {"name": current})
@@ -1084,6 +1212,16 @@ def main_loop(run_path):
             except Exception as e:
                 update_history(state, f"Governed report rendering failed: {e}")
             save_state(state_path, state)
+
+            try:
+                manifest = read_manifest(run_path) or {}
+                health = build_run_health_summary(manifest)
+                StateManager(run_path).write("run_health_summary", health)
+                invariants = run_invariants(manifest)
+                StateManager(run_path).write("invariant_report", invariants)
+                seal_manifest(run_path, reason="run_complete")
+            except Exception as e:
+                update_history(state, f"Invariant/health summary failed: {e}")
         
         time.sleep(POLL_TIME)
 
@@ -1096,7 +1234,6 @@ if __name__ == "__main__":
     new_run_id, new_run_path = orchestrate_new_run(args.data)
     if new_run_path:
         main_loop(new_run_path)
-
 
 
 

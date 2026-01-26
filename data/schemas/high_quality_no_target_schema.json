@@ -1,0 +1,215 @@
+{
+  "dataset_info": {
+    "name": "high_quality_no_target",
+    "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\trust_edge_cases\\high_quality_no_target.csv",
+    "row_count": 250,
+    "column_count": 6,
+    "sample_rows": [
+      {
+        "user_id": 1,
+        "feature_a": 50.17096383626592,
+        "feature_b": 0.9409311129269357,
+        "feature_c": 102.43311022174456,
+        "revenue": 116.2446847132619,
+        "target": 1.0
+      },
+      {
+        "user_id": 2,
+        "feature_a": 56.79873770154981,
+        "feature_b": 0.7131564204233815,
+        "feature_c": 89.70422448035009,
+        "revenue": 127.73619342225372,
+        "target": 1.0
+      },
+      {
+        "user_id": 3,
+        "feature_a": 56.12360539292966,
+        "feature_b": 1.0474862871297028,
+        "feature_c": 89.85155114797297,
+        "revenue": 121.00737100534334,
+        "target": 1.0
+      },
+      {
+        "user_id": 4,
+        "feature_a": 47.44846461606166,
+        "feature_b": -0.3892439700326857,
+        "feature_c": 91.73812291522096,
+        "revenue": 121.86466953641975,
+        "target": 1.0
+      },
+      {
+        "user_id": 5,
+        "feature_a": 48.51015244446776,
+        "feature_b": 0.7398063595133139,
+        "feature_c": 103.53427217974954,
+        "revenue": 117.37469065549033,
+        "target": 1.0
+      }
+    ]
+  },
+  "basic_types": {
+    "numeric": [
+      "user_id",
+      "feature_a",
+      "feature_b",
+      "feature_c",
+      "revenue",
+      "target"
+    ],
+    "categorical": [],
+    "datetime": [],
+    "text": []
+  },
+  "stats": {
+    "user_id": {
+      "mean": 125.5,
+      "median": 125.5,
+      "std": 72.31297716638879,
+      "min": 1.0,
+      "max": 250.0,
+      "skew": 0.0,
+      "missing_rate": 0.0
+    },
+    "feature_a": {
+      "mean": 50.036366032642164,
+      "median": 50.14065089241776,
+      "std": 4.619936622337886,
+      "min": 38.41390891549688,
+      "max": 62.84755756495256,
+      "skew": -0.038832608171040395,
+      "missing_rate": 0.0
+    },
+    "feature_b": {
+      "mean": 0.05516253465746232,
+      "median": 0.1248507811459614,
+      "std": 1.0156081928858862,
+      "min": -2.79235715975389,
+      "max": 3.623567688368005,
+      "skew": -0.042936827861534015,
+      "missing_rate": 0.0
+    },
+    "feature_c": {
+      "mean": 100.11002418297674,
+      "median": 100.00030640256574,
+      "std": 10.177615327906983,
+      "min": 73.6712979259133,
+      "max": 124.39976781493073,
+      "skew": 0.024244128129233048,
+      "missing_rate": 0.0
+    },
+    "revenue": {
+      "mean": 119.93596503730858,
+      "median": 120.61426915736553,
+      "std": 8.38946631631,
+      "min": 97.8941993088918,
+      "max": 140.672021730352,
+      "skew": 0.017299613826009672,
+      "missing_rate": 0.0
+    },
+    "target": {
+      "mean": 1.0,
+      "median": 1.0,
+      "std": 0.0,
+      "min": 1.0,
+      "max": 1.0,
+      "skew": NaN,
+      "missing_rate": 0.0
+    }
+  },
+  "semantic_roles": {
+    "id_fields": [],
+    "time_fields": [],
+    "income_like": [
+      "revenue"
+    ],
+    "spend_like": [],
+    "risk_like": [],
+    "value_like": [],
+    "activity_like": [],
+    "frequency_like": [],
+    "volume_like": [],
+    "demographic_like": [],
+    "categorical_descriptors": []
+  },
+  "role_confidence": {
+    "income_like": 0.9,
+    "spend_like": 0.1,
+    "risk_like": 0.1,
+    "value_like": 0.0,
+    "activity_like": 0.0,
+    "frequency_like": 0.0,
+    "volume_like": 0.0,
+    "demographic_like": 0.0
+  },
+  "domain_guess": {
+    "domain": "generic",
+    "confidence": 0.8
+  },
+  "feature_quality_scores": {},
+  "relationships": {
+    "correlations": {
+      "user_id": {
+        "feature_a": -0.020568815834951598,
+        "feature_b": -0.06552905269551758,
+        "feature_c": 0.029579279356179815,
+        "revenue": 0.010570552191969416
+      },
+      "feature_a": {
+        "user_id": -0.020568815834951598,
+        "feature_b": 0.0637628621994482,
+        "feature_c": 0.04767642725861493,
+        "revenue": 0.1231892510814109
+      },
+      "feature_b": {
+        "user_id": -0.06552905269551758,
+        "feature_a": 0.0637628621994482,
+        "feature_c": -0.054614907486176,
+        "revenue": 0.003146591742088968
+      },
+      "feature_c": {
+        "user_id": 0.029579279356179815,
+        "feature_a": 0.04767642725861493,
+        "feature_b": -0.054614907486176,
+        "revenue": 0.11075151488418224
+      },
+      "revenue": {
+        "user_id": 0.010570552191969416,
+        "feature_a": 0.1231892510814109,
+        "feature_b": 0.003146591742088968,
+        "feature_c": 0.11075151488418224
+      },
+      "target": {}
+    },
+    "strong_pairs": []
+  },
+  "normalization_plan": {},
+  "feature_plan": {
+    "clustering_features": [
+      "feature_a",
+      "feature_b",
+      "feature_c",
+      "revenue"
+    ],
+    "persona_features": [
+      "feature_a",
+      "feature_b",
+      "feature_c",
+      "revenue"
+    ],
+    "risk_features": [],
+    "value_features": [],
+    "anomaly_features": [
+      "user_id",
+      "feature_a",
+      "feature_b",
+      "feature_c",
+      "revenue",
+      "target"
+    ]
+  },
+  "warnings": {
+    "missing_numeric": false,
+    "low_row_count": false,
+    "suspected_data_issues": []
+  }
+}

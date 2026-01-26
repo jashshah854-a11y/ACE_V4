@@ -1,0 +1,173 @@
+{
+  "row_count": 250,
+  "column_count": 7,
+  "column_types": {
+    "numeric": [
+      "customer_id",
+      "age",
+      "feature_a",
+      "feature_b",
+      "feature_c",
+      "revenue",
+      "target"
+    ],
+    "categorical": [],
+    "datetime": [],
+    "text": [],
+    "boolean": []
+  },
+  "columns": {
+    "customer_id": {
+      "dtype": "int64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 250,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 125.5,
+        "median": 125.5,
+        "std": 72.16820629612461,
+        "min": 1.0,
+        "max": 250.0,
+        "skew": 0.0,
+        "q25": 63.25,
+        "q75": 187.75
+      }
+    },
+    "age": {
+      "dtype": "int64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 52,
+      "distinct_pct": 0.208,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 43.06,
+        "median": 43.0,
+        "std": 15.905986294474166,
+        "min": 18.0,
+        "max": 69.0,
+        "skew": 0.0496854905903481,
+        "q25": 28.25,
+        "q75": 57.0
+      }
+    },
+    "feature_a": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 250,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 50.23178376857573,
+        "median": 50.7557875865547,
+        "std": 4.906082222270848,
+        "min": 36.03821420123055,
+        "max": 68.11783844184002,
+        "skew": -0.015573875459727656,
+        "q25": 47.18301665479521,
+        "q75": 52.904735649124014
+      }
+    },
+    "feature_b": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 250,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 0.0020530619845700758,
+        "median": 0.0747134104991706,
+        "std": 0.9851988785425243,
+        "min": -2.6328702074086703,
+        "max": 2.389427838640195,
+        "skew": -0.11716989356570949,
+        "q25": -0.7440539172984901,
+        "q75": 0.730244166105122
+      }
+    },
+    "feature_c": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 250,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 100.08838929476389,
+        "median": 99.86254102867274,
+        "std": 10.438950342327386,
+        "min": 72.36774913611475,
+        "max": 125.84002716294002,
+        "skew": 0.1099796151133717,
+        "q25": 92.73882038876371,
+        "q75": 106.87755982785953
+      }
+    },
+    "revenue": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 250,
+      "distinct_pct": 1.0,
+      "constant": false,
+      "near_constant": false,
+      "stats": {
+        "mean": 120.00002376375961,
+        "median": 120.45530787874371,
+        "std": 8.130320964620095,
+        "min": 93.80419979790918,
+        "max": 143.25314098052513,
+        "skew": -0.09567057018713569,
+        "q25": 114.94407911823856,
+        "q75": 124.73961916221586
+      }
+    },
+    "target": {
+      "dtype": "float64",
+      "inferred_type": "numeric",
+      "missing_count": 0,
+      "missing_pct": 0.0,
+      "distinct_count": 1,
+      "distinct_pct": 0.004,
+      "constant": true,
+      "near_constant": true,
+      "stats": {
+        "mean": 1.0,
+        "median": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "skew": 0.0,
+        "q25": 1.0,
+        "q75": 1.0
+      }
+    }
+  },
+  "missingness_summary": {
+    "avg_missing_pct": 0.0,
+    "max_missing_pct": 0.0
+  },
+  "constant_columns": [
+    "target"
+  ],
+  "near_constant_columns": [],
+  "status": "success",
+  "valid": true,
+  "errors": [],
+  "warnings": []
+}

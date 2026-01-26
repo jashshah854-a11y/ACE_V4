@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getRunStatus, type RunState } from "@/lib/api-client";
 import { PipelineVisualizer } from "@/components/report/PipelineVisualizer";
-import { useDiagnostics } from "@/hooks/useDiagnostics";
+import { useRunSnapshot } from "@/hooks/useRunSnapshot";
 
 import { getDiagnosticsCache, removeDiagnosticsCache, extractDiagnosticsNotes, type DiagnosticsCachePayload } from "@/lib/localStorage";
 
@@ -124,7 +124,8 @@ function NeuralReasoningStream({ steps }: { steps?: PipelineStep[] }) {
 export default function Pipeline() {
   const { runId } = useParams<{ runId: string }>();
   const navigate = useNavigate();
-  const { data: diagnostics } = useDiagnostics(runId);
+  const { data: snapshot } = useRunSnapshot(runId, true);
+  const diagnostics = snapshot?.diagnostics ?? null;
   const [guidanceNotes, setGuidanceNotes] = useState<string[]>([]);
 
   const clearDiagnosticsCache = useCallback(() => {

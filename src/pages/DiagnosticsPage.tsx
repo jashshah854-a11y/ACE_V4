@@ -1,10 +1,13 @@
 import { useParams, Link } from "react-router-dom";
 import { Loader2, AlertTriangle } from "lucide-react";
-import { useRunManifest } from "@/hooks/useRunManifest";
+import { useRunSnapshot } from "@/hooks/useRunSnapshot";
+import { isManifestCompatible } from "@/hooks/useRunManifest";
 
 export default function DiagnosticsPage() {
   const { runId } = useParams<{ runId: string }>();
-  const { data: manifest, loading, error, compatible } = useRunManifest(runId);
+  const { data: snapshot, loading, error } = useRunSnapshot(runId, true);
+  const manifest = snapshot?.manifest ?? null;
+  const compatible = isManifestCompatible(manifest);
 
   if (!runId) {
     return (
@@ -33,7 +36,9 @@ export default function DiagnosticsPage() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <AlertTriangle className="w-10 h-10 text-red-500 mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground">Manifest unavailable.</p>
+          <p className="text-sm text-muted-foreground">
+            Snapshot unavailable. Please refresh or rerun the analysis.
+          </p>
         </div>
       </div>
     );

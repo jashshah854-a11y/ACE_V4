@@ -31,6 +31,7 @@ from .evidence_standards import (
 )
 from .analytics_validation import (
     validate_correlation_analysis,
+    validate_correlation_ci,
     validate_feature_importance,
 )
 
@@ -49,6 +50,23 @@ def safe_float(val: Any) -> float:
         return f
     except (ValueError, TypeError):
         return 0.0
+
+
+def _is_id_column(name: str) -> bool:
+    lowered = name.lower()
+    if lowered in {"id", "index", "uuid", "guid"}:
+        return True
+    if lowered.endswith("_id") or lowered.startswith("id_"):
+        return True
+    return any(token in lowered for token in ("uuid", "guid", "identifier"))
+
+
+def _near_constant(series: pd.Series, threshold: float = 0.98) -> bool:
+    values = series.dropna()
+    if values.empty:
+        return True
+    top_ratio = values.value_counts(normalize=True).iloc[0]
+    return float(top_ratio) >= threshold
 
 
 class EnhancedAnalytics:
@@ -94,6 +112,7 @@ class EnhancedAnalytics:
         # Find strong correlations and potential leakage
         strong_correlations = []
         suspicious_leakage = []
+        correlation_ci = []
         
         for i in range(len(pearson_corr.columns)):
             for j in range(i + 1, len(pearson_corr.columns)):
@@ -116,11 +135,34 @@ class EnhancedAnalytics:
 
                 # Consider correlation strong if |r| > 0.5
                 if max_corr > 0.5:
+                    n = int(self.df[[col1, col2]].dropna().shape[0])
+                    ci_low = None
+                    ci_high = None
+                    if n > 3 and abs(pearson_val) < 1:
+                        z = np.arctanh(float(pearson_val))
+                        se = 1.0 / np.sqrt(n - 3)
+                        z_low = z - 1.96 * se
+                        z_high = z + 1.96 * se
+                        ci_low = float(np.tanh(z_low))
+                        ci_high = float(np.tanh(z_high))
+                    correlation_ci.append(
+                        {
+                            "feature1": col1,
+                            "feature2": col2,
+                            "pearson": float(pearson_val),
+                            "ci_low": ci_low,
+                            "ci_high": ci_high,
+                            "n": n,
+                        }
+                    )
                     strong_correlations.append({
                         "feature1": col1,
                         "feature2": col2,
                         "pearson": float(pearson_val),
                         "spearman": float(spearman_val),
+                        "pearson_ci_low": ci_low,
+                        "pearson_ci_high": ci_high,
+                        "n": n,
                         "strength": self._correlation_strength(max_corr),
                         "direction": "positive" if pearson_val > 0 else "negative",
                         "is_leakage": max_corr > 0.99
@@ -137,7 +179,8 @@ class EnhancedAnalytics:
             "total_correlations": len(strong_correlations),
             "features": self.numeric_cols,
             "leakage_warnings": suspicious_leakage,
-            "insights": self._generate_correlation_insights(strong_correlations)
+            "insights": self._generate_correlation_insights(strong_correlations),
+            "correlation_ci": correlation_ci[:10],
         }
 
     def analyze_distributions(self) -> Dict[str, Any]:
@@ -226,7 +269,18 @@ class EnhancedAnalytics:
         if target_col is None or target_col not in self.df.columns:
             return {"available": False, "reason": "No valid target column"}
 
-        feature_cols = [col for col in self.numeric_cols if col != target_col]
+        feature_cols = []
+        for col in self.numeric_cols:
+            if col == target_col:
+                continue
+            if _is_id_column(col):
+                continue
+            series = self.df[col]
+            if series.dropna().nunique() <= 1:
+                continue
+            if _near_constant(series):
+                continue
+            feature_cols.append(col)
         X = self.df[feature_cols].fillna(self.df[feature_cols].mean())
         y = self.df[target_col].fillna(self.df[target_col].mean())
 
@@ -472,11 +526,11 @@ class EnhancedAnalytics:
     def _correlation_strength(self, value: float) -> str:
         """Classify correlation strength"""
         abs_val = abs(value)
-        if abs_val >= 0.8:
+        if abs_val >= 0.7:
             return "very_strong"
-        elif abs_val >= 0.6:
-            return "strong"
         elif abs_val >= 0.4:
+            return "strong"
+        elif abs_val >= 0.2:
             return "moderate"
         else:
             return "weak"
@@ -767,20 +821,31 @@ def run_enhanced_analytics(
         analytics.compute_correlation_matrix(),
         validate_correlation_analysis,
     )
+    correlation_ci_payload = None
+    if isinstance(results.get("correlation_analysis"), dict):
+        correlation_ci_payload = results["correlation_analysis"].get("correlation_ci")
+    if correlation_ci_payload:
+        results["correlation_ci"] = _apply_validation(
+            "correlation_ci",
+            {"available": True, "pairs": correlation_ci_payload},
+            validate_correlation_ci,
+        )
+    else:
+        results["correlation_ci"] = None
     results["distribution_analysis"] = _attach_available("distribution_analysis", analytics.analyze_distributions())
     results["quality_metrics"] = _attach_available("quality_metrics", analytics.compute_advanced_quality_metrics())
     results["business_intelligence"] = _attach_available("business_intelligence", analytics.compute_business_intelligence(cluster_labels))
     
     # Only run predictive analytics if quality threshold met
     if enable_predictive:
-        print("[ENHANCED_ANALYTICS] ✓ Quality threshold met - enabling feature importance")
+        print("[ENHANCED_ANALYTICS] OK: Quality threshold met - enabling feature importance")
         results["feature_importance"] = _apply_validation(
             "feature_importance",
             analytics.compute_feature_importance(),
             validate_feature_importance,
         )
     else:
-        print(f"[ENHANCED_ANALYTICS] ⚠️ Quality < {QUALITY_THRESHOLD} - skipping predictive analysis (fail-safe mode)")
+        print(f"[ENHANCED_ANALYTICS] WARN: Quality < {QUALITY_THRESHOLD} - skipping predictive analysis (fail-safe mode)")
         results["feature_importance"] = None
     
     return results

@@ -48,6 +48,8 @@ def compute_trust_from_manifest(manifest: Dict[str, Any]) -> Dict[str, Any]:
 
     validator_status = _step_status(manifest, "validator")
     regression_status = _step_status(manifest, "regression")
+    profile_summary = manifest.get("_data_profile_summary") or {}
+    validation_summary = manifest.get("_validation_summary") or {}
 
     # data_quality
     dq_evidence = ["steps.validator"]
@@ -62,6 +64,60 @@ def compute_trust_from_manifest(manifest: Dict[str, Any]) -> Dict[str, Any]:
             dq_evidence.append("artifacts.quality_metrics")
         if _artifact_valid(manifest, "dataset_identity_card"):
             dq_evidence.append("artifacts.dataset_identity_card")
+        if profile_summary.get("valid") and _artifact_valid(manifest, "data_profile"):
+            row_count = profile_summary.get("row_count")
+            missing = profile_summary.get("missingness_summary") or {}
+            avg_missing = missing.get("avg_missing_pct")
+            max_missing = missing.get("max_missing_pct")
+            if isinstance(row_count, int) and isinstance(avg_missing, (int, float)) and isinstance(max_missing, (int, float)):
+                dq_score = 100.0
+                dq_score -= min(40.0, float(avg_missing) * 100.0 * 0.6)
+                dq_score -= min(30.0, float(max_missing) * 100.0 * 0.4)
+                if row_count < 100:
+                    dq_score -= 40.0
+                elif row_count < 500:
+                    dq_score -= 20.0
+                elif row_count < 1000:
+                    dq_score -= 10.0
+                constant_cols = profile_summary.get("constant_columns") or []
+                near_constant_cols = profile_summary.get("near_constant_columns") or []
+                if constant_cols or near_constant_cols:
+                    dq_score -= 10.0
+                numeric_stats = profile_summary.get("numeric_stats") or {}
+                if numeric_stats:
+                    dq_penalty = 0.0
+                    avg_cv = numeric_stats.get("avg_cv")
+                    high_cv_ratio = numeric_stats.get("high_cv_ratio")
+                    very_high_cv_ratio = numeric_stats.get("very_high_cv_ratio")
+                    high_skew_ratio = numeric_stats.get("high_skew_ratio")
+                    if isinstance(avg_cv, (int, float)):
+                        if avg_cv >= 3.0:
+                            dq_penalty += 25.0
+                        elif avg_cv >= 1.5:
+                            dq_penalty += 15.0
+                    if isinstance(high_cv_ratio, (int, float)):
+                        if high_cv_ratio >= 0.6:
+                            dq_penalty += 20.0
+                        elif high_cv_ratio >= 0.3:
+                            dq_penalty += 10.0
+                    if isinstance(very_high_cv_ratio, (int, float)):
+                        if very_high_cv_ratio >= 0.4:
+                            dq_penalty += 20.0
+                        elif very_high_cv_ratio >= 0.2:
+                            dq_penalty += 10.0
+                    if isinstance(high_skew_ratio, (int, float)):
+                        if high_skew_ratio >= 0.6:
+                            dq_penalty += 20.0
+                        elif high_skew_ratio >= 0.3:
+                            dq_penalty += 10.0
+                    if dq_penalty:
+                        dq_score -= min(40.0, dq_penalty)
+                dq_score = max(0.0, min(100.0, dq_score))
+                dq_notes = (
+                    f"Profile: rows={row_count}, avg missing {float(avg_missing)*100:.1f}%, "
+                    f"max missing {float(max_missing)*100:.1f}%."
+                )
+                dq_evidence.append("artifacts.data_profile")
     components["data_quality"] = {
         "score": dq_score,
         "status": _status_for_score(dq_score),
@@ -89,13 +145,13 @@ def compute_trust_from_manifest(manifest: Dict[str, Any]) -> Dict[str, Any]:
     stability_score: Optional[float] = None
     stability_notes = "Stability diagnostics missing."
     has_correlation = _artifact_valid(manifest, "correlation_analysis")
-    has_feature_importance = _artifact_valid(manifest, "feature_importance")
+    has_importance_report = _artifact_valid(manifest, "importance_report")
     if has_correlation:
         stability_evidence.append("artifacts.correlation_analysis")
-    if has_feature_importance:
-        stability_evidence.append("artifacts.feature_importance")
+    if has_importance_report:
+        stability_evidence.append("artifacts.importance_report")
 
-    if has_feature_importance:
+    if has_importance_report:
         stability_score = 70.0
         stability_notes = "Feature importance diagnostics available."
     elif has_correlation:
@@ -103,6 +159,38 @@ def compute_trust_from_manifest(manifest: Dict[str, Any]) -> Dict[str, Any]:
         stability_notes = "Correlation diagnostics available."
     else:
         stability_score = 40.0
+
+    numeric_stats = profile_summary.get("numeric_stats") or {}
+    if numeric_stats:
+        avg_cv = numeric_stats.get("avg_cv")
+        high_cv_ratio = numeric_stats.get("high_cv_ratio")
+        very_high_cv_ratio = numeric_stats.get("very_high_cv_ratio")
+        high_skew_ratio = numeric_stats.get("high_skew_ratio")
+        numeric_penalty = 0.0
+        if isinstance(avg_cv, (int, float)):
+            if avg_cv >= 3.0:
+                numeric_penalty += 20.0
+            elif avg_cv >= 1.5:
+                numeric_penalty += 10.0
+        if isinstance(very_high_cv_ratio, (int, float)) and very_high_cv_ratio >= 0.3:
+            numeric_penalty += 15.0
+        if isinstance(high_cv_ratio, (int, float)) and high_cv_ratio >= 0.5:
+            numeric_penalty += 10.0
+        if isinstance(high_skew_ratio, (int, float)) and high_skew_ratio >= 0.4:
+            numeric_penalty += 10.0
+        if numeric_penalty:
+            stability_score = max(0.0, (stability_score or 0.0) - min(30.0, numeric_penalty))
+            stability_notes = "Distribution volatility increases instability risk."
+            stability_evidence.append("artifacts.data_profile")
+
+    if "CRITICAL_MULTICOLLINEARITY" in warning_codes:
+        stability_score = 40.0
+        stability_notes = "Critical multicollinearity detected."
+        stability_evidence.append("warnings.CRITICAL_MULTICOLLINEARITY")
+    elif "HIGH_MULTICOLLINEARITY" in warning_codes:
+        stability_score = min(stability_score or 60.0, 50.0)
+        stability_notes = "High multicollinearity detected."
+        stability_evidence.append("warnings.HIGH_MULTICOLLINEARITY")
     components["stability"] = {
         "score": stability_score,
         "status": _status_for_score(stability_score),
@@ -117,6 +205,13 @@ def compute_trust_from_manifest(manifest: Dict[str, Any]) -> Dict[str, Any]:
     if validator_status == "success":
         vs_score = 60.0
         vs_notes = "Validation checks completed."
+        if validation_summary.get("mode") == "limitations":
+            if dq_score is not None:
+                vs_score = min(60.0, float(dq_score))
+                vs_notes = "Validation limited; strength capped by data quality."
+            else:
+                vs_score = 40.0
+                vs_notes = "Validation limited; diagnostics only."
     elif validator_status == "failed":
         vs_score = 20.0
         vs_notes = "Validation failed."
@@ -131,10 +226,17 @@ def compute_trust_from_manifest(manifest: Dict[str, Any]) -> Dict[str, Any]:
     leakage_evidence: List[str] = []
     leakage_score = 10.0
     leakage_notes = "No leakage warning detected."
-    if "DATA_LEAKAGE_POSSIBLE" in warning_codes:
-        leakage_score = 80.0
+    leakage_warning = next(
+        (w for w in warnings if isinstance(w, dict) and w.get("warning_code") == "DATA_LEAKAGE_POSSIBLE"),
+        None,
+    )
+    if leakage_warning:
+        leakage_score = 65.0
         leakage_notes = "Potential leakage warning raised."
         leakage_evidence.append("warnings.DATA_LEAKAGE_POSSIBLE")
+        if leakage_warning.get("blocking") or leakage_warning.get("severity") == "critical":
+            leakage_score = 80.0
+            leakage_notes = "Leakage warning flagged as critical."
     components["leakage_risk"] = {
         "score": leakage_score,
         "status": _status_for_score(leakage_score),

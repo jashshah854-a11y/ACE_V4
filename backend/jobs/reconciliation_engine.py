@@ -11,7 +11,7 @@ Answer: Adjust confidence gradually. Never flip truth. Preserve contradictions.
 
 from typing import List, Dict, Optional
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from backend.api.decision_models import (
     MemoryAssertion,
     PatternCandidate,
@@ -202,7 +202,7 @@ class ReconciliationEngine:
             state_history.append({
                 'from_state': self.coherence_state.current_state,
                 'to_state': state,
-                'transitioned_at': datetime.utcnow().isoformat(),
+                'transitioned_at': datetime.now(timezone.utc).isoformat(),
                 'reason': f"Contradictions: {contradiction_count}, Assertions: {assertion_count}"
             })
             # Keep last 10 transitions
@@ -227,4 +227,3 @@ class ReconciliationEngine:
         """
         # Env var check - simple mechanical stop
         return os.getenv("ACE_KILL_SWITCH", "false").lower() == "true"
-

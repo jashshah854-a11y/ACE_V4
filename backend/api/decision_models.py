@@ -5,7 +5,7 @@ Tracks executive interactions with Action Items, evidence, and trust signals
 to enable contextual memory and reflective feedback.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Literal
 from pydantic import BaseModel, Field
 import uuid
@@ -33,7 +33,7 @@ class DecisionTouchCreate(BaseModel):
 class DecisionTouch(DecisionTouchCreate):
     """Complete decision touch record with timestamp."""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class ActionOutcomeCreate(BaseModel):
@@ -51,7 +51,7 @@ class ActionOutcomeCreate(BaseModel):
 class ActionOutcome(ActionOutcomeCreate):
     """Complete action outcome record with metadata."""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    marked_at: datetime = Field(default_factory=datetime.utcnow)
+    marked_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class Reflection(BaseModel):
@@ -65,7 +65,7 @@ class Reflection(BaseModel):
         description="Dedicated UI slot only"
     )
     dismissed: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     shown_at: Optional[datetime] = Field(None, description="Timestamp when successfully rendered to user")
 
 
@@ -99,13 +99,13 @@ class MemoryAssertion(BaseModel):
     confidence_level: Literal['low', 'medium'] = Field(..., description="Never 'high' - uncertainty required")
     source_pattern_ids: list[str] = Field(..., description="PatternCandidate IDs that formed this assertion")
     source_reflection_id: Optional[str] = Field(None, description="Reflection that preceded this assertion")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    last_reinforced_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_reinforced_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     @property
     def days_since_reinforcement(self) -> float:
         """Calculate days since last reinforcement."""
-        delta = datetime.utcnow() - self.last_reinforced_at
+        delta = datetime.now(timezone.utc) - self.last_reinforced_at
         return delta.total_seconds() / 86400
 
 
@@ -120,7 +120,7 @@ class UserMemoryState(BaseModel):
         description="Internal coherence assessment"
     )
     assertion_count: int = Field(default=0, description="Number of active assertions")
-    last_evaluated_at: datetime = Field(default_factory=datetime.utcnow)
+    last_evaluated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class ReconciliationNote(BaseModel):
@@ -138,7 +138,7 @@ class ReconciliationNote(BaseModel):
     confidence_before: dict[str, str] = Field(..., description="Confidence levels before reconciliation")
     confidence_after: dict[str, str] = Field(..., description="Confidence levels after reconciliation")
     reasoning: str = Field(..., max_length=500, description="Internal explanation of change")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class BeliefCoherenceState(BaseModel):
@@ -153,7 +153,7 @@ class BeliefCoherenceState(BaseModel):
     )
     assertion_count: int = Field(default=0, description="Number of active assertions")
     contradiction_count: int = Field(default=0, description="Number of active contradictions")
-    last_reconciliation_at: datetime = Field(default_factory=datetime.utcnow)
+    last_reconciliation_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     state_history: list[dict] = Field(
         default_factory=list,
         description="History of state transitions"

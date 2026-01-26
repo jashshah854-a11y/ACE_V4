@@ -94,10 +94,10 @@ export function TimelineHelper({ profile, runId, initialColumn }: TimelineHelper
               </option>
             ))}
           </select>
-          <Button onClick={handleApply} disabled={!selection || saving}>
+          <Button onClick={handleApply} disabled={!selection || saving} data-allow-disabled>
             Generate Timeline
           </Button>
-          <Button variant="ghost" onClick={handleClear} disabled={saving}>
+          <Button variant="ghost" onClick={handleClear} disabled={saving} data-allow-disabled>
             Clear
           </Button>
         </div>

@@ -5,6 +5,12 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from core.state_manager import StateManager
+from core.data_profile import build_data_profile
+from core.analytics_validation import apply_artifact_validation
+from core.cache import load_cache, save_cache
+from core.run_manifest import read_manifest
+from core.data_loader import smart_load_dataset
+from ace_v4.performance.config import PerformanceConfig
 from schema_scanner.scanner import scan_dataset
 
 class ScannerAgent:
@@ -23,6 +29,26 @@ class ScannerAgent:
         print(f"Scanning: {data_path}")
         scan = scan_dataset(data_path)
         self.state.write("schema_scan_output", scan)
+
+        try:
+            manifest = read_manifest(self.state.run_path) or {}
+            fingerprint = manifest.get("dataset_fingerprint", "unknown")
+            pipeline_version = manifest.get("pipeline_version", "unknown")
+            cache_key = f"{fingerprint}_{pipeline_version}_data_profile"
+            cached = load_cache(cache_key)
+            data_profile = cached if isinstance(cached, dict) else None
+            if data_profile is None:
+                df = smart_load_dataset(data_path, config=PerformanceConfig())
+                data_profile = build_data_profile(df)
+            validated = apply_artifact_validation("data_profile", data_profile)
+            if validated:
+                self.state.write("data_profile_pending", validated)
+                if not cached:
+                    save_cache(cache_key, validated)
+            else:
+                print("[SCANNER WARNING] Data profile failed validation; artifact discarded", flush=True)
+        except Exception as exc:
+            print(f"[SCANNER WARNING] Data profile generation failed: {exc}", flush=True)
 
         # Compute quality score (0-1 scale)
         columns = scan.get("columns", {})

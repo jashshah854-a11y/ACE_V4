@@ -1,0 +1,309 @@
+{
+  "dataset_info": {
+    "name": "multicollinear_fit",
+    "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\trust_edge_cases\\multicollinear_fit.csv",
+    "row_count": 300,
+    "column_count": 6,
+    "sample_rows": [
+      {
+        "user_id": 1,
+        "feature_a": 100.01230153357484,
+        "feature_b": 100.68453268260195,
+        "feature_c": 99.23910461840585,
+        "revenue": 297.3038559704684,
+        "target": 302.30464886807016
+      },
+      {
+        "user_id": 2,
+        "feature_a": 102.98745537508468,
+        "feature_b": 104.13346428501497,
+        "feature_c": 102.42014509770982,
+        "revenue": 309.3812242197908,
+        "target": 309.7958979779662
+      },
+      {
+        "user_id": 3,
+        "feature_a": 97.25862144637784,
+        "feature_b": 98.2201795942774,
+        "feature_c": 96.6904862887632,
+        "revenue": 290.71474635479365,
+        "target": 291.6881741504952
+      },
+      {
+        "user_id": 4,
+        "feature_a": 91.09408161242726,
+        "feature_b": 92.06670435383492,
+        "feature_c": 90.13930466074837,
+        "revenue": 272.54466673555896,
+        "target": 272.4131567616167
+      },
+      {
+        "user_id": 5,
+        "feature_a": 95.45329214828276,
+        "feature_b": 96.06828819699732,
+        "feature_c": 94.64679905254808,
+        "revenue": 282.87684754905115,
+        "target": 285.4073787137308
+      }
+    ]
+  },
+  "basic_types": {
+    "numeric": [
+      "user_id",
+      "feature_a",
+      "feature_b",
+      "feature_c",
+      "revenue",
+      "target"
+    ],
+    "categorical": [],
+    "datetime": [],
+    "text": []
+  },
+  "stats": {
+    "user_id": {
+      "mean": 150.5,
+      "median": 150.5,
+      "std": 86.74675786448736,
+      "min": 1.0,
+      "max": 300.0,
+      "skew": 0.0,
+      "missing_rate": 0.0
+    },
+    "feature_a": {
+      "mean": 98.68136056248971,
+      "median": 99.2715068061737,
+      "std": 9.238310092358414,
+      "min": 67.48561584503462,
+      "max": 122.4475662648605,
+      "skew": -0.1826648140797737,
+      "missing_rate": 0.0
+    },
+    "feature_b": {
+      "mean": 99.6630440501957,
+      "median": 100.24183219651962,
+      "std": 9.311514739026718,
+      "min": 68.28671527767541,
+      "max": 123.77087702713568,
+      "skew": -0.17048949039687455,
+      "missing_rate": 0.0
+    },
+    "feature_c": {
+      "mean": 97.6946332442804,
+      "median": 98.28653358587724,
+      "std": 9.166123138891283,
+      "min": 66.68821998728224,
+      "max": 121.62726848881132,
+      "skew": -0.1866811256784959,
+      "missing_rate": 0.0
+    },
+    "revenue": {
+      "mean": 296.07170207458466,
+      "median": 296.94920426280146,
+      "std": 27.839858853970025,
+      "min": 201.7580096797056,
+      "max": 367.2774421994042,
+      "skew": -0.20634702190358398,
+      "missing_rate": 0.0
+    },
+    "target": {
+      "mean": 295.84068837652467,
+      "median": 297.57937874467075,
+      "std": 27.699498428804766,
+      "min": 202.81023239862057,
+      "max": 368.8864676436283,
+      "skew": -0.2101996212425326,
+      "missing_rate": 0.0
+    }
+  },
+  "semantic_roles": {
+    "id_fields": [],
+    "time_fields": [],
+    "income_like": [
+      "revenue"
+    ],
+    "spend_like": [],
+    "risk_like": [],
+    "value_like": [],
+    "activity_like": [],
+    "frequency_like": [],
+    "volume_like": [],
+    "demographic_like": [],
+    "categorical_descriptors": []
+  },
+  "role_confidence": {
+    "income_like": 0.9,
+    "spend_like": 0.0,
+    "risk_like": 0.0,
+    "value_like": 0.0,
+    "activity_like": 0.0,
+    "frequency_like": 0.0,
+    "volume_like": 0.0,
+    "demographic_like": 0.0
+  },
+  "domain_guess": {
+    "domain": "generic",
+    "confidence": 0.8
+  },
+  "feature_quality_scores": {},
+  "relationships": {
+    "correlations": {
+      "user_id": {
+        "feature_a": 0.05740295170974276,
+        "feature_b": 0.05688778633300421,
+        "feature_c": 0.05528989363739496,
+        "revenue": 0.054630021003065285,
+        "target": 0.0540727924841709
+      },
+      "feature_a": {
+        "user_id": 0.05740295170974276,
+        "feature_b": 0.9997831658069559,
+        "feature_c": 0.9997683004028733,
+        "revenue": 0.9969836442338028,
+        "target": 0.9987556286289799
+      },
+      "feature_b": {
+        "user_id": 0.05688778633300421,
+        "feature_a": 0.9997831658069559,
+        "feature_c": 0.9995645491779865,
+        "revenue": 0.9965324267147476,
+        "target": 0.9985607504746695
+      },
+      "feature_c": {
+        "user_id": 0.05528989363739496,
+        "feature_a": 0.9997683004028733,
+        "feature_b": 0.9995645491779865,
+        "revenue": 0.9966877803932038,
+        "target": 0.9986516526107623
+      },
+      "revenue": {
+        "user_id": 0.054630021003065285,
+        "feature_a": 0.9969836442338028,
+        "feature_b": 0.9965324267147476,
+        "feature_c": 0.9966877803932038,
+        "target": 0.9958239630785657
+      },
+      "target": {
+        "user_id": 0.0540727924841709,
+        "feature_a": 0.9987556286289799,
+        "feature_b": 0.9985607504746695,
+        "feature_c": 0.9986516526107623,
+        "revenue": 0.9958239630785657
+      }
+    },
+    "strong_pairs": [
+      [
+        "feature_a",
+        "feature_b"
+      ],
+      [
+        "feature_a",
+        "feature_c"
+      ],
+      [
+        "feature_a",
+        "revenue"
+      ],
+      [
+        "feature_a",
+        "target"
+      ],
+      [
+        "feature_b",
+        "feature_a"
+      ],
+      [
+        "feature_b",
+        "feature_c"
+      ],
+      [
+        "feature_b",
+        "revenue"
+      ],
+      [
+        "feature_b",
+        "target"
+      ],
+      [
+        "feature_c",
+        "feature_a"
+      ],
+      [
+        "feature_c",
+        "feature_b"
+      ],
+      [
+        "feature_c",
+        "revenue"
+      ],
+      [
+        "feature_c",
+        "target"
+      ],
+      [
+        "revenue",
+        "feature_a"
+      ],
+      [
+        "revenue",
+        "feature_b"
+      ],
+      [
+        "revenue",
+        "feature_c"
+      ],
+      [
+        "revenue",
+        "target"
+      ],
+      [
+        "target",
+        "feature_a"
+      ],
+      [
+        "target",
+        "feature_b"
+      ],
+      [
+        "target",
+        "feature_c"
+      ],
+      [
+        "target",
+        "revenue"
+      ]
+    ]
+  },
+  "normalization_plan": {},
+  "feature_plan": {
+    "clustering_features": [
+      "feature_a",
+      "feature_b",
+      "feature_c",
+      "revenue",
+      "target"
+    ],
+    "persona_features": [
+      "feature_a",
+      "feature_b",
+      "feature_c",
+      "revenue",
+      "target"
+    ],
+    "risk_features": [],
+    "value_features": [],
+    "anomaly_features": [
+      "user_id",
+      "feature_a",
+      "feature_b",
+      "feature_c",
+      "revenue",
+      "target"
+    ]
+  },
+  "warnings": {
+    "missing_numeric": false,
+    "low_row_count": false,
+    "suspected_data_issues": []
+  }
+}

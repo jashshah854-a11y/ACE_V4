@@ -649,8 +649,8 @@
     "missing_numeric": false,
     "low_row_count": false,
     "suspected_data_issues": [
-      "SCORE has a high missing ratio, consider imputation or removal.",
-      "Lat/Lon are useful for location based analysis."
+      "SCORE has missing values and may need imputation.",
+      "Lat/Lon columns may be useful for location-based analysis."
     ]
   }
 }

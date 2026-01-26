@@ -11,13 +11,11 @@ import {
 } from "@/lib/reportParser";
 import { extractHeroInsight, generateMondayActions, extractSegmentData } from "@/lib/insightExtractors";
 import { extractExecutiveBrief, extractConclusion } from "@/lib/narrativeExtractors";
-import { useEnhancedAnalytics } from "@/hooks/useEnhancedAnalytics";
-import { useRemoteArtifact } from "@/hooks/useRemoteArtifact";
 import { getSyntheticTimeColumn } from "@/lib/timelineHelper";
-import { useDiagnostics } from "@/hooks/useDiagnostics";
-import { useModelArtifacts } from "@/hooks/useModelArtifacts";
-import { useRunManifest } from "@/hooks/useRunManifest";
+import { useRemoteArtifact } from "@/hooks/useRemoteArtifact";
+import { isManifestCompatible } from "@/hooks/useRunManifest";
 import type { GovernedReport, TaskContractSnapshot } from "@/hooks/useGovernedReport";
+import type { RunSnapshot } from "@/lib/api-client";
 import type {
   ReportDataResult,
   GuidanceNote,
@@ -212,18 +210,25 @@ export function useReportData(
   content: string,
   runId: string | undefined,
   confidenceMode: "strict" | "exploratory",
-  governedReport?: GovernedReport | null
+  governedReport?: GovernedReport | null,
+  snapshot?: RunSnapshot | null
 ): ReportDataResult {
   const contractSnapshot = governedReport?.task_contract;
   const analysisIntent = governedReport?.analysis_intent;
   const targetCandidate = governedReport?.target_candidate;
-  const { data: runManifest, loading: manifestLoading, compatible: manifestCompatible } = useRunManifest(runId);
-  const renderPolicy = runManifest?.render_policy;
-  const trustModel = runManifest?.trust ?? null;
+  const snapshotManifest = snapshot?.manifest ?? null;
+  const runManifest = snapshotManifest;
+  const manifestCompatible = snapshotManifest ? isManifestCompatible(snapshotManifest) : false;
+  const manifestLoading = !snapshotManifest;
+  if (import.meta.env.DEV && !snapshotManifest && runId) {
+    console.warn(`[ReportData] Missing snapshot for run ${runId}. Snapshot is now required.`);
+  }
+  const renderPolicy = snapshot?.render_policy ?? runManifest?.render_policy;
+  const trustModel = snapshot?.trust ?? runManifest?.trust ?? null;
   const manifestReady = Boolean(runManifest && manifestCompatible);
   const allowReport = manifestReady && renderPolicy?.allow_report === true;
   const reportContent = allowReport ? content : "";
-  const gatedRunId = manifestReady ? runId : undefined;
+  const gatedRunId = undefined;
   const allowPersonas = renderPolicy?.allow_personas === true;
   const allowAnomalies = renderPolicy?.allow_anomalies === true;
   const allowRegression = renderPolicy?.allow_regression_sections === true;
@@ -250,17 +255,20 @@ export function useReportData(
 
   const rawScopeConstraints = governedReport?.scope_constraints || [];
 
-  const { data: enhancedAnalytics, loading: analyticsLoading } = useEnhancedAnalytics(gatedRunId);
-  const { data: diagnostics } = useDiagnostics(gatedRunId);
-  const { data: modelArtifacts } = useModelArtifacts(gatedRunId);
-  const { data: identityPayload } = useRemoteArtifact<IdentityApiResponse>(gatedRunId, "identity");
   const { data: timelineSelection } = useRemoteArtifact<{ column?: string }>(gatedRunId, "timeline");
+
+  const analyticsLoading = false;
+  const enhancedAnalytics = snapshot?.enhanced_analytics ?? null;
+  const diagnostics = snapshot?.diagnostics ?? null;
+  const modelArtifacts = snapshot?.model_artifacts ?? null;
+  const identityPayload = (snapshot?.identity as IdentityApiResponse | undefined) ?? null;
 
   const gatedEnhancedAnalytics = useMemo(() => {
     if (!enhancedAnalytics) return null;
     if (!renderPolicy) return enhancedAnalytics;
     const next = { ...enhancedAnalytics };
     if (!renderPolicy.allow_correlation_analysis) next.correlation_analysis = null;
+    if (!renderPolicy.allow_correlation_analysis) next.correlation_ci = null;
     if (!renderPolicy.allow_distribution_analysis) next.distribution_analysis = null;
     if (!renderPolicy.allow_quality_metrics) next.quality_metrics = null;
     if (!renderPolicy.allow_business_intelligence) next.business_intelligence = null;
@@ -765,6 +773,9 @@ export function useReportData(
     manifestLoading,
     manifestCompatible,
     renderPolicy,
+    viewPolicies: snapshot?.view_policies ?? runManifest?.view_policies,
+    analysisAllowed: runManifest?.analysis_allowed,
+    analysisSuppressed: runManifest?.analysis_suppressed,
     evidenceMap,
     governedInsights,
   });

@@ -108,7 +108,8 @@ class PersonaEngine:
         fingerprints = overseer_output.get("fingerprints", {})
         
         if not fingerprints:
-            raise RuntimeError("No fingerprints available for persona generation.")
+            log_warn("No fingerprints available for persona generation; skipping personas.")
+            return None
 
         domain_guess = getattr(getattr(self.schema_map, "domain_guess", None), "domain", "generic") or "generic"
         roles = self.schema_map.semantic_roles.model_dump() if hasattr(self.schema_map.semantic_roles, "model_dump") else {}

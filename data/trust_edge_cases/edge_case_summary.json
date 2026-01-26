@@ -1,0 +1,404 @@
+[
+  {
+    "label": "perfect_leakage",
+    "dataset": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\trust_edge_cases\\perfect_leakage.csv",
+    "run_id": "f55987b6",
+    "run_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\backend\\data\\runs\\f55987b6",
+    "status": "unknown",
+    "regression_status": "success",
+    "trust": {
+      "overall_confidence": 32.0,
+      "components": {
+        "data_quality": {
+          "score": 80.0,
+          "status": "high",
+          "evidence": [
+            "steps.validator",
+            "artifacts.quality_metrics",
+            "artifacts.dataset_identity_card",
+            "artifacts.data_profile"
+          ],
+          "notes": "Profile: rows=200, avg missing 0.0%, max missing 0.0%."
+        },
+        "model_fit": {
+          "score": 70.0,
+          "status": "medium",
+          "evidence": [
+            "steps.regression",
+            "artifacts.regression_insights"
+          ],
+          "notes": "Regression artifacts validated."
+        },
+        "stability": {
+          "score": 40.0,
+          "status": "low",
+          "evidence": [
+            "artifacts.correlation_analysis",
+            "artifacts.importance_report",
+            "warnings.CRITICAL_MULTICOLLINEARITY"
+          ],
+          "notes": "Critical multicollinearity detected."
+        },
+        "validation_strength": {
+          "score": 60.0,
+          "status": "medium",
+          "evidence": [
+            "steps.validator"
+          ],
+          "notes": "Validation checks completed."
+        },
+        "leakage_risk": {
+          "score": 65.0,
+          "status": "medium",
+          "evidence": [
+            "warnings.DATA_LEAKAGE_POSSIBLE"
+          ],
+          "notes": "Potential leakage warning raised."
+        }
+      },
+      "applied_caps": [
+        {
+          "code": "STABILITY_LOW",
+          "max": 60,
+          "evidence": [
+            "artifacts.correlation_analysis",
+            "artifacts.importance_report",
+            "warnings.CRITICAL_MULTICOLLINEARITY"
+          ]
+        }
+      ]
+    },
+    "warning_count": 3,
+    "warnings": [
+      {
+        "warning_code": "OVERFIT_RISK",
+        "severity": "warning",
+        "message": "High R-squared may indicate overfitting.",
+        "related_step": null,
+        "blocking": false
+      },
+      {
+        "warning_code": "CRITICAL_MULTICOLLINEARITY",
+        "severity": "warning",
+        "message": "VIF infinite indicates perfect multicollinearity.",
+        "related_step": null,
+        "blocking": false
+      },
+      {
+        "warning_code": "DATA_LEAKAGE_POSSIBLE",
+        "severity": "warning",
+        "message": "Target leakage candidates detected.",
+        "related_step": null,
+        "blocking": false
+      }
+    ],
+    "render_policy": {
+      "allow_report": true,
+      "allow_regression_sections": true,
+      "allow_forecasting": false,
+      "allow_simulation": true,
+      "allow_trust_summary": true,
+      "allow_personas": false,
+      "allow_strategies": false,
+      "allow_anomalies": false,
+      "allow_correlation_analysis": true,
+      "allow_distribution_analysis": true,
+      "allow_quality_metrics": true,
+      "allow_business_intelligence": true,
+      "allow_feature_importance": true
+    }
+  },
+  {
+    "label": "multicollinear_fit",
+    "dataset": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\trust_edge_cases\\multicollinear_fit.csv",
+    "run_id": "af50a67a",
+    "run_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\backend\\data\\runs\\af50a67a",
+    "status": "unknown",
+    "regression_status": "success",
+    "trust": {
+      "overall_confidence": 32.0,
+      "components": {
+        "data_quality": {
+          "score": 80.0,
+          "status": "high",
+          "evidence": [
+            "steps.validator",
+            "artifacts.quality_metrics",
+            "artifacts.dataset_identity_card",
+            "artifacts.data_profile"
+          ],
+          "notes": "Profile: rows=300, avg missing 0.0%, max missing 0.0%."
+        },
+        "model_fit": {
+          "score": 70.0,
+          "status": "medium",
+          "evidence": [
+            "steps.regression",
+            "artifacts.regression_insights"
+          ],
+          "notes": "Regression artifacts validated."
+        },
+        "stability": {
+          "score": 40.0,
+          "status": "low",
+          "evidence": [
+            "artifacts.correlation_analysis",
+            "artifacts.importance_report",
+            "warnings.CRITICAL_MULTICOLLINEARITY"
+          ],
+          "notes": "Critical multicollinearity detected."
+        },
+        "validation_strength": {
+          "score": 60.0,
+          "status": "medium",
+          "evidence": [
+            "steps.validator"
+          ],
+          "notes": "Validation checks completed."
+        },
+        "leakage_risk": {
+          "score": 65.0,
+          "status": "medium",
+          "evidence": [
+            "warnings.DATA_LEAKAGE_POSSIBLE"
+          ],
+          "notes": "Potential leakage warning raised."
+        }
+      },
+      "applied_caps": [
+        {
+          "code": "STABILITY_LOW",
+          "max": 60,
+          "evidence": [
+            "artifacts.correlation_analysis",
+            "artifacts.importance_report",
+            "warnings.CRITICAL_MULTICOLLINEARITY"
+          ]
+        }
+      ]
+    },
+    "warning_count": 4,
+    "warnings": [
+      {
+        "warning_code": "OVERFIT_RISK",
+        "severity": "warning",
+        "message": "High R-squared may indicate overfitting.",
+        "related_step": null,
+        "blocking": false
+      },
+      {
+        "warning_code": "HIGH_MULTICOLLINEARITY",
+        "severity": "warning",
+        "message": "VIF >= 10 indicates multicollinearity.",
+        "related_step": null,
+        "blocking": false
+      },
+      {
+        "warning_code": "CRITICAL_MULTICOLLINEARITY",
+        "severity": "warning",
+        "message": "VIF >= 20 indicates severe multicollinearity.",
+        "related_step": null,
+        "blocking": false
+      },
+      {
+        "warning_code": "DATA_LEAKAGE_POSSIBLE",
+        "severity": "warning",
+        "message": "Target leakage candidates detected.",
+        "related_step": null,
+        "blocking": false
+      }
+    ],
+    "render_policy": {
+      "allow_report": true,
+      "allow_regression_sections": true,
+      "allow_forecasting": false,
+      "allow_simulation": false,
+      "allow_trust_summary": true,
+      "allow_personas": false,
+      "allow_strategies": false,
+      "allow_anomalies": false,
+      "allow_correlation_analysis": true,
+      "allow_distribution_analysis": true,
+      "allow_quality_metrics": true,
+      "allow_business_intelligence": true,
+      "allow_feature_importance": true
+    }
+  },
+  {
+    "label": "high_quality_no_target",
+    "dataset": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\trust_edge_cases\\high_quality_no_target.csv",
+    "run_id": "8a76956a",
+    "run_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\backend\\data\\runs\\8a76956a",
+    "status": "unknown",
+    "regression_status": "skipped",
+    "trust": {
+      "overall_confidence": 16.0,
+      "components": {
+        "data_quality": {
+          "score": 45.0,
+          "status": "low",
+          "evidence": [
+            "steps.validator",
+            "artifacts.quality_metrics",
+            "artifacts.dataset_identity_card",
+            "artifacts.data_profile"
+          ],
+          "notes": "Profile: rows=250, avg missing 0.0%, max missing 0.0%."
+        },
+        "model_fit": {
+          "score": null,
+          "status": "unknown",
+          "evidence": [
+            "steps.regression"
+          ],
+          "notes": "Regression did not complete."
+        },
+        "stability": {
+          "score": 20.0,
+          "status": "low",
+          "evidence": [
+            "artifacts.data_profile"
+          ],
+          "notes": "Distribution volatility increases instability risk."
+        },
+        "validation_strength": {
+          "score": 45.0,
+          "status": "low",
+          "evidence": [
+            "steps.validator"
+          ],
+          "notes": "Validation limited; strength capped by data quality."
+        },
+        "leakage_risk": {
+          "score": 10.0,
+          "status": "low",
+          "evidence": [],
+          "notes": "No leakage warning detected."
+        }
+      },
+      "applied_caps": [
+        {
+          "code": "REGRESSION_NOT_SUCCESS",
+          "max": 50,
+          "evidence": [
+            "steps.regression"
+          ]
+        },
+        {
+          "code": "STABILITY_LOW",
+          "max": 60,
+          "evidence": [
+            "artifacts.data_profile"
+          ]
+        },
+        {
+          "code": "UNKNOWN_COMPONENTS",
+          "max": 60,
+          "evidence": []
+        }
+      ]
+    },
+    "warning_count": 0,
+    "warnings": [],
+    "render_policy": {
+      "allow_report": true,
+      "allow_regression_sections": false,
+      "allow_forecasting": false,
+      "allow_simulation": false,
+      "allow_trust_summary": true,
+      "allow_personas": false,
+      "allow_strategies": false,
+      "allow_anomalies": false,
+      "allow_correlation_analysis": false,
+      "allow_distribution_analysis": true,
+      "allow_quality_metrics": true,
+      "allow_business_intelligence": true,
+      "allow_feature_importance": false
+    }
+  },
+  {
+    "label": "descriptive_only",
+    "dataset": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\trust_edge_cases\\descriptive_only.csv",
+    "run_id": "69f44960",
+    "run_path": "C:\\Users\\jashs\\Projects\\ACE_V4\\backend\\data\\runs\\69f44960",
+    "status": "unknown",
+    "regression_status": "skipped",
+    "trust": {
+      "overall_confidence": 42.0,
+      "components": {
+        "data_quality": {
+          "score": 80.0,
+          "status": "high",
+          "evidence": [
+            "steps.validator",
+            "artifacts.quality_metrics",
+            "artifacts.dataset_identity_card",
+            "artifacts.data_profile"
+          ],
+          "notes": "Profile: rows=180, avg missing 0.0%, max missing 0.0%."
+        },
+        "model_fit": {
+          "score": null,
+          "status": "unknown",
+          "evidence": [
+            "steps.regression"
+          ],
+          "notes": "Regression did not complete."
+        },
+        "stability": {
+          "score": 60.0,
+          "status": "medium",
+          "evidence": [
+            "artifacts.correlation_analysis"
+          ],
+          "notes": "Correlation diagnostics available."
+        },
+        "validation_strength": {
+          "score": 60.0,
+          "status": "medium",
+          "evidence": [
+            "steps.validator"
+          ],
+          "notes": "Validation checks completed."
+        },
+        "leakage_risk": {
+          "score": 10.0,
+          "status": "low",
+          "evidence": [],
+          "notes": "No leakage warning detected."
+        }
+      },
+      "applied_caps": [
+        {
+          "code": "REGRESSION_NOT_SUCCESS",
+          "max": 50,
+          "evidence": [
+            "steps.regression"
+          ]
+        },
+        {
+          "code": "UNKNOWN_COMPONENTS",
+          "max": 60,
+          "evidence": []
+        }
+      ]
+    },
+    "warning_count": 0,
+    "warnings": [],
+    "render_policy": {
+      "allow_report": true,
+      "allow_regression_sections": false,
+      "allow_forecasting": false,
+      "allow_simulation": false,
+      "allow_trust_summary": true,
+      "allow_personas": false,
+      "allow_strategies": false,
+      "allow_anomalies": false,
+      "allow_correlation_analysis": true,
+      "allow_distribution_analysis": true,
+      "allow_quality_metrics": true,
+      "allow_business_intelligence": true,
+      "allow_feature_importance": false
+    }
+  }
+]

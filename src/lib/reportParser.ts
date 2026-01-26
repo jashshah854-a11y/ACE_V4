@@ -7,7 +7,7 @@ import type { EnhancedAnalyticsData } from './enhancedAnalyticsTypes';
 
 /**
  * Clean up technical identifiers from text to make it user-friendly
- * Converts cluster_0 → Cluster A, segment_1 → Segment B, etc.
+ * Converts cluster_0 -> Cluster A, segment_1 -> Segment B, etc.
  */
 export function sanitizeDisplayText(text: string): string {
     if (!text) return text;
@@ -625,7 +625,7 @@ export function extractEvidenceObjects(
             evidence.push({
                 id: `corr-${index}`,
                 type: 'correlation',
-                claim: `${corr.feature1} ↔ ${corr.feature2}: ${corr.pearson?.toFixed(3)}`,
+                claim: `${corr.feature1} <-> ${corr.feature2}: ${corr.pearson?.toFixed(3)}`,
                 proof: {
                     python: `df[['${corr.feature1}', '${corr.feature2}']].corr(method='pearson')`,
                     rawData: corr,

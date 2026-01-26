@@ -70,10 +70,10 @@ export function extractDriverInsight(
     // Check if one feature dominates
     if (topImportance > secondImportance * 2) {
         insight = {
-            text: `${topDriver.feature} explains ${Math.round(topImportance)}% of variance—single largest driver observed.`,
+            text: `${topDriver.feature} is the strongest driver observed (relative importance ${Math.round(topImportance)}).`,
             severity: "positive",
             confidence: data.confidence,
-            watchItem: `Monitor ${topDriver.feature} for disproportionate impact on ${data.target || "outcomes"}.`,
+            watchItem: `Monitor ${topDriver.feature} for disproportionate influence on ${data.target || "outcomes"}.`,
         };
     } else {
         // Balanced importance

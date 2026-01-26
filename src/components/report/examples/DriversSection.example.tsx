@@ -46,13 +46,12 @@ export function DriversSection() {
                         source="Customer feedback data"
                         dateRange="Jan 2024 - Dec 2024"
                         sampleSize={12453}
-                        confidence={87}
                         metricDefinitions={{
                             "Importance Score": "Percentage contribution to prediction accuracy (0-100)",
                             "Customer Satisfaction": "Net Promoter Score (NPS) from post-purchase survey",
                         }}
                         caption={{
-                            text: "Product Quality drives 85% of satisfaction variance. Focus quality improvements for maximum ROI.",
+                            text: "Product Quality is the top driver of satisfaction; focus quality improvements for maximum ROI.",
                             severity: "positive",
                         }}
                         chart={

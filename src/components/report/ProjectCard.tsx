@@ -1,6 +1,5 @@
 
 import { Calendar, FileText, ArrowRight, AlertTriangle } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RecentReport } from "@/lib/localStorage";
 import { cn } from "@/lib/utils";

@@ -1,0 +1,32 @@
+{
+  "domain_tags": [
+    {
+      "tag": "finance",
+      "confidence": 0.5
+    }
+  ],
+  "temporal_structure": {
+    "tag": "cross_sectional",
+    "confidence": 0.6
+  },
+  "observation_unit": {
+    "tag": "customer",
+    "confidence": 0.75
+  },
+  "target_presence": {
+    "tag": "none",
+    "confidence": 0.5
+  },
+  "notes": [],
+  "signals": {
+    "finance": {
+      "fields": [
+        "revenue"
+      ]
+    }
+  },
+  "status": "success",
+  "valid": true,
+  "errors": [],
+  "warnings": []
+}

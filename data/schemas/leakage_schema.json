@@ -1,0 +1,171 @@
+{
+  "dataset_info": {
+    "name": "leakage",
+    "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\backend\\data\\pytest_basetemp\\test_golden_run_suite0\\leakage.csv",
+    "row_count": 5,
+    "column_count": 3,
+    "sample_rows": [
+      {
+        "feature_a": 1,
+        "leakage_feature": 100.0,
+        "target": 100
+      },
+      {
+        "feature_a": 2,
+        "leakage_feature": 120.0,
+        "target": 120
+      },
+      {
+        "feature_a": 3,
+        "leakage_feature": 130.0,
+        "target": 130
+      },
+      {
+        "feature_a": 4,
+        "leakage_feature": 140.0,
+        "target": 140
+      },
+      {
+        "feature_a": 5,
+        "leakage_feature": 160.0,
+        "target": 160
+      }
+    ]
+  },
+  "basic_types": {
+    "numeric": [
+      "feature_a",
+      "leakage_feature",
+      "target"
+    ],
+    "categorical": [],
+    "datetime": [],
+    "text": []
+  },
+  "stats": {
+    "feature_a": {
+      "mean": 3.0,
+      "median": 3.0,
+      "std": 1.5811388300841898,
+      "min": 1.0,
+      "max": 5.0,
+      "skew": 0.0,
+      "missing_rate": 0.0
+    },
+    "leakage_feature": {
+      "mean": 130.0,
+      "median": 130.0,
+      "std": 22.360679774997898,
+      "min": 100.0,
+      "max": 160.0,
+      "skew": 0.0,
+      "missing_rate": 0.0
+    },
+    "target": {
+      "mean": 130.0,
+      "median": 130.0,
+      "std": 22.360679774997898,
+      "min": 100.0,
+      "max": 160.0,
+      "skew": 0.0,
+      "missing_rate": 0.0
+    }
+  },
+  "semantic_roles": {
+    "id_fields": [],
+    "time_fields": [],
+    "income_like": [],
+    "spend_like": [],
+    "risk_like": [],
+    "value_like": [],
+    "activity_like": [],
+    "frequency_like": [],
+    "volume_like": [],
+    "demographic_like": [],
+    "categorical_descriptors": []
+  },
+  "role_confidence": {
+    "income_like": 0.0,
+    "spend_like": 0.0,
+    "risk_like": 0.0,
+    "value_like": 0.0,
+    "activity_like": 0.0,
+    "frequency_like": 0.0,
+    "volume_like": 0.0,
+    "demographic_like": 0.0
+  },
+  "domain_guess": {
+    "domain": "generic",
+    "confidence": 0.8
+  },
+  "feature_quality_scores": {},
+  "relationships": {
+    "correlations": {
+      "feature_a": {
+        "leakage_feature": 0.9899494936611667,
+        "target": 0.9899494936611667
+      },
+      "leakage_feature": {
+        "feature_a": 0.9899494936611667,
+        "target": 1.0
+      },
+      "target": {
+        "feature_a": 0.9899494936611667,
+        "leakage_feature": 1.0
+      }
+    },
+    "strong_pairs": [
+      [
+        "feature_a",
+        "leakage_feature"
+      ],
+      [
+        "feature_a",
+        "target"
+      ],
+      [
+        "leakage_feature",
+        "feature_a"
+      ],
+      [
+        "leakage_feature",
+        "target"
+      ],
+      [
+        "target",
+        "feature_a"
+      ],
+      [
+        "target",
+        "leakage_feature"
+      ]
+    ]
+  },
+  "normalization_plan": {},
+  "feature_plan": {
+    "clustering_features": [
+      "feature_a",
+      "leakage_feature",
+      "target"
+    ],
+    "persona_features": [
+      "feature_a"
+    ],
+    "risk_features": [
+      "leakage_feature"
+    ],
+    "value_features": [],
+    "anomaly_features": [
+      "feature_a",
+      "leakage_feature",
+      "target"
+    ]
+  },
+  "warnings": {
+    "missing_numeric": false,
+    "low_row_count": false,
+    "suspected_data_issues": [
+      "Consider renaming 'leakage_feature' to be more descriptive."
+    ]
+  }
+}

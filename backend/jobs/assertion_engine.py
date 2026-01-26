@@ -9,7 +9,7 @@ CRITICAL: These assertions are NEVER shown to users.
 """
 
 from typing import List, Optional, Dict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 from backend.api.decision_models import (
     PatternCandidate,
@@ -103,7 +103,7 @@ class AssertionEngine:
         """Update last_reinforced_at for existing assertion."""
         for a in self.assertions:
             if pattern_id in a.source_pattern_ids:
-                a.last_reinforced_at = datetime.utcnow()
+                a.last_reinforced_at = datetime.now(timezone.utc)
     
     def _create_assertion(self, 
                          user_id: str, 

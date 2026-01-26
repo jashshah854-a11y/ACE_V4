@@ -1,5 +1,8 @@
 // IRON DOME: Environment Detection Protocol
 // Prevents "Build Trap" where production builds query localhost
+const isTestEnv = import.meta.env.MODE === "test";
+const isDevEnv = import.meta.env.DEV && !isTestEnv;
+
 export const API_BASE =
   import.meta.env.VITE_ACE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
@@ -8,13 +11,15 @@ export const API_BASE =
     : "http://localhost:8000");
 
 // Defense in Depth: If running in a container, localhost is almost always wrong
-if (typeof window !== "undefined" && window.location.protocol === "https:" && API_BASE.includes("http://localhost")) {
+if (!isTestEnv && typeof window !== "undefined" && window.location.protocol === "https:" && API_BASE.includes("http://localhost")) {
   console.error("[IRON DOME] ⚠️ SECURITY ALERT: HTTPS origin detected but API targeted localhost. Blocking likely failure.");
 }
 
 // Debug Log to confirm connection target in Console
+if (!isTestEnv) {
 console.log("[IRON DOME] 🚀 Active Backend Target:", API_BASE);
 console.log("[IRON DOME] 📊 Mode:", import.meta.env.MODE);
+}
 
 // LAW 3: DEFENSIVE PARSING - Content-Type Validation
 // Prevents "Unexpected token" errors by checking response type before parsing
@@ -102,6 +107,30 @@ export interface ReportData {
       churn_rate: number;
     }>;
   };
+}
+
+export interface RunSnapshot {
+  run_id: string;
+  generated_at: string;
+  lite: boolean;
+  report_markdown?: string;
+  governed_report?: any;
+  evidence_map?: Record<string, any>;
+  manifest: any;
+  diagnostics: any;
+  identity: any;
+  curated_kpis?: {
+    rows?: number | string;
+    columns?: number | string;
+    data_quality_score?: number;
+    completeness?: number;
+  };
+  enhanced_analytics?: any;
+  model_artifacts?: any;
+  render_policy?: any;
+  view_policies?: any;
+  trust?: any;
+  run_warnings?: any[];
 }
 
 // API Client Functions
@@ -335,6 +364,56 @@ export async function getReport(runId: string): Promise<string> {
   return markdown;
 }
 
+function snapshotCacheKey(runId: string, lite: boolean) {
+  return `ace.snapshot.${lite ? "lite" : "full"}.${runId}`;
+}
+
+function snapshotEtagKey(runId: string, lite: boolean) {
+  return `ace.snapshot.etag.${lite ? "lite" : "full"}.${runId}`;
+}
+
+export async function getRunSnapshot(runId: string, lite: boolean = false): Promise<RunSnapshot> {
+  const cleanId = runId.trim();
+  const cacheKey = snapshotCacheKey(cleanId, lite);
+  const etagKey = snapshotEtagKey(cleanId, lite);
+  const cached = typeof window !== "undefined" ? localStorage.getItem(cacheKey) : null;
+  const cachedEtag = typeof window !== "undefined" ? localStorage.getItem(etagKey) : null;
+
+  const response = await fetch(`${API_BASE}/run/${cleanId}/snapshot?lite=${lite ? "true" : "false"}`, {
+    method: "GET",
+    headers: cachedEtag ? { "If-None-Match": cachedEtag } : undefined,
+  });
+
+  if (response.status === 304 && cached) {
+    if (isDevEnv) {
+      console.debug(`[SNAPSHOT] cache-hit ${cleanId} (${lite ? "lite" : "full"})`);
+    }
+    return JSON.parse(cached) as RunSnapshot;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch snapshot: ${response.statusText}`);
+  }
+
+  const payload = (await response.json()) as RunSnapshot;
+  const etag = response.headers.get("etag");
+  if (isDevEnv) {
+    console.debug(`[SNAPSHOT] fetched ${cleanId} (${lite ? "lite" : "full"})`);
+  }
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify(payload));
+      if (etag) {
+        localStorage.setItem(etagKey, etag);
+      }
+    } catch {
+      // Ignore cache failures
+    }
+  }
+
+  return payload;
+}
+
 // Internal Helper to persist reports
 async function saveReportToSupabase(runId: string, markdown: string) {
   // Construct a title/summary if possible (naive parse for now)
@@ -375,88 +454,7 @@ export async function getAllRuns(): Promise<RunHistoryItem[]> {
   return safeJsonParse(response);
 }
 
-export interface Modification {
-  target_column: string;
-  modification_factor: number;
-}
-
-export interface SimulationRequest {
-  target_column?: string; // Legacy support
-  modification_factor?: number; // Legacy support
-  modifications?: Modification[];
-}
-
-export interface SimulationResult {
-  run_id: string;
-  delta: any;
-  business_impact: any;
-}
-
-export async function simulateScenario(runId: string, request: SimulationRequest): Promise<SimulationResult> {
-  // Auto-convert legacy single-param to list format if needed
-  if (!request.modifications && request.target_column && request.modification_factor) {
-    request.modifications = [{
-      target_column: request.target_column,
-      modification_factor: request.modification_factor
-    }];
-  }
-
-  if (request.modifications && request.modifications.length > 0) {
-    const first = request.modifications[0];
-    if (!request.target_column) {
-      request.target_column = first.target_column;
-    }
-    if (!request.modification_factor) {
-      request.modification_factor = first.modification_factor;
-    }
-  }
-
-  const response = await fetch(`${API_BASE}/run/${runId}/simulate`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(request),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Simulation failed: ${error}`);
-  }
-
-  return safeJsonParse(response);
-}
-
-export async function askQuestion(
-  runId: string,
-  query: string,
-  evidenceType: string = "business_pulse",
-  context: string = "executive_summary"
-): Promise<any> {
-  const response = await fetch(`${API_BASE}/api/ask`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      run_id: runId,
-      query,
-      evidence_type: evidenceType,
-      context,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Ask query failed: ${response.statusText}`);
-  }
-
-  return safeJsonParse(response);
-}
-
-
-
-// PHASE 10: What-If Simulation
-// ...
+// Removed simulation and ask endpoints in Phase 6
 
 // SUPABASE HISTORY
 import { RecentReport } from "@/lib/localStorage";
