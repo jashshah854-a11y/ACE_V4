@@ -91,13 +91,16 @@ export default function SimpleUpload() {
                         }
           `}
                 >
-                    <input
-                        type="file"
-                        onChange={handleFileChange}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        accept=".csv,.xlsx,.xls,.parquet"
-                        disabled={uploading}
-                    />
+                    {/* Only show file input when no file is selected */}
+                    {!file && (
+                        <input
+                            type="file"
+                            onChange={handleFileChange}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            accept=".csv,.xlsx,.xls,.parquet"
+                            disabled={uploading}
+                        />
+                    )}
 
                     <Upload className={`mx-auto h-12 w-12 mb-4 ${file ? "text-green-500" : "text-slate-400"}`} />
 
@@ -109,20 +112,35 @@ export default function SimpleUpload() {
                             <p className="text-sm text-slate-500">
                                 {(file.size / 1024 / 1024).toFixed(2)} MB
                             </p>
-                            <Button
-                                onClick={handleSubmit}
-                                disabled={uploading}
-                                className="mt-4"
-                            >
-                                {uploading ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Starting Analysis...
-                                    </>
-                                ) : (
-                                    "Start Analysis"
-                                )}
-                            </Button>
+                            <div className="flex gap-2 justify-center">
+                                <Button
+                                    variant="outline"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setFile(null);
+                                    }}
+                                    disabled={uploading}
+                                >
+                                    Change File
+                                </Button>
+                                <Button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSubmit();
+                                    }}
+                                    disabled={uploading}
+                                    className="bg-green-600 hover:bg-green-700"
+                                >
+                                    {uploading ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Starting Analysis...
+                                        </>
+                                    ) : (
+                                        "Start Analysis"
+                                    )}
+                                </Button>
+                            </div>
                         </div>
                     ) : (
                         <div>
