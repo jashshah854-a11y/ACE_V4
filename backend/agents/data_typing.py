@@ -66,25 +66,31 @@ def detect_time_signal(df: pd.DataFrame) -> bool:
         if col_lower in time_keywords:
             # Verify content looks like time/date if it's object type
             if df[col].dtype == 'object':
-                 parsed = coerce_datetime(df[col].dropna().head(10))
-                 if parsed.notna().any():
-                     return True
+                try:
+                    parsed = pd.to_datetime(df[col].dropna().head(10), errors='coerce')
+                    if parsed.notna().any():
+                        return True
+                except:
+                    pass
             else:
                 return True
             
         # 2. Suffix/Prefix match (e.g. created_at, birth_date) - medium signal
         if any(col_lower.endswith(f"_{kw}") or col_lower.startswith(f"{kw}_") for kw in time_keywords):
             # Same content verification for object types
-             if df[col].dtype == 'object':
-                 parsed = coerce_datetime(df[col].dropna().head(10))
-                 if parsed.notna().any():
-                     return True
-             else:
-                 return True
+            if df[col].dtype == 'object':
+                try:
+                    parsed = pd.to_datetime(df[col].dropna().head(10), errors='coerce')
+                    if parsed.notna().any():
+                        return True
+                except:
+                    pass
+            else:
+                return True
             
         # 3. Common specific terms that don't follow _ pattern
         if col_lower in ("created_at", "updated_at", "deadline", "schedule"):
-             return True
+            return True
             
     return False
 
