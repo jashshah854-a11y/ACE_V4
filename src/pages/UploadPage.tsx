@@ -65,6 +65,7 @@ export default function UploadPage() {
         primaryQuestion: contract.primaryQuestion,
         decisionContext: contract.decisionContext,
         successCriteria: contract.successCriteria,
+        requiredOutputType: "diagnostic",
         forbidden_claims: contract.forbiddenClaims,
         confidenceAcknowledged: true,
       };
