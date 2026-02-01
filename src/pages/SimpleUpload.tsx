@@ -42,10 +42,10 @@ export default function SimpleUpload() {
         setUploading(true);
         try {
             const taskIntent = {
-                primaryQuestion: "Analyze this dataset",
-                decisionContext: "General analysis",
+                primaryQuestion: "What are the key patterns, segments, and anomalies in this dataset that inform next steps?",
+                decisionContext: "Perform a general diagnostic analysis of the uploaded dataset to surface actionable patterns and data quality signals",
                 requiredOutputType: "diagnostic" as const,
-                successCriteria: "Identify key patterns",
+                successCriteria: "Surface the top patterns, anomalies, and segment differences with supporting evidence and confidence scores",
                 constraints: "",
                 confidenceThreshold: 85,
                 confidenceAcknowledged: true,
