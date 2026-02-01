@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir -r backend/requirements.txt
 
 # Copy all backend code
 COPY backend ./backend
-COPY api ./api
+
 
 # Create data directory for runs
 RUN mkdir -p backend/data/runs
