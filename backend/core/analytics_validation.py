@@ -304,6 +304,79 @@ def validate_importance_report(payload: Dict[str, Any]) -> ValidationResult:
     return {"valid": not errors, "errors": errors, "warnings": warnings}
 
 
+def validate_marketing_risk_report(payload: Dict[str, Any]) -> ValidationResult:
+    errors: List[Dict[str, Any]] = []
+    warnings: List[Dict[str, Any]] = []
+
+    if not isinstance(payload, dict):
+        _add_error(errors, "ARTIFACT_INVALID", "marketing_risk", payload, "dict", None)
+        return {"valid": False, "errors": errors, "warnings": warnings}
+
+    required_fields = ("definition", "metrics", "risk_items")
+    for field in required_fields:
+        if field not in payload:
+            _add_error(errors, "MISSING_FIELD", field, None, "required", field)
+
+    metrics = payload.get("metrics")
+    if metrics is not None and not isinstance(metrics, dict):
+        _add_error(errors, "ARTIFACT_INVALID", "metrics", metrics, "dict", "metrics")
+    if isinstance(metrics, dict):
+        for key, value in metrics.items():
+            if value is None:
+                continue
+            if not _is_number(value):
+                _add_error(errors, "METRIC_NOT_NUMERIC", key, value, "numeric", f"metrics.{key}")
+
+    risk_items = payload.get("risk_items")
+    if risk_items is not None and not isinstance(risk_items, list):
+        _add_error(errors, "ARTIFACT_INVALID", "risk_items", risk_items, "list", "risk_items")
+    if isinstance(risk_items, list):
+        for idx, item in enumerate(risk_items):
+            if not isinstance(item, dict):
+                _add_error(errors, "ARTIFACT_INVALID", "risk_item", item, "dict", f"risk_items[{idx}]")
+                continue
+            severity = item.get("severity")
+            if severity not in {"low", "medium", "high"}:
+                _add_error(errors, "INVALID_FIELD", "severity", severity, "low|medium|high", f"risk_items[{idx}].severity")
+            delta = item.get("delta_pct")
+            if delta is not None and not _is_number(delta):
+                _add_error(errors, "METRIC_NOT_NUMERIC", "delta_pct", delta, "numeric", f"risk_items[{idx}].delta_pct")
+
+    return {"valid": not errors, "errors": errors, "warnings": warnings}
+
+
+def validate_redundancy_report(payload: Dict[str, Any]) -> ValidationResult:
+    errors: List[Dict[str, Any]] = []
+    warnings: List[Dict[str, Any]] = []
+
+    if not isinstance(payload, dict):
+        _add_error(errors, "ARTIFACT_INVALID", "redundancy_report", payload, "dict", None)
+        return {"valid": False, "errors": errors, "warnings": warnings}
+
+    for field in ("constants", "near_constants", "redundant_pairs", "redundant_pair_count"):
+        if field not in payload:
+            _add_error(errors, "MISSING_FIELD", field, None, "required", field)
+
+    for list_field in ("constants", "near_constants", "redundant_pairs"):
+        value = payload.get(list_field)
+        if value is not None and not isinstance(value, list):
+            _add_error(errors, "ARTIFACT_INVALID", list_field, value, "list", list_field)
+
+    count = payload.get("redundant_pair_count")
+    if count is not None and (not isinstance(count, int) or count < 0):
+        _add_error(errors, "METRIC_OUT_OF_BOUNDS", "redundant_pair_count", count, ">=0", "redundant_pair_count")
+
+    pairs = payload.get("redundant_pairs")
+    if isinstance(pairs, list):
+        for idx, pair in enumerate(pairs):
+            if not isinstance(pair, dict):
+                _add_error(errors, "ARTIFACT_INVALID", "redundant_pair", pair, "dict", f"redundant_pairs[{idx}]")
+                continue
+            _validate_range(errors, "correlation", pair.get("correlation"), -1.0, 1.0, f"redundant_pairs[{idx}].correlation")
+
+    return {"valid": not errors, "errors": errors, "warnings": warnings}
+
+
 def validate_regression_coefficients_report(payload: Dict[str, Any]) -> ValidationResult:
     errors: List[Dict[str, Any]] = []
     warnings: List[Dict[str, Any]] = []
@@ -399,6 +472,7 @@ def validate_enhanced_analytics(payload: Dict[str, Any]) -> ValidationResult:
         "distribution_analysis",
         "quality_metrics",
         "business_intelligence",
+        "redundancy_report",
         "feature_importance",
     ):
         if section_name not in payload:
@@ -444,6 +518,10 @@ def validate_artifact(name: str, payload: Dict[str, Any]) -> ValidationResult:
         return validate_leakage_report(payload)
     if name == "importance_report":
         return validate_importance_report(payload)
+    if name == "marketing_risk":
+        return validate_marketing_risk_report(payload)
+    if name == "redundancy_report":
+        return validate_redundancy_report(payload)
     if name == "regression_coefficients_report":
         return validate_regression_coefficients_report(payload)
     if name == "correlation_ci":

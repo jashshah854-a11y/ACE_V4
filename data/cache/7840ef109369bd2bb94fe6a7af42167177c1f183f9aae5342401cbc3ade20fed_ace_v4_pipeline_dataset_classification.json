@@ -1,0 +1,29 @@
+{
+  "domain_tags": [
+    {
+      "tag": "unknown",
+      "confidence": 0.2
+    }
+  ],
+  "temporal_structure": {
+    "tag": "unknown",
+    "confidence": 0.4
+  },
+  "observation_unit": {
+    "tag": "unknown",
+    "confidence": 0.3
+  },
+  "target_presence": {
+    "tag": "single_target",
+    "confidence": 0.6
+  },
+  "notes": [
+    "Domain tags uncertain; no strong column signals detected.",
+    "Temporal structure unclear; datetime present but low variation."
+  ],
+  "signals": {},
+  "status": "success",
+  "valid": true,
+  "errors": [],
+  "warnings": []
+}

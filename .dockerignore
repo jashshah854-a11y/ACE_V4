@@ -1,0 +1,7 @@
+backend/.tmp/
+**/.pytest_basetemp/
+**/_pytest_tmp2/
+**/__pycache__/
+*.pyc
+.git/
+node_modules/
