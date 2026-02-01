@@ -1,7 +1,0 @@
-{
-  "timestamp": "2026-01-25T23:14:34.390147",
-  "dataset": "small_dataset_sample.csv",
-  "run_id": "55a819ca",
-  "pipeline_success": false,
-  "error": "'NoneType' object has no attribute 'get'"
-}

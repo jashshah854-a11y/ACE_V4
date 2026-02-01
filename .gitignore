@@ -74,3 +74,8 @@ archive/
 *.exe
 *.dll
 *.pdb
+
+# Generated cache and test data (ACE V4)
+data/cache/
+data/stress_test_results/
+scripts/ace_test_lab/reports/
