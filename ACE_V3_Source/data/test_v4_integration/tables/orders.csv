@@ -1,6 +1,0 @@
-order_id,client_id,amount,status
-1,101,$100,completed
-2,101,$50,pending
-3,102,"$1,000,000",completed
-4,102,$20,error
-5,103,$300,completed
