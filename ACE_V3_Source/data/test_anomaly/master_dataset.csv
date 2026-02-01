@@ -1,6 +1,0 @@
-id,name,age,salary,is_active,joined_date
-1,Alice,25,"$50,000",yes,2023-01-01
-2,Bob,30,"$60,000",no,01/02/2023
-3,Charlie,150,"$70,000",true,2023-03-01
-4,David,N/A,"$80,000",0,2023-04-01
-1,Alice,25,"$50,000",yes,2023-01-01
