@@ -1,11 +1,15 @@
-import { Suspense } from "react";
+import { Suspense, lazy } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
-import SimpleUpload from "./pages/SimpleUpload";
-import SimpleReport from "./pages/SimpleReport";
-import SimpleReportList from "./pages/SimpleReportList";
+import { AppLayout } from "@/components/layout/AppLayout";
+
+const UploadPage = lazy(() => import("./pages/UploadPage"));
+const PipelinePage = lazy(() => import("./pages/PipelinePage"));
+const ReportDashboard = lazy(() => import("./pages/ReportDashboard"));
+const ReportsListPage = lazy(() => import("./pages/ReportsListPage"));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,19 +21,30 @@ const queryClient = new QueryClient({
   },
 });
 
+const PageLoader = () => (
+  <div className="min-h-[60vh] flex items-center justify-center">
+    <div className="text-center space-y-2">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto" />
+      <p className="text-sm text-muted-foreground">Loading...</p>
+    </div>
+  </div>
+);
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <Sonner />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+        <Suspense fallback={<PageLoader />}>
           <Routes>
-            <Route path="/" element={<SimpleUpload />} />
-            <Route path="/upload" element={<SimpleUpload />} />
-            <Route path="/report/:runId" element={<SimpleReport />} />
-            <Route path="/reports" element={<SimpleReportList />} />
-            <Route path="/app" element={<Navigate to="/reports" replace />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<UploadPage />} />
+              <Route path="/upload" element={<UploadPage />} />
+              <Route path="/pipeline/:runId" element={<PipelinePage />} />
+              <Route path="/report/:runId" element={<ReportDashboard />} />
+              <Route path="/reports" element={<ReportsListPage />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Route>
           </Routes>
         </Suspense>
       </BrowserRouter>
@@ -38,4 +53,3 @@ const App = () => (
 );
 
 export default App;
-
