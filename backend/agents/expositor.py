@@ -15,6 +15,7 @@ from core.enhanced_analytics import run_enhanced_analytics
 from core.data_loader import smart_load_dataset
 from ace_v4.performance.config import PerformanceConfig
 from core.analytics_validation import apply_artifact_validation
+from core.narrative_engine import NarrativeEngine, create_narrative_engine
 
 class Expositor:
     def __init__(self, schema_map: SchemaMap, state: StateManager):
@@ -365,16 +366,37 @@ class Expositor:
 
         report = "\n".join(lines)
         
+        # Generate Executive Report (human-readable version)
+        log_info("Generating executive report...")
+        try:
+            executive_report = self._generate_executive_report(
+                data_type=data_type,
+                validation=validation,
+                enhanced_analytics=enhanced_analytics,
+                overseer=overseer,
+                personas=personas,
+                importance_report=importance_report,
+                sentry=sentry,
+                row_count=row_count,
+                col_count=col_count,
+                confidence_score=confidence_score,
+            )
+        except Exception as e:
+            log_warn(f"Executive report generation failed, using technical report: {e}")
+            executive_report = report  # Fallback to technical report
+        
         # Save Report
         report_path = self.state.get_file_path("final_report.pending.md")
         final_report_path = self.state.get_file_path("final_report.md")
+        technical_report_path = self.state.get_file_path("technical_report.md")
         
         # LOGGING: Explicitly log the target path
         log_info(f"Saving final report to: {report_path}")
         
+        # Save executive report as the main report
         try:
             with open(report_path, "w", encoding="utf-8") as f:
-                f.write(report)
+                f.write(executive_report)
                 f.flush()
                 # Force write to disk
                 import os
@@ -383,20 +405,29 @@ class Expositor:
             log_warn(f"Failed to write report file: {e}")
             raise e
             
-        self.state.write("final_report_pending", report)
+        self.state.write("final_report_pending", executive_report)
         try:
             with open(final_report_path, "w", encoding="utf-8") as f:
-                f.write(report)
-            self.state.write("final_report", report)
+                f.write(executive_report)
+            self.state.write("final_report", executive_report)
         except Exception as e:
             log_warn(f"Failed to write final_report.md: {e}")
+        
+        # Also save technical report for debugging/advanced users
+        try:
+            with open(technical_report_path, "w", encoding="utf-8") as f:
+                f.write(report)
+            self.state.write("technical_report", report)
+            log_info(f"Technical report saved to: {technical_report_path}")
+        except Exception as e:
+            log_warn(f"Failed to write technical_report.md: {e}")
         
         # Verify file existence
         if Path(report_path).exists():
              size = Path(report_path).stat().st_size
-             log_ok(f"Expositor V3 Complete. Report verified at {report_path} ({size} bytes)")
+             log_ok(f"Expositor V4 Complete. Report verified at {report_path} ({size} bytes)")
         else:
-             log_warn(f"Expositor V3 Complete but report file missing at {report_path}")
+             log_warn(f"Expositor V4 Complete but report file missing at {report_path}")
              
         return "expositor done"
 
@@ -782,6 +813,180 @@ class Expositor:
             lines.append("")
 
         return lines
+
+    def _generate_executive_report(
+        self,
+        data_type: dict,
+        validation: dict,
+        enhanced_analytics: dict,
+        overseer: dict,
+        personas: list,
+        importance_report: dict,
+        sentry: dict,
+        row_count: int,
+        col_count: int,
+        confidence_score: float,
+    ) -> str:
+        """Generate a human-readable executive report using NarrativeEngine."""
+        
+        narrator = create_narrative_engine(self.state)
+        lines = []
+        
+        # Title
+        domain_name = data_type.get("primary_type", "business").replace("_", " ").title()
+        lines.append(f"# {domain_name} Intelligence Report")
+        lines.append("")
+        
+        # Executive Summary
+        lines.append("## Executive Summary")
+        lines.append("")
+        
+        # Get top correlation and driver for summary
+        top_correlation = None
+        correlations = []
+        corr_analysis = enhanced_analytics.get("correlation_analysis", {})
+        if corr_analysis.get("strong_correlations"):
+            correlations = corr_analysis["strong_correlations"]
+            top_correlation = correlations[0] if correlations else None
+        
+        top_driver = None
+        drivers = []
+        if importance_report and importance_report.get("features"):
+            drivers = importance_report["features"]
+            top_driver = drivers[0] if drivers else None
+        
+        segment_count = overseer.get("stats", {}).get("k", 0) if overseer else 0
+        anomaly_count = sentry.get("anomaly_count", 0) if sentry else 0
+        
+        exec_summary = narrator.generate_executive_summary(
+            data_type=data_type.get("primary_type", "general"),
+            row_count=row_count,
+            top_correlation=top_correlation,
+            top_driver=top_driver,
+            segment_count=segment_count,
+            anomaly_count=anomaly_count,
+        )
+        lines.append(exec_summary)
+        lines.append("")
+        
+        # Your Data section (concise)
+        lines.append("## Your Data")
+        lines.append("")
+        quality_score = enhanced_analytics.get("quality_metrics", {}).get("overall_completeness", 100) / 100
+        data_summary = narrator.translate_data_summary(row_count, col_count, data_type.get("primary_type", "general"), quality_score)
+        lines.append(data_summary)
+        lines.append("")
+        
+        # Key Relationships (top 3 correlations translated)
+        if correlations:
+            lines.append("## Key Relationships")
+            lines.append("")
+            for corr in correlations[:3]:
+                translated = narrator.translate_correlation(
+                    corr.get("feature1", ""),
+                    corr.get("feature2", ""),
+                    corr.get("pearson", 0),
+                )
+                lines.append(f"- {translated}")
+            lines.append("")
+        
+        # Top Drivers (if available)
+        if drivers:
+            lines.append("## What Matters Most")
+            lines.append("")
+            target = importance_report.get("target_column", "outcome")
+            for i, driver in enumerate(drivers[:5], 1):
+                translated = narrator.translate_driver(
+                    driver.get("feature", ""),
+                    driver.get("importance", 0),
+                    rank=i,
+                    target=target,
+                )
+                lines.append(translated)
+            lines.append("")
+        
+        # Customer Segments (if available)
+        if segment_count > 0 and personas:
+            lines.append("## Customer Segments")
+            lines.append("")
+            total = sum(p.get("persona_size", p.get("size", 0)) for p in personas)
+            for i, persona in enumerate(personas[:5]):
+                seg = narrator.translate_segment(
+                    segment_id=i,
+                    size=persona.get("persona_size", persona.get("size", 0)),
+                    total=total,
+                    persona_name=persona.get("name"),
+                    key_traits=[persona.get("summary", "")][:1] if persona.get("summary") else None,
+                )
+                lines.append(f"### {seg['name']}")
+                lines.append(f"- **{seg['size']:,} customers** ({seg['percentage']:.1f}% of total)")
+                if persona.get("summary"):
+                    lines.append(f"- {persona['summary']}")
+                lines.append("")
+        
+        # Recommendations
+        if correlations or drivers:
+            lines.append("## Recommended Actions")
+            lines.append("")
+            
+            # Build segment data for recommendations
+            segment_data = []
+            for p in personas[:3]:
+                segment_data.append({
+                    "name": p.get("name", "Segment"),
+                    "size": p.get("persona_size", p.get("size", 0)),
+                    "avg_value": 0,  # Would need value column data
+                })
+            
+            recs = narrator.generate_recommendations(
+                correlations=correlations[:3] if correlations else None,
+                drivers=drivers[:3] if drivers else None,
+                segments=segment_data if segment_data else None,
+            )
+            
+            if recs:
+                lines.append("| Priority | Action | Rationale |")
+                lines.append("|----------|--------|-----------|")
+                for rec in recs[:5]:
+                    lines.append(f"| {rec['priority']} | {rec['action']} | {rec['rationale']} |")
+                lines.append("")
+        
+        # Anomalies (if any)
+        if anomaly_count > 0:
+            lines.append("## Items Requiring Attention")
+            lines.append("")
+            anomaly_text = narrator.translate_anomaly_finding(
+                count=anomaly_count,
+                total=row_count,
+                top_drivers=sentry.get("drivers", []) if sentry else None,
+            )
+            lines.append(anomaly_text)
+            lines.append("")
+        
+        # Data Confidence
+        lines.append("## Data Confidence")
+        lines.append("")
+        confidence_text = narrator.translate_validation(
+            validation.get("checks", {}),
+            validation.get("mode", "unknown"),
+        )
+        lines.append(confidence_text)
+        lines.append("")
+        
+        # Confidence score as percentage
+        conf_pct = (confidence_score or 0.5) * 100
+        if conf_pct >= 80:
+            conf_label = "High"
+        elif conf_pct >= 50:
+            conf_label = "Moderate"
+        else:
+            conf_label = "Limited"
+        lines.append(f"**Confidence Level:** {conf_label} ({conf_pct:.0f}%)")
+        lines.append("")
+        lines.append("*This report is generated based on statistical analysis. Recommendations are directional and should be validated with domain expertise.*")
+        lines.append("")
+        
+        return "\n".join(lines)
 
 def main():
     if len(sys.argv) < 2:
