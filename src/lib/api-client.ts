@@ -193,12 +193,12 @@ export async function startAnalysis(file: File, taskIntent?: any): Promise<{ run
   formData.append("confidence_acknowledged", "true");
 
   // Add task intent (required field)
+  // Backend task_contract.py requires primary_question with 25+ chars and 8+ words
   if (taskIntent) {
     formData.append("task_intent", JSON.stringify(taskIntent));
   } else {
-    // Default task intent if not provided
     formData.append("task_intent", JSON.stringify({
-      primary_question: "Analyze this dataset",
+      primary_question: "What are the key patterns and anomalies in this dataset that should inform next steps?",
       confidence_threshold: 0.8
     }));
   }
@@ -301,67 +301,28 @@ export async function getRunStatus(runId: string): Promise<RunState> {
   return safeJsonParse(response);
 }
 
-// Forced Deployment Trigger: 2026-01-09T11:13:00
-import { supabase } from "@/lib/supabase";
-
-// Forced Deployment Trigger: 2026-01-09T11:13:00
 export async function getReport(runId: string): Promise<string> {
   const cleanId = runId.trim();
 
-  // STRATEGY: Read-Through Cache via Supabase
-  // 1. Try fetching from Supabase first (Persistent Layer)
-  try {
-    const { data, error } = await supabase
-      .from('reports')
-      .select('content')
-      .eq('run_id', cleanId)
-      .single();
-
-    if (data?.content && !error) {
-      console.log(`[SUPABASE] Cache Hit for ${cleanId}`);
-      // If stored as JSON wrapper, extract markdown, else return as string
-      return typeof data.content === 'object' && data.content.markdown
-        ? data.content.markdown
-        : data.content;
-    }
-  } catch (err) {
-    console.warn("[SUPABASE] Cache lookup failed:", err);
-  }
-
-  // 2. Fallback to API (Generation Layer)
-  // CRITICAL FIX 1: Use Singular Protocol (/run/) not Plural (/runs/)
   const response = await fetch(`${API_BASE}/run/${cleanId}/report`, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
   });
 
   if (!response.ok) {
     if (response.status === 404) {
-      console.error(`[API] Report not found for run ${cleanId}. The agent may have failed to save 'final_report.md'.`);
       throw new Error("Report not generated yet");
     }
     throw new Error(`Failed to fetch report: ${response.statusText}`);
   }
 
-  // CRITICAL FIX 2: Handle Markdown content safely (Do NOT parse as JSON)
+  // Handle Markdown content safely (Do NOT parse as JSON)
   const contentType = response.headers.get("content-type");
   if (contentType && contentType.includes("application/json")) {
-    // If backend incorrectly sends JSON error, handle it
     const errorData = await response.json();
     throw new Error(errorData.detail || "Unknown error");
   }
 
-  // Return raw markdown text
-  const markdown = await response.text();
-
-  // 3. Save to Supabase for future access
-  saveReportToSupabase(cleanId, markdown).catch(err =>
-    console.error("[SUPABASE] Failed to persist report:", err)
-  );
-
-  return markdown;
+  return response.text();
 }
 
 function snapshotCacheKey(runId: string, lite: boolean) {
@@ -414,25 +375,6 @@ export async function getRunSnapshot(runId: string, lite: boolean = false): Prom
   return payload;
 }
 
-// Internal Helper to persist reports
-async function saveReportToSupabase(runId: string, markdown: string) {
-  // Construct a title/summary if possible (naive parse for now)
-  const titleMatch = markdown.match(/^# (.*$)/m);
-  const title = titleMatch ? titleMatch[1] : `Report ${runId}`;
-
-  // Store content. Using JSONB column for flexibility
-  const contentPayload = { markdown };
-
-  const { error } = await supabase.from('reports').upsert({
-    run_id: runId,
-    title: title,
-    content: contentPayload,
-    // We can add pipeline_state here if we had it, but for getReport we only have the markdown
-  }, { onConflict: 'run_id' });
-
-  if (error) throw error;
-  console.log(`[SUPABASE] Persisted report ${runId}`);
-}
 
 export async function getEnhancedAnalytics(runId: string): Promise<any> {
   const response = await fetch(`${API_BASE}/run/${runId}/enhanced-analytics`);
@@ -444,8 +386,16 @@ export async function getEnhancedAnalytics(runId: string): Promise<any> {
   return response.json();
 }
 
-export async function getAllRuns(): Promise<RunHistoryItem[]> {
-  const response = await fetch(`${API_BASE}/run`);
+export interface PaginatedRuns {
+  runs: string[];
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+}
+
+export async function getAllRuns(limit: number = 20, offset: number = 0): Promise<PaginatedRuns> {
+  const response = await fetch(`${API_BASE}/run?limit=${limit}&offset=${offset}`);
 
   if (!response.ok) {
     throw new Error(`Failed to get runs: ${response.statusText}`);
@@ -454,32 +404,12 @@ export async function getAllRuns(): Promise<RunHistoryItem[]> {
   return safeJsonParse(response);
 }
 
-// Removed simulation and ask endpoints in Phase 6
+export async function getModelArtifacts(runId: string): Promise<any> {
+  const response = await fetch(`${API_BASE}/run/${runId}/model-artifacts`);
 
-// SUPABASE HISTORY
-import { RecentReport } from "@/lib/localStorage";
-
-export async function getReportsHistory(): Promise<RecentReport[]> {
-  const { data, error } = await supabase
-    .from('reports')
-    .select('run_id, title, created_at')
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error(`[SUPABASE] Failed to fetch reports history:`, error);
-    return [];
+  if (!response.ok) {
+    throw new Error(`Failed to get model artifacts: ${response.statusText}`);
   }
 
-  return data.map(row => ({
-    runId: row.run_id,
-    timestamp: row.created_at,
-    title: row.title || `Report ${row.run_id}`,
-    createdAt: new Date(row.created_at).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    })
-  }));
+  return response.json();
 }
