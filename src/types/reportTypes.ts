@@ -31,6 +31,9 @@ export interface BusinessIntelligence {
   status?: "success" | "failed";
   errors?: any[];
   warnings?: any[];
+  restaurant_risk?: RestaurantRiskReport;
+  marketing_risk?: MarketingRiskReport;
+  marketing_simulation?: MarketingSimulationReport;
   value_metrics?: {
     total_value: number;
     avg_value: number;
@@ -56,6 +59,78 @@ export interface BusinessIntelligence {
   }>;
   insights?: string[];
   [key: string]: any;
+}
+
+export interface RestaurantRiskEntry {
+  restaurant_id: string;
+  name?: string;
+  boro?: string;
+  cuisine?: string;
+  address?: string;
+  last_inspection_date?: string;
+  critical_count: number;
+  score?: number | null;
+  grade?: string | null;
+}
+
+export interface RestaurantRiskAggregate {
+  boro?: string;
+  cuisine?: string;
+  total_restaurants: number;
+  at_risk_count: number;
+  at_risk_percentage: number;
+}
+
+export interface RestaurantRiskReport {
+  available: boolean;
+  definition: string;
+  restaurant_id_column: string;
+  inspection_date_column: string;
+  critical_flag_column: string;
+  restaurants_total: number;
+  restaurants_at_risk: number;
+  at_risk_percentage: number;
+  as_of?: string;
+  top_risk_restaurants: RestaurantRiskEntry[];
+  risk_by_boro?: RestaurantRiskAggregate[];
+  risk_by_cuisine?: RestaurantRiskAggregate[];
+  evidence_columns?: string[];
+}
+
+export interface MarketingSimulationScenario {
+  name: string;
+  assumptions?: string[];
+  metrics: Record<string, number | null | undefined>;
+}
+
+export interface MarketingSimulationReport {
+  available: boolean;
+  baseline: Record<string, number | null | undefined>;
+  scenarios: MarketingSimulationScenario[];
+  evidence_columns?: string[];
+}
+
+export interface MarketingRiskItem {
+  type: string;
+  severity: "low" | "medium" | "high";
+  metric: string;
+  prior?: number;
+  recent?: number;
+  delta_pct?: number;
+  segments?: Array<{ segment: string; value: number }>;
+  evidence_columns?: string[];
+}
+
+export interface MarketingRiskReport {
+  available: boolean;
+  definition: string;
+  metrics: Record<string, number>;
+  risk_items: MarketingRiskItem[];
+  segment_dimension?: string | null;
+  time_dimension?: string | null;
+  missing_signals?: string[];
+  total_rows?: number;
+  evidence_columns?: string[];
 }
 
 export interface FeatureImportanceItem {
@@ -142,12 +217,33 @@ export interface CorrelationPair {
   is_leakage?: boolean;
 }
 
+export interface RedundancyReport {
+  available: boolean;
+  valid?: boolean;
+  status?: "success" | "failed";
+  errors?: any[];
+  warnings?: any[];
+  constants?: string[];
+  near_constants?: string[];
+  redundant_pairs?: Array<{
+    feature1: string;
+    feature2: string;
+    correlation: number;
+  }>;
+  redundant_pair_count?: number;
+  thresholds?: {
+    near_constant?: number;
+    correlation?: number;
+  };
+}
+
 export interface EnhancedAnalyticsData {
   mode?: string;
   data_freshness?: string;
   analysis_mode?: string;
   business_intelligence?: BusinessIntelligence;
   feature_importance?: FeatureImportance;
+  redundancy_report?: RedundancyReport | null;
   quality_metrics?: {
     available?: boolean;
     valid?: boolean;

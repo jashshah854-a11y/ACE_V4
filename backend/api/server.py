@@ -177,6 +177,7 @@ def _build_identity_payload(state: StateManager, run_path: Path) -> Dict[str, An
 
 def _build_diagnostics_payload(state: StateManager, run_path: Path) -> Dict[str, Any]:
     validation = state.read("validation_report") or {}
+    analytics_validation = state.read("analytics_validation") or {}
     identity = _ensure_identity_card(state, run_path)
     confidence = state.read("confidence_report") or {}
     mode = state.read("run_mode") or "strict"
@@ -219,6 +220,7 @@ def _build_diagnostics_payload(state: StateManager, run_path: Path) -> Dict[str,
     return {
         "mode": mode,
         "validation": validation,
+        "analytics_validation": analytics_validation,
         "identity": identity,
         "confidence": confidence,
         "analysis_intent": analysis_intent_value,

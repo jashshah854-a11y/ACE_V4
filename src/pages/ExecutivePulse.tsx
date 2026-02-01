@@ -26,6 +26,7 @@ import { useReportData } from "@/hooks/useReportData";
 import { SafeIcon } from "@/components/ui/SafeIcon";
 import { TopDriversCard } from "@/components/report/analytics/TopDriversCard";
 import { CorrelationInsightsCard } from "@/components/report/analytics/CorrelationInsightsCard";
+import { RedundancyReportCard } from "@/components/report/analytics/RedundancyReportCard";
 import { useTaskContext } from "@/context/TaskContext";
 import { ExecutiveKpiGrid } from "@/components/report/ExecutiveKpiGrid"; // New Component
 import { ExplanationBlock } from "@/components/report/ExplanationBlock";
@@ -36,6 +37,10 @@ import { isValidArtifact } from "@/lib/artifactGuard";
 import { TableOfContents } from "@/components/report/navigation/TableOfContents";
 import { TrustSummary } from "@/components/trust/TrustSummary";
 import { useDevReportInvariants } from "@/hooks/useDevReportInvariants";
+import { RestaurantRiskDashboard } from "@/components/report/business/RestaurantRiskDashboard";
+import { MarketingRiskDashboard } from "@/components/report/business/MarketingRiskDashboard";
+import { MarketingSimulationCard } from "@/components/report/business/MarketingSimulationCard";
+import { MobileTocDrawer } from "@/components/report/navigation/MobileTocDrawer";
 
 const ExecutivePulse = () => {
   const [searchParams] = useSearchParams();
@@ -100,6 +105,15 @@ const ExecutivePulse = () => {
   const importanceReport = reportData.modelArtifacts?.importance_report;
   const modelFitReport = reportData.modelArtifacts?.model_fit_report;
   const collinearityReport = reportData.modelArtifacts?.collinearity_report;
+  const businessIntelligence = reportData.enhancedAnalytics?.business_intelligence;
+  const restaurantRisk = businessIntelligence?.restaurant_risk;
+  const marketingRisk = businessIntelligence?.marketing_risk;
+  const marketingSimulation = businessIntelligence?.marketing_simulation;
+  const allowBusinessIntelligence = reportData.renderPolicy?.allow_business_intelligence === true;
+  const showRestaurantRisk = allowBusinessIntelligence && Boolean(restaurantRisk?.available);
+  const showMarketingRisk = allowBusinessIntelligence && Boolean(marketingRisk?.available);
+  const showMarketingSimulation =
+    allowBusinessIntelligence && isValidArtifact(businessIntelligence) && Boolean(marketingSimulation?.available);
 
   const { updateTaskContract } = useTaskContext();
 
@@ -191,10 +205,15 @@ const ExecutivePulse = () => {
     Boolean(reportData.governingThought || storyData.heroInsight?.keyInsight);
   const showKeyMetrics = sectionAllowed("key_metrics") && executiveMetrics.length > 0;
   const showActionItems = sectionAllowed("action_items") && actionSections.length > 0;
+  const redundancyReport = reportData.enhancedAnalytics?.redundancy_report;
   const showSupportingEvidence = sectionAllowed("supporting_evidence") && Boolean(
     storyData.sections.length ||
-      isValidArtifact(reportData.enhancedAnalytics?.correlation_analysis) ||
-      (regressionReady && isValidArtifact(importanceReport)),
+    isValidArtifact(reportData.enhancedAnalytics?.correlation_analysis) ||
+    isValidArtifact(redundancyReport) ||
+    (regressionReady && isValidArtifact(importanceReport)) ||
+    showRestaurantRisk ||
+    showMarketingRisk ||
+    showMarketingSimulation,
   );
   const showTrustSummary = sectionAllowed("trust_summary") && reportData.renderPolicy?.allow_trust_summary === true;
   const showTools = false;
@@ -331,6 +350,10 @@ const ExecutivePulse = () => {
             <div className="animate-in fade-in duration-500">
               <RunWarningsBanner warnings={reportData.runWarnings} className="mb-6" />
               {showTrustSummary ? <TrustSummary trust={reportData.trustModel} className="mb-6" /> : null}
+
+              {/* Mobile TOC Drawer - visible on small screens */}
+              <MobileTocDrawer items={tocItems} />
+
               {/* 2-Column Layout: Nav | Content */}
               <div className="grid gap-6 lg:gap-10 grid-cols-1 xl:grid-cols-[220px_1fr] items-start">
 
@@ -399,17 +422,17 @@ const ExecutivePulse = () => {
                   {showActionItems && (
                     <section id="action-items" className="scroll-mt-24 space-y-6">
                       {actionSections.map((section, idx) => {
-                      const items = narrativeMode === "executive"
-                        ? section.listItems.slice(0, 3)
-                        : section.listItems;
-                      return (
-                        <ActionChecklist
-                          key={`action-${idx}`}
-                          title={section.title}
-                          items={items}
-                          onViewEvidence={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })}
-                        />
-                      );
+                        const items = narrativeMode === "executive"
+                          ? section.listItems.slice(0, 3)
+                          : section.listItems;
+                        return (
+                          <ActionChecklist
+                            key={`action-${idx}`}
+                            title={section.title}
+                            items={items}
+                            onViewEvidence={() => handleEvidenceFocus({ section: "business_intelligence", evidenceId: businessEvidenceId })}
+                          />
+                        );
                       })}
                     </section>
                   )}
@@ -446,6 +469,20 @@ const ExecutivePulse = () => {
                               onViewEvidence={() => handleEvidenceFocus({ section: "feature_importance", evidenceId: predictiveEvidenceId })}
                             />
                           </div>
+
+                          <RedundancyReportCard data={redundancyReport} />
+
+                          {showRestaurantRisk ? (
+                            <RestaurantRiskDashboard data={restaurantRisk} />
+                          ) : null}
+
+                          {showMarketingRisk ? (
+                            <MarketingRiskDashboard data={marketingRisk} />
+                          ) : null}
+
+                          {showMarketingSimulation ? (
+                            <MarketingSimulationCard data={marketingSimulation} />
+                          ) : null}
 
                           {storyData.sections.filter(s => s.type !== "recommendation").map((section, idx) => (
                             <SentimentBlock
