@@ -199,6 +199,7 @@ export async function startAnalysis(file: File, taskIntent?: any): Promise<{ run
   } else {
     formData.append("task_intent", JSON.stringify({
       primary_question: "What are the key patterns and anomalies in this dataset that should inform next steps?",
+      required_output_type: "diagnostic",
       confidence_threshold: 0.8
     }));
   }
