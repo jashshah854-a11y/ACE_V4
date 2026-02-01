@@ -1,7 +1,0 @@
-{
-  "timestamp": "2026-01-01T21:04:22.944059",
-  "dataset": "extreme_imbalance.csv",
-  "run_id": "stress_test_20260101_210422",
-  "pipeline_success": false,
-  "error": "'primary_question'"
-}
