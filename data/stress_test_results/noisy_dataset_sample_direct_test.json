@@ -1,0 +1,7 @@
+{
+  "timestamp": "2026-01-25T23:14:16.161650",
+  "dataset": "noisy_dataset_sample.csv",
+  "run_id": "19bc8671",
+  "pipeline_success": false,
+  "error": "'NoneType' object has no attribute 'get'"
+}

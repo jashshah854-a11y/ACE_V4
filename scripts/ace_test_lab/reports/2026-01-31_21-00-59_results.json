@@ -1,0 +1,103 @@
+{
+  "run_summary": {
+    "total_tests": 5,
+    "passed": 0,
+    "failed": 5,
+    "pass_rate": 0.0,
+    "avg_duration_seconds": 3.24,
+    "generated_at": "2026-02-01T02:00:59.379158"
+  },
+  "findings": [
+    {
+      "category": "data_handling",
+      "severity": "medium",
+      "finding": "1 tests failed in category: data_handling",
+      "tests": [
+        "smoke_unicode"
+      ],
+      "recommendation": "Review data parsing in intake/stream_loader.py - add more robust type coercion"
+    },
+    {
+      "category": "domain_recognition",
+      "severity": "medium",
+      "finding": "1 tests failed in category: domain_recognition",
+      "tests": [
+        "smoke_ecommerce"
+      ],
+      "recommendation": "Expand keyword patterns in core/data_typing.py for better domain detection"
+    },
+    {
+      "category": "edge_cases",
+      "severity": "medium",
+      "finding": "1 tests failed in category: edge_cases",
+      "tests": [
+        "smoke_outliers"
+      ],
+      "recommendation": "Add edge case handling in agents/scanner.py and core/analytics.py"
+    },
+    {
+      "category": "other",
+      "severity": "medium",
+      "finding": "2 tests failed in category: other",
+      "tests": [
+        "smoke_marketing",
+        "smoke_mixed"
+      ],
+      "recommendation": "Review specific test failures for root cause"
+    }
+  ],
+  "strategic_upgrades": [
+    "Expand edge case test coverage (unicode, sparse data, mixed types)",
+    "Add domain-specific persona templates for new industries",
+    "Implement confidence calibration based on historical accuracy",
+    "Add explainability layer showing which columns drove each insight",
+    "Create 'Analysis Preview' feature showing expected outputs before full run"
+  ],
+  "raw_results": [
+    {
+      "test_name": "smoke_marketing",
+      "passed": false,
+      "duration_seconds": 2.919675588607788,
+      "details": {
+        "detail": "Error: Primary Question missing. Please specify the business decision. Your request is too vague. Are you trying to: A) Optimize pricing? B) Identify churn risks? or C) Audit performance?"
+      },
+      "timestamp": "2026-02-01T02:00:46.097924"
+    },
+    {
+      "test_name": "smoke_ecommerce",
+      "passed": false,
+      "duration_seconds": 2.6261305809020996,
+      "details": {
+        "detail": "Error: Primary Question missing. Please specify the business decision. Your request is too vague. Are you trying to: A) Optimize pricing? B) Identify churn risks? or C) Audit performance?"
+      },
+      "timestamp": "2026-02-01T02:00:48.725943"
+    },
+    {
+      "test_name": "smoke_unicode",
+      "passed": false,
+      "duration_seconds": 3.285168409347534,
+      "details": {
+        "detail": "Error: Primary Question missing. Please specify the business decision. Your request is too vague. Are you trying to: A) Optimize pricing? B) Identify churn risks? or C) Audit performance?"
+      },
+      "timestamp": "2026-02-01T02:00:52.012209"
+    },
+    {
+      "test_name": "smoke_outliers",
+      "passed": false,
+      "duration_seconds": 3.851130485534668,
+      "details": {
+        "detail": "Error: Primary Question missing. Please specify the business decision. Your request is too vague. Are you trying to: A) Optimize pricing? B) Identify churn risks? or C) Audit performance?"
+      },
+      "timestamp": "2026-02-01T02:00:55.864546"
+    },
+    {
+      "test_name": "smoke_mixed",
+      "passed": false,
+      "duration_seconds": 3.510769844055176,
+      "details": {
+        "detail": "Error: Primary Question missing. Please specify the business decision. Your request is too vague. Are you trying to: A) Optimize pricing? B) Identify churn risks? or C) Audit performance?"
+      },
+      "timestamp": "2026-02-01T02:00:59.376957"
+    }
+  ]
+}

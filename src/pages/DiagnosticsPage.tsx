@@ -7,6 +7,9 @@ export default function DiagnosticsPage() {
   const { runId } = useParams<{ runId: string }>();
   const { data: snapshot, loading, error } = useRunSnapshot(runId, true);
   const manifest = snapshot?.manifest ?? null;
+  const diagnostics = snapshot?.diagnostics ?? {};
+  const analyticsValidation = diagnostics?.analytics_validation ?? {};
+  const trust = snapshot?.trust ?? manifest?.trust ?? null;
   const compatible = isManifestCompatible(manifest);
 
   if (!runId) {
@@ -61,6 +64,8 @@ export default function DiagnosticsPage() {
   const steps = Object.entries(manifest.steps || {});
   const artifacts = Object.values(manifest.artifacts || {});
   const warnings = manifest.warnings || [];
+  const runtimeWarnings = diagnostics?.warnings || [];
+  const runHealth = diagnostics?.run_health_summary || {};
 
   return (
     <div className="min-h-screen bg-background">
@@ -103,6 +108,71 @@ export default function DiagnosticsPage() {
             </ul>
           )}
         </section>
+
+        <section className="rounded-xl border border-border/50 p-4">
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-3">Runtime Warnings</h2>
+          {runtimeWarnings.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No runtime warnings recorded.</div>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {runtimeWarnings.map((warning: any) => (
+                <li key={warning.warning_code} className="rounded-lg bg-muted/40 px-3 py-2">
+                  <div className="font-semibold">{warning.warning_code}</div>
+                  <div className="text-muted-foreground">{warning.message}</div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {trust ? (
+          <section className="rounded-xl border border-border/50 p-4">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-3">Trust Model</h2>
+            <div className="grid gap-2 text-sm">
+              <div>Overall confidence: {trust.overall_confidence ?? "n/a"}</div>
+              {trust.components ? (
+                <div className="grid gap-2">
+                  {Object.entries(trust.components).map(([key, component]: any) => (
+                    <div key={key} className="flex items-center justify-between border-b border-border/30 pb-2 last:border-b-0 last:pb-0">
+                      <span className="font-mono">{key}</span>
+                      <span className="text-muted-foreground">{component?.score ?? "n/a"} · {component?.status ?? "unknown"}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+
+        {runHealth && Object.keys(runHealth).length > 0 ? (
+          <section className="rounded-xl border border-border/50 p-4">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-3">Run Health</h2>
+            <div className="grid gap-2 text-sm">
+              {Object.entries(runHealth).map(([key, value]) => (
+                <div key={key} className="flex items-center justify-between border-b border-border/30 pb-2 last:border-b-0 last:pb-0">
+                  <span className="font-mono">{key}</span>
+                  <span className="text-muted-foreground">{String(value)}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {analyticsValidation && Object.keys(analyticsValidation).length > 0 ? (
+          <section className="rounded-xl border border-border/50 p-4">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-3">Analytics Validation</h2>
+            <div className="grid gap-2 text-sm">
+              {Object.entries(analyticsValidation).map(([artifact, meta]: any) => (
+                <div key={artifact} className="flex items-center justify-between border-b border-border/30 pb-2 last:border-b-0 last:pb-0">
+                  <span className="font-mono">{artifact}</span>
+                  <span className="text-muted-foreground">
+                    {meta?.valid ? "valid" : "invalid"} · {meta?.errors?.length ?? 0} errors · {meta?.warnings?.length ?? 0} warnings
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section className="rounded-xl border border-border/50 p-4">
           <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-3">Steps</h2>

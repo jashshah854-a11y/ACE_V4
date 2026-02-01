@@ -1,0 +1,7 @@
+{
+  "timestamp": "2026-01-25T23:13:38.401915",
+  "dataset": "leakage_dataset_sample.csv",
+  "run_id": "ecd61915",
+  "pipeline_success": false,
+  "error": "'NoneType' object has no attribute 'get'"
+}
