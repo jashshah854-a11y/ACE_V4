@@ -114,8 +114,9 @@ class StateManager:
         manifest = _read_manifest(self.run_path)
         if artifact_step and manifest:
             step_status = (manifest.get("steps") or {}).get(artifact_step, {}).get("status")
-            if step_status != "success":
-                print(f"[StateManager] Refusing to persist artifact {name}; step not successful.")
+            # Allow writing during "running" (normal agent execution) or "success" (post-finalize)
+            if step_status not in (None, "running", "success", "pending"):
+                print(f"[StateManager] Refusing to persist artifact {name}; step status is {step_status}.")
                 return
         if artifact_step and isinstance(data, dict) and data.get("valid") is False:
             print(f"[StateManager] Refusing to persist invalid artifact: {name}")
