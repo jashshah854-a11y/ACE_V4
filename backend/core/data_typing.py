@@ -101,22 +101,28 @@ DATA_TYPE_CATALOG: Dict[str, Dict[str, List[str]]] = {
         "values": ["usd", "eur", "balance sheet", "p&l"],
     },
     "customer_crm": {
+        # FIX: More specific column names to reduce false positives
+        # Generic columns like "age", "gender" are too common across domains
         "columns": [
-            "customer",
-            "client",
-            "gender",
-            "age",
-            "marital",
-            "income",
-            "education",
-            "segment",
+            "customer_id",
+            "customerid",
+            "client_id",
+            "clientid",
             "churn",
+            "churned",
             "tenure",
             "loyalty",
-            "points",
+            "loyalty_score",
+            "customer_segment",
             "credit_score",
+            "creditscore",
+            "account_balance",
+            "subscription",
+            "contract",
+            "monthly_charges",
+            "total_charges",
         ],
-        "values": ["male", "female", "single", "married", "gold", "platinum"],
+        "values": ["gold", "platinum", "premium", "basic", "churned", "retained"],
     },
     "customer_behavior": {
         "columns": ["event", "action", "session", "user_id", "device", "page", "ip", "click", "view"],
@@ -131,8 +137,28 @@ DATA_TYPE_CATALOG: Dict[str, Dict[str, List[str]]] = {
         "values": ["strongly agree", "strongly disagree", "nps"],
     },
     "geospatial": {
-        "columns": ["latitude", "longitude", "lat", "lon", "geo", "city", "state", "country", "zip"],
+        "columns": ["latitude", "longitude", "lat", "lon", "geo", "city", "state", "country", "zip", "region", "district"],
         "values": [],
+    },
+    "healthcare": {
+        "columns": ["patient", "diagnosis", "treatment", "symptom", "disease", "medical", "health", "hospital", "clinical", "prescription", "dosage", "heart", "blood", "pressure", "cholesterol", "bmi"],
+        "values": ["positive", "negative", "benign", "malignant"],
+    },
+    "real_estate": {
+        "columns": ["property", "house", "home", "bedroom", "bathroom", "sqft", "square_feet", "price", "listing", "mortgage", "rent", "rooms", "floors", "built", "year_built"],
+        "values": ["condo", "apartment", "single family", "townhouse"],
+    },
+    "hr_employee": {
+        "columns": ["employee", "emp_id", "employeeid", "attrition", "department", "job_role", "salary", "performance", "years_at_company", "overtime", "work_life", "job_satisfaction"],
+        "values": ["yes", "no", "sales", "research", "hr", "marketing"],
+    },
+    "insurance": {
+        "columns": ["claim", "policy", "premium", "coverage", "deductible", "beneficiary", "insured", "underwriting"],
+        "values": ["approved", "denied", "pending", "auto", "life", "health"],
+    },
+    "education": {
+        "columns": ["student", "grade", "score", "exam", "course", "gpa", "attendance", "school", "university", "teacher", "subject", "study"],
+        "values": ["pass", "fail", "a", "b", "c", "d", "f"],
     },
     "experimental_ab_test": {
         "columns": ["variant", "treatment", "control", "experiment", "ab", "split"],
