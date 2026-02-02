@@ -46,7 +46,7 @@ class Sentry:
             anomalies_list = df.iloc[indices].to_dict(orient="records")
 
         payload = {
-            "status": "ok",
+            "status": "success",
             "anomaly_count": anomalies_summary["total_count"],
             "anomalies": anomalies_list[:100], # Limit to 100
             "drivers": anomalies_summary.get("drivers", {}),

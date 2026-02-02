@@ -71,7 +71,7 @@ class Fabricator:
             })
 
         output = {
-            "status": "ok",
+            "status": "success",
             "strategies": strategies
         }
         

@@ -23,7 +23,9 @@ def invariant_no_artifact_without_step_success(manifest: Dict[str, Any]) -> List
         if not step:
             failures.append({"id": "artifact_missing_step", "artifact": artifact_id})
             continue
-        if steps.get(step, {}).get("status") != "success":
+        step_status = steps.get(step, {}).get("status")
+        # Allow "running" since agents write artifacts during execution before step is finalized
+        if step_status not in ("success", "running"):
             failures.append({"id": "artifact_step_not_success", "artifact": artifact_id, "step": step})
     return failures
 
