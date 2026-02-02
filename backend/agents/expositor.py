@@ -448,7 +448,9 @@ class Expositor:
                 onnx_export=onnx_export,
             )
         except Exception as e:
+            import traceback
             log_warn(f"Executive report generation failed, using technical report: {e}")
+            log_warn(f"Traceback: {traceback.format_exc()}")
             executive_report = report  # Fallback to technical report
         
         # Save Report
