@@ -233,9 +233,14 @@ def validate_model_fit_report(payload: Dict[str, Any]) -> ValidationResult:
     if not isinstance(baseline, dict):
         _add_error(errors, "ARTIFACT_INVALID", "baseline_metrics", baseline, "dict", "baseline_metrics")
     if isinstance(metrics, dict):
-        _validate_range(errors, "r_squared", metrics.get("r2"), 0.0, 1.0, "metrics.r2")
-        if _is_number(metrics.get("r2")) and float(metrics.get("r2")) >= 0.9:
-            _add_warning(warnings, "OVERFIT_RISK", "r_squared", metrics.get("r2"), "metrics.r2", "High R-squared may indicate overfitting.")
+        # R2 can be negative when model is worse than mean baseline
+        _validate_range(errors, "r_squared", metrics.get("r2"), -100.0, 1.0, "metrics.r2")
+        if _is_number(metrics.get("r2")):
+            r2_val = float(metrics.get("r2"))
+            if r2_val >= 0.9:
+                _add_warning(warnings, "OVERFIT_RISK", "r_squared", r2_val, "metrics.r2", "High R-squared may indicate overfitting.")
+            elif r2_val < 0:
+                _add_warning(warnings, "POOR_MODEL_FIT", "r_squared", r2_val, "metrics.r2", "Negative R-squared indicates model performs worse than mean baseline.")
     return {"valid": not errors, "errors": errors, "warnings": _dedupe_warnings(warnings)}
 
 
@@ -433,17 +438,29 @@ def validate_regression_insights(payload: Dict[str, Any]) -> ValidationResult:
 
     metrics = payload.get("metrics") or {}
     if isinstance(metrics, dict):
-        _validate_range(errors, "r_squared", metrics.get("r2"), 0.0, 1.0, "metrics.r2")
-        _validate_range(errors, "adjusted_r_squared", metrics.get("adjusted_r2"), 0.0, 1.0, "metrics.adjusted_r2")
-        if _is_number(metrics.get("r2")) and float(metrics.get("r2")) >= 0.9:
-            _add_warning(
-                warnings,
-                "OVERFIT_RISK",
-                "r_squared",
-                float(metrics.get("r2")),
-                "metrics.r2",
-                "High R-squared may indicate overfitting.",
-            )
+        # R2 can be negative when model is worse than mean baseline
+        _validate_range(errors, "r_squared", metrics.get("r2"), -100.0, 1.0, "metrics.r2")
+        _validate_range(errors, "adjusted_r_squared", metrics.get("adjusted_r2"), -100.0, 1.0, "metrics.adjusted_r2")
+        if _is_number(metrics.get("r2")):
+            r2_val = float(metrics.get("r2"))
+            if r2_val >= 0.9:
+                _add_warning(
+                    warnings,
+                    "OVERFIT_RISK",
+                    "r_squared",
+                    r2_val,
+                    "metrics.r2",
+                    "High R-squared may indicate overfitting.",
+                )
+            elif r2_val < 0:
+                _add_warning(
+                    warnings,
+                    "POOR_MODEL_FIT",
+                    "r_squared",
+                    r2_val,
+                    "metrics.r2",
+                    "Negative R-squared indicates model performs worse than mean baseline.",
+                )
 
     for path, value in _collect_values(
         payload,
