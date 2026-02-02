@@ -2,15 +2,23 @@
 Redis-based job queue for multi-service coordination on Railway.
 
 Replaces SQLite queue to enable proper sharing between web and worker services.
+Includes job timeout and cleanup mechanisms for stuck jobs.
 """
 
 import redis
 import json
 import uuid
 import os
-from typing import Optional
-from datetime import datetime, timezone
+import threading
+import time
+from typing import Optional, List
+from datetime import datetime, timezone, timedelta
 from .models import Job, JobStatus
+
+
+# Job timeout configuration
+JOB_TIMEOUT_MINUTES = int(os.getenv("JOB_TIMEOUT_MINUTES", "15"))  # Default 15 min
+CLEANUP_INTERVAL_SECONDS = 60  # Check for stuck jobs every minute
 
 
 class RedisJobQueue:
@@ -207,6 +215,132 @@ class RedisJobQueue:
         """Clear all job state (for testing)."""
         self.redis.delete(self.state_key)
         print(f"[RedisQueue] Cleared state")
+
+    def cleanup_stuck_jobs(self, timeout_minutes: int = JOB_TIMEOUT_MINUTES) -> List[str]:
+        """
+        Find and fail jobs that have been running longer than timeout.
+
+        Args:
+            timeout_minutes: Maximum allowed runtime in minutes
+
+        Returns:
+            List of job IDs that were cleaned up
+        """
+        cleaned = []
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=timeout_minutes)
+
+        all_jobs = self.redis.hgetall(self.state_key)
+        for run_id, job_json in all_jobs.items():
+            try:
+                job_data = json.loads(job_json)
+                status = job_data.get("status")
+
+                # Only check running jobs
+                if status != JobStatus.RUNNING.value:
+                    continue
+
+                # Check if job has been running too long
+                updated_at = job_data.get("updated_at")
+                if not updated_at:
+                    continue
+
+                # Parse the timestamp
+                try:
+                    job_time = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+                except (ValueError, AttributeError):
+                    continue
+
+                if job_time < cutoff:
+                    # Job has timed out - mark as failed
+                    job_data["status"] = JobStatus.FAILED.value
+                    job_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+                    job_data["message"] = f"Job timed out after {timeout_minutes} minutes"
+                    self.redis.hset(self.state_key, run_id, json.dumps(job_data))
+                    cleaned.append(run_id)
+                    print(f"[RedisQueue] Cleaned up stuck job {run_id} (timeout after {timeout_minutes} min)")
+
+            except Exception as e:
+                print(f"[RedisQueue] Error checking job {run_id}: {e}")
+
+        return cleaned
+
+    def get_stuck_jobs(self, timeout_minutes: int = JOB_TIMEOUT_MINUTES) -> List[Job]:
+        """
+        Get list of jobs that appear to be stuck (running longer than timeout).
+
+        Args:
+            timeout_minutes: Maximum expected runtime in minutes
+
+        Returns:
+            List of stuck Job objects
+        """
+        stuck = []
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=timeout_minutes)
+
+        all_jobs = self.redis.hgetall(self.state_key)
+        for run_id, job_json in all_jobs.items():
+            try:
+                job_data = json.loads(job_json)
+                status = job_data.get("status")
+
+                if status != JobStatus.RUNNING.value:
+                    continue
+
+                updated_at = job_data.get("updated_at")
+                if not updated_at:
+                    continue
+
+                try:
+                    job_time = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+                except (ValueError, AttributeError):
+                    continue
+
+                if job_time < cutoff:
+                    stuck.append(Job(**job_data))
+
+            except Exception as e:
+                print(f"[RedisQueue] Error checking job {run_id}: {e}")
+
+        return stuck
+
+    def heartbeat(self, run_id: str):
+        """
+        Update job's updated_at timestamp to prevent timeout.
+        Should be called periodically by long-running jobs.
+
+        Args:
+            run_id: Job ID
+        """
+        job_json = self.redis.hget(self.state_key, run_id)
+        if not job_json:
+            return
+
+        job_data = json.loads(job_json)
+        job_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        self.redis.hset(self.state_key, run_id, json.dumps(job_data))
+
+
+def start_cleanup_thread(queue: 'RedisJobQueue'):
+    """
+    Start a background thread that periodically cleans up stuck jobs.
+
+    Args:
+        queue: RedisJobQueue instance to use for cleanup
+    """
+    def cleanup_loop():
+        while True:
+            try:
+                time.sleep(CLEANUP_INTERVAL_SECONDS)
+                cleaned = queue.cleanup_stuck_jobs()
+                if cleaned:
+                    print(f"[RedisQueue] Cleanup thread cleaned {len(cleaned)} stuck jobs")
+            except Exception as e:
+                print(f"[RedisQueue] Cleanup thread error: {e}")
+
+    thread = threading.Thread(target=cleanup_loop, daemon=True, name="job-cleanup")
+    thread.start()
+    print(f"[RedisQueue] Started cleanup thread (interval: {CLEANUP_INTERVAL_SECONDS}s, timeout: {JOB_TIMEOUT_MINUTES}min)")
+    return thread
 
 
 # Singleton instance

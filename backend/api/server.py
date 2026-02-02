@@ -425,6 +425,11 @@ async def _initialize_app():
         worker_thread = threading.Thread(target=worker_loop, daemon=True, name="ACE-Worker")
         worker_thread.start()
         logger.info("[API] ✅ Background worker started successfully")
+
+        # Start job cleanup thread for stuck/orphaned jobs
+        from jobs.redis_queue import start_cleanup_thread
+        start_cleanup_thread(job_queue)
+        logger.info("[API] ✅ Job cleanup thread started")
         
     except Exception as e:
         logger.exception("[API] ❌ CRITICAL: Failed to initialize Redis queue or worker")
