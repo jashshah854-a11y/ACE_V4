@@ -190,7 +190,10 @@ class StateManager:
             if manifest_after:
                 invariant_result = run_invariants(manifest_after)
                 if not invariant_result.get("ok"):
-                    print("[StateManager] Invariant violations detected; refusing to persist critical artifact.")
+                    violations = invariant_result.get("violations", [])
+                    print(f"[StateManager] Invariant violations detected for {name}:")
+                    for v in violations[:5]:  # Show first 5
+                        print(f"  - {v.get('invariant_id')}: {v.get('details')}")
                     remove_artifact(self.run_path, name)
                     if name == "enhanced_analytics":
                         for section_name in (
