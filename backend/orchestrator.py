@@ -6,8 +6,11 @@ import sys
 import traceback
 import threading
 import shutil
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
+
+logger = logging.getLogger("ace.orchestrator")
 
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.resolve()))
