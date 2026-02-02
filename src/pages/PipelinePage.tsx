@@ -1,33 +1,22 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PipelineStatus } from "@/components/report/PipelineStatus";
-import { useRunStatus } from "@/lib/queries";
 
 export default function PipelinePage() {
   const { runId } = useParams<{ runId: string }>();
   const navigate = useNavigate();
   const redirectTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const { data: status } = useRunStatus(runId);
 
-  const isComplete =
-    status?.status === "completed" ||
-    status?.status === "complete" ||
-    status?.status === "complete_with_errors";
-  const isFailed = status?.status === "failed";
-
-  // Auto-redirect on completion after 1.5s
-  useEffect(() => {
-    if (isComplete && runId) {
-      redirectTimerRef.current = setTimeout(() => {
-        navigate(`/report/${runId}`, { replace: true });
-      }, 1500);
-    }
-    return () => {
-      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
-    };
-  }, [isComplete, runId, navigate]);
+  // Called by PipelineStatus when the run reaches a terminal "complete" state.
+  // Single source of truth — no duplicate polling query.
+  const handleComplete = useCallback(() => {
+    if (!runId || redirectTimerRef.current) return;
+    redirectTimerRef.current = setTimeout(() => {
+      navigate(`/report/${runId}`, { replace: true });
+    }, 1500);
+  }, [runId, navigate]);
 
   if (!runId) {
     return (
@@ -58,24 +47,7 @@ export default function PipelinePage() {
         </code>
       </div>
 
-      <PipelineStatus runId={runId} />
-
-      {isComplete && (
-        <div className="text-center text-sm text-muted-foreground animate-pulse">
-          Redirecting to report...
-        </div>
-      )}
-
-      {isFailed && (
-        <div className="text-center space-y-4">
-          <p className="text-destructive font-medium">
-            {status?.error || "Analysis failed unexpectedly."}
-          </p>
-          <Button asChild>
-            <Link to="/">Try Again</Link>
-          </Button>
-        </div>
-      )}
+      <PipelineStatus runId={runId} onComplete={handleComplete} />
     </main>
   );
 }
