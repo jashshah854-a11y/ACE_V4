@@ -49,8 +49,12 @@ export default function ReportDashboard() {
   }
 
   // Merge analytics from snapshot and separate endpoint
-  const analytics = snapshot.enhanced_analytics || enhancedAnalytics;
-  const artifacts = snapshot.model_artifacts || modelArtifacts;
+  const rawAnalytics = snapshot.enhanced_analytics || enhancedAnalytics;
+  const rawArtifacts = snapshot.model_artifacts || modelArtifacts;
+
+  // Normalize artifacts to pass isValidArtifact checks (add valid/status fields)
+  const artifacts = normalizeArtifacts(rawArtifacts);
+  const analytics = normalizeAnalytics(rawAnalytics);
   const bi = analytics?.business_intelligence;
 
   // Build KPI cards from snapshot.curated_kpis
@@ -159,14 +163,33 @@ export default function ReportDashboard() {
             collinearityReport={artifacts?.collinearity_report}
           />
 
-          {analytics?.distribution_analysis && (
+          {/* Fallback: show raw feature importance if TopDriversCard returns null */}
+          {!artifacts?.importance_report?.features?.length && rawArtifacts?.feature_importance && (
+            <FeatureImportanceFallback data={rawArtifacts.feature_importance} />
+          )}
+
+          {/* Fallback: show raw importance_report if it has different shape */}
+          {!artifacts?.importance_report?.features?.length && rawArtifacts?.importance_report && (
+            <ImportanceReportFallback data={rawArtifacts.importance_report} />
+          )}
+
+          {analytics?.distribution_analysis?.distributions && (
             <DistributionCharts
-              distributions={analytics.distribution_analysis}
-              insights={analytics?.distribution_insights}
+              distributions={analytics.distribution_analysis.distributions}
+              insights={analytics.distribution_analysis?.insights}
             />
           )}
 
-          {!analytics?.correlation_analysis && !artifacts?.importance_report && !analytics?.distribution_analysis && (
+          {/* Model fit summary if available */}
+          {(artifacts?.model_fit_report || rawArtifacts?.model_fit_report) && (
+            <ModelFitSummary data={artifacts?.model_fit_report || rawArtifacts?.model_fit_report} />
+          )}
+
+          {!analytics?.correlation_analysis?.strong_correlations?.length &&
+           !artifacts?.importance_report?.features?.length &&
+           !rawArtifacts?.feature_importance &&
+           !rawArtifacts?.importance_report &&
+           !analytics?.distribution_analysis?.distributions && (
             <EmptyTab message="No analytics data available for this run." />
           )}
         </TabsContent>
@@ -448,15 +471,242 @@ function buildKpiCards(snapshot: any): CuratedKpiCardData[] {
   }
   if (kpis.completeness != null) {
     const comp = Number(kpis.completeness);
-    cards.push({
-      id: "completeness",
-      label: "Completeness",
-      value: `${(comp * 100).toFixed(0)}%`,
-      status: comp > 0.9 ? "success" : comp > 0.7 ? "warning" : "risk",
-      trend: "flat",
-      origin: "fallback",
-    });
+    // Skip showing completeness if it's basically zero (misleading)
+    // or if it's very close to 1 (redundant with quality score)
+    if (comp > 0.01 && comp < 0.999) {
+      cards.push({
+        id: "completeness",
+        label: "Completeness",
+        value: `${(comp * 100).toFixed(1)}%`,
+        status: comp > 0.9 ? "success" : comp > 0.7 ? "warning" : "risk",
+        trend: "flat",
+        origin: "fallback",
+      });
+    }
   }
 
   return cards;
+}
+
+/**
+ * Normalize model artifacts to include valid/status fields
+ * so the existing TopDriversCard etc. components work
+ */
+function normalizeArtifacts(raw: any): any {
+  if (!raw || typeof raw !== "object") return raw;
+
+  const normalized: any = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      normalized[key] = {
+        ...value,
+        valid: (value as any).valid ?? true,
+        status: (value as any).status ?? "success",
+      };
+    } else {
+      normalized[key] = value;
+    }
+  }
+  return normalized;
+}
+
+/**
+ * Normalize analytics data to include valid/status fields
+ */
+function normalizeAnalytics(raw: any): any {
+  if (!raw || typeof raw !== "object") return raw;
+
+  const normalized: any = { ...raw };
+
+  // Normalize correlation_analysis
+  if (raw.correlation_analysis && typeof raw.correlation_analysis === "object") {
+    normalized.correlation_analysis = {
+      ...raw.correlation_analysis,
+      valid: raw.correlation_analysis.valid ?? true,
+      status: raw.correlation_analysis.status ?? "success",
+      available: raw.correlation_analysis.available ?? true,
+    };
+  }
+
+  // Normalize distribution_analysis
+  if (raw.distribution_analysis && typeof raw.distribution_analysis === "object") {
+    normalized.distribution_analysis = {
+      ...raw.distribution_analysis,
+      valid: raw.distribution_analysis.valid ?? true,
+      status: raw.distribution_analysis.status ?? "success",
+      available: raw.distribution_analysis.available ?? true,
+    };
+  }
+
+  // Normalize business_intelligence
+  if (raw.business_intelligence && typeof raw.business_intelligence === "object") {
+    normalized.business_intelligence = {
+      ...raw.business_intelligence,
+      valid: raw.business_intelligence.valid ?? true,
+      status: raw.business_intelligence.status ?? "success",
+      available: raw.business_intelligence.available ?? true,
+    };
+  }
+
+  return normalized;
+}
+
+/**
+ * Fallback component for feature_importance when TopDriversCard can't render
+ */
+function FeatureImportanceFallback({ data }: { data: any }) {
+  // Handle array of {feature, importance} or object with feature_importance array
+  const features = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.feature_importance)
+      ? data.feature_importance
+      : null;
+
+  if (!features || features.length === 0) return null;
+
+  const maxImportance = Math.max(...features.map((f: any) => Math.abs(Number(f.importance) || 0))) || 1;
+
+  return (
+    <div className="rounded-2xl border bg-card p-6">
+      <h3 className="font-semibold mb-4">Feature Importance</h3>
+      <div className="space-y-3">
+        {features.slice(0, 8).map((item: any, idx: number) => {
+          const value = Math.abs(Number(item.importance) || 0);
+          const pct = Math.max(2, Math.round((value / maxImportance) * 100));
+          return (
+            <div key={item.feature || idx}>
+              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                <span className="font-medium text-foreground">{item.feature}</span>
+                <span>{value.toFixed(2)}</span>
+              </div>
+              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-purple-500 to-indigo-500"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {features.length > 8 && (
+        <p className="text-xs text-muted-foreground mt-3">Showing top 8 of {features.length} features</p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Fallback for importance_report with different structure
+ */
+function ImportanceReportFallback({ data }: { data: any }) {
+  if (!data) return null;
+
+  // Try to extract features array from various possible shapes
+  const features = data.features || data.feature_importance || data.importances;
+  if (!Array.isArray(features) || features.length === 0) {
+    // Maybe it's a flat object with feature names as keys
+    if (typeof data === "object" && !Array.isArray(data)) {
+      const entries = Object.entries(data).filter(
+        ([key, val]) => typeof val === "number" && !["valid", "status"].includes(key)
+      );
+      if (entries.length > 0) {
+        const maxVal = Math.max(...entries.map(([, v]) => Math.abs(Number(v)))) || 1;
+        return (
+          <div className="rounded-2xl border bg-card p-6">
+            <h3 className="font-semibold mb-4">Model Importance Scores</h3>
+            <div className="space-y-3">
+              {entries.slice(0, 8).map(([key, value]) => {
+                const numVal = Math.abs(Number(value));
+                const pct = Math.max(2, Math.round((numVal / maxVal) * 100));
+                return (
+                  <div key={key}>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                      <span className="font-medium text-foreground">{key}</span>
+                      <span>{numVal.toFixed(2)}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-teal-500 to-cyan-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      }
+    }
+    return null;
+  }
+
+  return <FeatureImportanceFallback data={features} />;
+}
+
+/**
+ * Model fit summary card
+ */
+function ModelFitSummary({ data }: { data: any }) {
+  if (!data || typeof data !== "object") return null;
+
+  const metrics = data.metrics || {};
+  const baseline = data.baseline_metrics || {};
+  const targetCol = data.target_column;
+  const model = data.model;
+
+  const metricEntries = Object.entries(metrics).filter(
+    ([, v]) => typeof v === "number"
+  );
+
+  if (metricEntries.length === 0 && !targetCol && !model) return null;
+
+  return (
+    <div className="rounded-2xl border bg-card p-6">
+      <h3 className="font-semibold mb-4">Model Performance</h3>
+      {(targetCol || model) && (
+        <div className="flex flex-wrap gap-4 mb-4 text-sm">
+          {targetCol && (
+            <div>
+              <span className="text-muted-foreground">Target: </span>
+              <span className="font-mono">{targetCol}</span>
+            </div>
+          )}
+          {model && (
+            <div>
+              <span className="text-muted-foreground">Model: </span>
+              <span className="font-medium">{model}</span>
+            </div>
+          )}
+        </div>
+      )}
+      {metricEntries.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {metricEntries.map(([key, value]) => {
+            const baselineVal = baseline[key];
+            return (
+              <div key={key} className="text-sm">
+                <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                  {key.replace(/_/g, " ")}
+                </p>
+                <p className="font-semibold text-lg">
+                  {typeof value === "number" && value <= 1 && value >= 0
+                    ? `${(value * 100).toFixed(1)}%`
+                    : Number(value).toFixed(3)}
+                </p>
+                {baselineVal != null && (
+                  <p className="text-xs text-muted-foreground">
+                    baseline: {typeof baselineVal === "number" && baselineVal <= 1 && baselineVal >= 0
+                      ? `${(baselineVal * 100).toFixed(1)}%`
+                      : Number(baselineVal).toFixed(3)}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
