@@ -103,9 +103,30 @@ export default function ReportDashboard() {
           {snapshot.identity?.summary && (
             <div className="rounded-2xl border bg-card p-6">
               <h3 className="font-semibold mb-2">Dataset Summary</h3>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {snapshot.identity.summary}
-              </p>
+              {typeof snapshot.identity.summary === "string" ? (
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {snapshot.identity.summary}
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  {Object.entries(snapshot.identity.summary)
+                    .filter(([, v]) => v != null && typeof v !== "object")
+                    .map(([key, value]) => (
+                      <div key={key}>
+                        <p className="text-muted-foreground text-xs">
+                          {key.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                        </p>
+                        <p className="font-medium">
+                          {typeof value === "number" && value < 1 && value > 0
+                            ? `${(value * 100).toFixed(1)}%`
+                            : typeof value === "boolean"
+                              ? value ? "Yes" : "No"
+                              : String(value)}
+                        </p>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           )}
         </TabsContent>
@@ -181,7 +202,7 @@ export default function ReportDashboard() {
             </div>
 
             {/* Evidence sidebar */}
-            {snapshot.evidence_map && Object.keys(snapshot.evidence_map).length > 0 && (
+            {snapshot.evidence_map && !Array.isArray(snapshot.evidence_map) && typeof snapshot.evidence_map === "object" && Object.keys(snapshot.evidence_map).length > 0 && (
               <aside className="hidden lg:block w-72 shrink-0">
                 <div className="sticky top-20 rounded-2xl border bg-card p-4 space-y-3">
                   <h4 className="text-sm font-semibold">Evidence Map</h4>
@@ -246,7 +267,7 @@ function DiagnosticsSummary({ diagnostics }: { diagnostics: any }) {
   if (!diagnostics) return null;
 
   const mode = diagnostics.mode || diagnostics.analysis_mode;
-  const quality = diagnostics.data_quality_score ?? diagnostics.data_quality?.overall_score;
+  const quality = diagnostics.data_quality_score ?? diagnostics.data_quality?.score ?? diagnostics.data_quality?.overall_score;
   const target = diagnostics.target_candidate;
 
   return (
@@ -337,7 +358,7 @@ function QualityMetrics({ quality }: { quality: any }) {
             </p>
             <p className="font-medium">
               {typeof value === "number"
-                ? value < 1 ? `${(value * 100).toFixed(1)}%` : value.toFixed(2)
+                ? value <= 1 ? `${(value * 100).toFixed(1)}%` : value.toFixed(2)
                 : String(value)}
             </p>
           </div>
@@ -375,7 +396,7 @@ function adaptSnapshotIdentity(raw: any): DatasetIdentity {
     column_count: raw.column_count || Object.keys(columns).length,
     file_type: raw.data_type?.primary_type || "unknown",
     schema_map: schemaMap,
-    quality_score: raw.quality_score ?? raw.quality?.avg_null_pct != null ? 1 - raw.quality.avg_null_pct : 0.5,
+    quality_score: raw.quality_score ?? (raw.quality?.avg_null_pct != null ? 1 - raw.quality.avg_null_pct : 0.5),
     critical_gaps: [],
     detected_capabilities: raw.capabilities || raw.detected_capabilities || {},
     warnings: [],
