@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple
 
 
-CUSTOMER_ID_TOKENS = {"customer_id", "client_id", "user_id", "account_id"}
-DEMOGRAPHIC_TOKENS = {"age", "gender", "income", "segment", "tenure", "churn", "loyalty", "marital"}
+CUSTOMER_ID_TOKENS = {"customer_id", "customerid", "client_id", "clientid", "user_id", "userid", "account_id", "accountid"}
+DEMOGRAPHIC_TOKENS = {"age", "gender", "income", "segment", "tenure", "churn", "churned", "exited", "attrition", "loyalty", "marital"}
 ACCOUNTING_TOKENS = {"ledger", "invoice", "accounts_payable", "accounts_receivable", "balance", "debit", "credit", "fiscal"}
 MARKETING_TOKENS = {"campaign", "adgroup", "impression", "click", "ctr", "cpc", "cpm", "roas", "conversion", "utm"}
 OPERATIONS_TOKENS = {"inventory", "shipment", "warehouse", "logistics", "vendor", "sku", "lead_time"}
@@ -51,6 +51,17 @@ def classify_dataset_profile(
         conf = min(0.95, 0.6 + 0.1 * len(demo_hits))
         domain_tags.append({"tag": "customer_behavior", "confidence": conf})
         signals["customer_behavior"] = {"id_fields": customer_hits, "demographics": demo_hits}
+        # Also tag as customer_crm if churn/retention signals are present
+        crm_signals = _token_hits(columns, {"churn", "churned", "exited", "attrition", "retention", "tenure", "credit_score", "creditscore"})
+        if crm_signals:
+            crm_conf = min(0.95, 0.55 + 0.1 * len(crm_signals))
+            domain_tags.append({"tag": "customer_crm", "confidence": crm_conf})
+            signals["customer_crm"] = {"crm_fields": crm_signals}
+    elif demo_hits and len(demo_hits) >= 2:
+        # Even without explicit customer ID, strong demographic signals suggest customer data
+        conf = min(0.85, 0.4 + 0.1 * len(demo_hits))
+        domain_tags.append({"tag": "customer_behavior", "confidence": conf})
+        signals["customer_behavior"] = {"id_fields": [], "demographics": demo_hits}
 
     accounting_hits = _token_hits(columns, ACCOUNTING_TOKENS)
     if accounting_hits:
