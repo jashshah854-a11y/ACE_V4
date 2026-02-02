@@ -28,9 +28,10 @@ def derive_routing(classification: Dict) -> Dict[str, Dict[str, str]]:
         allowed.extend(["trend_analysis", "forecasting", "regression"])
         suppressed["personas"] = "Accounting data does not support persona segmentation."
         suppressed["segmentation"] = "Accounting data does not support segmentation."
-    elif "customer_behavior" in domain_tags and temporal == "cross_sectional":
+    elif any(tag in domain_tags for tag in ("customer_behavior", "customer_crm")):
         allowed.extend(["segmentation", "regression", "personas", "business_intelligence", "simulation"])
-        suppressed["forecasting"] = "Cross-sectional customer data; forecasting disabled."
+        if temporal == "cross_sectional" or temporal == "unknown":
+            suppressed["forecasting"] = "Cross-sectional customer data; forecasting disabled."
     elif temporal == "unknown":
         suppressed["forecasting"] = "Temporal structure unknown; time-based analyses disabled."
         allowed.extend(["segmentation", "regression"])

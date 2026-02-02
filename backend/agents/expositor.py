@@ -396,6 +396,7 @@ class Expositor:
                 row_count=row_count,
                 col_count=col_count,
                 confidence_score=confidence_score,
+                model_fit=model_fit,
             )
         except Exception as e:
             log_warn(f"Executive report generation failed, using technical report: {e}")
@@ -842,6 +843,7 @@ class Expositor:
         row_count: int,
         col_count: int,
         confidence_score: float,
+        model_fit: dict | None = None,
     ) -> str:
         """Generate a human-readable executive report using NarrativeEngine."""
         
@@ -921,6 +923,34 @@ class Expositor:
                 lines.append(translated)
             lines.append("")
         
+        # Model Fit Warning (when R² is negative or accuracy is low)
+        if model_fit and isinstance(model_fit, dict):
+            fit_metrics = model_fit.get("metrics", {})
+            r2 = fit_metrics.get("r2")
+            accuracy = fit_metrics.get("accuracy")
+            target = model_fit.get("target_column", "outcome")
+            if r2 is not None and isinstance(r2, (int, float)) and r2 < 0:
+                lines.append("## Model Fit Warning")
+                lines.append("")
+                lines.append(
+                    f"The predictive model for **{target}** has a negative R-squared ({r2:.2f}), "
+                    "meaning it performs worse than simply predicting the average. "
+                    "The feature importance rankings above show *relative* contributions "
+                    "but should not be interpreted as reliable predictors. Consider:"
+                )
+                lines.append("- The available features may not capture the true drivers")
+                lines.append("- Additional data collection or feature engineering may be needed")
+                lines.append("- The relationship may be non-linear or require domain-specific modeling")
+                lines.append("")
+            elif accuracy is not None and isinstance(accuracy, (int, float)) and accuracy < 0.55:
+                lines.append("## Model Fit Warning")
+                lines.append("")
+                lines.append(
+                    f"The classification model for **{target}** has low accuracy ({accuracy:.0%}), "
+                    "only marginally better than random. Predictions should be treated as exploratory."
+                )
+                lines.append("")
+
         # Customer Segments (if available)
         if segment_count > 0 and personas:
             lines.append("## Customer Segments")

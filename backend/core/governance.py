@@ -190,8 +190,7 @@ def should_block_agent(agent: str, state_manager: StateManager) -> Tuple[bool, s
     required_output = (contract.get("required_output_type") or "").lower()
     if required_output in {"diagnostic", "descriptive"} and agent in {"regression", "fabricator"}:
         reasons.append("Predictive modeling out of scope for this task contract")
-    if required_output == "predictive" and agent == "overseer":
-        reasons.append("Predictive runs bypass exploratory clustering")
+    # Allow overseer for predictive runs - personas/fabricator need cluster fingerprints
 
     if agent == "regression" and "regression" in forbidden_analyses:
         reasons.append("Regression forbidden by identity contract")
@@ -199,8 +198,10 @@ def should_block_agent(agent: str, state_manager: StateManager) -> Tuple[bool, s
         reasons.append("Segmentation disabled by identity contract")
     if agent == "personas" and not forbidden_claims.get("allow_persona_segmentation", True):
         reasons.append("Persona segmentation forbidden by contract")
-    if agent == "fabricator" and not forbidden_claims.get("allow_financial_insights", True):
-        reasons.append("Financial insights unsupported by dataset identity")
+    # Fabricator generates strategic recommendations; only block if explicitly forbidden
+    if agent == "fabricator" and forbidden_claims.get("allow_financial_insights") is False:
+        if not forbidden_claims.get("allow_persona_segmentation", True):
+            reasons.append("Strategy generation requires persona segmentation")
 
     if reasons:
         return True, "; ".join(reason for reason in reasons if reason)
