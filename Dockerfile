@@ -17,8 +17,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
 # Install optional heavy ML packages (SHAP/ONNX) - graceful failure
-RUN pip install --no-cache-dir shap>=0.42.0 || echo "SHAP install skipped"
-RUN pip install --no-cache-dir onnx>=1.14.0 skl2onnx>=1.16.0 onnxruntime>=1.16.0 || echo "ONNX install skipped"
+RUN pip install --no-cache-dir "shap>=0.42.0" || echo "SHAP install skipped"
+RUN pip install --no-cache-dir "onnx>=1.14.0" "skl2onnx>=1.16.0" "onnxruntime>=1.16.0" || echo "ONNX install skipped"
 
 # Copy all backend code
 COPY backend ./backend
