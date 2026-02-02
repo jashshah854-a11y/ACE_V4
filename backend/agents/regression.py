@@ -15,7 +15,7 @@ from core.state_manager import StateManager
 from core.schema import SchemaMap, ensure_schema_map
 from core.data_loader import smart_load_dataset
 from ace_v4.performance.config import PerformanceConfig
-from anti_gravity.core.regression import compute_regression_insights
+from anti_gravity.core.regression import compute_regression_insights, infer_target_from_question, select_classification_target
 from core.analytics_validation import apply_artifact_validation
 
 
@@ -52,10 +52,29 @@ class RegressionAgent:
             log_warn(f"Scope lock blocked Regression: {exc}")
             raise
         run_config = self.state.read("run_config") or {}
+
+        # Infer target from task_intent if not explicitly set
+        preferred_target = run_config.get("target_column")
+        if not preferred_target:
+            task_intent = run_config.get("task_intent") or {}
+            question = task_intent.get("primary_question", "")
+            output_type = task_intent.get("required_output_type", "")
+
+            # Try to infer target from question
+            inferred = infer_target_from_question(question, list(df.columns))
+            if inferred:
+                preferred_target = inferred
+
+            # For predictive tasks, also try classification target if no match yet
+            if not preferred_target and output_type == "predictive":
+                classification_target = select_classification_target(df, self.schema_map)
+                if classification_target:
+                    preferred_target = classification_target
+
         insights = compute_regression_insights(
             df,
             self.schema_map,
-            preferred_target=run_config.get("target_column"),
+            preferred_target=preferred_target,
             feature_whitelist=run_config.get("feature_whitelist"),
             model_type=run_config.get("model_type"),
             include_categoricals=bool(run_config.get("include_categoricals", False)),

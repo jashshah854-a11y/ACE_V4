@@ -62,6 +62,9 @@ def _is_id_column(name: str) -> bool:
         return True
     if lowered.endswith("_id") or lowered.startswith("id_"):
         return True
+    # Handle CamelCase like "CustomerId" -> check if ends with "id" after a letter
+    if lowered.endswith("id") and len(lowered) > 2 and lowered[-3].isalpha():
+        return True
     return any(token in lowered for token in ("uuid", "guid", "identifier"))
 
 
@@ -238,6 +241,73 @@ def select_regression_features(
     return valid
 
 
+def infer_target_from_question(question: str, columns: List[str]) -> Optional[str]:
+    """Extract likely target column from a natural language question."""
+    if not question or not columns:
+        return None
+
+    question_lower = question.lower()
+
+    # Common target keywords mapped to column name patterns
+    target_hints = {
+        "churn": ["churn", "churned", "attrition", "left", "exited"],
+        "buy": ["purchase", "bought", "conversion", "converted", "buy"],
+        "risk": ["risk", "risky", "default", "defaulted", "fraud"],
+        "outcome": ["outcome", "result", "target", "label", "response"],
+        "value": ["value", "revenue", "sales", "amount", "total"],
+        "score": ["score", "rating", "grade"],
+    }
+
+    # Check which keywords appear in the question
+    detected_intents = []
+    for intent, keywords in target_hints.items():
+        for kw in keywords:
+            if kw in question_lower:
+                detected_intents.append(intent)
+                break
+
+    # Look for columns matching detected intents
+    for col in columns:
+        col_lower = col.lower()
+        for intent in detected_intents:
+            for pattern in target_hints.get(intent, []):
+                if pattern in col_lower:
+                    return col
+
+    return None
+
+
+def select_classification_target(df: pd.DataFrame, schema_map: Any, config: RegressionConfig | None = None) -> Optional[str]:
+    """Pick a binary/categorical target column suitable for classification."""
+    config = config or RegressionConfig()
+    if df is None or df.empty:
+        return None
+
+    # Classification target keywords
+    target_keywords = ("churn", "churned", "target", "outcome", "label", "class",
+                       "default", "fraud", "risk", "attrition", "converted", "response")
+
+    numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+
+    # First pass: look for binary columns with target-like names
+    for col in numeric_cols:
+        col_lower = col.lower()
+        if any(kw in col_lower for kw in target_keywords):
+            series = df[col].dropna()
+            if len(series) >= config.min_samples and series.nunique() in (2, 3):
+                return col
+
+    # Second pass: any binary numeric column
+    for col in numeric_cols:
+        if _is_id_column(col):
+            continue
+        series = df[col].dropna()
+        if len(series) >= config.min_samples and series.nunique() == 2:
+            return col
+
+    return None
+
+
 def describe_model_quality(r2: float) -> str:
     if r2 >= 0.75:
         return "Holdout fit is strong relative to the mean baseline."
@@ -269,7 +339,10 @@ def compute_regression_insights(
     if preferred_target and preferred_target in df.columns:
         series = _coerce_numeric(df, preferred_target)
         usable = series.dropna()
-        if len(usable) >= config.min_samples and usable.nunique() >= 5 and float(usable.std(ddof=0) or 0) != 0:
+        # Allow binary/multiclass targets (nunique >= 2) for classification, or continuous (nunique >= 5)
+        has_variance = float(usable.std(ddof=0) or 0) != 0
+        is_valid_target = len(usable) >= config.min_samples and usable.nunique() >= 2 and has_variance
+        if is_valid_target:
             target_col = preferred_target
     if not target_col:
         target_col = select_regression_target(df, schema_map, config)
