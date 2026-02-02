@@ -21,6 +21,13 @@ SUPPORTED_DATA_TYPES: List[str] = [
     "experimental_ab_test",
     "risk_compliance",
     "text_narrative",
+    # New domain types from data_typing.py
+    "customer_crm",
+    "healthcare",
+    "real_estate",
+    "hr_employee",
+    "insurance",
+    "education",
     "mixed",
     "unknown",
 ]
@@ -58,6 +65,37 @@ DOMAIN_CONSTRAINTS: Dict[str, Dict[str, str]] = {
         "cannot_suggest": "Generalizations beyond experimental conditions",
         "requires": "Control and treatment groups",
     },
+    # New domain types constraints
+    "customer_crm": {
+        "can_suggest": "Churn risk factors and retention opportunities",
+        "cannot_suggest": "Guaranteed customer behavior predictions",
+        "requires": "Customer lifecycle context and historical patterns",
+    },
+    "healthcare": {
+        "can_suggest": "Statistical patterns and risk factors",
+        "cannot_suggest": "Medical diagnoses or treatment recommendations",
+        "requires": "Clinical validation and regulatory compliance",
+    },
+    "real_estate": {
+        "can_suggest": "Market trends and property valuations",
+        "cannot_suggest": "Investment guarantees or definitive appraisals",
+        "requires": "Local market context and temporal considerations",
+    },
+    "hr_employee": {
+        "can_suggest": "Workforce patterns and retention indicators",
+        "cannot_suggest": "Individual performance predictions or hiring decisions",
+        "requires": "Privacy compliance and aggregate-level insights",
+    },
+    "insurance": {
+        "can_suggest": "Risk patterns and claims analysis",
+        "cannot_suggest": "Individual underwriting decisions",
+        "requires": "Actuarial validation and regulatory compliance",
+    },
+    "education": {
+        "can_suggest": "Learning patterns and performance indicators",
+        "cannot_suggest": "Student capability assessments or admissions decisions",
+        "requires": "Privacy compliance and educational context",
+    },
 }
 
 
@@ -77,6 +115,13 @@ AGENT_ALLOWLIST: Dict[str, List[str]] = {
         "financial_accounting",
         "technical_metrics",
         "correlation_outputs",
+        # New domain types
+        "customer_crm",
+        "healthcare",
+        "real_estate",
+        "hr_employee",
+        "insurance",
+        "education",
     ],
     "regression": [
         "marketing_performance",
@@ -86,6 +131,13 @@ AGENT_ALLOWLIST: Dict[str, List[str]] = {
         "financial_accounting",
         "technical_metrics",
         "forecast_prediction",
+        # New domain types - predictive modeling applies to these
+        "customer_crm",
+        "healthcare",
+        "real_estate",
+        "hr_employee",
+        "insurance",
+        "education",
     ],
     "sentry": SUPPORTED_DATA_TYPES,
     "personas": [
@@ -93,6 +145,11 @@ AGENT_ALLOWLIST: Dict[str, List[str]] = {
         "customer_behavior",
         "survey_qualitative",
         "operational_supply_chain",
+        # New domain types with human segments
+        "customer_crm",
+        "healthcare",
+        "hr_employee",
+        "education",
         "mixed",
     ],
     "fabricator": SUPPORTED_DATA_TYPES,
