@@ -196,7 +196,7 @@ class RegressionAgent:
             include_categoricals=bool(run_config.get("include_categoricals", False)),
             fast_mode=bool(run_config.get("fast_mode", False)),
         )
-        if insights.get("status") != "ok":
+        if insights.get("status") not in ("ok", "success"):
             reason = insights.get("reason", "regression skipped")
             log_warn(f"Regression agent skipped: {reason}")
             self.state.write("regression_status", "skipped")
