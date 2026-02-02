@@ -7,6 +7,7 @@ import { useRunSnapshot, useEnhancedAnalytics, useModelArtifacts } from "@/lib/q
 import { CuratedKpiPanel } from "@/components/report/story/CuratedKpiPanel";
 import { RunWarningsBanner } from "@/components/report/RunWarningsBanner";
 import { DatasetIdentityCard } from "@/components/upload/DatasetIdentityCard";
+import type { DatasetIdentity } from "@/lib/api-client";
 import { CorrelationInsightsCard } from "@/components/report/analytics/CorrelationInsightsCard";
 import { TopDriversCard } from "@/components/report/analytics/TopDriversCard";
 import { DistributionCharts } from "@/components/report/DistributionCharts";
@@ -112,11 +113,11 @@ export default function ReportDashboard() {
         {/* Tab 2: Data Profile */}
         <TabsContent value="profile" className="space-y-6 mt-6">
           {snapshot.identity?.identity && (
-            <DatasetIdentityCard identity={snapshot.identity.identity} />
+            <DatasetIdentityCard identity={adaptSnapshotIdentity(snapshot.identity.identity)} />
           )}
 
-          {snapshot.identity?.profile?.columns && (
-            <ColumnProfileTable columns={snapshot.identity.profile.columns} />
+          {(snapshot.identity?.identity?.columns || snapshot.identity?.profile?.columns) && (
+            <ColumnProfileTable columns={snapshot.identity.identity?.columns || snapshot.identity.profile.columns} />
           )}
 
           {snapshot.diagnostics?.data_quality && (
@@ -352,6 +353,33 @@ function EmptyTab({ message }: { message: string }) {
       <p className="text-muted-foreground">{message}</p>
     </div>
   );
+}
+
+/**
+ * Adapt the snapshot's identity object to the DatasetIdentity shape
+ * that DatasetIdentityCard expects. The snapshot stores a richer format
+ * with `columns` (object), `capabilities`, etc. while the component
+ * expects `schema_map` (array), `detected_capabilities`, `file_type`, `warnings`.
+ */
+function adaptSnapshotIdentity(raw: any): DatasetIdentity {
+  // Build schema_map array from columns object
+  const columns = raw.columns || {};
+  const schemaMap = Object.entries(columns).slice(0, 10).map(([name, col]: [string, any]) => ({
+    name,
+    type: col.dtype || col.type || "unknown",
+    sample: col.min != null ? String(col.min) : "",
+  }));
+
+  return {
+    row_count: raw.row_count || 0,
+    column_count: raw.column_count || Object.keys(columns).length,
+    file_type: raw.data_type?.primary_type || "unknown",
+    schema_map: schemaMap,
+    quality_score: raw.quality_score ?? raw.quality?.avg_null_pct != null ? 1 - raw.quality.avg_null_pct : 0.5,
+    critical_gaps: [],
+    detected_capabilities: raw.capabilities || raw.detected_capabilities || {},
+    warnings: [],
+  };
 }
 
 function buildKpiCards(snapshot: any): CuratedKpiCardData[] {

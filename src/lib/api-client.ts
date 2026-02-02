@@ -380,6 +380,7 @@ export async function getRunSnapshot(runId: string, lite: boolean = false): Prom
 export async function getEnhancedAnalytics(runId: string): Promise<any> {
   const response = await fetch(`${API_BASE}/run/${runId}/enhanced-analytics`);
 
+  if (response.status === 404) return null;
   if (!response.ok) {
     throw new Error(`Failed to get enhanced analytics: ${response.statusText}`);
   }
@@ -408,6 +409,7 @@ export async function getAllRuns(limit: number = 20, offset: number = 0): Promis
 export async function getModelArtifacts(runId: string): Promise<any> {
   const response = await fetch(`${API_BASE}/run/${runId}/model-artifacts`);
 
+  if (response.status === 404) return null;
   if (!response.ok) {
     throw new Error(`Failed to get model artifacts: ${response.statusText}`);
   }
