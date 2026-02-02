@@ -626,6 +626,9 @@ class Expositor:
     def _personas_section(self, personas, strategies):
         lines = []
         lines.append("## Generated Personas & Strategies")
+        lines.append("")
+
+        total_size = sum(p.get("persona_size") or p.get("size", 0) for p in personas)
 
         # Map strategies to personas
         strat_map = {s.get("persona_id"): s for s in strategies}
@@ -635,21 +638,33 @@ class Expositor:
             label = p.get("label", "")
             size = p.get("persona_size") or p.get("size", 0)
             pid = p.get("cluster_id")
+            pct = (size / total_size * 100) if total_size > 0 else 0
 
-            lines.append(f"### {name} ({label})")
-            lines.append(f"- **Size:** {size}")
+            lines.append(f"### {name}")
+            if label:
+                lines.append(f"*{label}*")
+            lines.append("")
+            lines.append(f"- **Size:** {size:,} ({pct:.1f}% of total)")
             if "summary" in p:
-                lines.append(f"- **Summary:** {p['summary']}")
+                lines.append(f"- **Profile:** {p['summary']}")
+            if "behavior" in p:
+                lines.append(f"- **Behavior:** {p['behavior']}")
             if "motivation" in p:
-                lines.append(f"- **Motivation:** {p['motivation']}")
+                lines.append(f"- **Key Driver:** {p['motivation']}")
+            if "opportunity_zone" in p:
+                lines.append(f"- **Opportunity:** {p['opportunity_zone']}")
+            if "reasoning" in p:
+                lines.append(f"- **Data Basis:** {p['reasoning']}")
 
             # Strategy Alignment
             strat = strat_map.get(pid)
             if strat:
+                play_type = strat.get("play_type", "")
+                headline = strat.get("headline", "")
                 lines.append("")
-                lines.append(f"**Strategic Approach:** {strat.get('headline', 'N/A')}")
+                lines.append(f"**Strategy ({play_type}):** {headline}")
                 for tactic in strat.get("tactics", []):
-                    lines.append(f"- {tactic}")
+                    lines.append(f"  - {tactic}")
 
             lines.append("")
         return lines
@@ -1004,11 +1019,14 @@ class Expositor:
                 lines.append("")
 
         # SHAP Feature Attribution (game-theoretic explanation)
-        if shap_data and shap_data.get("available") and shap_data.get("narrative"):
-            lines.append("## Detailed Feature Attribution (SHAP)")
-            lines.append("")
-            lines.append(shap_data["narrative"])
-            lines.append("")
+        if shap_data and shap_data.get("available"):
+            target_h = importance_report.get("target_column", "outcome")
+            shap_narrative = narrator.translate_shap_explanation(shap_data, target_name=target_h)
+            if shap_narrative:
+                lines.append("## Detailed Feature Attribution (SHAP)")
+                lines.append("")
+                lines.append(shap_narrative)
+                lines.append("")
 
         # Drift Detection
         if drift_report and drift_report.get("available"):
@@ -1035,6 +1053,12 @@ class Expositor:
                 lines.append(f"- **{seg['size']:,} customers** ({seg['percentage']:.1f}% of total)")
                 if persona.get("summary"):
                     lines.append(f"- {persona['summary']}")
+                if persona.get("motivation"):
+                    lines.append(f"- **Key Driver:** {persona['motivation']}")
+                if persona.get("opportunity_zone"):
+                    lines.append(f"- **Opportunity:** {persona['opportunity_zone']}")
+                if persona.get("action"):
+                    lines.append(f"- **Recommended Action:** {persona['action']}")
                 lines.append("")
         
         # Recommendations

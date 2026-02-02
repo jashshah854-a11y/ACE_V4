@@ -21,28 +21,35 @@ from core.state_manager import StateManager
 from core.json_utils import extract_json_block, JsonExtractionError
 
 SYSTEM_PROMPT = """
-You are the ACE V3 Persona Engine.
-Your goal is to generate data-driven personas based on cluster fingerprints and schema context.
+You are the ACE V4 Persona Engine.
+Your goal is to generate data-driven personas grounded in cluster fingerprints, predictive model results, and feature attributions.
 
 Your responsibilities:
-1. Analyze the provided cluster fingerprints (which contain role summaries and feature means).
-2. Create a distinct, realistic persona for each cluster.
-3. Assign a domain-specific name (e.g., "Budget Conscious" for finance, "Window Shopper" for retail).
-4. Infer motivation and behavior from the data.
+1. Analyze the provided cluster fingerprints (role summaries and feature means per cluster).
+2. If SHAP feature attributions are provided, use them to ground persona traits in what actually drives the model's predictions rather than assumptions.
+3. If regression context is provided (target column, top drivers, model quality), incorporate this into persona motivations and opportunity zones.
+4. Create a distinct, realistic persona for each cluster.
+5. Assign a domain-specific name (e.g., "Budget Conscious" for finance, "At-Risk Veteran" for churn).
+6. Infer motivation and behavior from the data, not speculation.
+
+IMPORTANT:
+- Ground all traits in the data. Reference specific features and their values.
+- If SHAP data shows a feature strongly drives the outcome, reflect this in the persona's behavior and opportunity_zone.
+- If model quality is poor (negative R² or low accuracy), note that predictions are exploratory.
 
 OUTPUT FORMAT:
 Return a JSON array of persona objects. Each object must have:
 - cluster_id: matching the input cluster ID
-- name: creative name
-- label: short descriptive label
+- name: creative, domain-specific name
+- label: short descriptive label (3-5 words)
 - snapshot: { income_level, spend_level, risk_score } (High/Medium/Low)
-- behavior: description of habits
-- motivation: key driver
-- opportunity_zone: best area for engagement
+- behavior: description of habits grounded in data
+- motivation: key driver (reference actual features)
+- opportunity_zone: best area for engagement (actionable)
 - emotional_state: current sentiment
-- action: recommended action
-- persona_size: number of customers
-- reasoning: why this persona fits the data
+- action: recommended action (specific and measurable)
+- persona_size: number of customers in this cluster
+- reasoning: why this persona fits the data (cite features/values)
 - summary: one sentence summary
 
 Do not include markdown formatting.
@@ -118,7 +125,28 @@ class PersonaEngine:
             "roles": roles,
             "fingerprints": fingerprints
         }
-        
+
+        # Enrich context with regression and SHAP data if available
+        if self.state:
+            regression = self.state.read("regression_insights") or {}
+            if regression.get("status") == "success":
+                context["regression"] = {
+                    "target_column": regression.get("target_column"),
+                    "target_type": regression.get("target_type"),
+                    "model_quality": regression.get("narrative", ""),
+                    "top_drivers": [
+                        {"feature": d.get("feature"), "importance": d.get("importance")}
+                        for d in regression.get("drivers", [])[:5]
+                    ],
+                }
+
+            shap_data = self.state.read("shap_explanations") or {}
+            if shap_data.get("available"):
+                context["shap_attribution"] = {
+                    "top_features": shap_data.get("importance_ranking", [])[:5],
+                    "narrative": shap_data.get("narrative", ""),
+                }
+
         prompt = f"{SYSTEM_PROMPT}\n\nINPUT CONTEXT:\n{json.dumps(context, indent=2)}"
         
         log_info("Generating Personas (LLM)...")
