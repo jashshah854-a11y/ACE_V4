@@ -46,6 +46,9 @@ class Expositor:
         blocked_agents = set(validation.get("blocked_agents") or [])
         validation_notes = validation.get("notes") or []
         regression_status = self.state.read("regression_status") or "not_started"
+        shap_data = self.state.read("shap_explanations") or {}
+        drift_report = self.state.read("drift_report") or {}
+        onnx_export = self.state.read("onnx_export") or {}
 
         allowed_sections = set(task_contract.get("allowed_sections", []))
         insights_allowed = "insights" in allowed_sections and validation.get("allow_insights", True)
@@ -358,6 +361,49 @@ class Expositor:
         ):
             lines.extend(self._feature_importance_section(importance_report))
 
+        # SHAP Explanations
+        if shap_data.get("available") and shap_data.get("narrative"):
+            lines.append("### SHAP Feature Attribution")
+            lines.append("")
+            lines.append(shap_data["narrative"])
+            lines.append("")
+            ranking = shap_data.get("importance_ranking", [])
+            if ranking:
+                lines.append("| Feature | SHAP Importance | Direction |")
+                lines.append("|---------|----------------|-----------|")
+                for item in ranking[:5]:
+                    feat = item.get("feature", "")
+                    imp = item.get("importance", 0)
+                    direction = item.get("direction", "")
+                    lines.append(f"| {feat} | {imp:.4f} | {direction} |")
+                lines.append("")
+
+        # Drift Detection
+        if drift_report.get("available"):
+            if drift_report.get("has_significant_drift"):
+                lines.append("### Data Drift Warning")
+                lines.append("")
+                lines.append(drift_report.get("summary", "Significant drift detected."))
+                lines.append("")
+                drifted = drift_report.get("drifted_features", [])
+                if drifted:
+                    lines.append("| Feature | Drift Importance | Mean Shift % |")
+                    lines.append("|---------|-----------------|-------------|")
+                    for feat in drifted[:5]:
+                        lines.append(f"| {feat.get('feature', '')} | {feat.get('importance', 0):.3f} | {feat.get('mean_shift_pct', 0):.1f}% |")
+                    lines.append("")
+            else:
+                lines.append(f"**Data Stability**: {drift_report.get('summary', 'No significant drift detected.')}")
+                lines.append("")
+
+        # ONNX Export Status
+        if onnx_export.get("available"):
+            model_type = onnx_export.get("model_type", "unknown")
+            file_size = onnx_export.get("file_size_bytes", 0)
+            size_kb = file_size / 1024 if file_size else 0
+            lines.append(f"**Model Export**: ONNX model exported ({model_type}, {size_kb:.0f} KB) - ready for deployment.")
+            lines.append("")
+
         if not should_emit_insights:
             lines.append("## Generated Personas & Strategies")
             lines.append("Personas and strategies suppressed due to confidence/contract/validation gates.")
@@ -397,6 +443,9 @@ class Expositor:
                 col_count=col_count,
                 confidence_score=confidence_score,
                 model_fit=model_fit,
+                shap_data=shap_data,
+                drift_report=drift_report,
+                onnx_export=onnx_export,
             )
         except Exception as e:
             log_warn(f"Executive report generation failed, using technical report: {e}")
@@ -844,6 +893,9 @@ class Expositor:
         col_count: int,
         confidence_score: float,
         model_fit: dict | None = None,
+        shap_data: dict | None = None,
+        drift_report: dict | None = None,
+        onnx_export: dict | None = None,
     ) -> str:
         """Generate a human-readable executive report using NarrativeEngine."""
         
@@ -951,6 +1003,21 @@ class Expositor:
                 )
                 lines.append("")
 
+        # SHAP Feature Attribution (game-theoretic explanation)
+        if shap_data and shap_data.get("available") and shap_data.get("narrative"):
+            lines.append("## Detailed Feature Attribution (SHAP)")
+            lines.append("")
+            lines.append(shap_data["narrative"])
+            lines.append("")
+
+        # Drift Detection
+        if drift_report and drift_report.get("available"):
+            if drift_report.get("has_significant_drift"):
+                lines.append("## Data Drift Warning")
+                lines.append("")
+                lines.append(drift_report.get("summary", "Significant drift detected."))
+                lines.append("")
+
         # Customer Segments (if available)
         if segment_count > 0 and personas:
             lines.append("## Customer Segments")
@@ -1029,9 +1096,17 @@ class Expositor:
             conf_label = "Limited"
         lines.append(f"**Confidence Level:** {conf_label} ({conf_pct:.0f}%)")
         lines.append("")
+        # ONNX Export Status
+        if onnx_export and onnx_export.get("available"):
+            model_type = onnx_export.get("model_type", "unknown")
+            file_size = onnx_export.get("file_size_bytes", 0)
+            size_kb = file_size / 1024 if file_size else 0
+            lines.append(f"**Deployable Model**: An ONNX model ({model_type}, {size_kb:.0f} KB) has been exported and is ready for integration into production systems.")
+            lines.append("")
+
         lines.append("*This report is generated based on statistical analysis. Recommendations are directional and should be validated with domain expertise.*")
         lines.append("")
-        
+
         return "\n".join(lines)
 
 def main():

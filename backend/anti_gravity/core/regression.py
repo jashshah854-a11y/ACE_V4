@@ -720,4 +720,9 @@ def compute_regression_insights(
         "leakage_report": leakage_report,
         "importance_report": importance_report,
         "regression_coefficients_report": coefficient_report,
+        # Internal: trained model and data for SHAP/ONNX/drift (not serialized to state)
+        "_pipeline": pipeline,
+        "_X_train": X_train,
+        "_X_test": X_test,
+        "_feature_names": model_feature_names,
     }

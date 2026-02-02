@@ -20,6 +20,8 @@ from core.analytics_validation import apply_artifact_validation
 
 
 from core.scope_enforcer import ScopeEnforcer, ScopeViolationError
+
+
 class RegressionAgent:
     """Train a lightweight regression model to explain value-oriented targets."""
 
@@ -41,6 +43,120 @@ class RegressionAgent:
         if Path(default_path).exists():
             return smart_load_dataset(default_path, config=config, fast_mode=fast_mode, prefer_parquet=True)
         raise FileNotFoundError("Active dataset not found for regression agent")
+
+    def _compute_shap(self, pipeline, X_train, feature_names, target_column):
+        """Compute SHAP explanations for the trained model (non-blocking)."""
+        try:
+            from sklearn.pipeline import Pipeline as SklearnPipeline
+            from core.shap_explainer import add_shap_to_regression_output
+
+            model = pipeline.named_steps.get("model")
+            if model is None:
+                return
+
+            # Transform X_train through preprocessing steps (imputer, scaler)
+            if len(pipeline.steps) > 1:
+                preprocessor = SklearnPipeline(pipeline.steps[:-1])
+                X_transformed = pd.DataFrame(
+                    preprocessor.transform(X_train),
+                    columns=feature_names,
+                )
+            else:
+                X_transformed = X_train
+
+            result = add_shap_to_regression_output(
+                {}, model, X_transformed, target_column
+            )
+
+            if result.get("shap_available"):
+                shap_data = result.get("shap_explanations", {})
+                shap_artifact = {
+                    "importance_ranking": shap_data.get("importance_ranking", []),
+                    "base_value": shap_data.get("base_value"),
+                    "explained_samples": shap_data.get("explained_samples", 0),
+                    "feature_names": shap_data.get("feature_names", []),
+                    "narrative": result.get("shap_narrative", ""),
+                    "available": True,
+                }
+                self.state.write("shap_explanations", shap_artifact)
+                log_ok("SHAP explanations computed")
+            else:
+                self.state.write("shap_explanations", {
+                    "available": False,
+                    "error": result.get("shap_error", "unknown"),
+                })
+                log_warn(f"SHAP unavailable: {result.get('shap_error', 'unknown')}")
+        except Exception as e:
+            log_warn(f"SHAP computation failed (non-fatal): {e}")
+            self.state.write("shap_explanations", {"available": False, "error": str(e)})
+
+    def _export_onnx(self, pipeline, feature_names, target_column):
+        """Export trained model to ONNX format (non-blocking)."""
+        try:
+            from core.model_exporter import export_model_bundle
+
+            artifacts_dir = Path(self.state.run_path) / "artifacts" / "models"
+
+            result = export_model_bundle(
+                model=pipeline,
+                feature_names=feature_names,
+                model_name=f"ace_{target_column}",
+                output_dir=str(artifacts_dir),
+            )
+
+            if result.get("success"):
+                onnx_meta = {
+                    "available": True,
+                    "onnx_path": result.get("onnx_path"),
+                    "model_type": result.get("model_type"),
+                    "file_size_bytes": result.get("file_size_bytes"),
+                    "metadata": result.get("metadata", {}),
+                    "validation": result.get("validation", {}),
+                }
+                self.state.write("onnx_export", onnx_meta)
+                log_ok(f"ONNX model exported ({result.get('file_size_bytes', 0)} bytes)")
+            else:
+                self.state.write("onnx_export", {
+                    "available": False,
+                    "error": result.get("error", "unknown"),
+                })
+                log_warn(f"ONNX export failed: {result.get('error')}")
+        except Exception as e:
+            log_warn(f"ONNX export failed (non-fatal): {e}")
+            self.state.write("onnx_export", {"available": False, "error": str(e)})
+
+    def _detect_drift(self, X_train, X_test, feature_names):
+        """Detect distribution drift between train and test splits (non-blocking)."""
+        try:
+            from core.drift_detector import detect_drift_adversarial
+
+            train_df = pd.DataFrame(X_train.values, columns=feature_names) if hasattr(X_train, 'values') else pd.DataFrame(X_train, columns=feature_names)
+            test_df = pd.DataFrame(X_test.values, columns=feature_names) if hasattr(X_test, 'values') else pd.DataFrame(X_test, columns=feature_names)
+
+            result = detect_drift_adversarial(train_df, test_df, feature_names)
+
+            drift_report = {
+                "available": True,
+                "has_significant_drift": result.has_significant_drift,
+                "drift_score": result.drift_score,
+                "drifted_features": result.drifted_features[:5],
+                "stable_features": result.stable_features[:5],
+                "summary": result.summary,
+                "details": result.details,
+            }
+            self.state.write("drift_report", drift_report)
+            if result.has_significant_drift:
+                log_warn(f"Drift detected (score={result.drift_score:.0%})")
+                self.state.add_warning(
+                    "DATA_DRIFT",
+                    result.summary,
+                    details={"drift_score": result.drift_score},
+                )
+            else:
+                log_ok(f"No significant drift (score={result.drift_score:.0%})")
+        except Exception as e:
+            log_warn(f"Drift detection failed (non-fatal): {e}")
+            self.state.write("drift_report", {"available": False, "error": str(e)})
 
     def run(self):
         log_launch("Training regression explainer...")
@@ -86,6 +202,13 @@ class RegressionAgent:
             self.state.write("regression_status", "skipped")
             self.state.write("regression_skip_reason", reason)
             return
+
+        # Extract internal model objects before validation (not JSON-serializable)
+        trained_pipeline = insights.pop("_pipeline", None)
+        X_train_data = insights.pop("_X_train", None)
+        X_test_data = insights.pop("_X_test", None)
+        model_feature_names = insights.pop("_feature_names", None)
+
         if run_config:
             insights.setdefault("applied_config", run_config)
         
@@ -139,6 +262,14 @@ class RegressionAgent:
                         details=warning,
                     )
             self.state.write(f"{name}_pending", validated_payload)
+
+        # SHAP, ONNX export, and drift detection (non-blocking)
+        target_col = insights.get("target_column", "target")
+        if trained_pipeline is not None and X_train_data is not None and model_feature_names:
+            self._compute_shap(trained_pipeline, X_train_data, model_feature_names, target_col)
+            self._export_onnx(trained_pipeline, model_feature_names, target_col)
+            if X_test_data is not None:
+                self._detect_drift(X_train_data, X_test_data, model_feature_names)
 
         if insights.get("status") == "success":
             target = insights.get('target_column') or 'target'

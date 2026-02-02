@@ -289,6 +289,9 @@ def _build_snapshot_payload(run_id: str, lite: bool) -> tuple[Dict[str, Any], st
                 or (state.read("enhanced_analytics") or {}).get("feature_importance"),
             "coefficients": (state.read("regression_insights") or {}).get("coefficients")
                 or (state.read("enhanced_analytics") or {}).get("coefficients"),
+            "shap_explanations": state.read("shap_explanations"),
+            "onnx_export": state.read("onnx_export"),
+            "drift_report": state.read("drift_report"),
         }
 
     etag = _snapshot_etag(run_path, lite)
@@ -1362,6 +1365,9 @@ async def get_model_artifacts(run_id: str):
         "feature_governance_report": feature_governance_report,
         "feature_importance": feature_importance,
         "coefficients": coefficients,
+        "shap_explanations": state.read("shap_explanations"),
+        "onnx_export": state.read("onnx_export"),
+        "drift_report": state.read("drift_report"),
     }
 
 

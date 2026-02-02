@@ -22,3 +22,8 @@ pyarrow
 # PDF Report Generation
 weasyprint
 markdown
+# Model Explainability & Export
+shap
+onnx>=1.12.0
+skl2onnx>=1.13.0
+onnxruntime>=1.15.0
