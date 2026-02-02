@@ -68,11 +68,21 @@ export function PipelineStatus({ runId, onComplete }: PipelineStatusProps) {
     },
   });
 
+  // Backend may flip status to "failed" even when all core steps ran
+  // (e.g. expositor artifact promotion fails on a skipped agent).
+  // Treat "failed" with 100% progress and no real failed_steps as complete.
+  const rawFailed = state?.status === "failed";
+  const softComplete =
+    rawFailed &&
+    (state as any)?.progress === 100 &&
+    (!Array.isArray((state as any)?.failed_steps) || (state as any).failed_steps.length === 0);
+
   const isComplete =
     state?.status === "completed" ||
     state?.status === "complete" ||
-    state?.status === "complete_with_errors";
-  const isFailed = state?.status === "failed";
+    state?.status === "complete_with_errors" ||
+    softComplete;
+  const isFailed = rawFailed && !softComplete;
 
   const stepStates = useMemo(() => {
     if (!state) return {};
