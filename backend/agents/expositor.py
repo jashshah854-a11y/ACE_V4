@@ -1094,10 +1094,16 @@ class Expositor:
         if anomaly_count > 0:
             lines.append("## Items Requiring Attention")
             lines.append("")
+            # Convert drivers dict to list format if needed
+            drivers_raw = sentry.get("drivers", []) if sentry else []
+            if isinstance(drivers_raw, dict):
+                drivers_list = [{"feature": k, "score": v} for k, v in drivers_raw.items()]
+            else:
+                drivers_list = drivers_raw
             anomaly_text = narrator.translate_anomaly_finding(
                 count=anomaly_count,
                 total=row_count,
-                top_drivers=sentry.get("drivers", []) if sentry else None,
+                top_drivers=drivers_list,
             )
             lines.append(anomaly_text)
             lines.append("")
