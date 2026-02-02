@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import threading
 from pathlib import Path
 
 # Add backend directory to path if not already there
@@ -15,6 +16,36 @@ from jobs.redis_queue import RedisJobQueue  # Changed from SQLite queue
 from orchestrator import orchestrate_new_run, main_loop
 
 POLL_INTERVAL = 2.0
+HEARTBEAT_INTERVAL = 30  # Send heartbeat every 30 seconds during processing
+
+
+class HeartbeatThread:
+    """Background thread that sends periodic heartbeats for a job."""
+
+    def __init__(self, queue: RedisJobQueue, run_id: str):
+        self.queue = queue
+        self.run_id = run_id
+        self.stop_event = threading.Event()
+        self.thread = None
+
+    def start(self):
+        """Start the heartbeat thread."""
+        def heartbeat_loop():
+            while not self.stop_event.is_set():
+                try:
+                    self.queue.heartbeat(self.run_id)
+                except Exception as e:
+                    print(f"[HEARTBEAT] Error sending heartbeat for {self.run_id}: {e}")
+                self.stop_event.wait(HEARTBEAT_INTERVAL)
+
+        self.thread = threading.Thread(target=heartbeat_loop, daemon=True, name=f"heartbeat-{self.run_id}")
+        self.thread.start()
+
+    def stop(self):
+        """Stop the heartbeat thread."""
+        self.stop_event.set()
+        if self.thread:
+            self.thread.join(timeout=2)
 
 
 def _log(msg: str):
@@ -60,6 +91,10 @@ def process_job():
 
     queue.update_status(job.run_id, JobStatus.RUNNING, run_path=run_path)
 
+    # Start heartbeat thread to keep job alive during long processing
+    heartbeat = HeartbeatThread(queue, job.run_id)
+    heartbeat.start()
+
     tracker = ProgressTracker(run_path)
     tracker.update("job", {"status": "running", "run_id": run_id})
 
@@ -72,6 +107,9 @@ def process_job():
         tracker.update("job", {"status": "failed", "error": str(exc)})
         queue.update_status(job.run_id, JobStatus.FAILED, message=str(exc), run_path=run_path)
         _log(f"Job {job.run_id} failed: {exc}")
+    finally:
+        # Stop heartbeat thread when job completes or fails
+        heartbeat.stop()
 
     return True
 

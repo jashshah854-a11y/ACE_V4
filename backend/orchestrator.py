@@ -473,7 +473,8 @@ def run_agent(agent_name, run_path):
     script_name = agent_script_map.get(agent_name, agent_name)
     
     # Data type guardrails before launching heavy agents
-    if agent_name not in {"type_identifier", "validator", "scanner", "interpreter", "trust_evaluation"}:
+    # IMPORTANT: expositor should NEVER be blocked - it must always generate a report
+    if agent_name not in {"type_identifier", "validator", "scanner", "interpreter", "trust_evaluation", "expositor", "sentry"}:
         sm = StateManager(run_path)
         dtype_info = sm.read("data_type_identification") or {}
         data_type = dtype_info.get("primary_type")
@@ -760,6 +761,14 @@ def launch_pipeline_async(data_path, run_config=None):
     return run_id, run_path
 
 def main_loop(run_path):
+    """
+    Main orchestration loop with graceful degradation.
+
+    Features:
+    - Graceful error handling at each step
+    - Never crashes completely - always tries to produce a report
+    - Each agent failure is handled independently
+    """
     if not run_path:
         return
 
@@ -1002,7 +1011,8 @@ def main_loop(run_path):
                 continue
 
             blocked, reason = should_block_agent(current, state_manager)
-            if blocked:
+            # CRITICAL: Never block expositor - it must always generate a report
+            if blocked and current != "expositor":
                 step_state = state["steps"].setdefault(current, {"name": current})
                 step_state["status"] = "skipped"
                 run_path = state.get("run_path")
@@ -1023,6 +1033,10 @@ def main_loop(run_path):
                     state["next_step"] = "complete"
                 save_state(state_path, state)
                 continue
+            elif blocked and current == "expositor":
+                # Log warning but continue with expositor anyway
+                update_history(state, f"Expositor governance check bypassed (must always run): {reason}", returncode=0)
+                append_limitation(state_manager, f"Expositor running despite governance: {reason}", agent=current, severity="info")
 
         # NEW: Enforce quality-based fail-safe before running insight agents
         # Optionally pre-filter some agents based on quality or task contract
@@ -1032,7 +1046,8 @@ def main_loop(run_path):
         print(f"[ORCHESTRATOR DEBUG] Quality score for agent filtering: {quality_score}", flush=True)
         
         # Lowered threshold from 0.75 to 0.4 to match scanner minimum floor
-        if current != "trust_evaluation" and quality_score < 0.4:
+        # CRITICAL: Never skip expositor - it must always generate a report
+        if current not in ("trust_evaluation", "expositor") and quality_score < 0.4:
             step_state = state["steps"].setdefault(current, {"name": current})
             step_state["status"] = "skipped"
             run_path = state.get("run_path")
@@ -1119,25 +1134,33 @@ def main_loop(run_path):
             try:
                 _finalize_trust_artifacts(state_manager, run_path, success)
             except Exception as exc:
-                update_history(state, f"Trust artifact promotion failed: {exc}", returncode=1)
-                state["status"] = "failed"
-                state["failure_reason"] = "trust_artifact_promotion_failed"
+                # GRACEFUL DEGRADATION: Trust evaluation failure shouldn't crash pipeline
+                update_history(state, f"Trust artifact promotion warning: {exc}", returncode=0)
+                logger.warning(f"[Orchestrator] Trust promotion issue (non-fatal): {exc}")
+                # Pipeline can complete without trust evaluation
+                if state.get("status") not in ("failed",):
+                    state["status"] = "complete_with_errors"
                 save_state(state_path, state)
-                _record_final_status(run_path, "failed", reason="trust_artifact_promotion_failed")
-                seal_manifest(run_path, reason="trust_artifact_promotion_failed")
-                break
+                # Continue instead of breaking
 
         if current in {"scanner", "type_identifier"}:
             try:
                 _finalize_metadata_artifacts(state_manager, current, success)
             except Exception as exc:
-                update_history(state, f"Metadata artifact promotion failed: {exc}", returncode=1)
-                state["status"] = "failed"
-                state["failure_reason"] = "metadata_artifact_promotion_failed"
+                # GRACEFUL DEGRADATION: Metadata failures should continue with defaults
+                update_history(state, f"Metadata artifact promotion warning: {exc}", returncode=0)
+                logger.warning(f"[Orchestrator] Metadata promotion issue for {current} (non-fatal): {exc}")
+                # Set default values so downstream processing can continue
+                if current == "type_identifier":
+                    state_manager.write("data_type_identification", {
+                        "primary_type": "unknown",
+                        "confidence": "low",
+                        "reason": f"Type identification failed: {exc}"
+                    })
+                if state.get("status") not in ("failed",):
+                    state["status"] = "running"  # Continue with degraded mode
                 save_state(state_path, state)
-                _record_final_status(run_path, "failed", reason="metadata_artifact_promotion_failed")
-                seal_manifest(run_path, reason="metadata_artifact_promotion_failed")
-                break
+                # Continue instead of breaking
 
         # Refresh governance artifacts whenever upstream schema context changes
         if success and current in GOVERNANCE_REFRESH_STEPS:
@@ -1320,8 +1343,9 @@ def main_loop(run_path):
                 seal_manifest(run_path, reason="run_complete")
             except Exception as e:
                 update_history(state, f"Invariant/health summary failed: {e}")
-        
+
         time.sleep(POLL_TIME)
+
 
 if __name__ == "__main__":
     import argparse
