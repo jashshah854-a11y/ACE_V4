@@ -7,11 +7,11 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 from scipy import stats
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor, RandomForestClassifier
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor, RandomForestClassifier, GradientBoostingClassifier
 from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LinearRegression, Ridge, LogisticRegression
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, accuracy_score, roc_auc_score
-from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, accuracy_score, roc_auc_score, f1_score
+from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
@@ -521,14 +521,71 @@ def compute_regression_insights(
 
     normalized_model = (model_type or "random_forest").lower()
     is_classification = target_type in {"binary", "multiclass"}
+    model_selection_info: Dict[str, Any] = {}
     if is_classification:
         if target_type == "binary":
-            estimator = LogisticRegression(max_iter=500)
-            normalized_model = "logistic_regression"
+            # Check class imbalance
+            class_counts = y_train.value_counts()
+            minority_ratio = class_counts.min() / class_counts.sum()
+            is_imbalanced = minority_ratio < 0.3  # Less than 30% minority class
+
+            # Define candidate models with class balancing for imbalanced data
+            n_est = 100 if fast_mode else 200
+            candidates = {
+                "logistic_regression": LogisticRegression(
+                    max_iter=1000,
+                    class_weight="balanced" if is_imbalanced else None,
+                    random_state=config.random_state,
+                ),
+                "random_forest": RandomForestClassifier(
+                    n_estimators=n_est,
+                    class_weight="balanced" if is_imbalanced else None,
+                    random_state=config.random_state,
+                    n_jobs=-1,
+                ),
+                "gradient_boosting": GradientBoostingClassifier(
+                    n_estimators=n_est,
+                    random_state=config.random_state,
+                ),
+            }
+
+            # Quick cross-validation to select best model (use f1 for imbalanced)
+            scoring = "f1" if is_imbalanced else "accuracy"
+            best_score = -1.0
+            best_model_name = "logistic_regression"
+            cv_folds = 3 if fast_mode else 5
+
+            # Prepare data for CV (need to impute first)
+            imputer = SimpleImputer(strategy="most_frequent")
+            X_train_imputed = pd.DataFrame(imputer.fit_transform(X_train), columns=X_train.columns)
+
+            for name, clf in candidates.items():
+                try:
+                    scores = cross_val_score(clf, X_train_imputed, y_train, cv=cv_folds, scoring=scoring, n_jobs=-1)
+                    mean_score = float(scores.mean())
+                    model_selection_info[name] = {"cv_score": round(mean_score, 4), "cv_std": round(float(scores.std()), 4)}
+                    if mean_score > best_score:
+                        best_score = mean_score
+                        best_model_name = name
+                except Exception:
+                    model_selection_info[name] = {"cv_score": None, "error": "CV failed"}
+
+            estimator = candidates[best_model_name]
+            normalized_model = best_model_name
+            model_selection_info["selected"] = best_model_name
+            model_selection_info["selection_metric"] = scoring
+            model_selection_info["is_imbalanced"] = is_imbalanced
+            model_selection_info["minority_ratio"] = round(float(minority_ratio), 4)
+
+            # Use scaler only for logistic regression
+            if best_model_name == "logistic_regression":
+                steps = [("imputer", SimpleImputer(strategy="most_frequent")), ("scaler", StandardScaler()), ("model", estimator)]
+            else:
+                steps = [("imputer", SimpleImputer(strategy="most_frequent")), ("model", estimator)]
         else:
-            estimator = RandomForestClassifier(n_estimators=200, random_state=config.random_state)
+            estimator = RandomForestClassifier(n_estimators=200, class_weight="balanced", random_state=config.random_state)
             normalized_model = "random_forest_classifier"
-        steps = [("imputer", SimpleImputer(strategy="most_frequent")), ("scaler", StandardScaler()), ("model", estimator)]
+            steps = [("imputer", SimpleImputer(strategy="most_frequent")), ("scaler", StandardScaler()), ("model", estimator)]
     else:
         if collinearity_decision in {"use_ridge_and_permutation", "suppress_coefficients"}:
             estimator = Ridge(alpha=1.0)
@@ -561,18 +618,22 @@ def compute_regression_insights(
     metrics: Dict[str, Any] = {}
     baseline_metrics: Dict[str, Any] = {}
     if is_classification:
-        y_pred_labels = estimator.predict(X_test)
+        # Use pipeline for prediction (includes preprocessing)
+        y_pred_labels = pipeline.predict(X_test)
         accuracy = float(accuracy_score(y_test, y_pred_labels))
         metrics["accuracy"] = accuracy
         if target_type == "binary":
+            # Add F1 score for imbalanced data evaluation
+            metrics["f1"] = float(f1_score(y_test, y_pred_labels))
             try:
-                y_proba = estimator.predict_proba(X_test)[:, 1]
+                y_proba = pipeline.predict_proba(X_test)[:, 1]
                 metrics["auc"] = float(roc_auc_score(y_test, y_proba))
             except Exception:
                 metrics["auc"] = None
         baseline_label = y_train.value_counts().idxmax()
         baseline_pred = np.full_like(y_test, baseline_label)
         baseline_metrics["accuracy"] = float(accuracy_score(y_test, baseline_pred))
+        baseline_metrics["f1"] = float(f1_score(y_test, baseline_pred)) if target_type == "binary" else None
     else:
         r2 = float(r2_score(y_test, y_pred))
         mae = float(mean_absolute_error(y_test, y_pred))
@@ -681,25 +742,46 @@ def compute_regression_insights(
     narrative = ""
     if is_classification:
         accuracy = metrics.get("accuracy")
-        if isinstance(accuracy, (int, float)):
-            if accuracy >= 0.75:
-                narrative = "Holdout accuracy is strong relative to the baseline."
-            elif accuracy >= 0.6:
-                narrative = "Holdout accuracy is moderate relative to the baseline."
-            elif accuracy > 0:
-                narrative = "Holdout accuracy is weak; treat classifications as exploratory."
+        f1 = metrics.get("f1")
+        auc = metrics.get("auc")
+        baseline_acc = baseline_metrics.get("accuracy", 0)
+
+        # Use F1 for imbalanced data, accuracy otherwise
+        if model_selection_info.get("is_imbalanced") and f1 is not None:
+            if f1 >= 0.7:
+                narrative = f"Model achieves strong F1 score ({f1:.0%}) on imbalanced data."
+            elif f1 >= 0.5:
+                narrative = f"Model achieves moderate F1 score ({f1:.0%}); predictions are useful but imperfect."
+            elif f1 > 0.2:
+                narrative = f"Model achieves weak F1 score ({f1:.0%}); treat predictions as exploratory."
             else:
-                narrative = "Model could not learn predictive signal from the available fields."
+                narrative = "Model struggles to identify the minority class; consider collecting more data."
+        elif isinstance(accuracy, (int, float)):
+            # Compare to baseline for non-imbalanced
+            lift = accuracy - baseline_acc if baseline_acc else 0
+            if accuracy >= 0.85 and lift >= 0.1:
+                narrative = f"Model accuracy ({accuracy:.0%}) significantly exceeds baseline ({baseline_acc:.0%})."
+            elif accuracy >= 0.7:
+                narrative = f"Model accuracy ({accuracy:.0%}) is solid."
+            elif accuracy > baseline_acc + 0.05:
+                narrative = f"Model accuracy ({accuracy:.0%}) improves on baseline ({baseline_acc:.0%}) but remains moderate."
+            else:
+                narrative = f"Model accuracy ({accuracy:.0%}) is near baseline ({baseline_acc:.0%}); treat as exploratory."
+
+        # Add AUC context if available
+        if auc is not None and auc >= 0.7:
+            narrative += f" AUC of {auc:.2f} indicates good ranking ability."
     else:
         narrative = describe_model_quality(metrics.get("r2", 0.0))
 
     return {
-        "status": "ok",
+        "status": "success",
         "target_column": target_col,
         "target_type": target_type,
         "feature_columns": included,
         "row_count": int(len(base_frame)),
         "model": normalized_model,
+        "model_selection": model_selection_info if model_selection_info else None,
         "metrics": metrics,
         "drivers": importance_report["features"][:10],
         "predictions": preview_records,
