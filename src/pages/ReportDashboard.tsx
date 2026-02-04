@@ -13,6 +13,8 @@ import {
 import { useRunSnapshot, useEnhancedAnalytics, useModelArtifacts } from "@/lib/queries";
 import { CuratedKpiPanel } from "@/components/report/story/CuratedKpiPanel";
 import { RunWarningsBanner } from "@/components/report/RunWarningsBanner";
+import { SmartSummary } from "@/components/report/SmartSummary";
+import { VisualCharts } from "@/components/report/VisualCharts";
 import { DatasetIdentityCard } from "@/components/upload/DatasetIdentityCard";
 import type { DatasetIdentity } from "@/lib/api-client";
 import { CorrelationInsightsCard } from "@/components/report/analytics/CorrelationInsightsCard";
@@ -112,53 +114,29 @@ export default function ReportDashboard() {
           <TabsTrigger value="report">Full Report</TabsTrigger>
         </TabsList>
 
-        {/* Tab 1: Executive Summary */}
+        {/* Tab 1: Executive Summary - Smart Insights */}
         <TabsContent value="summary" className="space-y-6 mt-6">
           {snapshot.run_warnings && snapshot.run_warnings.length > 0 && (
             <RunWarningsBanner warnings={snapshot.run_warnings} />
           )}
 
-          {kpiCards.length > 0 && <CuratedKpiPanel kpis={kpiCards} />}
+          {/* Smart Summary - Human-readable insights with context */}
+          <SmartSummary
+            snapshot={snapshot}
+            analytics={analytics}
+            artifacts={artifacts}
+          />
 
-          {/* Trust Summary */}
-          {snapshot.trust && (
-            <TrustSummary trust={snapshot.trust} />
-          )}
-
-          {/* Diagnostics Summary */}
-          {snapshot.diagnostics && (
-            <DiagnosticsSummary diagnostics={snapshot.diagnostics} />
-          )}
-
-          {/* Identity Summary */}
-          {snapshot.identity?.summary && (
-            <div className="rounded-2xl border bg-card p-6">
-              <h3 className="font-semibold mb-2">Dataset Summary</h3>
-              {typeof snapshot.identity.summary === "string" ? (
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {snapshot.identity.summary}
-                </p>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                  {Object.entries(snapshot.identity.summary)
-                    .filter(([, v]) => v != null && typeof v !== "object")
-                    .map(([key, value]) => (
-                      <div key={key}>
-                        <p className="text-muted-foreground text-xs">
-                          {key.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase())}
-                        </p>
-                        <p className="font-medium">
-                          {typeof value === "number" && value < 1 && value > 0
-                            ? `${(value * 100).toFixed(1)}%`
-                            : typeof value === "boolean"
-                              ? value ? "Yes" : "No"
-                              : String(value)}
-                        </p>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
+          {/* Legacy KPI Cards (fallback if SmartSummary has no data) */}
+          {kpiCards.length > 0 && (
+            <details className="mt-4">
+              <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
+                Show raw KPI cards
+              </summary>
+              <div className="mt-4">
+                <CuratedKpiPanel kpis={kpiCards} />
+              </div>
+            </details>
           )}
         </TabsContent>
 
@@ -184,6 +162,13 @@ export default function ReportDashboard() {
 
         {/* Tab 3: Analytics */}
         <TabsContent value="analytics" className="space-y-6 mt-6">
+          {/* Visual Charts - Actual Recharts visualizations */}
+          <VisualCharts
+            snapshot={snapshot}
+            analytics={analytics}
+            artifacts={artifacts}
+          />
+
           <CorrelationInsightsCard
             data={analytics?.correlation_analysis}
             correlationCi={analytics?.correlation_ci}
