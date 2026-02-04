@@ -412,9 +412,25 @@ def detect_universal_anomalies(df: pd.DataFrame, schema_map):
         
     valid_features = [f for f in features if f in df.columns]
     if not valid_features:
-        return {"total_count": 0, "anomalies": []}
-        
-    df_anom = df[valid_features].fillna(df[valid_features].mean())
+        return {"total_count": 0, "anomalies": [], "indices": [], "drivers": {}, "role_deviations": {}}
+
+    # Safely convert to numeric, dropping columns that fail conversion
+    df_anom = pd.DataFrame()
+    for col in valid_features:
+        try:
+            numeric_col = pd.to_numeric(df[col], errors='coerce')
+            # Skip columns where >50% of values couldn't be converted
+            if numeric_col.isna().mean() < 0.5:
+                df_anom[col] = numeric_col
+        except Exception:
+            continue  # Skip problematic columns
+
+    if df_anom.empty:
+        return {"total_count": 0, "anomalies": [], "indices": [], "drivers": {}, "role_deviations": {}}
+
+    # Update valid_features to only include successfully converted columns
+    valid_features = list(df_anom.columns)
+    df_anom = df_anom.fillna(df_anom.mean())
     
     # IsolationForest requires at least two samples
     if df_anom.empty or len(df_anom) < 2:
