@@ -6,9 +6,13 @@ import {
   getModelArtifacts,
   getReport,
   getAllRuns,
+  getRunPerformance,
+  getRecommendations,
   type RunState,
   type RunSnapshot,
   type PaginatedRuns,
+  type PerformanceData,
+  type RecommendationsData,
 } from "@/lib/api-client";
 
 /**
@@ -101,5 +105,29 @@ export function useRunsList(limit: number = 20, offset: number = 0) {
     queryKey: ["runs-list", limit, offset],
     queryFn: () => getAllRuns(limit, offset),
     staleTime: 15_000,
+  });
+}
+
+/**
+ * Fetch performance profiling data for a run.
+ */
+export function useRunPerformance(runId: string | undefined) {
+  return useQuery<PerformanceData | null>({
+    queryKey: ["run-performance", runId],
+    queryFn: () => getRunPerformance(runId!),
+    enabled: Boolean(runId),
+    staleTime: 30_000,
+  });
+}
+
+/**
+ * Fetch ML-driven recommendations for a run.
+ */
+export function useRecommendations(runId: string | undefined) {
+  return useQuery<RecommendationsData | null>({
+    queryKey: ["recommendations", runId],
+    queryFn: () => getRecommendations(runId!),
+    enabled: Boolean(runId),
+    staleTime: 60_000,
   });
 }

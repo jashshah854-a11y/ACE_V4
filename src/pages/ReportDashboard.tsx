@@ -1,8 +1,15 @@
 import { useParams, Link } from "react-router-dom";
-import { Loader2, AlertCircle, ArrowLeft } from "lucide-react";
+import { Loader2, AlertCircle, ArrowLeft, Download, FileJson, FileSpreadsheet, ChevronDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useRunSnapshot, useEnhancedAnalytics, useModelArtifacts } from "@/lib/queries";
 import { CuratedKpiPanel } from "@/components/report/story/CuratedKpiPanel";
 import { RunWarningsBanner } from "@/components/report/RunWarningsBanner";
@@ -12,7 +19,17 @@ import { CorrelationInsightsCard } from "@/components/report/analytics/Correlati
 import { TopDriversCard } from "@/components/report/analytics/TopDriversCard";
 import { DistributionCharts } from "@/components/report/DistributionCharts";
 import { BusinessIntelligenceDashboard } from "@/components/report/BusinessIntelligenceDashboard";
+import { RunMonitoringPanel } from "@/components/report/RunMonitoringPanel";
 import type { CuratedKpiCardData } from "@/types/reportTypes";
+import {
+  exportFeatureImportance,
+  exportCorrelations,
+  exportDistributions,
+  exportColumnProfile,
+  exportModelMetrics,
+  exportBusinessIntelligence,
+  exportSnapshotJSON,
+} from "@/lib/csv-export";
 
 export default function ReportDashboard() {
   const { runId } = useParams<{ runId: string }>();
@@ -70,9 +87,18 @@ export default function ReportDashboard() {
             All Reports
           </Link>
         </Button>
-        <code className="text-xs text-muted-foreground font-mono">
-          {runId?.slice(0, 8)}
-        </code>
+        <div className="flex items-center gap-3">
+          <ExportDropdown
+            runId={runId || "export"}
+            snapshot={snapshot}
+            analytics={analytics}
+            artifacts={artifacts}
+            rawArtifacts={rawArtifacts}
+          />
+          <code className="text-xs text-muted-foreground font-mono">
+            {runId?.slice(0, 8)}
+          </code>
+        </div>
       </div>
 
       {/* Tabbed Dashboard */}
@@ -80,6 +106,7 @@ export default function ReportDashboard() {
         <TabsList className="w-full justify-start flex-wrap h-auto gap-1 p-1">
           <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="profile">Data Profile</TabsTrigger>
+          <TabsTrigger value="insights">Insights</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="bi">Business Intelligence</TabsTrigger>
           <TabsTrigger value="report">Full Report</TabsTrigger>
@@ -148,6 +175,11 @@ export default function ReportDashboard() {
           {snapshot.diagnostics?.data_quality && (
             <QualityMetrics quality={snapshot.diagnostics.data_quality} />
           )}
+        </TabsContent>
+
+        {/* Tab: Insights (Performance + Recommendations) */}
+        <TabsContent value="insights" className="space-y-6 mt-6">
+          {runId && <RunMonitoringPanel runId={runId} />}
         </TabsContent>
 
         {/* Tab 3: Analytics */}
@@ -708,5 +740,184 @@ function ModelFitSummary({ data }: { data: any }) {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Export dropdown menu component
+ */
+function ExportDropdown({
+  runId,
+  snapshot,
+  analytics,
+  artifacts,
+  rawArtifacts,
+}: {
+  runId: string;
+  snapshot: any;
+  analytics: any;
+  artifacts: any;
+  rawArtifacts: any;
+}) {
+  const hasFeatureImportance =
+    artifacts?.importance_report?.features?.length > 0 ||
+    rawArtifacts?.feature_importance?.length > 0 ||
+    rawArtifacts?.importance_report?.features?.length > 0;
+
+  const hasCorrelations =
+    analytics?.correlation_analysis?.strong_correlations?.length > 0;
+
+  const hasDistributions =
+    analytics?.distribution_analysis?.distributions &&
+    Object.keys(analytics.distribution_analysis.distributions).length > 0;
+
+  const hasColumns =
+    snapshot?.identity?.identity?.columns ||
+    snapshot?.identity?.profile?.columns;
+
+  const hasModelMetrics =
+    artifacts?.model_fit_report?.metrics ||
+    rawArtifacts?.model_fit_report?.metrics;
+
+  const hasBI = analytics?.business_intelligence;
+
+  const handleExportFeatures = () => {
+    const features =
+      artifacts?.importance_report?.features ||
+      rawArtifacts?.feature_importance ||
+      rawArtifacts?.importance_report?.features ||
+      [];
+    if (features.length > 0) {
+      exportFeatureImportance(features, `${runId}_feature_importance.csv`);
+    }
+  };
+
+  const handleExportCorrelations = () => {
+    const correlations = analytics?.correlation_analysis?.strong_correlations || [];
+    if (correlations.length > 0) {
+      exportCorrelations(correlations, `${runId}_correlations.csv`);
+    }
+  };
+
+  const handleExportDistributions = () => {
+    const distributions = analytics?.distribution_analysis?.distributions;
+    if (distributions) {
+      exportDistributions(distributions, `${runId}_distributions.csv`);
+    }
+  };
+
+  const handleExportColumns = () => {
+    const columns =
+      snapshot?.identity?.identity?.columns ||
+      snapshot?.identity?.profile?.columns;
+    if (columns) {
+      exportColumnProfile(columns, `${runId}_column_profile.csv`);
+    }
+  };
+
+  const handleExportModelMetrics = () => {
+    const data = artifacts?.model_fit_report || rawArtifacts?.model_fit_report;
+    if (data?.metrics) {
+      exportModelMetrics(data.metrics, data.baseline_metrics, `${runId}_model_metrics.csv`);
+    }
+  };
+
+  const handleExportBI = () => {
+    if (hasBI) {
+      exportBusinessIntelligence(analytics.business_intelligence, runId);
+    }
+  };
+
+  const handleExportFullJSON = () => {
+    exportSnapshotJSON(snapshot, `${runId}_full_snapshot.json`);
+  };
+
+  const handleExportMarkdown = () => {
+    if (snapshot?.report_markdown) {
+      const blob = new Blob([snapshot.report_markdown], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `${runId}_report.md`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const hasAnyExport =
+    hasFeatureImportance ||
+    hasCorrelations ||
+    hasDistributions ||
+    hasColumns ||
+    hasModelMetrics ||
+    hasBI ||
+    snapshot?.report_markdown;
+
+  if (!hasAnyExport) {
+    return null;
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Download className="mr-2 h-4 w-4" />
+          Export
+          <ChevronDown className="ml-2 h-3 w-3" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        {hasFeatureImportance && (
+          <DropdownMenuItem onClick={handleExportFeatures}>
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            Feature Importance (CSV)
+          </DropdownMenuItem>
+        )}
+        {hasCorrelations && (
+          <DropdownMenuItem onClick={handleExportCorrelations}>
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            Correlations (CSV)
+          </DropdownMenuItem>
+        )}
+        {hasDistributions && (
+          <DropdownMenuItem onClick={handleExportDistributions}>
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            Distribution Stats (CSV)
+          </DropdownMenuItem>
+        )}
+        {hasColumns && (
+          <DropdownMenuItem onClick={handleExportColumns}>
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            Column Profile (CSV)
+          </DropdownMenuItem>
+        )}
+        {hasModelMetrics && (
+          <DropdownMenuItem onClick={handleExportModelMetrics}>
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            Model Metrics (CSV)
+          </DropdownMenuItem>
+        )}
+        {hasBI && (
+          <DropdownMenuItem onClick={handleExportBI}>
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            Business Intelligence (CSV)
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        {snapshot?.report_markdown && (
+          <DropdownMenuItem onClick={handleExportMarkdown}>
+            <Download className="mr-2 h-4 w-4" />
+            Full Report (Markdown)
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem onClick={handleExportFullJSON}>
+          <FileJson className="mr-2 h-4 w-4" />
+          Full Snapshot (JSON)
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

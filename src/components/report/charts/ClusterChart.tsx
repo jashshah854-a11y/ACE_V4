@@ -30,6 +30,40 @@ const CLUSTER_COLORS = [
     "#ec4899", // pink
 ];
 
+interface TooltipPayload {
+    value: number;
+    dataKey: string;
+    payload: ClusterPoint;
+}
+
+const CustomTooltip = ({
+    active,
+    payload,
+    clusterLabels
+}: {
+    active?: boolean;
+    payload?: TooltipPayload[];
+    clusterLabels: Record<number, string>;
+}) => {
+    if (active && payload && payload.length) {
+        const point = payload[0].payload;
+        const clusterName = clusterLabels[point.cluster] || `Cluster ${point.cluster + 1}`;
+        return (
+            <div className="bg-card border border-border rounded-md px-3 py-2 shadow-lg">
+                <p className="text-sm font-medium text-foreground">{clusterName}</p>
+                {point.label && (
+                    <p className="text-xs text-muted-foreground">{point.label}</p>
+                )}
+                <div className="mt-1 text-xs text-muted-foreground">
+                    <span>X: <span className="font-mono text-foreground">{point.x.toFixed(2)}</span></span>
+                    <span className="ml-2">Y: <span className="font-mono text-foreground">{point.y.toFixed(2)}</span></span>
+                </div>
+            </div>
+        );
+    }
+    return null;
+};
+
 /**
  * ClusterChart - Visualize naturally occurring groups
  */
@@ -53,10 +87,13 @@ export function ClusterChart({
     const chartContent = (
         <ResponsiveContainer width="100%" height={350}>
             <RechartsScatter>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" dataKey="x" name={xAxisLabel} tick={{ fontSize: 12 }} />
-                <YAxis type="number" dataKey="y" name={yAxisLabel} tick={{ fontSize: 12 }} />
-                <Tooltip cursor={{ strokeDasharray: "3 3" }} />
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis type="number" dataKey="x" name={xAxisLabel} tick={{ fontSize: 12 }} className="text-foreground" />
+                <YAxis type="number" dataKey="y" name={yAxisLabel} tick={{ fontSize: 12 }} className="text-foreground" />
+                <Tooltip
+                    content={<CustomTooltip clusterLabels={clusterLabels} />}
+                    cursor={{ strokeDasharray: "3 3" }}
+                />
                 <Legend />
 
                 {Array.from({ length: numClusters }, (_, i) => {

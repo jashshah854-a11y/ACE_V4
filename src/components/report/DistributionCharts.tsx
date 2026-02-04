@@ -63,7 +63,7 @@ export function DistributionCharts({ distributions, insights }: DistributionChar
   const normalDistributions = entries.filter(([_, data]) => data.is_normal);
 
   return (
-    <Card className="border-slate-200">
+    <Card>
       <CardHeader>
         <CardTitle className="text-xl font-semibold flex items-center gap-2">
           <BarChart3 className="h-5 w-5" />
@@ -75,9 +75,9 @@ export function DistributionCharts({ distributions, insights }: DistributionChar
       </CardHeader>
       <CardContent className="space-y-4">
         {insights && insights.length > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 space-y-2">
             {insights.map((insight, idx) => (
-              <p key={idx} className="text-sm text-amber-900">
+              <p key={idx} className="text-sm text-foreground">
                 {insight}
               </p>
             ))}
@@ -85,23 +85,23 @@ export function DistributionCharts({ distributions, insights }: DistributionChar
         )}
 
         <div className="grid gap-3">
-          <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-green-600" />
-              <span className="font-medium text-green-900">Normal Distributions</span>
+              <TrendingUp className="h-5 w-5 text-emerald-500" />
+              <span className="font-medium text-foreground">Normal Distributions</span>
             </div>
-            <span className="text-2xl font-bold text-green-600">
+            <span className="text-2xl font-bold text-emerald-500">
               {normalDistributions.length}
             </span>
           </div>
 
           {interestingDistributions.length > 0 && (
-            <div className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-orange-600" />
-                <span className="font-medium text-orange-900">Features with Outliers</span>
+                <AlertTriangle className="h-5 w-5 text-orange-500" />
+                <span className="font-medium text-foreground">Features with Outliers</span>
               </div>
-              <span className="text-2xl font-bold text-orange-600">
+              <span className="text-2xl font-bold text-orange-500">
                 {interestingDistributions.length}
               </span>
             </div>
@@ -109,16 +109,16 @@ export function DistributionCharts({ distributions, insights }: DistributionChar
         </div>
 
         <div className="space-y-3">
-          <h4 className="font-semibold text-sm text-slate-700">Feature Statistics</h4>
+          <h4 className="font-semibold text-sm text-foreground">Feature Statistics</h4>
 
           {entries.slice(0, 8).map(([feature, data]) => (
             <div
               key={feature}
-              className="p-4 bg-slate-50 rounded-lg space-y-3 hover:bg-slate-100 transition-colors"
+              className="p-4 bg-muted/50 rounded-lg space-y-3 hover:bg-muted transition-colors"
             >
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
-                  <h5 className="font-semibold text-sm">{feature}</h5>
+                  <h5 className="font-semibold text-sm text-foreground">{feature}</h5>
                   <Badge variant={getDistributionBadgeVariant(data.distribution_type)}>
                     {getDistributionLabel(data.distribution_type)}
                   </Badge>
@@ -133,32 +133,32 @@ export function DistributionCharts({ distributions, insights }: DistributionChar
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground text-xs">Mean</p>
-                  <p className="font-semibold">{formatNumber(data.mean)}</p>
+                  <p className="font-semibold text-foreground">{formatNumber(data.mean)}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs">Median</p>
-                  <p className="font-semibold">{formatNumber(data.median)}</p>
+                  <p className="font-semibold text-foreground">{formatNumber(data.median)}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs">Std Dev</p>
-                  <p className="font-semibold">{formatNumber(data.std)}</p>
+                  <p className="font-semibold text-foreground">{formatNumber(data.std)}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4 text-sm pt-2 border-t border-slate-200">
+              <div className="grid grid-cols-3 gap-4 text-sm pt-2 border-t border-border">
                 <div>
                   <p className="text-muted-foreground text-xs">Range</p>
-                  <p className="font-semibold text-xs">
+                  <p className="font-semibold text-xs text-foreground">
                     {formatNumber(data.min)} to {formatNumber(data.max)}
                   </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs">Skewness</p>
-                  <p className="font-semibold">{data.skewness.toFixed(2)}</p>
+                  <p className="font-semibold text-foreground">{data.skewness.toFixed(2)}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs">Kurtosis</p>
-                  <p className="font-semibold">{data.kurtosis.toFixed(2)}</p>
+                  <p className="font-semibold text-foreground">{data.kurtosis.toFixed(2)}</p>
                 </div>
               </div>
             </div>

@@ -865,20 +865,51 @@ def _build_run_config(
     return config or None
 
 
-def convert_markdown_to_pdf(markdown_path: Path, pdf_path: Path):
-    """Convert markdown file to PDF with styling."""
+def convert_markdown_to_pdf(markdown_path: Path, pdf_path: Path, artifacts_dir: Path = None):
+    """Convert markdown file to PDF with styling and embedded charts."""
     try:
         import markdown as md
         from weasyprint import HTML
-        
+        import base64
+        import re
+
         # Read markdown
         with open(markdown_path, 'r', encoding='utf-8') as f:
             md_content = f.read()
-        
+
+        # Resolve artifacts directory for chart images
+        if artifacts_dir is None:
+            artifacts_dir = markdown_path.parent / "artifacts"
+
+        # Convert relative image paths to base64 data URIs for PDF embedding
+        def embed_image(match):
+            alt_text = match.group(1)
+            img_path = match.group(2)
+
+            # Resolve the image path relative to artifacts directory
+            if img_path.startswith("charts/"):
+                full_path = artifacts_dir / img_path
+            else:
+                full_path = artifacts_dir / "charts" / img_path
+
+            if full_path.exists():
+                try:
+                    with open(full_path, "rb") as img_file:
+                        img_data = base64.b64encode(img_file.read()).decode("utf-8")
+                    suffix = full_path.suffix.lower()
+                    mime = "image/png" if suffix == ".png" else "image/svg+xml" if suffix == ".svg" else "image/jpeg"
+                    return f"![{alt_text}](data:{mime};base64,{img_data})"
+                except Exception:
+                    pass
+            return match.group(0)  # Return original if image not found
+
+        # Replace markdown image references with base64 data URIs
+        md_content = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', embed_image, md_content)
+
         # Convert to HTML
         html_content = md.markdown(md_content, extensions=['tables', 'fenced_code'])
-        
-        # Add styling for better PDF formatting
+
+        # Add styling for better PDF formatting with chart support
         styled_html = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -896,16 +927,19 @@ def convert_markdown_to_pdf(markdown_path: Path, pdf_path: Path):
         pre {{ background-color: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; }}
         blockquote {{ border-left: 4px solid #3498db; padding-left: 15px; color: #555; font-style: italic; }}
         strong {{ color: #2c3e50; }}
+        /* Chart image styling */
+        img {{ max-width: 100%; height: auto; margin: 20px 0; display: block; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }}
+        p > img {{ margin: 20px auto; }}
     </style>
 </head>
 <body>
     {html_content}
 </body>
 </html>"""
-        
+
         # Generate PDF
         HTML(string=styled_html).write_pdf(pdf_path)
-        
+
     except ImportError as e:
         raise HTTPException(
             status_code=501,
@@ -1166,10 +1200,11 @@ async def get_report(request: Request, run_id: str, format: str = "markdown"):
     
     if format.lower() == "pdf":
         pdf_path = run_path / "final_report.pdf"
-        
+        artifacts_dir = run_path / "artifacts"
+
         # Generate PDF if it doesn't exist or if markdown is newer
         if not pdf_path.exists() or pdf_path.stat().st_mtime < report_path.stat().st_mtime:
-            convert_markdown_to_pdf(report_path, pdf_path)
+            convert_markdown_to_pdf(report_path, pdf_path, artifacts_dir)
         
         return FileResponse(
             pdf_path,
@@ -1238,6 +1273,45 @@ async def get_enhanced_analytics(run_id: str):
     return enhanced_analytics
 
 
+@app.get("/run/{run_id}/recommendations", tags=["Artifacts"])
+async def get_recommendations(run_id: str):
+    """Get ML-driven recommendations based on all analysis signals.
+
+    Returns prioritized, actionable recommendations derived from:
+    - Feature importance and model artifacts
+    - Correlation analysis
+    - Business intelligence signals
+    - Time series patterns
+    - Segment/persona data
+    """
+    _validate_run_id(run_id)
+
+    run_path = DATA_DIR / "runs" / run_id
+    state = StateManager(str(run_path))
+
+    # Gather all signals
+    enhanced_analytics = state.read("enhanced_analytics") or {}
+    model_artifacts = {
+        "importance_report": state.read("importance_report"),
+        "model_fit_report": state.read("model_fit_report"),
+    }
+    personas = state.read("personas") or []
+    strategies = state.read("strategies") or []
+    time_series = state.read("time_series_analysis") or {}
+
+    # Generate recommendations
+    from core.recommendation_engine import generate_recommendations
+    recommendations = generate_recommendations(
+        enhanced_analytics=enhanced_analytics,
+        model_artifacts=model_artifacts,
+        personas=personas,
+        strategies=strategies,
+        time_series=time_series,
+    )
+
+    return recommendations
+
+
 # REMOVED: Plural route - evidence system deprecated
 async def get_evidence_sample(run_id: str, rows: int = 5):
     """
@@ -1269,6 +1343,59 @@ async def get_evidence_sample(run_id: str, rows: int = 5):
 
     sample = df.head(rows).to_dict(orient="records")
     return {"rows": sample, "row_count": len(sample)}
+
+
+@app.get("/run/{run_id}/performance", tags=["Run"])
+async def get_run_performance(run_id: str):
+    """Get performance profiling data for a run.
+
+    Returns timing breakdown, memory samples, and bottleneck analysis.
+    """
+    _validate_run_id(run_id)
+    run_path = DATA_DIR / "runs" / run_id
+    state = StateManager(str(run_path))
+
+    # Try to get performance data from state
+    perf_data = state.read("performance_profile")
+
+    # Also check orchestrator state for step timings
+    orch_state = state.read("orchestrator_state") or {}
+    step_states = orch_state.get("step_states", {})
+
+    # Build performance summary from step states
+    step_timings = {}
+    for step_name, step_info in step_states.items():
+        if isinstance(step_info, dict):
+            runtime = step_info.get("runtime_seconds")
+            status = step_info.get("status", "unknown")
+            if runtime is not None:
+                step_timings[step_name] = {
+                    "duration_seconds": runtime,
+                    "status": status,
+                    "success": status == "completed",
+                }
+
+    total_duration = sum(s.get("duration_seconds", 0) for s in step_timings.values())
+
+    # Calculate percentages and find bottlenecks
+    for name, data in step_timings.items():
+        if total_duration > 0:
+            data["percentage"] = round(data["duration_seconds"] / total_duration * 100, 1)
+
+    bottlenecks = sorted(
+        step_timings.items(),
+        key=lambda x: x[1].get("duration_seconds", 0),
+        reverse=True,
+    )[:5]
+
+    return {
+        "run_id": run_id,
+        "total_duration_seconds": round(total_duration, 2),
+        "step_count": len(step_timings),
+        "steps": step_timings,
+        "bottlenecks": [{"step": name, **data} for name, data in bottlenecks],
+        "cached_profile": perf_data,
+    }
 
 
 @app.get("/run/{run_id}/timeline", tags=["Run"])
@@ -1716,6 +1843,70 @@ async def get_governed_report(request: Request, run_id: str):
     return await get_report(request, run_id)
 
 
+@app.get("/run/{run_id}/charts/{filename}", tags=["Artifacts"])
+async def get_chart_image(run_id: str, filename: str):
+    """Serve chart images generated during report creation.
+
+    Args:
+        run_id: The run identifier
+        filename: Chart filename (e.g., feature_importance.png)
+
+    Returns:
+        FileResponse with the chart image
+    """
+    _validate_run_id(run_id)
+
+    # Validate filename to prevent path traversal
+    if not re.match(r'^[a-zA-Z0-9_-]+\.(png|svg|jpg|jpeg)$', filename, re.IGNORECASE):
+        raise HTTPException(status_code=400, detail="Invalid chart filename")
+
+    chart_path = DATA_DIR / "runs" / run_id / "artifacts" / "charts" / filename
+
+    if not chart_path.exists():
+        raise HTTPException(status_code=404, detail="Chart not found")
+
+    # Determine media type
+    suffix = chart_path.suffix.lower()
+    media_types = {
+        ".png": "image/png",
+        ".svg": "image/svg+xml",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+    }
+    media_type = media_types.get(suffix, "application/octet-stream")
+
+    return FileResponse(chart_path, media_type=media_type)
+
+
+@app.get("/run/{run_id}/charts", tags=["Artifacts"])
+async def list_charts(run_id: str):
+    """List all available charts for a run.
+
+    Args:
+        run_id: The run identifier
+
+    Returns:
+        List of chart filenames and metadata
+    """
+    _validate_run_id(run_id)
+
+    charts_dir = DATA_DIR / "runs" / run_id / "artifacts" / "charts"
+
+    if not charts_dir.exists():
+        return {"charts": [], "count": 0}
+
+    charts = []
+    for chart_file in charts_dir.iterdir():
+        if chart_file.is_file() and chart_file.suffix.lower() in {".png", ".svg", ".jpg", ".jpeg"}:
+            charts.append({
+                "filename": chart_file.name,
+                "url": f"/run/{run_id}/charts/{chart_file.name}",
+                "size_bytes": chart_file.stat().st_size,
+            })
+
+    return {"charts": charts, "count": len(charts)}
+
+
 # ============================================================================
 # PHASE 5: DECISION CAPTURE & SYSTEM INTELLIGENCE
 # ============================================================================
@@ -2069,6 +2260,447 @@ async def run_reconciliation(payload: Dict[str, str]):
 def health_check():
     """Simple health check endpoint."""
     return {"status": "healthy"}
+
+
+# ============================================================================
+# USER CONFIGURATIONS
+# ============================================================================
+
+from pydantic import BaseModel
+from typing import Optional, List as PydanticList
+
+class ConfigCreateRequest(BaseModel):
+    name: str
+    description: str = ""
+    target_column: Optional[str] = None
+    feature_whitelist: Optional[PydanticList[str]] = None
+    model_type: Optional[str] = None
+    fast_mode: bool = False
+    include_categoricals: bool = False
+    primary_question: Optional[str] = None
+    required_output_type: Optional[str] = None
+    confidence_threshold: float = 0.8
+    tags: PydanticList[str] = []
+
+
+class ConfigUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    target_column: Optional[str] = None
+    feature_whitelist: Optional[PydanticList[str]] = None
+    model_type: Optional[str] = None
+    fast_mode: Optional[bool] = None
+    include_categoricals: Optional[bool] = None
+    primary_question: Optional[str] = None
+    required_output_type: Optional[str] = None
+    confidence_threshold: Optional[float] = None
+    tags: Optional[PydanticList[str]] = None
+
+
+@app.get("/configs", tags=["Configurations"])
+async def list_configs(tags: Optional[str] = None):
+    """List all saved analysis configurations."""
+    from core.user_config import get_config_store, AnalysisConfig
+
+    store = get_config_store()
+    tag_list = tags.split(",") if tags else None
+    configs = store.list(tags=tag_list)
+
+    return {
+        "configs": [c.to_dict() for c in configs],
+        "total": len(configs),
+    }
+
+
+@app.post("/configs", tags=["Configurations"])
+async def create_config(request: ConfigCreateRequest):
+    """Create a new saved configuration."""
+    from core.user_config import get_config_store, AnalysisConfig
+
+    store = get_config_store()
+    config = AnalysisConfig(
+        id="",  # Will be generated
+        name=request.name,
+        description=request.description,
+        target_column=request.target_column,
+        feature_whitelist=request.feature_whitelist,
+        model_type=request.model_type,
+        fast_mode=request.fast_mode,
+        include_categoricals=request.include_categoricals,
+        primary_question=request.primary_question,
+        required_output_type=request.required_output_type,
+        confidence_threshold=request.confidence_threshold,
+        tags=request.tags,
+    )
+    saved = store.create(config)
+    return saved.to_dict()
+
+
+@app.get("/configs/{config_id}", tags=["Configurations"])
+async def get_config(config_id: str):
+    """Get a specific configuration by ID."""
+    from core.user_config import get_config_store
+
+    store = get_config_store()
+    config = store.get(config_id)
+
+    if not config:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+
+    return config.to_dict()
+
+
+@app.put("/configs/{config_id}", tags=["Configurations"])
+async def update_config(config_id: str, request: ConfigUpdateRequest):
+    """Update an existing configuration."""
+    from core.user_config import get_config_store
+
+    store = get_config_store()
+    updates = {k: v for k, v in request.dict().items() if v is not None}
+
+    config = store.update(config_id, updates)
+    if not config:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+
+    return config.to_dict()
+
+
+@app.delete("/configs/{config_id}", tags=["Configurations"])
+async def delete_config(config_id: str):
+    """Delete a configuration."""
+    from core.user_config import get_config_store
+
+    store = get_config_store()
+    if not store.delete(config_id):
+        raise HTTPException(status_code=404, detail="Configuration not found")
+
+    return {"status": "deleted", "id": config_id}
+
+
+@app.get("/configs/{config_id}/run-config", tags=["Configurations"])
+async def get_run_config(config_id: str):
+    """Get the run_config format for a saved configuration.
+
+    This can be used directly when starting a new analysis run.
+    """
+    from core.user_config import get_config_store
+
+    store = get_config_store()
+    config = store.get(config_id)
+
+    if not config:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+
+    return {
+        "config_id": config_id,
+        "config_name": config.name,
+        "run_config": config.to_run_config(),
+    }
+
+
+# ============================================================================
+# RUN COMPARISON
+# ============================================================================
+
+@app.post("/compare-runs", tags=["Analysis"])
+async def compare_runs_endpoint(run_ids: PydanticList[str]):
+    """Compare multiple runs side-by-side.
+
+    Provide a list of run IDs to compare their metrics, features, and results.
+    """
+    if len(run_ids) < 2:
+        raise HTTPException(status_code=400, detail="Need at least 2 run IDs to compare")
+    if len(run_ids) > 5:
+        raise HTTPException(status_code=400, detail="Maximum 5 runs can be compared at once")
+
+    from core.run_comparison import compare_runs
+
+    # Load snapshot data for each run
+    run_data = []
+    for run_id in run_ids:
+        try:
+            _validate_run_id(run_id)
+            run_path = DATA_DIR / "runs" / run_id
+            state = StateManager(str(run_path))
+
+            # Build minimal snapshot for comparison
+            snapshot = {
+                "model_artifacts": {
+                    "model_fit_report": state.read("model_fit_report"),
+                    "importance_report": state.read("importance_report"),
+                },
+                "diagnostics": state.read("diagnostics") or {},
+                "identity": {"identity": state.read("dataset_identity") or state.read("identity")},
+            }
+
+            run_data.append({
+                "run_id": run_id,
+                "snapshot": snapshot,
+            })
+        except Exception as e:
+            raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found: {e}")
+
+    comparison = compare_runs(run_data)
+    return comparison
+
+
+# ============================================================================
+# SCHEDULED RUNS
+# ============================================================================
+
+class ScheduleCreateRequest(BaseModel):
+    """Request model for creating a scheduled run."""
+    name: str
+    description: str = ""
+    enabled: bool = True
+    frequency: str = "daily"  # hourly, daily, weekly, monthly
+    hour: int = 0  # Hour of day (0-23)
+    day_of_week: int = 0  # Day of week (0=Monday) for weekly
+    day_of_month: int = 1  # Day of month (1-28) for monthly
+    dataset_path: Optional[str] = None
+    dataset_url: Optional[str] = None
+    config_id: Optional[str] = None
+    target_column: Optional[str] = None
+    model_type: Optional[str] = None
+    fast_mode: bool = True
+    notify_on_complete: bool = False
+    notify_email: Optional[str] = None
+    webhook_url: Optional[str] = None
+
+
+class ScheduleUpdateRequest(BaseModel):
+    """Request model for updating a scheduled run."""
+    name: Optional[str] = None
+    description: Optional[str] = None
+    enabled: Optional[bool] = None
+    frequency: Optional[str] = None
+    hour: Optional[int] = None
+    day_of_week: Optional[int] = None
+    day_of_month: Optional[int] = None
+    dataset_path: Optional[str] = None
+    dataset_url: Optional[str] = None
+    config_id: Optional[str] = None
+    target_column: Optional[str] = None
+    model_type: Optional[str] = None
+    fast_mode: Optional[bool] = None
+    notify_on_complete: Optional[bool] = None
+    notify_email: Optional[str] = None
+    webhook_url: Optional[str] = None
+
+
+@app.get("/schedules", tags=["Scheduling"])
+async def list_schedules(enabled_only: bool = False):
+    """List all scheduled runs.
+
+    Args:
+        enabled_only: If true, only return enabled schedules
+    """
+    from core.scheduler import get_scheduler_store
+
+    store = get_scheduler_store()
+    schedules = store.list(enabled_only=enabled_only)
+
+    return {
+        "schedules": [s.to_dict() for s in schedules],
+        "total": len(schedules),
+    }
+
+
+@app.post("/schedules", tags=["Scheduling"])
+async def create_schedule(request: ScheduleCreateRequest):
+    """Create a new scheduled run."""
+    from core.scheduler import get_scheduler_store, ScheduledRun
+
+    # Validate frequency
+    valid_frequencies = ["hourly", "daily", "weekly", "monthly"]
+    if request.frequency not in valid_frequencies:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid frequency. Must be one of: {', '.join(valid_frequencies)}"
+        )
+
+    # Validate hour
+    if not 0 <= request.hour <= 23:
+        raise HTTPException(status_code=400, detail="Hour must be between 0 and 23")
+
+    # Validate day_of_week for weekly
+    if request.frequency == "weekly" and not 0 <= request.day_of_week <= 6:
+        raise HTTPException(status_code=400, detail="day_of_week must be between 0 (Monday) and 6 (Sunday)")
+
+    # Validate day_of_month for monthly
+    if request.frequency == "monthly" and not 1 <= request.day_of_month <= 28:
+        raise HTTPException(status_code=400, detail="day_of_month must be between 1 and 28")
+
+    store = get_scheduler_store()
+    schedule = ScheduledRun(
+        id="",  # Will be generated
+        name=request.name,
+        description=request.description,
+        enabled=request.enabled,
+        frequency=request.frequency,
+        hour=request.hour,
+        day_of_week=request.day_of_week,
+        day_of_month=request.day_of_month,
+        dataset_path=request.dataset_path,
+        dataset_url=request.dataset_url,
+        config_id=request.config_id,
+        target_column=request.target_column,
+        model_type=request.model_type,
+        fast_mode=request.fast_mode,
+        notify_on_complete=request.notify_on_complete,
+        notify_email=request.notify_email,
+        webhook_url=request.webhook_url,
+    )
+
+    created = store.create(schedule)
+    return created.to_dict()
+
+
+@app.get("/schedules/{schedule_id}", tags=["Scheduling"])
+async def get_schedule(schedule_id: str):
+    """Get a scheduled run by ID."""
+    from core.scheduler import get_scheduler_store
+
+    store = get_scheduler_store()
+    schedule = store.get(schedule_id)
+
+    if not schedule:
+        raise HTTPException(status_code=404, detail=f"Schedule '{schedule_id}' not found")
+
+    result = schedule.to_dict()
+    result["next_run"] = schedule.get_next_run_time()
+    return result
+
+
+@app.put("/schedules/{schedule_id}", tags=["Scheduling"])
+async def update_schedule(schedule_id: str, request: ScheduleUpdateRequest):
+    """Update a scheduled run."""
+    from core.scheduler import get_scheduler_store
+
+    store = get_scheduler_store()
+    schedule = store.get(schedule_id)
+
+    if not schedule:
+        raise HTTPException(status_code=404, detail=f"Schedule '{schedule_id}' not found")
+
+    # Build updates dict from non-None values
+    updates = {k: v for k, v in request.model_dump().items() if v is not None}
+
+    # Validate frequency if provided
+    if "frequency" in updates:
+        valid_frequencies = ["hourly", "daily", "weekly", "monthly"]
+        if updates["frequency"] not in valid_frequencies:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid frequency. Must be one of: {', '.join(valid_frequencies)}"
+            )
+
+    # Validate hour if provided
+    if "hour" in updates and not 0 <= updates["hour"] <= 23:
+        raise HTTPException(status_code=400, detail="Hour must be between 0 and 23")
+
+    updated = store.update(schedule_id, updates)
+    if not updated:
+        raise HTTPException(status_code=500, detail="Failed to update schedule")
+
+    result = updated.to_dict()
+    result["next_run"] = updated.get_next_run_time()
+    return result
+
+
+@app.delete("/schedules/{schedule_id}", tags=["Scheduling"])
+async def delete_schedule(schedule_id: str):
+    """Delete a scheduled run."""
+    from core.scheduler import get_scheduler_store
+
+    store = get_scheduler_store()
+    deleted = store.delete(schedule_id)
+
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Schedule '{schedule_id}' not found")
+
+    return {"deleted": True, "schedule_id": schedule_id}
+
+
+@app.post("/schedules/{schedule_id}/trigger", tags=["Scheduling"])
+async def trigger_schedule(schedule_id: str, background_tasks: BackgroundTasks):
+    """Manually trigger a scheduled run.
+
+    Starts an analysis run using the schedule's configuration.
+    """
+    from core.scheduler import get_scheduler_store
+
+    store = get_scheduler_store()
+    schedule = store.get(schedule_id)
+
+    if not schedule:
+        raise HTTPException(status_code=404, detail=f"Schedule '{schedule_id}' not found")
+
+    # Check if dataset is configured
+    if not schedule.dataset_path and not schedule.dataset_url:
+        raise HTTPException(
+            status_code=400,
+            detail="Schedule has no dataset configured (dataset_path or dataset_url required)"
+        )
+
+    # Generate run ID
+    run_id = str(uuid.uuid4())
+    run_path = DATA_DIR / "runs" / run_id
+    run_path.mkdir(parents=True, exist_ok=True)
+
+    # Copy dataset if local path
+    if schedule.dataset_path:
+        source_path = Path(schedule.dataset_path)
+        if not source_path.exists():
+            raise HTTPException(status_code=400, detail=f"Dataset not found: {schedule.dataset_path}")
+
+        dest_path = run_path / source_path.name
+        import shutil
+        shutil.copy2(source_path, dest_path)
+        dataset_file = dest_path
+    else:
+        # For URL-based datasets, we'd need to download first
+        raise HTTPException(status_code=501, detail="URL-based scheduled runs not yet implemented")
+
+    # Build run config from schedule
+    run_config = schedule.to_run_config()
+
+    # Initialize state
+    state = StateManager(str(run_path))
+    state.write("status", "queued")
+    state.write("run_config", run_config)
+    state.write("run_id", run_id)
+
+    # Launch pipeline in background
+    background_tasks.add_task(run_analysis, run_id, str(dataset_file), run_config, state)
+
+    # Record this run
+    store.record_run(schedule_id, run_id, "started")
+
+    return {
+        "triggered": True,
+        "schedule_id": schedule_id,
+        "run_id": run_id,
+        "dataset": str(dataset_file),
+    }
+
+
+@app.get("/schedules/due", tags=["Scheduling"])
+async def get_due_schedules():
+    """Get schedules that are due to run now.
+
+    This endpoint is designed to be called by an external cron job
+    to check which schedules need to be triggered.
+    """
+    from core.scheduler import get_scheduler_store
+
+    store = get_scheduler_store()
+    due = store.get_due_schedules()
+
+    return {
+        "due_schedules": [s.to_dict() for s in due],
+        "count": len(due),
+    }
 
 
 if __name__ == "__main__":

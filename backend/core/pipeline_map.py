@@ -7,6 +7,7 @@ PIPELINE_SEQUENCE = [
     "validator",
     "overseer",
     "regression",
+    "time_series",
     "sentry",
     "personas",
     "fabricator",
@@ -22,6 +23,7 @@ PIPELINE_DESCRIPTIONS = {
     "validator": "Validate data sufficiency and guardrails",
     "overseer": "Clustering and segmentation",
     "regression": "Model numeric outcomes",
+    "time_series": "Detect and analyze temporal patterns",
     "sentry": "Anomaly detection",
     "personas": "Persona generation",
     "fabricator": "Strategy generation",
@@ -38,6 +40,7 @@ STEP_TO_STAGE_MAP = {
     "validator": {"stage": "validator", "display": "Data Validation", "weight": 1},
     "overseer": {"stage": "clustering", "display": "Behavioral Clustering", "weight": 1},
     "regression": {"stage": "regression", "display": "Predictive Modeling", "weight": 1},
+    "time_series": {"stage": "regression", "display": "Time Series Analysis", "weight": 1},
     "sentry": {"stage": "anomaly", "display": "Anomaly Detection", "weight": 1},
     "personas": {"stage": "personas", "display": "Persona Generation", "weight": 1},
     "fabricator": {"stage": "report", "display": "Strategy Generation", "weight": 1},
@@ -46,7 +49,7 @@ STEP_TO_STAGE_MAP = {
 }
 
 # Total steps including pre-pipeline ingestion
-TOTAL_PIPELINE_STEPS = 12  # ingestion + 11 pipeline steps
+TOTAL_PIPELINE_STEPS = 13  # ingestion + 12 pipeline steps
 
 
 def calculate_progress(current_step: str, steps_completed: list) -> dict:

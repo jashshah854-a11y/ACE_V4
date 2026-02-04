@@ -12,6 +12,26 @@ export interface DistributionChartProps {
     insight?: string;
 }
 
+interface TooltipPayload {
+    value: number;
+    payload: { bin: string; count: number };
+}
+
+const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: TooltipPayload[] }) => {
+    if (active && payload && payload.length) {
+        const data = payload[0];
+        return (
+            <div className="bg-card border border-border rounded-md px-3 py-2 shadow-lg">
+                <p className="text-sm font-medium text-foreground">{data.payload.bin}</p>
+                <p className="text-sm text-muted-foreground">
+                    Count: <span className="font-semibold text-foreground">{data.value.toLocaleString()}</span>
+                </p>
+            </div>
+        );
+    }
+    return null;
+};
+
 /**
  * DistributionChart - Show how values are spread across ranges
  */
@@ -30,11 +50,11 @@ export function DistributionChart({
     const chartContent = (
         <ResponsiveContainer width="100%" height={300}>
             <RechartsBar data={data}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="bin" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#8b5cf6" />
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="bin" tick={{ fontSize: 12 }} className="text-foreground" />
+                <YAxis tick={{ fontSize: 12 }} className="text-foreground" />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
             </RechartsBar>
         </ResponsiveContainer>
     );

@@ -466,6 +466,7 @@ def run_agent(agent_name, run_path):
         "interpreter": "schema_interpreter",
         "overseer": "overseer",
         "regression": "regression",
+        "time_series": "time_series_analyzer",
         "sentry": "sentry",
         "personas": "persona_engine",
         "fabricator": "fabricator",

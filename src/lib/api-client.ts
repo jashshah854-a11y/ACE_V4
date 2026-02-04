@@ -388,6 +388,70 @@ export async function getEnhancedAnalytics(runId: string): Promise<any> {
   return response.json();
 }
 
+export interface PerformanceData {
+  run_id: string;
+  total_duration_seconds: number;
+  step_count: number;
+  steps: Record<string, {
+    duration_seconds: number;
+    status: string;
+    success: boolean;
+    percentage?: number;
+  }>;
+  bottlenecks: Array<{
+    step: string;
+    duration_seconds: number;
+    percentage?: number;
+  }>;
+  cached_profile?: any;
+}
+
+export async function getRunPerformance(runId: string): Promise<PerformanceData | null> {
+  const response = await fetch(`${API_BASE}/run/${runId}/performance`);
+
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(`Failed to get performance data: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+export interface RecommendationsData {
+  status: string;
+  valid: boolean;
+  total_count: number;
+  recommendations: Array<{
+    category: string;
+    action: string;
+    rationale: string;
+    confidence: number;
+    impact: string;
+    priority: string;
+    lever?: string;
+    data_points?: Record<string, any>;
+  }>;
+  by_category: Record<string, any[]>;
+  signal_summary: {
+    n_features: number;
+    n_segments: number;
+    has_churn_signal: boolean;
+    has_time_series: boolean;
+    data_quality_score?: number;
+  };
+}
+
+export async function getRecommendations(runId: string): Promise<RecommendationsData | null> {
+  const response = await fetch(`${API_BASE}/run/${runId}/recommendations`);
+
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(`Failed to get recommendations: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
 export interface PaginatedRuns {
   runs: string[];
   total: number;

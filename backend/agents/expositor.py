@@ -16,6 +16,7 @@ from core.data_loader import smart_load_dataset
 from ace_v4.performance.config import PerformanceConfig
 from core.analytics_validation import apply_artifact_validation
 from core.narrative_engine import NarrativeEngine, create_narrative_engine
+from core.charts import ChartGenerator
 
 class Expositor:
     def __init__(self, schema_map: SchemaMap, state: StateManager):
@@ -915,9 +916,13 @@ class Expositor:
         onnx_export: dict | None = None,
     ) -> str:
         """Generate a human-readable executive report using NarrativeEngine."""
-        
+
         narrator = create_narrative_engine(self.state)
         lines = []
+
+        # Initialize chart generator
+        artifacts_dir = Path(self.state.run_path) / "artifacts"
+        chart_gen = ChartGenerator(artifacts_dir)
         
         # Title
         domain_name = data_type.get("primary_type", "business").replace("_", " ").title()
@@ -968,6 +973,16 @@ class Expositor:
         if correlations:
             lines.append("## Key Relationships")
             lines.append("")
+
+            # Generate correlation chart
+            chart_md = chart_gen.correlations(
+                correlations[:10],
+                title="Feature Correlations",
+            )
+            if chart_md:
+                lines.append(chart_md)
+                lines.append("")
+
             for corr in correlations[:3]:
                 translated = narrator.translate_correlation(
                     corr.get("feature1", ""),
@@ -981,6 +996,16 @@ class Expositor:
         if drivers:
             lines.append("## What Matters Most")
             lines.append("")
+
+            # Generate feature importance chart
+            chart_md = chart_gen.feature_importance(
+                drivers[:10],
+                title=f"Top Predictors of {importance_report.get('target_column', 'Outcome')}",
+            )
+            if chart_md:
+                lines.append(chart_md)
+                lines.append("")
+
             target = importance_report.get("target_column", "outcome")
             for i, driver in enumerate(drivers[:5], 1):
                 translated = narrator.translate_driver(
@@ -992,12 +1017,27 @@ class Expositor:
                 lines.append(translated)
             lines.append("")
         
-        # Model Fit Warning (when R² is negative or accuracy is low)
+        # Model Performance Chart and Fit Warning
         if model_fit and isinstance(model_fit, dict):
             fit_metrics = model_fit.get("metrics", {})
+            baseline_metrics = model_fit.get("baseline_metrics", {})
             r2 = fit_metrics.get("r2")
             accuracy = fit_metrics.get("accuracy")
             target = model_fit.get("target_column", "outcome")
+
+            # Generate model performance chart if we have metrics
+            if fit_metrics and (accuracy is not None or r2 is not None):
+                chart_md = chart_gen.model_performance(
+                    fit_metrics,
+                    baseline_metrics if baseline_metrics else None,
+                    title=f"Model Performance: {target}",
+                )
+                if chart_md:
+                    lines.append("## Model Performance")
+                    lines.append("")
+                    lines.append(chart_md)
+                    lines.append("")
+
             if r2 is not None and isinstance(r2, (int, float)) and r2 < 0:
                 lines.append("## Model Fit Warning")
                 lines.append("")
@@ -1042,6 +1082,20 @@ class Expositor:
         if segment_count > 0 and personas:
             lines.append("## Customer Segments")
             lines.append("")
+
+            # Generate segment pie chart
+            segment_data = [
+                {"name": p.get("name", f"Segment {i}"), "size": p.get("persona_size", p.get("size", 0))}
+                for i, p in enumerate(personas[:8])
+            ]
+            chart_md = chart_gen.segment_pie(
+                segment_data,
+                title="Customer Segment Distribution",
+            )
+            if chart_md:
+                lines.append(chart_md)
+                lines.append("")
+
             total = sum(p.get("persona_size", p.get("size", 0)) for p in personas)
             for i, persona in enumerate(personas[:5]):
                 seg = narrator.translate_segment(
@@ -1138,6 +1192,16 @@ class Expositor:
 
         lines.append("*This report is generated based on statistical analysis. Recommendations are directional and should be validated with domain expertise.*")
         lines.append("")
+
+        # Save chart metadata to state for frontend reference
+        generated_charts = chart_gen.get_generated_charts()
+        if generated_charts:
+            self.state.write("report_charts", {
+                "charts": generated_charts,
+                "charts_dir": str(chart_gen.charts_dir),
+                "count": len(generated_charts),
+            })
+            log_ok(f"Generated {len(generated_charts)} visualization charts")
 
         return "\n".join(lines)
 

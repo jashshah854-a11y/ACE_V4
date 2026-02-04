@@ -16,6 +16,12 @@ from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 
+try:
+    from xgboost import XGBClassifier, XGBRegressor
+    HAS_XGBOOST = True
+except ImportError:
+    HAS_XGBOOST = False
+
 
 @dataclass
 class RegressionConfig:
@@ -548,6 +554,17 @@ def compute_regression_insights(
                     random_state=config.random_state,
                 ),
             }
+            if HAS_XGBOOST:
+                # Compute scale_pos_weight for imbalanced binary classification
+                scale_weight = float(class_counts.max() / class_counts.min()) if is_imbalanced else 1.0
+                candidates["xgboost"] = XGBClassifier(
+                    n_estimators=n_est,
+                    scale_pos_weight=scale_weight,
+                    random_state=config.random_state,
+                    eval_metric="logloss",
+                    verbosity=0,
+                    n_jobs=-1,
+                )
 
             # Quick cross-validation to select best model (use f1 for imbalanced)
             scoring = "f1" if is_imbalanced else "accuracy"
@@ -598,17 +615,62 @@ def compute_regression_insights(
                 ("scaler", StandardScaler()),
                 ("model", estimator),
             ]
+        elif normalized_model == "xgboost" and HAS_XGBOOST:
+            n_estimators = 100 if fast_mode else 200
+            estimator = XGBRegressor(
+                n_estimators=n_estimators,
+                random_state=config.random_state,
+                verbosity=0,
+                n_jobs=-1,
+            )
+            normalized_model = "xgboost"
+            steps = [("imputer", SimpleImputer(strategy="median")), ("model", estimator)]
         elif normalized_model == "gradient_boosting":
             estimator = GradientBoostingRegressor(random_state=config.random_state)
             steps = [("imputer", SimpleImputer(strategy="median")), ("model", estimator)]
         else:
+            # Auto-select best regression model via cross-validation
             n_estimators = 100 if fast_mode else 200
-            estimator = RandomForestRegressor(
-                n_estimators=n_estimators,
-                random_state=config.random_state,
-                n_jobs=-1,
-            )
-            normalized_model = "random_forest"
+            reg_candidates = {
+                "random_forest": RandomForestRegressor(
+                    n_estimators=n_estimators,
+                    random_state=config.random_state,
+                    n_jobs=-1,
+                ),
+                "gradient_boosting": GradientBoostingRegressor(
+                    n_estimators=n_estimators,
+                    random_state=config.random_state,
+                ),
+            }
+            if HAS_XGBOOST:
+                reg_candidates["xgboost"] = XGBRegressor(
+                    n_estimators=n_estimators,
+                    random_state=config.random_state,
+                    verbosity=0,
+                    n_jobs=-1,
+                )
+
+            imputer = SimpleImputer(strategy="median")
+            X_train_imputed = pd.DataFrame(imputer.fit_transform(X_train), columns=X_train.columns)
+            cv_folds = 3 if fast_mode else 5
+            best_reg_score = -np.inf
+            best_reg_name = "random_forest"
+
+            for name, reg in reg_candidates.items():
+                try:
+                    scores = cross_val_score(reg, X_train_imputed, y_train, cv=cv_folds, scoring="r2", n_jobs=-1)
+                    mean_score = float(scores.mean())
+                    model_selection_info[name] = {"cv_score": round(mean_score, 4), "cv_std": round(float(scores.std()), 4)}
+                    if mean_score > best_reg_score:
+                        best_reg_score = mean_score
+                        best_reg_name = name
+                except Exception:
+                    model_selection_info[name] = {"cv_score": None, "error": "CV failed"}
+
+            estimator = reg_candidates[best_reg_name]
+            normalized_model = best_reg_name
+            model_selection_info["selected"] = best_reg_name
+            model_selection_info["selection_metric"] = "r2"
             steps = [("imputer", SimpleImputer(strategy="median")), ("model", estimator)]
 
     pipeline = Pipeline(steps=steps)
@@ -730,6 +792,8 @@ def compute_regression_insights(
         "baseline_metrics": baseline_metrics,
         "dataset_split": {"train_rows": int(len(X_train)), "test_rows": int(len(X_test))},
     }
+    if model_selection_info:
+        model_fit_report["model_selection"] = model_selection_info
 
     target_governance = {
         "target_column": target_col,
