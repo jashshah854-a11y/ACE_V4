@@ -9,6 +9,8 @@ import {
   PieChart,
   Database,
   Activity,
+  Sparkles,
+  Brain,
 } from "lucide-react";
 
 interface SmartSummaryProps {
@@ -17,17 +19,156 @@ interface SmartSummaryProps {
   artifacts?: any;
 }
 
+interface LLMNarrative {
+  executive_summary: string;
+  key_findings: string[];
+  data_story: string;
+  recommendations: Array<{ title: string; description: string; priority: string }>;
+  warnings: string[];
+  generated_at?: string;
+  model_used?: string;
+}
+
 /**
  * SmartSummary - Transforms raw analytics data into human-readable insights
  *
- * This component generates contextualized summaries like:
- * - "65,521 games analyzed across 5 years (2021-2025)"
- * - "18.3% of games are Free-to-Play (11,962 titles)"
- * - "Average paid game price: $8.81"
+ * Prioritizes LLM-generated narratives when available (from smart_narrative),
+ * falls back to heuristic-based generation otherwise.
  */
 export function SmartSummary({ snapshot, analytics, artifacts }: SmartSummaryProps) {
+  // Check for LLM-generated narrative first
+  const llmNarrative: LLMNarrative | null = snapshot?.smart_narrative || null;
+  const hasLLMNarrative = llmNarrative && llmNarrative.executive_summary && llmNarrative.model_used !== "fallback";
+
   const insights = useMemo(() => generateInsights(snapshot, analytics, artifacts), [snapshot, analytics, artifacts]);
 
+  // If we have LLM narrative, show that first
+  if (hasLLMNarrative) {
+    return (
+      <div className="space-y-6">
+        {/* LLM-Generated Executive Summary */}
+        <section className="rounded-2xl border bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950 dark:to-purple-950 p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900">
+              <Brain className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">AI-Generated Executive Summary</h3>
+              <p className="text-xs text-muted-foreground">
+                Powered by {llmNarrative.model_used || "Gemini"}
+                {llmNarrative.generated_at && ` • Generated ${new Date(llmNarrative.generated_at).toLocaleString()}`}
+              </p>
+            </div>
+          </div>
+          <p className="text-base leading-relaxed text-foreground/90">
+            {llmNarrative.executive_summary}
+          </p>
+        </section>
+
+        {/* Key Findings */}
+        {llmNarrative.key_findings && llmNarrative.key_findings.length > 0 && (
+          <section className="rounded-2xl border bg-card p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Sparkles className="h-5 w-5 text-amber-600" />
+              <h3 className="text-lg font-semibold">Key Findings</h3>
+            </div>
+            <ul className="space-y-3">
+              {llmNarrative.key_findings.map((finding, idx) => (
+                <li key={idx} className="flex items-start gap-3">
+                  <span className="mt-2 w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                  <span className="text-sm text-foreground/90 leading-relaxed">{finding}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* Data Story */}
+        {llmNarrative.data_story && (
+          <section className="rounded-2xl border bg-card p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <BarChart3 className="h-5 w-5 text-blue-600" />
+              <h3 className="text-lg font-semibold">The Data Story</h3>
+            </div>
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              {llmNarrative.data_story.split('\n\n').map((paragraph, idx) => (
+                <p key={idx} className="text-sm text-foreground/85 leading-relaxed mb-3">
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* AI Recommendations */}
+        {llmNarrative.recommendations && llmNarrative.recommendations.length > 0 && (
+          <section className="rounded-2xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Lightbulb className="h-5 w-5 text-emerald-600" />
+              <h3 className="text-lg font-semibold text-emerald-900 dark:text-emerald-100">
+                AI Recommendations
+              </h3>
+            </div>
+            <div className="space-y-4">
+              {llmNarrative.recommendations.map((rec, idx) => (
+                <div key={idx} className="bg-white dark:bg-emerald-900/20 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="font-medium text-emerald-900 dark:text-emerald-100">
+                      {rec.title}
+                    </p>
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                      rec.priority === 'High' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300' :
+                      rec.priority === 'Medium' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
+                      'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                    }`}>
+                      {rec.priority}
+                    </span>
+                  </div>
+                  <p className="text-sm text-emerald-800 dark:text-emerald-200/80">
+                    {rec.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Warnings */}
+        {llmNarrative.warnings && llmNarrative.warnings.length > 0 && llmNarrative.warnings[0] !== "LLM narrative generation unavailable - showing basic summary" && (
+          <section className="rounded-2xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <AlertTriangle className="h-5 w-5 text-rose-600" />
+              <h3 className="text-lg font-semibold text-rose-900 dark:text-rose-100">
+                Data Caveats
+              </h3>
+            </div>
+            <ul className="space-y-2">
+              {llmNarrative.warnings.map((warning, idx) => (
+                <li key={idx} className="flex items-start gap-2 text-sm text-rose-800 dark:text-rose-200">
+                  <span className="mt-1">•</span>
+                  <span>{warning}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* Show heuristic insights as supplementary */}
+        {insights && insights.identity && insights.identity.length > 0 && (
+          <details className="rounded-2xl border bg-card overflow-hidden">
+            <summary className="p-4 cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
+              View detailed metrics
+            </summary>
+            <div className="p-4 pt-0 border-t">
+              <HeuristicInsightsContent insights={insights} />
+            </div>
+          </details>
+        )}
+      </div>
+    );
+  }
+
+  // Fallback to heuristic-based insights
   if (!insights || insights.sections.length === 0) {
     return (
       <div className="rounded-2xl border bg-card p-8 text-center">
@@ -38,6 +179,17 @@ export function SmartSummary({ snapshot, analytics, artifacts }: SmartSummaryPro
 
   return (
     <div className="space-y-6">
+      <HeuristicInsightsContent insights={insights} />
+    </div>
+  );
+}
+
+/**
+ * Renders heuristic-based insights (used when LLM narrative is unavailable)
+ */
+function HeuristicInsightsContent({ insights }: { insights: Insight }) {
+  return (
+    <>
       {/* Dataset Identity Card */}
       {insights.identity && (
         <section className="rounded-2xl border bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-6">
@@ -197,7 +349,7 @@ export function SmartSummary({ snapshot, analytics, artifacts }: SmartSummaryPro
           </ul>
         </section>
       )}
-    </div>
+    </>
   );
 }
 

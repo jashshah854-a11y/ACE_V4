@@ -293,6 +293,8 @@ def _build_snapshot_payload(run_id: str, lite: bool) -> tuple[Dict[str, Any], st
             "onnx_export": state.read("onnx_export"),
             "drift_report": state.read("drift_report"),
         }
+        # LLM-generated smart narrative
+        payload["smart_narrative"] = state.read("smart_narrative") or None
 
     etag = _snapshot_etag(run_path, lite)
     return payload, etag

@@ -1348,6 +1348,18 @@ def main_loop(run_path):
             except Exception as e:
                 update_history(state, f"Invariant/health summary failed: {e}")
 
+            # Generate smart LLM-powered narrative summary
+            try:
+                from core.smart_narrative import generate_narrative_for_run
+                state_mgr = StateManager(run_path)
+                narrative = generate_narrative_for_run(state_mgr)
+                if narrative:
+                    update_history(state, "Smart narrative generated successfully")
+                    print(f"[ORCHESTRATOR] Smart narrative generated using {narrative.get('model_used', 'unknown')}")
+            except Exception as e:
+                print(f"[ORCHESTRATOR] Smart narrative generation failed (non-fatal): {e}")
+                update_history(state, f"Smart narrative generation failed: {e}")
+
         time.sleep(POLL_TIME)
 
 
