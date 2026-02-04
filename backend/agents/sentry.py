@@ -27,30 +27,73 @@ class Sentry:
         self.schema_map = ensure_schema_map(schema_map)
         self.state = state
 
+    def _sanitize_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Remove corrupted columns that contain lists or non-scalar values."""
+        clean_cols = []
+        for col in df.columns:
+            try:
+                # Check if column contains list/array values (corrupted data)
+                sample = df[col].dropna().iloc[0] if len(df[col].dropna()) > 0 else None
+                if sample is not None and isinstance(sample, (list, np.ndarray)):
+                    print(f"[SENTRY] Skipping corrupted column '{col}' (contains list values)")
+                    continue
+                # Try to check if it's a valid scalar column
+                if df[col].dtype == 'object':
+                    # For object columns, verify values are actually scalar
+                    test_val = str(df[col].iloc[0]) if len(df) > 0 else ""
+                    # Check for concatenated number patterns (multiple decimals like "29.851889.5108")
+                    if test_val.count('.') > 1 and len(test_val) > 20:
+                        print(f"[SENTRY] Skipping corrupted column '{col}' (concatenated values)")
+                        continue
+                clean_cols.append(col)
+            except Exception as e:
+                print(f"[SENTRY] Skipping column '{col}' due to error: {e}")
+                continue
+        return df[clean_cols] if clean_cols else df
+
     def run(self):
-        df = self._load_base_frame()
+        try:
+            df = self._load_base_frame()
 
-        # Use universal anomaly detection
-        anomalies_summary = detect_universal_anomalies(df, self.schema_map)
+            # Sanitize the dataframe to remove corrupted columns
+            df = self._sanitize_dataframe(df)
 
-        # Format for output
-        # Sentry output expects "anomalies" as a list of dicts (rows)
-        # detect_universal_anomalies returns indices and a summary.
-        # We need to reconstruct the row data for the report.
-        anomalies_list = []
-        if anomalies_summary["total_count"] > 0:
-            # We need to fetch the actual rows based on indices
-            # But detect_universal_anomalies doesn't return the rows directly to save memory?
-            # Wait, it returns "indices".
-            indices = anomalies_summary["indices"]
-            anomalies_list = df.iloc[indices].to_dict(orient="records")
+            if df.empty:
+                print("[SENTRY] No valid data after sanitization, writing empty result")
+                self._write_empty_result()
+                return
 
+            # Use universal anomaly detection
+            anomalies_summary = detect_universal_anomalies(df, self.schema_map)
+
+            # Format for output
+            anomalies_list = []
+            if anomalies_summary.get("total_count", 0) > 0:
+                indices = anomalies_summary.get("indices", [])
+                if indices:
+                    anomalies_list = df.iloc[indices].to_dict(orient="records")
+
+            payload = {
+                "status": "success",
+                "anomaly_count": anomalies_summary.get("total_count", 0),
+                "anomalies": anomalies_list[:100],
+                "drivers": anomalies_summary.get("drivers", {}),
+                "role_deviations": anomalies_summary.get("role_deviations", {})
+            }
+            self.state.write("anomalies", payload)
+        except Exception as e:
+            print(f"[SENTRY] Error during anomaly detection: {e}")
+            self._write_empty_result()
+
+    def _write_empty_result(self):
+        """Write an empty but valid anomalies result."""
         payload = {
-            "status": "success",
-            "anomaly_count": anomalies_summary["total_count"],
-            "anomalies": anomalies_list[:100], # Limit to 100
-            "drivers": anomalies_summary.get("drivers", {}),
-            "role_deviations": anomalies_summary.get("role_deviations", {})
+            "status": "skipped",
+            "anomaly_count": 0,
+            "anomalies": [],
+            "drivers": {},
+            "role_deviations": {},
+            "message": "Anomaly detection skipped due to data quality issues"
         }
         self.state.write("anomalies", payload)
 
@@ -82,7 +125,7 @@ def main():
 
     run_path = sys.argv[1]
     state = StateManager(run_path)
-    
+
     # Load Schema
     schema_data = state.read("schema_map")
     schema_map = ensure_schema_map(schema_data)
@@ -91,9 +134,25 @@ def main():
 
     try:
         agent.run()
+        print("[SENTRY] Completed successfully")
     except Exception as e:
-        print(f"[ERROR] Sentry agent failed: {e}")
-        sys.exit(1)
+        # Write empty result and exit cleanly to not block pipeline
+        print(f"[SENTRY] Warning: {e}")
+        try:
+            payload = {
+                "status": "skipped",
+                "anomaly_count": 0,
+                "anomalies": [],
+                "drivers": {},
+                "role_deviations": {},
+                "message": f"Anomaly detection skipped: {str(e)[:100]}"
+            }
+            state.write("anomalies", payload)
+            print("[SENTRY] Wrote fallback result")
+        except Exception:
+            pass
+        # Exit cleanly - don't crash the pipeline for non-critical anomaly detection
+        sys.exit(0)
 
 
 if __name__ == "__main__":
