@@ -28,7 +28,6 @@ const Index = () => {
   });
 
   const contractAssessment = useMemo(() => {
-    // If fields are empty, we allow it (will rely on defaults)
     return { valid: true, message: null };
   }, []);
 
@@ -63,7 +62,6 @@ const Index = () => {
 
     setIsUploading(true);
     try {
-      // Use defaults if fields are empty
       const finalTaskIntent = {
         primaryQuestion: taskIntent.primaryQuestion.trim() || "Analyze dataset for key insights, anomalies, and trends.",
         decisionContext: taskIntent.decisionContext.trim() || "General exploratory analysis to understand data distribution and quality.",
@@ -71,28 +69,12 @@ const Index = () => {
         successCriteria: taskIntent.successCriteria.trim() || "Clear report identifying main drivers, clusters, and outliers.",
         constraints: taskIntent.constraints.trim() || "None specific.",
         confidenceThreshold: taskIntent.confidenceThreshold,
-        confidenceAcknowledged: true, // Auto-acknowledge for frictionless experience
-      };
-
-      const result = await submitRun(file, finalTaskIntent);
-    if (!file || !contractAssessment.valid) {
-      toast.error(contractAssessment.message || "Please select a file first");
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      const finalTaskIntent = {
-        ...taskIntent,
-        primaryQuestion: taskIntent.primaryQuestion || "Analyze this industrial safety document for compliance",
-        decisionContext: taskIntent.decisionContext || "Standard safety audit and risk assessment",
-        successCriteria: taskIntent.successCriteria || "Identification of key risks and mitigation strategies",
-        constraints: taskIntent.constraints || "Must adhere to ISO 45001 standards",
+        confidenceAcknowledged: true,
       };
 
       await submitRun(file, finalTaskIntent);
       toast.success("Analysis started", {
-        description: "Your document is being analyzed.",
+        description: "Your data is being analyzed.",
       });
       navigate("/pipeline");
     } catch (error) {
@@ -110,7 +92,6 @@ const Index = () => {
 
       <main className="relative pt-24 pb-16 min-h-screen flex flex-col items-center justify-center">
         <div className="container px-4 max-w-4xl">
-          {/* Hero */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -130,19 +111,15 @@ const Index = () => {
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Upload your data files and let our autonomous engine detect anomalies,
               validate quality, and generate comprehensive intelligence reports.
-              Upload your data files and let our autonomous engine detect anomalies, validate quality, and generate
-              comprehensive intelligence reports.
             </p>
           </motion.div>
 
-          {/* Upload Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
             className="glass-card rounded-2xl p-8"
           >
-            {/* Drop Zone */}
             <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -194,7 +171,6 @@ const Index = () => {
               )}
             </div>
 
-            {/* Advanced Options Toggle */}
             <div className="mt-6">
               <Button
                 type="button"
@@ -304,67 +280,7 @@ const Index = () => {
                 )}
               </motion.div>
             )}
-                  <div className="text-sm font-semibold mb-1">Required output type</div>
-                  <select
-                    value={taskIntent.requiredOutputType}
-                    onChange={(e) =>
-                      setTaskIntent((prev) => ({
-                        ...prev,
-                        requiredOutputType: e.target.value as typeof prev.requiredOutputType,
-                      }))
-                    }
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    <option value="diagnostic">Diagnostic (root-cause)</option>
-                    <option value="descriptive">Descriptive (data health)</option>
-                    <option value="predictive">Predictive (forward-looking)</option>
-                  </select>
-                </div>
-                <div>
-                  <div className="text-sm font-semibold mb-1">Confidence floor (%)</div>
-                  <Input
-                    type="number"
-                    min={60}
-                    max={95}
-                    value={taskIntent.confidenceThreshold}
-                    onChange={(e) =>
-                      setTaskIntent((prev) => ({
-                        ...prev,
-                        confidenceThreshold: Number(e.target.value) || prev.confidenceThreshold,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-              <div>
-                <div className="text-sm font-semibold mb-1">Success criteria</div>
-                <Textarea
-                  value={taskIntent.successCriteria}
-                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, successCriteria: e.target.value }))}
-                  placeholder="Example: Win = 20% lift in CLV while keeping CAC below $200."
-                />
-              </div>
-              <div>
-                <div className="text-sm font-semibold mb-1">Constraints & out-of-scope dimensions</div>
-                <Textarea
-                  value={taskIntent.constraints}
-                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, constraints: e.target.value }))}
-                  placeholder="Budgets, markets, timelines, banned metrics, or excluded cohorts."
-                />
-              </div>
-              <label className="flex items-start gap-2 text-sm text-muted-foreground">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={taskIntent.confidenceAcknowledged}
-                  onChange={(e) => setTaskIntent((prev) => ({ ...prev, confidenceAcknowledged: e.target.checked }))}
-                />
-                <span>I understand that insights with confidence below the selected threshold will be suppressed.</span>
-              </label>
-              {!contractAssessment.valid && <div className="text-xs text-red-600">{contractAssessment.message}</div>}
-            </div>
 
-            {/* Action Button */}
             {file && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -392,7 +308,6 @@ const Index = () => {
               </motion.div>
             )}
 
-            {/* Features */}
             <div className="mt-8 pt-8 border-t border-border/50 grid grid-cols-1 sm:grid-cols-3 gap-6">
               {[
                 { icon: FileText, title: "Multi-format", desc: "CSV, JSON, Excel & more" },
