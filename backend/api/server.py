@@ -256,6 +256,89 @@ class RunResponse(BaseModel):
     message: str
     status: str
 
+@app.post("/run/preview", tags=["Execution"])
+@limiter.limit("30/minute")
+async def preview_dataset(request: Request, file: UploadFile = File(...)):
+    """
+    Quick preview of dataset structure without running full analysis.
+    Returns schema information, row/column counts, and detected capabilities.
+
+    Rate limit: 30 requests per minute
+    """
+    _validate_upload(file)
+
+    file_path = _safe_upload_path(file.filename)
+
+    try:
+        # Save file temporarily
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # Import data loader
+        from intake.loader import DataLoader
+
+        # Load and analyze dataset
+        loader = DataLoader(str(file_path))
+        df = loader.load()
+
+        if df is None or df.empty:
+            raise HTTPException(status_code=400, detail="Could not load dataset or dataset is empty")
+
+        # Build schema map
+        schema_map = []
+        for col in df.columns:
+            dtype = df[col].dtype
+            if dtype in ['int64', 'float64', 'int32', 'float32']:
+                col_type = "Numeric"
+            elif dtype == 'bool':
+                col_type = "Boolean"
+            elif dtype == 'datetime64[ns]':
+                col_type = "DateTime"
+            else:
+                col_type = "String"
+
+            schema_map.append({
+                "name": col,
+                "type": col_type,
+                "dtype": str(dtype)
+            })
+
+        # Detect capabilities
+        numeric_cols = [c for c in schema_map if c["type"] == "Numeric"]
+        datetime_cols = [c for c in schema_map if c["type"] == "DateTime"]
+
+        # Check for financial columns
+        financial_keywords = ['price', 'cost', 'amount', 'revenue', 'profit', 'loss', 'balance', 'payment', 'fee', 'charge']
+        has_financial = any(
+            any(keyword in col["name"].lower() for keyword in financial_keywords)
+            for col in schema_map
+        )
+
+        # Calculate quality score (simple version)
+        missing_ratio = df.isnull().sum().sum() / (len(df) * len(df.columns))
+        quality_score = 1.0 - missing_ratio
+
+        return {
+            "row_count": len(df),
+            "column_count": len(df.columns),
+            "schema_map": schema_map,
+            "detected_capabilities": {
+                "has_numeric_columns": len(numeric_cols) > 0,
+                "has_time_series": len(datetime_cols) > 0,
+                "has_financial_columns": has_financial
+            },
+            "quality_score": round(quality_score, 3)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Preview failed: {str(e)}")
+    finally:
+        # Clean up temporary file
+        file_path.unlink(missing_ok=True)
+
+
 @app.post("/run", response_model=RunResponse, tags=["Execution"])
 @limiter.limit("10/minute")
 async def trigger_run(
