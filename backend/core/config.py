@@ -60,10 +60,7 @@ class Settings(BaseSettings):
     # CORS Settings
     allowed_origins: str = "http://localhost:5173,http://localhost:3000"
 
-<<<<<<< Updated upstream
-    max_upload_size_mb: int = 600
-
-    # Upload Limits (fixed AttributeError)
+    # Upload Limits
     max_upload_size_mb: int = 600
     
     # Agent Execution Tuning
