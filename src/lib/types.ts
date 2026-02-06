@@ -7,17 +7,17 @@ export interface SchemaColumn {
 export interface DatasetPreview {
   row_count: number;
   column_count: number;
-  file_type: string;
+  file_type?: string;
   schema_map: SchemaColumn[];
   quality_score: number;
-  critical_gaps: string[];
+  critical_gaps?: string[];
   detected_capabilities: {
     has_financial_columns: boolean;
     has_time_series: boolean;
-    has_categorical: boolean;
-    has_numeric: boolean;
+    has_categorical?: boolean;
+    has_numeric_columns: boolean;
   };
-  warnings: string[];
+  warnings?: string[];
 }
 
 export interface TaskIntent {
