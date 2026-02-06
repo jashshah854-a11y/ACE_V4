@@ -915,7 +915,23 @@ class Expositor:
         drift_report: dict | None = None,
         onnx_export: dict | None = None,
     ) -> str:
-        """Generate a human-readable executive report using NarrativeEngine."""
+        """Generate a human-readable executive report.
+        
+        If executive_narrator agent has already generated a narrative, use it.
+        Otherwise, fall back to NarrativeEngine-based generation.
+        """
+        
+        # Check if executive_narrator already produced a report
+        executive_narrative = self.state.read("executive_narrative")
+        if executive_narrative and isinstance(executive_narrative, dict):
+            markdown = executive_narrative.get("markdown")
+            if markdown and len(markdown) > 100:
+                log_info("Using pre-generated executive narrative from executive_narrator agent")
+                return markdown
+        
+        # Check if we have deep insights to enhance the report
+        deep_insights = self.state.read("deep_insights") or {}
+        has_deep_insights = deep_insights.get("insights") and len(deep_insights.get("insights", [])) > 0
 
         narrator = create_narrative_engine(self.state)
         lines = []
@@ -929,37 +945,62 @@ class Expositor:
         lines.append(f"# {domain_name} Intelligence Report")
         lines.append("")
         
-        # Executive Summary
-        lines.append("## Executive Summary")
-        lines.append("")
-        
-        # Get top correlation and driver for summary
-        top_correlation = None
+        # Get correlation and driver data (needed for multiple sections)
         correlations = []
         corr_analysis = enhanced_analytics.get("correlation_analysis", {})
         if corr_analysis.get("strong_correlations"):
             correlations = corr_analysis["strong_correlations"]
-            top_correlation = correlations[0] if correlations else None
+        top_correlation = correlations[0] if correlations else None
         
-        top_driver = None
         drivers = []
         if importance_report and importance_report.get("features"):
             drivers = importance_report["features"]
-            top_driver = drivers[0] if drivers else None
+        top_driver = drivers[0] if drivers else None
         
         segment_count = overseer.get("stats", {}).get("k", 0) if overseer else 0
         anomaly_count = sentry.get("anomaly_count", 0) if sentry else 0
         
-        exec_summary = narrator.generate_executive_summary(
-            data_type=data_type.get("primary_type", "general"),
-            row_count=row_count,
-            top_correlation=top_correlation,
-            top_driver=top_driver,
-            segment_count=segment_count,
-            anomaly_count=anomaly_count,
-        )
-        lines.append(exec_summary)
-        lines.append("")
+        # If we have deep insights, use them for the executive summary
+        if has_deep_insights:
+            lines.append("## Executive Summary")
+            lines.append("")
+            headline = deep_insights.get("headline_insight", {})
+            if headline:
+                lines.append(f"> **Key Finding:** {headline.get('finding', '')}")
+                lines.append("")
+            
+            # Use top insights
+            insights = deep_insights.get("insights", [])[:5]
+            for i, insight in enumerate(insights, 1):
+                lines.append(f"**{i}. {insight.get('title', 'Insight')}**")
+                lines.append(f"- {insight.get('finding', '')}")
+                if insight.get('recommendation'):
+                    lines.append(f"- *Recommendation:* {insight.get('recommendation')}")
+                lines.append("")
+            
+            # Use recommendations
+            recs = deep_insights.get("recommendations", [])
+            if recs:
+                lines.append("## Recommended Actions")
+                lines.append("")
+                for rec in recs[:5]:
+                    lines.append(f"**P{rec.get('priority', '?')}:** {rec.get('action', '')}")
+                lines.append("")
+        else:
+            # Fall back to original NarrativeEngine logic
+            lines.append("## Executive Summary")
+            lines.append("")
+            
+            exec_summary = narrator.generate_executive_summary(
+                data_type=data_type.get("primary_type", "general"),
+                row_count=row_count,
+                top_correlation=top_correlation,
+                top_driver=top_driver,
+                segment_count=segment_count,
+                anomaly_count=anomaly_count,
+            )
+            lines.append(exec_summary)
+            lines.append("")
         
         # Your Data section (concise)
         lines.append("## Your Data")

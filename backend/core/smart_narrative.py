@@ -10,19 +10,22 @@ import json
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 
-# Set the API key before importing genai
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "GEMINI_KEY_REDACTED")
-os.environ["GEMINI_API_KEY"] = GEMINI_API_KEY
-
+# Use the same google-genai SDK as llm.py for consistency
 try:
-    import google.generativeai as genai
-    genai.configure(api_key=GEMINI_API_KEY)
+    from google import genai
+    # Client reads GEMINI_API_KEY from environment automatically
+    client = genai.Client()
     GENAI_AVAILABLE = True
 except ImportError:
     genai = None
+    client = None
     GENAI_AVAILABLE = False
-    print("[SmartNarrative] google-generativeai not installed")
-
+    print("[SmartNarrative] google-genai not installed")
+except Exception as e:
+    genai = None
+    client = None
+    GENAI_AVAILABLE = False
+    print(f"[SmartNarrative] Failed to initialize Gemini client: {e}")
 
 MODEL_NAME = "gemini-2.0-flash"
 
@@ -185,16 +188,42 @@ def _extract_context(snapshot: Dict[str, Any]) -> Dict[str, Any]:
         context["quality"] = {
             "data_quality_score": diag.get("data_quality_score"),
             "mode": diag.get("mode"),
-            "target_candidate": diag.get("target_candidate", {}).get("column"),
+            "target_candidate": diag.get("target_candidate", {}).get("column") if isinstance(diag.get("target_candidate"), dict) else None,
         }
 
     # Trust
     trust = snapshot.get("trust", {})
     if trust:
         context["trust"] = {
-            "score": trust.get("score") or trust.get("trust_score"),
+            "score": trust.get("overall_confidence") or trust.get("score") or trust.get("trust_score"),
             "level": trust.get("level") or trust.get("trust_level"),
+            "components": trust.get("components", {}),
         }
+    
+    # Anomalies - critical for insight generation
+    anomalies = snapshot.get("anomalies", {})
+    if anomalies and anomalies.get("anomaly_count", 0) > 0:
+        context["anomalies"] = {
+            "count": anomalies.get("anomaly_count", 0),
+            "drivers": anomalies.get("drivers", {}),
+            # Include top 5 anomaly examples for LLM context
+            "examples": anomalies.get("anomalies", [])[:5],
+        }
+    
+    # Time series patterns
+    time_series = snapshot.get("time_series", {})
+    if time_series and time_series.get("status") == "ok":
+        analyses = time_series.get("analyses", {})
+        ts_key = list(analyses.keys())[0] if analyses else None
+        if ts_key:
+            ts_data = analyses[ts_key]
+            context["time_series"] = {
+                "datetime_column": time_series.get("datetime_column"),
+                "date_range": time_series.get("date_range"),
+                "trend": ts_data.get("trend", {}),
+                "change_points": ts_data.get("change_points", {}),
+                "seasonality": ts_data.get("seasonality", {}).get("has_seasonality", False),
+            }
 
     return context
 
@@ -249,13 +278,14 @@ GUIDELINES:
 Return ONLY valid JSON, no markdown fences or explanation."""
 
     try:
-        model = genai.GenerativeModel(MODEL_NAME)
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.3,
-                max_output_tokens=4096,
-            )
+        # Use the client-based API (consistent with llm.py)
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=prompt,
+            config={
+                "temperature": 0.3,
+                "max_output_tokens": 4096,
+            }
         )
 
         text = response.text.strip()
@@ -321,20 +351,51 @@ def generate_narrative_for_run(state_manager) -> Dict[str, Any]:
 
     This is called by the pipeline after analysis is complete.
     """
-    # Build a snapshot-like dict from state
+    # Read actual artifacts from state (not the non-existent "identity" key)
+    data_profile = state_manager.read("data_profile") or {}
+    identity_card = state_manager.read("dataset_identity_card") or {}
+    enhanced_analytics = state_manager.read("enhanced_analytics") or {}
+    data_type = state_manager.read("data_type") or state_manager.read("data_type_identification") or {}
+    anomalies = state_manager.read("anomalies") or {}
+    time_series = state_manager.read("time_series_analysis") or {}
+    trust = state_manager.read("trust_object") or {}
+    validation = state_manager.read("data_validation_report") or {}
+    
+    # Build identity structure that _extract_context expects
+    # It looks for snapshot["identity"]["identity"]["row_count"] etc.
+    columns_data = data_profile.get("columns", {})
+    
+    identity_payload = {
+        "row_count": data_profile.get("row_count", 0),
+        "column_count": data_profile.get("column_count", 0),
+        "columns": columns_data,
+        "quality_score": enhanced_analytics.get("quality_score", 0) or enhanced_analytics.get("quality_metrics", {}).get("overall_completeness", 0) / 100,
+        "data_type": data_type,
+    }
+    
+    # Build the snapshot structure
     snapshot = {
-        "identity": state_manager.read("identity"),
-        "enhanced_analytics": state_manager.read("enhanced_analytics"),
+        "identity": {
+            "identity": identity_payload,  # Nested as expected by _extract_context
+        },
+        "enhanced_analytics": enhanced_analytics,
         "model_artifacts": {
             "importance_report": state_manager.read("importance_report"),
             "model_fit_report": state_manager.read("model_fit_report"),
-            "feature_importance": state_manager.read("feature_importance"),
+            "feature_importance": enhanced_analytics.get("feature_importance"),
         },
-        "diagnostics": state_manager.read("diagnostics"),
-        "trust": state_manager.read("trust"),
+        "diagnostics": validation,
+        "trust": trust,
+        # Additional context for richer narratives
+        "anomalies": anomalies,
+        "time_series": time_series,
     }
 
     run_id = state_manager.run_path.name if hasattr(state_manager, 'run_path') else "unknown"
+    
+    # Log what we're sending to help debug
+    print(f"[SmartNarrative] Building narrative for run {run_id}")
+    print(f"[SmartNarrative] Row count: {identity_payload['row_count']}, Column count: {identity_payload['column_count']}")
 
     # Generate narrative
     narrative = generate_smart_narrative(snapshot, run_id)

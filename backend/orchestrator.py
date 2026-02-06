@@ -73,6 +73,13 @@ TIME_BUDGETS = {
     "regression": 420,
     "personas": 300,
     "fabricator": 300,
+    "raw_data_sampler": 60,       # Quick data sampling
+    "deep_insight": 180,          # LLM calls for insight synthesis
+    "dot_connector": 120,         # Connection analysis
+    "hypothesis_engine": 180,     # Bold hypothesis generation
+    "so_what_deepener": 120,      # Implication deepening
+    "story_framer": 120,          # Narrative framing
+    "executive_narrator": 180,    # 3-pass LLM narrative generation
     "expositor": 180,
     "trust_evaluation": 90,
 }
@@ -470,6 +477,13 @@ def run_agent(agent_name, run_path):
         "sentry": "sentry",
         "personas": "persona_engine",
         "fabricator": "fabricator",
+        "raw_data_sampler": "raw_data_sampler",
+        "deep_insight": "deep_insight",
+        "dot_connector": "dot_connector",
+        "hypothesis_engine": "hypothesis_engine",
+        "so_what_deepener": "so_what_deepener",
+        "story_framer": "story_framer",
+        "executive_narrator": "executive_narrator",
         "expositor": "expositor",
         "trust_evaluation": "trust_evaluation",
     }

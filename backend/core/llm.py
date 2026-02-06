@@ -227,3 +227,67 @@ def call_llm_with_timeout(
         raise error[0]
 
     return result[0]
+
+
+def call_gemini(
+    prompt: str,
+    temperature: float = 0.3,
+    max_tokens: int = 4096,
+    parse_json: bool = False,
+) -> str | dict:
+    """
+    Flexible Gemini API call for insight generation.
+    
+    Args:
+        prompt: The full prompt to send
+        temperature: Creativity level (0.0-1.0)
+        max_tokens: Maximum output tokens
+        parse_json: If True, parse response as JSON
+        
+    Returns:
+        Response text or parsed dict if parse_json=True
+    """
+    if client is None:
+        mock = '{"insights": [], "recommendations": []}' if parse_json else "MOCK: No API client"
+        return json.loads(mock) if parse_json else mock
+    
+    config = {
+        "temperature": temperature,
+        "max_output_tokens": max_tokens,
+    }
+    if parse_json:
+        config["response_mime_type"] = "application/json"
+    
+    def _make_call():
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=prompt,
+            config=config,
+        )
+        
+        text = response.text.strip()
+        
+        # Clean markdown code fences if present
+        if text.startswith("```"):
+            lines = text.split("\n")
+            text = "\n".join(lines[1:])  # Remove first line with ```
+        if text.endswith("```"):
+            text = text.rsplit("```", 1)[0]
+        text = text.strip()
+        
+        if parse_json:
+            return json.loads(text)
+        return text
+    
+    try:
+        return _retry_with_backoff(_make_call)
+    except json.JSONDecodeError as e:
+        if parse_json:
+            print(f"[LLM] JSON parse error: {e}")
+            return {"error": str(e), "raw": ""}
+        raise
+    except Exception as e:
+        print(f"[LLM] Gemini call failed: {e}")
+        if parse_json:
+            return {"error": str(e)}
+        return f"ERROR: {e}"

@@ -11,6 +11,14 @@ PIPELINE_SEQUENCE = [
     "sentry",
     "personas",
     "fabricator",
+    # Human-quality interpretation layer
+    "raw_data_sampler",     # Sample actual data rows for LLM context
+    "deep_insight",         # Cross-artifact pattern synthesis
+    "dot_connector",        # Link findings into unified patterns
+    "hypothesis_engine",    # Generate bold speculative theories
+    "so_what_deepener",     # 3-level "so what" implications
+    "story_framer",         # Create narrative arc
+    "executive_narrator",   # Polish for executive delivery
     "expositor",
     "trust_evaluation",
 ]
@@ -27,6 +35,13 @@ PIPELINE_DESCRIPTIONS = {
     "sentry": "Anomaly detection",
     "personas": "Persona generation",
     "fabricator": "Strategy generation",
+    "raw_data_sampler": "Sample strategic data rows for deep analysis",
+    "deep_insight": "AI-powered cross-artifact insight synthesis",
+    "dot_connector": "Connect findings into unified patterns",
+    "hypothesis_engine": "Generate bold speculative hypotheses",
+    "so_what_deepener": "Deepen implications to stark business truths",
+    "story_framer": "Create narrative arc from analysis",
+    "executive_narrator": "Executive narrative and recommendation generation",
     "expositor": "Final report assembly",
     "trust_evaluation": "Trust model evaluation",
 }
@@ -44,12 +59,20 @@ STEP_TO_STAGE_MAP = {
     "sentry": {"stage": "anomaly", "display": "Anomaly Detection", "weight": 1},
     "personas": {"stage": "personas", "display": "Persona Generation", "weight": 1},
     "fabricator": {"stage": "report", "display": "Strategy Generation", "weight": 1},
+    "raw_data_sampler": {"stage": "insights", "display": "Data Sampling", "weight": 1},
+    "deep_insight": {"stage": "insights", "display": "AI Insight Synthesis", "weight": 1},
+    "dot_connector": {"stage": "insights", "display": "Pattern Linking", "weight": 1},
+    "hypothesis_engine": {"stage": "insights", "display": "Hypothesis Generation", "weight": 1},
+    "so_what_deepener": {"stage": "insights", "display": "Implication Analysis", "weight": 1},
+    "story_framer": {"stage": "insights", "display": "Narrative Framing", "weight": 1},
+    "executive_narrator": {"stage": "insights", "display": "Executive Narrative", "weight": 1},
     "expositor": {"stage": "report", "display": "Report Generation", "weight": 1},
     "trust_evaluation": {"stage": "report", "display": "Trust Evaluation", "weight": 1},
 }
 
 # Total steps including pre-pipeline ingestion
-TOTAL_PIPELINE_STEPS = 13  # ingestion + 12 pipeline steps
+TOTAL_PIPELINE_STEPS = 20  # ingestion + 19 pipeline steps
+
 
 
 def calculate_progress(current_step: str, steps_completed: list) -> dict:
