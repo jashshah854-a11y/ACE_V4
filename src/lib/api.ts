@@ -1,4 +1,5 @@
 import type {
+  DatasetPreview,
   RunResponse,
   RunStatus,
   Snapshot,
@@ -7,6 +8,20 @@ import type {
 } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+export async function previewDataset(file: File): Promise<DatasetPreview> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_BASE}/run/preview`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "Preview failed");
+  }
+  return res.json();
+}
 
 export async function submitRun(
   file: File,

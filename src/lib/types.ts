@@ -1,3 +1,25 @@
+export interface SchemaColumn {
+  name: string;
+  type: string;
+  sample: string;
+}
+
+export interface DatasetPreview {
+  row_count: number;
+  column_count: number;
+  file_type: string;
+  schema_map: SchemaColumn[];
+  quality_score: number;
+  critical_gaps: string[];
+  detected_capabilities: {
+    has_financial_columns: boolean;
+    has_time_series: boolean;
+    has_categorical: boolean;
+    has_numeric: boolean;
+  };
+  warnings: string[];
+}
+
 export interface TaskIntent {
   primary_question: string;
   decision_context: string;
