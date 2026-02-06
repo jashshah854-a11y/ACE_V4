@@ -292,6 +292,11 @@ def _build_snapshot_payload(run_id: str, lite: bool) -> tuple[Dict[str, Any], st
         # LLM-generated smart narrative
         payload["smart_narrative"] = state.read("smart_narrative") or None
 
+        # Interpretation layer artifacts
+        payload["deep_insights"] = state.read("deep_insights") or _load_json_file(run_path / "artifacts" / "deep_insights.json")
+        payload["hypotheses"] = state.read("hypotheses") or _load_json_file(run_path / "artifacts" / "hypotheses.json")
+        payload["executive_narrative"] = state.read("executive_narrative") or _load_json_file(run_path / "artifacts" / "executive_narrative.json")
+
     etag = _snapshot_etag(run_path, lite)
     return payload, etag
 

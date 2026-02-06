@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { Loader2, ArrowLeft, FileText, Sparkles, Shield, BookOpen } from "lucide-react";
+import { Loader2, ArrowLeft, FileText, Sparkles, Shield, BookOpen, Brain } from "lucide-react";
 import { motion } from "framer-motion";
 import { useSnapshot } from "@/lib/queries";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,13 @@ import { useState } from "react";
 import { ExecutiveSummaryTab } from "@/components/report/ExecutiveSummaryTab";
 import { InsightsTab } from "@/components/report/InsightsTab";
 import { HypothesesTab } from "@/components/report/HypothesesTab";
+import { TrustTab } from "@/components/report/TrustTab";
 import { FullReportTab } from "@/components/report/FullReportTab";
 
 const TABS = [
   { key: "summary", label: "Executive Summary", icon: FileText },
   { key: "insights", label: "Insights", icon: Sparkles },
+  { key: "hypotheses", label: "Hypotheses", icon: Brain },
   { key: "trust", label: "Trust & Confidence", icon: Shield },
   { key: "report", label: "Full Report", icon: BookOpen },
 ] as const;
@@ -120,11 +122,17 @@ export default function ReportPage() {
           )}
           {activeTab === "insights" && (
             <InsightsTab
-              insights={snapshot.governed_report?.insights ?? []}
+              deepInsights={snapshot.deep_insights}
+              govInsights={snapshot.governed_report?.insights ?? []}
+            />
+          )}
+          {activeTab === "hypotheses" && (
+            <HypothesesTab
+              hypotheses={snapshot.hypotheses}
             />
           )}
           {activeTab === "trust" && (
-            <HypothesesTab
+            <TrustTab
               trust={snapshot.trust}
               governedReport={snapshot.governed_report}
               warnings={snapshot.run_warnings}

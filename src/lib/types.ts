@@ -152,6 +152,50 @@ export interface EnhancedAnalytics {
   [key: string]: unknown;
 }
 
+// Deep Insight types (from deep_insight agent)
+export interface DeepInsight {
+  title: string;
+  finding: string;
+  why_it_matters: string;
+  recommendation: string;
+  impact_score: number;
+  confidence: string;
+  category: string;
+}
+
+export interface DeepInsights {
+  domain?: string;
+  insights: DeepInsight[];
+  curiosity_insights?: DeepInsight[];
+  headline_insight?: DeepInsight;
+  recommendations?: Array<{
+    title: string;
+    action: string;
+    priority: string;
+    impact: string;
+  }>;
+}
+
+// Hypothesis types (from hypothesis_engine agent)
+export interface Hypothesis {
+  finding_title: string;
+  hypothesis_type: "charitable" | "suspicious" | "wild" | "unknown";
+  hypothesis: string;
+  expected_evidence: string[];
+  disproving_evidence: string[];
+  confidence: number;
+  is_red_flag: boolean;
+}
+
+export interface HypothesesData {
+  status: string;
+  hypothesis_count: number;
+  red_flag_count: number;
+  hypotheses: Hypothesis[];
+  red_flags: Hypothesis[];
+  boldest_hypothesis?: Hypothesis;
+}
+
 export interface Snapshot {
   run_id: string;
   generated_at?: string;
@@ -162,6 +206,8 @@ export interface Snapshot {
   governed_report: GovernedReport;
   smart_narrative: SmartNarrative;
   enhanced_analytics: EnhancedAnalytics;
+  deep_insights?: DeepInsights;
+  hypotheses?: HypothesesData;
   model_artifacts?: Record<string, unknown>;
   evidence_map?: Record<string, unknown>;
   run_warnings?: string[];
