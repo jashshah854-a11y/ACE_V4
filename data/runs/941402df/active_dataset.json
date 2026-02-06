@@ -1,6 +1,0 @@
-{
-  "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\ACE_V3_Source\\data\\runs\\941402df\\artifacts\\dataset.parquet",
-  "source": "C:\\Users\\jashs\\Projects\\ACE_V4\\ACE_V3_Source\\backend\\data\\stress_100mb.csv",
-  "strategy": "full",
-  "manifest": "C:\\Users\\jashs\\Projects\\ACE_V4\\ACE_V3_Source\\data\\runs\\941402df\\artifacts\\dataset_manifest.json"
-}

@@ -19,9 +19,6 @@ from anti_gravity.core.regression import compute_regression_insights, infer_targ
 from core.analytics_validation import apply_artifact_validation
 
 
-from core.scope_enforcer import ScopeEnforcer, ScopeViolationError
-
-
 class RegressionAgent:
     """Train a lightweight regression model to explain value-oriented targets."""
 
@@ -31,17 +28,14 @@ class RegressionAgent:
 
     def _load_dataset(self) -> pd.DataFrame:
         config = PerformanceConfig()
-        run_config = self.state.read("run_config") or {}
-        ingestion_meta = self.state.read("ingestion_meta") or {}
-        fast_mode = bool(run_config.get("fast_mode", ingestion_meta.get("fast_mode", False)))
         dataset_info = self.state.read("active_dataset") or {}
         candidate = dataset_info.get("path")
         if candidate and Path(candidate).exists():
-            return smart_load_dataset(candidate, config=config, fast_mode=fast_mode, prefer_parquet=True)
+            return smart_load_dataset(candidate, config=config)
 
         default_path = self.state.get_file_path("cleaned_uploaded.csv")
         if Path(default_path).exists():
-            return smart_load_dataset(default_path, config=config, fast_mode=fast_mode, prefer_parquet=True)
+            return smart_load_dataset(default_path, config=config)
         raise FileNotFoundError("Active dataset not found for regression agent")
 
     def _compute_shap(self, pipeline, X_train, feature_names, target_column):
@@ -161,12 +155,6 @@ class RegressionAgent:
     def run(self):
         log_launch("Training regression explainer...")
         df = self._load_dataset()
-        try:
-            scope_guard = ScopeEnforcer(self.state, agent="regression")
-            df = scope_guard.trim_dataframe(df)
-        except ScopeViolationError as exc:
-            log_warn(f"Scope lock blocked Regression: {exc}")
-            raise
         run_config = self.state.read("run_config") or {}
 
         # Infer target from task_intent if not explicitly set

@@ -1,6 +1,0 @@
-{
-  "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\ACE_V3_Source\\backend\\data\\stress_100mb.csv",
-  "source": "C:\\Users\\jashs\\Projects\\ACE_V4\\ACE_V3_Source\\backend\\data\\stress_100mb.csv",
-  "strategy": "fast",
-  "manifest": "C:\\Users\\jashs\\Projects\\ACE_V4\\ACE_V3_Source\\data\\runs\\fe82fcdb\\artifacts\\dataset_manifest.json"
-}

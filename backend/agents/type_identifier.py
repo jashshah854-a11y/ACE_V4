@@ -8,13 +8,6 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from core.state_manager import StateManager
 from core.data_typing import classify_dataset
-from core.data_profile import build_data_profile
-from core.dataset_classification import classify_dataset_profile
-from core.analytics_validation import apply_artifact_validation
-from core.cache import load_cache, save_cache
-from core.run_manifest import read_manifest
-from core.data_loader import smart_load_dataset
-from ace_v4.performance.config import PerformanceConfig
 from jobs.progress import ProgressTracker
 from utils.logging import log_launch, log_ok, log_warn
 
@@ -36,16 +29,7 @@ class TypeIdentifier:
             self.state.write("data_type", {"primary_type": "unknown", "confidence": 0.0})
             return
 
-        run_config = self.state.read("run_config") or {}
-        ingestion_meta = self.state.read("ingestion_meta") or {}
-        fast_mode = bool(run_config.get("fast_mode", ingestion_meta.get("fast_mode", False)))
-        df = smart_load_dataset(
-            dataset_path,
-            config=PerformanceConfig(),
-            max_rows=1500,
-            fast_mode=fast_mode,
-            prefer_parquet=True,
-        )
+        df = pd.read_csv(dataset_path, nrows=1500)
         result = classify_dataset(df).as_dict()
         # Write to both keys for backward compatibility
         self.state.write("data_type_identification", result)

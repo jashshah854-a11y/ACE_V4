@@ -1,14 +1,11 @@
 import pandas as pd
 import numpy as np
-from sklearn.cluster import KMeans, MiniBatchKMeans
+from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score
 from sklearn.ensemble import IsolationForest
 from typing import Dict, List, Optional
 from .schema_utils import pick_first_role_column
-from .analyst_core import ModelSelector, ModelGovernanceError
-from .explainability import EvidenceObject
-from .parallel_clustering import run_parallel_clustering, should_use_parallel
 
 def load_data(path: str) -> pd.DataFrame:
     df = pd.read_csv(path)
@@ -130,7 +127,7 @@ def add_risk_features(df: pd.DataFrame, schema_map: Dict) -> pd.DataFrame:
 
     return df_out
 
-def run_universal_clustering(df: pd.DataFrame, schema_map, fast_mode: bool = False):
+def run_universal_clustering(df: pd.DataFrame, schema_map):
     """
     Universal clustering using SchemaMap.
     1. Select clustering features.
@@ -147,85 +144,17 @@ def run_universal_clustering(df: pd.DataFrame, schema_map, fast_mode: bool = Fal
     if row_count == 0:
         raise ValueError("Dataset contains no rows after sanitization.")
 
-    selector = ModelSelector()
-
     # 1. Feature Selection
-    features = list(schema_map.feature_plan.clustering_features)
+    features = schema_map.feature_plan.clustering_features
     if not features:
         # Fallback if no clustering features defined
-        features = list(schema_map.basic_types.numeric)
-    if not features:
-        # Final fallback: use numeric columns present in the dataframe
-        features = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col])]
-
+        features = schema_map.basic_types.numeric
+    
     # Ensure features exist in DF
     valid_features = [f for f in features if f in df.columns]
     if not valid_features:
         raise ValueError("No valid clustering features found in dataset.")
-
-    def _fallback_clustering(reason: str):
-        fallback_labels = fallback_segmentation(df)
-        evidence = EvidenceObject(
-            columns_used=valid_features or df.columns.tolist(),
-            computation_method="FallbackSegmentation",
-            result_statistic={"reason": reason},
-            confidence_level=25.0,
-            limitations=["Clustering disabled due to insufficient sample size"],
-            source_code="fallback_segmentation(df)  # half split by row order",
-            data_source="cluster_feature_frame",
-            source_notes="Fallback segmentation used due to insufficient samples.",
-        ).to_payload()
-        return {
-            "k": 1,
-            "silhouette": -1,
-            "sizes": [len(df)],
-            "labels": fallback_labels,
-            "fingerprints": {},
-            "warnings": [reason],
-            "evidence": evidence,
-            "feature_importance": [],
-            "confidence_interval": (-1.0, -0.5),
-            "artifacts": {},
-        }
-
-    try:
-        selector.ensure_clustering_allowed(row_count, len(valid_features))
-    except ModelGovernanceError as exc:
-        fallback_labels = fallback_segmentation(df)
-        evidence = EvidenceObject(
-            columns_used=valid_features or df.columns.tolist(),
-            computation_method="GovernanceFallback",
-            result_statistic={"reason": str(exc)},
-            confidence_level=25.0,
-            limitations=["Complex clustering blocked by explainability policy"],
-            source_code="fallback_segmentation(df)  # half split by row order",
-            data_source="cluster_feature_frame",
-            source_notes="Governance downgraded segmentation to deterministic half split.",
-        ).to_payload()
-        return {
-            "k": 1,
-            "silhouette": -1,
-            "sizes": [len(df)],
-            "labels": fallback_labels,
-            "fingerprints": {},
-            "warnings": [str(exc)],
-            "evidence": evidence,
-            "feature_importance": [],
-            "confidence_interval": (-1.0, -0.5),
-            "artifacts": {},
-        }
-
-    if row_count < 3:
-        return _fallback_clustering("Insufficient rows for clustering (n < 3).")
-
-    # Cap numeric features by variance for fast mode
-    if fast_mode and valid_features:
-        numeric_subset = df[valid_features].select_dtypes(include="number")
-        if not numeric_subset.empty:
-            variances = numeric_subset.var().sort_values(ascending=False)
-            top_features = list(variances.head(25).index)
-            valid_features = [f for f in valid_features if f in top_features]
-
+        
     df_cluster = df[valid_features].copy()
     
     # Fill NaNs (simple mean imputation for clustering)
@@ -237,95 +166,42 @@ def run_universal_clustering(df: pd.DataFrame, schema_map, fast_mode: bool = Fal
     norm_plan = {k: v for k, v in schema_map.normalization_plan.items() if k in valid_features}
     df_scaled = apply_normalization(df_cluster, norm_plan)
     
-    # Fast-mode sampling for clustering runtime
-    if fast_mode:
-        cluster_sample = min(len(df_scaled), 100_000)
-        df_scaled_sample = df_scaled.sample(n=cluster_sample, random_state=42) if len(df_scaled) > cluster_sample else df_scaled
-    else:
-        df_scaled_sample = df_scaled
-    
-    # 3. Auto-K Selection (Parallel or Sequential)
+    # 3. Auto-K Selection
     best_k = 3
     best_score = -1
-    best_labels_full = None
+    best_labels = None
     best_model = None
     
     # If dataset is small, limit K
-    max_k = min(5, len(df_scaled_sample) - 1)  # must be <= n_samples - 1
-    if max_k < 2:
-        return _fallback_clustering("Insufficient samples for clustering (n < 3).")
-    start_k = 3 if max_k >= 3 else 2
+    max_k = min(8, len(df))
+    if max_k < 3:
+        max_k = 3
     
     print(f"   Universal Clustering on {valid_features} (K={start_k}-{max_k})...")
     
-    # Decide: parallel or sequential?
-    use_parallel = should_use_parallel(len(df_scaled), len(valid_features))
-    
-    if use_parallel and not fast_mode:
-        # Use parallel processing for large datasets in normal mode
-        print(f"   Using PARALLEL clustering (dataset large enough)")
+    for k in range(3, max_k + 1):
+        if len(df_scaled) < k:
+            continue  # Not enough samples for this k
+        model = KMeans(n_clusters=k, random_state=42, n_init=10)
+        labels = model.fit_predict(df_scaled)
+        if len(set(labels)) < 2: continue # Skip if only 1 cluster found
+        score = silhouette_score(df_scaled, labels)
         
-        parallel_results = run_parallel_clustering(
-            df_scaled,
-            min_k=start_k,
-            max_k=max_k,
-            fast_mode=False,  # Use standard KMeans for quality
-            max_workers=None  # Auto-detect (16 on Railway)
-        )
-        
-        if parallel_results["error"]:
-            # Parallel failed, fall back to sequential
-            print(f"   Parallel clustering failed: {parallel_results['error']}")
-            print(f"   Falling back to sequential...")
-            use_parallel = False
-        else:
-            best_k = parallel_results["best_k"]
-            best_score = parallel_results["best_score"]
-            best_labels_full = np.array(parallel_results["best_labels"])
+        if score > best_score:
+            best_score = score
+            best_k = k
+            best_labels = labels
+            best_model = model
             
-            # Reconstruct model from centroids (for compatibility)
-            best_model = KMeans(n_clusters=best_k, random_state=42, n_init=1)
-            best_model.cluster_centers_ = np.array(parallel_results["best_centroids"])
-            best_model.labels_ = best_labels_full
-            best_model.inertia_ = parallel_results.get("best_inertia", 0.0)
-    
-    # Sequential fallback or fast mode
-    if not use_parallel or fast_mode:
-        mode_str = "FAST" if fast_mode else "SEQUENTIAL"
-        print(f"   Using {mode_str} clustering")
-        
-        for k in range(start_k, max_k + 1):
-            if len(df_scaled_sample) < k:
-                continue  # Not enough samples for this k
-            if fast_mode:
-                model = MiniBatchKMeans(n_clusters=k, random_state=42, batch_size=2048, n_init="auto")
-                model.fit(df_scaled_sample)
-                labels_full = model.predict(df_scaled)
-                sil_subset = df_scaled_sample.sample(n=min(len(df_scaled_sample), 20_000), random_state=42) if len(df_scaled_sample) > 20_000 else df_scaled_sample
-                sil_labels = model.predict(sil_subset)
-                score = silhouette_score(sil_subset, sil_labels) if len(set(sil_labels)) > 1 else -1
-            else:
-                model = KMeans(n_clusters=k, random_state=42, n_init=3)  # Reduced from 10
-                labels_full = model.fit_predict(df_scaled)
-                if len(set(labels_full)) < 2:
-                    continue
-                score = silhouette_score(df_scaled, labels_full)
-            
-            if score > best_score:
-                best_score = score
-                best_k = k
-                best_labels_full = labels_full
-                best_model = model
-            
-    if best_labels_full is None:
+    if best_labels is None:
         # Fallback to single cluster
         best_k = 1
-        best_labels_full = np.zeros(len(df))
+        best_labels = np.zeros(len(df))
         best_score = 0.0
 
     # 4. Schema-Aware Fingerprinting
     df_out = df.copy()
-    df_out["cluster"] = best_labels_full
+    df_out["cluster"] = best_labels
     
     fingerprints = {}
     sizes = []
@@ -378,24 +254,12 @@ def run_universal_clustering(df: pd.DataFrame, schema_map, fast_mode: bool = Fal
             "role_summaries": role_summaries
         }
 
-    if best_model is None:
-        return _fallback_clustering("Explainable clustering model unavailable.")
-
-    explainable = selector.wrap_kmeans(best_model, valid_features, best_score)
-    evidence_payload = explainable.get_evidence().to_payload()
-    feature_importance = [entry.as_dict() for entry in explainable.get_feature_importance()]
-    confidence_interval = explainable.get_confidence_interval()
-
     return {
         "k": best_k,
         "silhouette": best_score,
         "sizes": sizes,
         "fingerprints": fingerprints,
-        "labels": best_labels_full.tolist(),
-        "evidence": evidence_payload,
-        "feature_importance": feature_importance,
-        "confidence_interval": confidence_interval,
-        "artifacts": explainable.serialize_artifacts(),
+        "labels": best_labels.tolist()
     }
 
 def detect_universal_anomalies(df: pd.DataFrame, schema_map):

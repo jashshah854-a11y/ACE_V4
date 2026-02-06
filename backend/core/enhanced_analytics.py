@@ -11,34 +11,17 @@ Provides:
 
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Optional, Tuple, Any, TYPE_CHECKING
+from typing import Dict, List, Optional, Tuple, Any
 from scipy import stats
 from scipy.stats import pearsonr, spearmanr, chi2_contingency
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import cross_val_score
 import warnings
 import re
 import math
 
 warnings.filterwarnings('ignore')
-
-from .analyst_core import ModelSelector, ModelGovernanceError
-from .explainability import persist_evidence
-from .evidence_standards import (
-    EvidenceObject,
-    create_evidence,
-    should_enable_predictive_mode,
-    get_analysis_mode,
-    QUALITY_THRESHOLD
-)
-from .analytics_validation import (
-    validate_correlation_analysis,
-    validate_correlation_ci,
-    validate_feature_importance,
-    validate_redundancy_report,
-)
-
-if TYPE_CHECKING:  # pragma: no cover
-    from .state_manager import StateManager
 
 
 def safe_float(val: Any) -> float:
@@ -89,12 +72,7 @@ def _coerce_numeric(series: pd.Series) -> pd.Series:
 class EnhancedAnalytics:
     """Advanced analytics engine for comprehensive data analysis"""
 
-    def __init__(
-        self,
-        df: pd.DataFrame,
-        schema_map: Optional[Dict] = None,
-        state_manager: Optional["StateManager"] = None,
-    ):
+    def __init__(self, df: pd.DataFrame, schema_map: Optional[Dict] = None):
         """
         Initialize with dataframe and optional schema map
 
@@ -106,7 +84,6 @@ class EnhancedAnalytics:
         self.schema_map = schema_map
         self.numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
         self.categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
-        self.state_manager = state_manager
 
     def compute_correlation_matrix(self) -> Dict[str, Any]:
         """
@@ -318,76 +295,70 @@ class EnhancedAnalytics:
         }
 
     def compute_feature_importance(self, target_col: Optional[str] = None) -> Dict[str, Any]:
-        """Compute feature importance via white-box models enforced by governance."""
+        """
+        Compute feature importance using Random Forest
+
+        Args:
+            target_col: Target column for supervised importance. If None, attempts to infer.
+
+        Returns:
+            Feature importance rankings
+        """
         if len(self.numeric_cols) < 2:
             return {"available": False, "reason": "Insufficient features"}
 
+        # Auto-detect target if not provided
         if target_col is None:
             target_col = self._infer_target_column()
 
         if target_col is None or target_col not in self.df.columns:
             return {"available": False, "reason": "No valid target column"}
 
-        feature_cols = []
-        for col in self.numeric_cols:
-            if col == target_col:
-                continue
-            if _is_id_column(col):
-                continue
-            series = self.df[col]
-            if series.dropna().nunique() <= 1:
-                continue
-            if _near_constant(series):
-                continue
-            feature_cols.append(col)
+        # Prepare features and target
+        feature_cols = [col for col in self.numeric_cols if col != target_col]
         X = self.df[feature_cols].fillna(self.df[feature_cols].mean())
         y = self.df[target_col].fillna(self.df[target_col].mean())
 
         if len(X) < 10:
             return {"available": False, "reason": "Insufficient samples"}
 
+        # Determine task type
         is_regression = len(y.unique()) > 10
-        selector = ModelSelector()
-        try:
-            selector.ensure_supervised_allowed(len(X), len(feature_cols))
-        except ModelGovernanceError as exc:
-            return {"available": False, "reason": str(exc), "downgraded": True}
 
-        model = selector.get_regressor() if is_regression else selector.get_classifier()
         try:
+            if is_regression:
+                model = RandomForestRegressor(n_estimators=100, random_state=42, max_depth=10)
+            else:
+                model = RandomForestClassifier(n_estimators=100, random_state=42, max_depth=10)
+
             model.fit(X, y)
-        except Exception as exc:
-            return {"available": False, "reason": f"Model training failed: {exc}"}
 
-        importances = [entry.as_dict() for entry in model.get_feature_importance()]
-        
-        # NORMALIZATION FIX:
-        # Raw coefficients (e.g., 2.65) cannot be treated as percentages.
-        # We must normalize them relative to the sum of absolute importances.
-        total_importance = sum(imp["importance"] for imp in importances)
-        if total_importance > 0:
-            for imp in importances:
-                imp["importance"] = imp["importance"] / total_importance
-        
-        evidence = model.get_evidence().to_payload()
-        confidence_interval = model.get_confidence_interval()
-        artifacts = model.serialize_artifacts()
-        evidence_id = None
-        if self.state_manager is not None:
-            evidence_id = persist_evidence(self.state_manager, evidence, scope="feature_importance")
+            # Get feature importance
+            importances = model.feature_importances_
+            feature_importance = sorted(
+                zip(feature_cols, importances),
+                key=lambda x: x[1],
+                reverse=True
+            )
 
-        return {
-            "available": True,
-            "target": target_col,
-            "task_type": "regression" if is_regression else "classification",
-            "feature_importance": importances[:15],
-            "total_features": len(feature_cols),
-            "confidence_interval": confidence_interval,
-            "evidence": evidence,
-            "evidence_id": evidence_id,
-            "coefficients": artifacts.get("coefficients") if isinstance(artifacts, dict) else None,
-            "insights": self._generate_importance_insights([(imp["feature"], imp["importance"]) for imp in importances], target_col),
-        }
+            # Cross-validation score
+            cv_scores = cross_val_score(model, X, y, cv=min(5, len(X) // 2), scoring='r2' if is_regression else 'accuracy')
+
+            return {
+                "available": True,
+                "target": target_col,
+                "task_type": "regression" if is_regression else "classification",
+                "feature_importance": [
+                    {"feature": feat, "importance": float(imp), "rank": idx + 1}
+                    for idx, (feat, imp) in enumerate(feature_importance)
+                ],
+                "cv_score_mean": float(cv_scores.mean()),
+                "cv_score_std": float(cv_scores.std()),
+                "top_features": [feat for feat, _ in feature_importance[:5]],
+                "insights": self._generate_importance_insights(feature_importance, target_col)
+            }
+        except Exception as e:
+            return {"available": False, "reason": f"Model training failed: {str(e)}"}
 
     def compute_business_intelligence(self, cluster_labels: Optional[np.ndarray] = None) -> Dict[str, Any]:
         """
@@ -399,15 +370,14 @@ class EnhancedAnalytics:
         Returns:
             Business metrics and insights
         """
-        metrics = {"evidence": {}}
+        metrics = {}
 
         # Try to find value-related columns
         value_col = self._find_column_by_role(['revenue', 'value', 'amount', 'sales', 'total', 'price', 'cost', 'profit', 'budget'])
         time_col = self._find_column_by_role(['date', 'time', 'timestamp', 'created', 'month'])
 
         if value_col:
-            values = _coerce_numeric(self.df[value_col]).fillna(0)
-            metrics["evidence"]["value_column"] = value_col
+            values = self.df[value_col].fillna(0)
 
             metrics['value_metrics'] = {
                 "total_value": safe_float(values.sum()),
@@ -449,7 +419,6 @@ class EnhancedAnalytics:
 
             segment_values.sort(key=lambda x: x['total_value'], reverse=True)
             metrics['segment_value'] = segment_values
-            metrics["evidence"]["segment_value_column"] = value_col
 
         # Churn risk proxy (if we have activity/engagement metrics)
         activity_col = self._find_column_by_role(['activity', 'engagement', 'visits', 'sessions', 'transactions'])
@@ -461,92 +430,13 @@ class EnhancedAnalytics:
             at_risk_count = int((activity <= low_activity_threshold).sum())
 
             metrics['churn_risk'] = {
-                "at_risk_count": int(at_risk_count),
-                "at_risk_percentage": safe_float(at_risk_count / len(self.df) * 100),
-                "avg_activity": safe_float(activity.mean()),
-                "low_activity_threshold": safe_float(low_activity_threshold),
-                "activity_column": activity_col
+                "at_risk_count": at_risk_count,
+                "at_risk_percentage": float(at_risk_count / len(self.df) * 100),
+                "avg_activity": float(activity.mean()),
+                "low_activity_threshold": float(low_activity_threshold)
             }
-            metrics["evidence"]["churn_activity_column"] = activity_col
-            
-            # PHASE 9: Ghost Revenue Detection
-            # High-engagement users with zero revenue = monetization opportunities
-            revenue_col = self._find_column_by_role(['revenue', 'spend', 'payment', 'purchase', 'sales'])
-            if revenue_col:
-                revenue = _coerce_numeric(self.df[revenue_col]).fillna(0)
-                activity_threshold_75 = activity.quantile(0.75)
-                
-                # Ghost users: High activity BUT zero revenue
-                ghost_users = (activity > activity_threshold_75) & (revenue == 0)
-                ghost_count = int(ghost_users.sum())
-                
-                if ghost_count > 0:
-                    metrics['ghost_revenue'] = {
-                        "ghost_user_count": ghost_count,
-                        "ghost_user_percentage": safe_float(ghost_count / len(self.df) * 100),
-                        "avg_ghost_activity": safe_float(activity[ghost_users].mean()),
-                        "activity_threshold_75": safe_float(activity_threshold_75),
-                        "opportunity_segment": "High-Engagement, Zero-Revenue",
-                        "activity_column": activity_col,
-                        "revenue_column": revenue_col
-                    }
-                    metrics["evidence"]["ghost_revenue_columns"] = [activity_col, revenue_col]
-            
-            # PHASE 9: Zombie Cohorts Detection
-            # Active users generating zero value = dead weight
-            value_col = self._find_column_by_role(['value', 'ltv', 'lifetime_value', 'total_value'])
-            active_col = self._find_column_by_role(['active', 'status', 'is_active'])
-            
-            if value_col and active_col:
-                try:
-                    # Handle boolean or string active status
-                    if self.df[active_col].dtype == 'bool':
-                        is_active = self.df[active_col]
-                    else:
-                        # Assume 'active', 'Active', 'true', 'True', 1 mean active
-                        is_active = self.df[active_col].astype(str).str.lower().isin(['active', 'true', '1'])
-                    
-                    total_value = _coerce_numeric(self.df[value_col]).fillna(0)
-                    
-                    # Zombies: Active BUT zero value
-                    zombies = is_active & (total_value == 0)
-                    zombie_count = int(zombies.sum())
-                    
-                    if zombie_count > 0:
-                        metrics['zombie_cohorts'] = {
-                            "zombie_count": zombie_count,
-                            "zombie_percentage": safe_float(zombie_count / len(self.df) * 100),
-                            "zombie_segment": "Active, Zero-Value",
-                            "active_column": active_col,
-                            "value_column": value_col
-                        }
-                        metrics["evidence"]["zombie_cohort_columns"] = [active_col, value_col]
-                except Exception as e:
-                    # Silently skip if zombie detection fails
-                    pass
 
-        restaurant_risk = self._compute_restaurant_risk()
-        if restaurant_risk:
-            metrics["restaurant_risk"] = restaurant_risk
-            evidence_cols = restaurant_risk.get("evidence_columns")
-            if evidence_cols:
-                metrics["evidence"]["restaurant_risk_columns"] = evidence_cols
-
-        marketing_risk = self._compute_marketing_risk()
-        if marketing_risk:
-            metrics["marketing_risk"] = marketing_risk
-            evidence_cols = marketing_risk.get("evidence_columns")
-            if evidence_cols:
-                metrics["evidence"]["marketing_risk_columns"] = evidence_cols
-
-        marketing_simulation = self._compute_marketing_simulation()
-        if marketing_simulation:
-            metrics["marketing_simulation"] = marketing_simulation
-            evidence_cols = marketing_simulation.get("evidence_columns")
-            if evidence_cols:
-                metrics["evidence"]["marketing_simulation_columns"] = evidence_cols
-
-        if len([k for k in metrics.keys() if k != "evidence"]) == 0:
+        if not metrics:
             return {"available": False, "reason": "Insufficient business-related columns"}
 
         metrics['available'] = True
@@ -1335,12 +1225,8 @@ class EnhancedAnalytics:
         return insights
 
 
-def run_enhanced_analytics(
-    df: pd.DataFrame,
-    schema_map: Optional[Dict] = None,
-    cluster_labels: Optional[np.ndarray] = None,
-    state_manager: Optional["StateManager"] = None,
-) -> Dict[str, Any]:
+def run_enhanced_analytics(df: pd.DataFrame, schema_map: Optional[Dict] = None,
+                          cluster_labels: Optional[np.ndarray] = None) -> Dict[str, Any]:
     """
     Run complete enhanced analytics suite with quality-based fail-safe mode.
     
@@ -1357,30 +1243,14 @@ def run_enhanced_analytics(
     Returns:
         Comprehensive analytics results with mode indicator
     """
-    analytics = EnhancedAnalytics(df, schema_map, state_manager=state_manager)
-    
-    # Determine analysis mode based on data quality
-    quality_score = 1.0  # Default to high quality
-    if state_manager:
-        try:
-            identity_card = state_manager.read("dataset_identity_card")
-            if identity_card:
-                quality_score = identity_card.get("quality_score", 1.0)
-        except Exception:
-            pass  # Safe to proceed with default
-    
-    # FAIL-SAFE MODE GATE
-    analysis_mode = get_analysis_mode(quality_score)
-    enable_predictive = should_enable_predictive_mode(quality_score)
-    
-    print(f"[ENHANCED_ANALYTICS] Quality Score: {quality_score:.2f}")
-    print(f"[ENHANCED_ANALYTICS] Analysis Mode: {analysis_mode.upper()}")
-    
-    results = {
-        "analysis_mode": analysis_mode,
-        "quality_score": quality_score,
-        "quality_threshold": QUALITY_THRESHOLD,
-        "predictive_enabled": enable_predictive,
+    analytics = EnhancedAnalytics(df, schema_map)
+
+    return {
+        "correlation_analysis": analytics.compute_correlation_matrix(),
+        "distribution_analysis": analytics.analyze_distributions(),
+        "feature_importance": analytics.compute_feature_importance(),
+        "business_intelligence": analytics.compute_business_intelligence(cluster_labels),
+        "quality_metrics": analytics.compute_advanced_quality_metrics()
     }
     
     def _record_validation(name: str, validation: Dict[str, Any]) -> None:

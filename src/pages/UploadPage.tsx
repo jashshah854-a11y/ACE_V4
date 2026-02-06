@@ -1,214 +1,277 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, Loader2, ArrowLeft } from "lucide-react";
-import { toast } from "sonner";
+import {
+  Loader2,
+  ArrowRight,
+  Zap,
+  Shield,
+  BarChart3,
+  Sparkles,
+} from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { uploadDataset, startAnalysis, type DatasetIdentity } from "@/lib/api-client";
-import { DatasetIdentityCard } from "@/components/upload/DatasetIdentityCard";
-import { OverseerInterview, type TaskContract } from "@/components/upload/OverseerInterview";
+import { Input } from "@/components/ui/input";
+import { DropZone } from "@/components/upload/DropZone";
+import { previewDataset, submitRun } from "@/lib/api";
+import type { TaskIntent, DatasetPreview } from "@/lib/types";
+import { toast } from "sonner";
 
-type Step = 1 | 2 | 3;
+const DEFAULT_INTENT: TaskIntent = {
+  primary_question:
+    "Identify key patterns, anomalies, and actionable insights to optimize business strategy",
+  decision_context:
+    "Strategic planning and operational improvement based on data-driven evidence",
+  success_criteria:
+    "Clear metrics, prioritized recommendations, and confidence-scored insights",
+  required_output_type: "descriptive",
+};
+
+function generateSuggestedQuestions(preview: DatasetPreview): string[] {
+  const questions: string[] = [];
+  const numericCols = preview.schema_map
+    .filter((c) => c.type === "Numeric")
+    .map((c) => c.name);
+  const categoricalCols = preview.schema_map
+    .filter((c) => c.type === "String" || c.type === "Categorical")
+    .map((c) => c.name);
+
+  if (numericCols.length >= 2) {
+    questions.push(
+      `What is the relationship between ${numericCols[0]} and ${numericCols[1]}?`,
+    );
+  }
+
+  if (numericCols.length > 0 && categoricalCols.length > 0) {
+    questions.push(
+      `How does ${numericCols[0]} vary across different ${categoricalCols[0]} categories?`,
+    );
+  }
+
+  if (preview.detected_capabilities.has_financial_columns) {
+    questions.push("What financial patterns or anomalies exist in this data?");
+  }
+
+  if (preview.detected_capabilities.has_time_series) {
+    questions.push("What trends or seasonal patterns can be identified over time?");
+  }
+
+  if (numericCols.length > 0) {
+    questions.push(`What factors most influence ${numericCols[0]}?`);
+  }
+
+  if (categoricalCols.length > 0) {
+    questions.push(
+      `Are there distinct segments or clusters within the ${categoricalCols[0]} groups?`,
+    );
+  }
+
+  questions.push("What anomalies or outliers should be investigated?");
+
+  return questions.slice(0, 4);
+}
 
 export default function UploadPage() {
   const navigate = useNavigate();
-  const [step, setStep] = useState<Step>(1);
   const [file, setFile] = useState<File | null>(null);
-  const [identity, setIdentity] = useState<DatasetIdentity | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [starting, setStarting] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
+  const [preview, setPreview] = useState<DatasetPreview | null>(null);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [question, setQuestion] = useState("");
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
-  const handleFileDrop = useCallback(async (droppedFile: File) => {
-    setFile(droppedFile);
-    setUploading(true);
+  const handleFileSelect = async (selected: File) => {
+    setFile(selected);
+    setPreview(null);
+    setQuestion("");
+    setIsPreviewing(true);
     try {
-      const result = await uploadDataset(droppedFile);
-      setIdentity(result);
-      setStep(2);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Upload failed");
-      setFile(null);
+      const result = await previewDataset(selected);
+      setPreview(result);
+    } catch {
+      toast.error("Could not analyze dataset structure");
     } finally {
-      setUploading(false);
+      setIsPreviewing(false);
     }
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setIsDragging(false);
-      const droppedFile = e.dataTransfer.files[0];
-      if (droppedFile) handleFileDrop(droppedFile);
-    },
-    [handleFileDrop]
-  );
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) handleFileDrop(selectedFile);
   };
 
-  const handleContractSubmit = async (contract: TaskContract) => {
+  const handleSubmit = async () => {
     if (!file) return;
-    setStarting(true);
+    setIsSubmitting(true);
     try {
-      const taskIntent = {
-        primaryQuestion: contract.primaryQuestion,
-        decisionContext: contract.decisionContext,
-        successCriteria: contract.successCriteria,
-        requiredOutputType: "diagnostic",
-        forbidden_claims: contract.forbiddenClaims,
-        confidenceAcknowledged: true,
+      const intent: TaskIntent = {
+        ...DEFAULT_INTENT,
+        ...(question.trim() && { primary_question: question.trim() }),
       };
-      const result = await startAnalysis(file, taskIntent);
-      toast.success("Analysis started");
+      const result = await submitRun(file, intent);
+      toast.success(`Run ${result.run_id} queued`);
       navigate(`/pipeline/${result.run_id}`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to start analysis");
-      setStarting(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Submission failed");
+      setIsSubmitting(false);
     }
   };
+
+  const handleFileClear = () => {
+    setFile(null);
+    setPreview(null);
+    setQuestion("");
+  };
+
+  const suggestedQuestions = preview ? generateSuggestedQuestions(preview) : [];
+  const isBusy = isPreviewing || isSubmitting;
 
   return (
-    <main className="container mx-auto max-w-4xl px-4 py-8">
-      {/* Step indicator */}
-      <div className="flex items-center justify-center gap-2 mb-8">
-        {[1, 2, 3].map((s) => (
-          <div key={s} className="flex items-center gap-2">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                s === step
-                  ? "bg-primary text-primary-foreground"
-                  : s < step
-                    ? "bg-primary/20 text-primary"
-                    : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {s}
-            </div>
-            {s < 3 && (
-              <div
-                className={`w-12 h-0.5 ${
-                  s < step ? "bg-primary/40" : "bg-muted"
-                }`}
-              />
-            )}
-          </div>
-        ))}
-      </div>
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] px-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-2xl text-center"
+      >
+        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-3">
+          <span className="text-blue-500">ACE</span> Intelligence Engine
+        </h1>
+        <p className="text-lg text-muted-foreground mb-10 max-w-lg mx-auto">
+          Transform raw data into executive-quality intelligence reports using
+          our 20-agent AI pipeline.
+        </p>
 
-      {/* Step 1: File Drop */}
-      {step === 1 && (
-        <div>
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold mb-2">Upload Your Data</h2>
-            <p className="text-muted-foreground">
-              Drop a CSV, Excel, or Parquet file to start analysis
-            </p>
-          </div>
+        <DropZone
+          file={file}
+          onFileSelect={handleFileSelect}
+          onFileClear={handleFileClear}
+          disabled={isBusy}
+        />
 
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={`relative rounded-lg border-2 border-dashed p-12 text-center transition-colors ${
-              isDragging
-                ? "border-primary bg-primary/5"
-                : "border-muted-foreground/25 hover:border-muted-foreground/50"
-            }`}
+        {isPreviewing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mt-6 flex items-center justify-center gap-2 text-sm text-muted-foreground"
           >
-            <input
-              type="file"
-              onChange={handleFileChange}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              accept=".csv,.xlsx,.xls,.parquet"
-              disabled={uploading}
-            />
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Analyzing dataset structure...</span>
+          </motion.div>
+        )}
 
-            {uploading ? (
-              <div className="space-y-4">
-                <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
-                <p className="font-medium">Analyzing {file?.name}...</p>
-                <p className="text-sm text-muted-foreground">
-                  Scanning schema, detecting capabilities, and assessing quality
-                </p>
-              </div>
-            ) : (
-              <div>
-                <Upload className="mx-auto h-12 w-12 mb-4 text-muted-foreground" />
-                <p className="text-lg font-medium mb-2">
-                  Drop file here or click to browse
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  CSV, Excel, or Parquet files supported
-                </p>
+        {file && preview && !isPreviewing && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 space-y-4 max-w-xl mx-auto"
+          >
+            <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground mb-2">
+              <span>
+                <span className="text-foreground font-medium">
+                  {preview.row_count.toLocaleString()}
+                </span>{" "}
+                rows
+              </span>
+              <span className="w-1 h-1 rounded-full bg-border" />
+              <span>
+                <span className="text-foreground font-medium">
+                  {preview.column_count}
+                </span>{" "}
+                columns
+              </span>
+              <span className="w-1 h-1 rounded-full bg-border" />
+              <span className="text-green-400 font-medium">
+                {Math.round(preview.quality_score * 100)}% quality
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-sm text-muted-foreground text-left mb-1.5">
+                What question should ACE answer?
+              </label>
+              <Input
+                placeholder="e.g. What drives customer churn in this dataset?"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                disabled={isSubmitting}
+              />
+            </div>
+
+            {suggestedQuestions.length > 0 && (
+              <div className="text-left">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                  <span className="text-xs text-muted-foreground">
+                    Suggested questions
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedQuestions.map((q, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setQuestion(q)}
+                      disabled={isSubmitting}
+                      className="text-xs px-3 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/5 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500/50 transition-colors text-left disabled:opacity-50"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
-          </div>
 
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Your data is processed securely and never stored permanently.
-          </p>
-        </div>
-      )}
-
-      {/* Step 2: Dataset Preview */}
-      {step === 2 && identity && (
-        <div className="space-y-6">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold mb-1">Dataset Identity</h2>
-            <p className="text-muted-foreground text-sm">
-              Review your dataset profile before configuring the analysis
-            </p>
-          </div>
-
-          <DatasetIdentityCard identity={identity} />
-
-          <div className="flex items-center justify-between pt-4">
             <Button
-              variant="ghost"
-              onClick={() => {
-                setStep(1);
-                setFile(null);
-                setIdentity(null);
-              }}
+              size="lg"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="bg-blue-600 hover:bg-blue-500 text-white px-8 mt-2"
             >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Upload Different File
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  Start Analysis
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </>
+              )}
             </Button>
-            <Button onClick={() => setStep(3)}>
-              Continue to Task Configuration
-            </Button>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
 
-      {/* Step 3: Task Configuration */}
-      {step === 3 && identity && (
-        <div className="space-y-6">
-          {starting && (
-            <div className="flex items-center justify-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              <p className="font-medium text-primary">Starting analysis...</p>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6"
+        >
+          {[
+            {
+              icon: Zap,
+              title: "20 AI Agents",
+              desc: "Statistical analysis and LLM interpretation working in concert",
+            },
+            {
+              icon: Shield,
+              title: "Trust Scoring",
+              desc: "Every insight comes with a confidence assessment",
+            },
+            {
+              icon: BarChart3,
+              title: "Executive Reports",
+              desc: "Insights, hypotheses, and actionable recommendations",
+            },
+          ].map((feature) => (
+            <div
+              key={feature.title}
+              className="rounded-xl border border-border/50 bg-card/50 p-5 text-left"
+            >
+              <feature.icon className="w-5 h-5 text-blue-500 mb-3" />
+              <h3 className="text-sm font-semibold mb-1">{feature.title}</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {feature.desc}
+              </p>
             </div>
-          )}
-
-          <OverseerInterview
-            identity={identity}
-            onSubmit={handleContractSubmit}
-            onBack={() => setStep(2)}
-          />
-        </div>
-      )}
-    </main>
+          ))}
+        </motion.div>
+      </motion.div>
+    </div>
   );
 }

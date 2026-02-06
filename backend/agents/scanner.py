@@ -21,8 +21,7 @@ class ScannerAgent:
 
     def run(self):
         # Get data path from state or default
-        dataset_info = self.state.read("active_dataset") or {}
-        data_path = dataset_info.get("source") or dataset_info.get("path") or self.state.get_file_path("cleaned_uploaded.csv")
+        data_path = self.state.get_file_path("cleaned_uploaded.csv")
         if not Path(data_path).exists():
             raise ValueError(f"Dataset not found at {data_path}")
             

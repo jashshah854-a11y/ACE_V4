@@ -22,8 +22,6 @@ from core.data_loader import smart_load_dataset
 from ace_v4.performance.config import PerformanceConfig
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
-from core.explainability import persist_evidence
-from core.scope_enforcer import ScopeEnforcer, ScopeViolationError
 
 def build_feature_matrix(df, schema_map):
     resolved_schema = ensure_schema_map(schema_map)
@@ -54,9 +52,6 @@ class Overseer:
         
         # Load Data
         data_path = None
-        run_config = self.state.read("run_config") or {}
-        ingestion_meta = self.state.read("ingestion_meta") or {}
-        fast_mode = bool(run_config.get("fast_mode", ingestion_meta.get("fast_mode", False)))
         dataset_info = self.state.read("active_dataset") if self.state else None
         candidate = dataset_info.get("path") if isinstance(dataset_info, dict) else None
         if candidate and Path(candidate).exists():
@@ -71,27 +66,15 @@ class Overseer:
         try:
             print(f"[Overseer] Loading CSV from {data_path}")
             config = PerformanceConfig()
-            df = smart_load_dataset(
-                data_path,
-                config=config,
-                fast_mode=fast_mode,
-                prefer_parquet=True,
-            )
+            df = smart_load_dataset(data_path, config=config)
             print(f"[Overseer] Loaded {len(df)} rows, {len(df.columns)} columns")
         except Exception as e:
             raise ValueError(f"Could not load data from {data_path}: {e}")
 
-        try:
-            scope_guard = ScopeEnforcer(self.state, agent=self.name.lower())
-            df = scope_guard.trim_dataframe(df)
-        except ScopeViolationError as exc:
-            log_warn(f"Scope lock blocked Overseer: {exc}")
-            raise
-
         # 1. Run Universal Clustering
         print(f"[Overseer] Starting clustering...")
         try:
-            clustering_results = run_universal_clustering(df, self.schema_map, fast_mode=fast_mode)
+            clustering_results = run_universal_clustering(df, self.schema_map)
 
             stats = {
                 "k": clustering_results.get("k"),
@@ -102,19 +85,8 @@ class Overseer:
                 "stats": stats,
                 "fingerprints": clustering_results.get("fingerprints", {}),
                 "labels": clustering_results.get("labels", []),
-                "sizes": clustering_results.get("sizes", []),
-                "feature_importance": clustering_results.get("feature_importance", []),
-                "confidence_interval": clustering_results.get("confidence_interval"),
+                "sizes": clustering_results.get("sizes", [])
             }
-
-            evidence_id = None
-            if clustering_results.get("evidence") and self.state:
-                evidence_id = persist_evidence(self.state, clustering_results["evidence"], scope="clustering")
-            if evidence_id:
-                payload["evidence_id"] = evidence_id
-
-            if clustering_results.get("artifacts") and self.state:
-                self.state.write("clustering_artifacts", clustering_results["artifacts"])
 
             # Save output
             if self.state:
@@ -127,8 +99,42 @@ class Overseer:
             return "overseer done"
 
         except Exception as e:
-            log_warn(f"Clustering failed: {e}.")
-            raise
+            log_warn(f"Clustering failed: {e}. Using fallback.")
+            df["cluster"] = fallback_segmentation(df)
+
+            # Create minimal fallback output
+            rows_payload = df.to_dict(orient="records")
+            fallback_results = {
+                "stats": {"k": 1, "silhouette": 0.0, "data_quality": compute_data_quality(df)},
+                "fingerprints": {},
+                "labels": [0] * len(df),
+                "sizes": [len(df)],
+                "rows": rows_payload
+            }
+
+            if self.state:
+                self.state.write("overseer_output", fallback_results)
+
+            return "overseer done (fallback)"
+
+    def fallback(self, error):
+        log_warn(f"Overseer fallback triggered: {error}")
+        # Create minimal fallback output
+        try:
+            data_path = self.state.get_file_path("cleaned_uploaded.csv")
+            config = PerformanceConfig()
+            df = smart_load_dataset(data_path, config=config, max_rows=10000)
+            df["cluster"] = 0
+            rows = df.to_dict(orient="records")
+        except:
+            rows = []
+
+        return {
+            "stats": {"k": 1, "silhouette": 0.0, "data_quality": 0.0},
+            "fingerprints": {},
+            "rows": rows,
+            "error": str(error)
+        }
 
 
 def main():

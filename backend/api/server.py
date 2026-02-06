@@ -41,10 +41,6 @@ from jobs.redis_queue import RedisJobQueue  # Changed from SQLite queue
 from jobs.models import JobStatus
 from jobs.progress import ProgressTracker
 from core.config import settings
-from core.task_contract import parse_task_intent, TaskIntentValidationError
-from core.governance import rebuild_governance_artifacts
-from core.analytics_validation import apply_artifact_validation
-import pandas as pd
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -364,7 +360,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Secure CORS middleware configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.allowed_origins_list,
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "Accept"],
@@ -1042,14 +1038,93 @@ class RunResponse(BaseModel):
     message: str
     status: str
 
+@app.post("/run/preview", tags=["Execution"])
+@limiter.limit("30/minute")
+async def preview_dataset(request: Request, file: UploadFile = File(...)):
+    """
+    Quick preview of dataset structure without running full analysis.
+    Returns schema information, row/column counts, and detected capabilities.
+
+    Rate limit: 30 requests per minute
+    """
+    _validate_upload(file)
+
+    file_path = _safe_upload_path(file.filename)
+
+    try:
+        # Save file temporarily
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # Import data loader
+        from intake.loader import DataLoader
+
+        # Load and analyze dataset
+        loader = DataLoader(str(file_path))
+        df = loader.load()
+
+        if df is None or df.empty:
+            raise HTTPException(status_code=400, detail="Could not load dataset or dataset is empty")
+
+        # Build schema map
+        schema_map = []
+        for col in df.columns:
+            dtype = df[col].dtype
+            if dtype in ['int64', 'float64', 'int32', 'float32']:
+                col_type = "Numeric"
+            elif dtype == 'bool':
+                col_type = "Boolean"
+            elif dtype == 'datetime64[ns]':
+                col_type = "DateTime"
+            else:
+                col_type = "String"
+
+            schema_map.append({
+                "name": col,
+                "type": col_type,
+                "dtype": str(dtype)
+            })
+
+        # Detect capabilities
+        numeric_cols = [c for c in schema_map if c["type"] == "Numeric"]
+        datetime_cols = [c for c in schema_map if c["type"] == "DateTime"]
+
+        # Check for financial columns
+        financial_keywords = ['price', 'cost', 'amount', 'revenue', 'profit', 'loss', 'balance', 'payment', 'fee', 'charge']
+        has_financial = any(
+            any(keyword in col["name"].lower() for keyword in financial_keywords)
+            for col in schema_map
+        )
+
+        # Calculate quality score (simple version)
+        missing_ratio = df.isnull().sum().sum() / (len(df) * len(df.columns))
+        quality_score = 1.0 - missing_ratio
+
+        return {
+            "row_count": len(df),
+            "column_count": len(df.columns),
+            "schema_map": schema_map,
+            "detected_capabilities": {
+                "has_numeric_columns": len(numeric_cols) > 0,
+                "has_time_series": len(datetime_cols) > 0,
+                "has_financial_columns": has_financial
+            },
+            "quality_score": round(quality_score, 3)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Preview failed: {str(e)}")
+    finally:
+        # Clean up temporary file
+        file_path.unlink(missing_ok=True)
+
+
 @app.post("/run", response_model=RunResponse, tags=["Execution"])
 @limiter.limit("10/minute")
 async def trigger_run(
-    request: Request,
     file: UploadFile = File(...),
-    task_intent: str = Form(...),
-    confidence_acknowledged: str = Form(...),
-    mode: str = Form("full"),  # NEW: Quick View mode support
     target_column: Optional[str] = Form(None),
     feature_whitelist: Optional[str] = Form(None),
     model_type: Optional[str] = Form(None),
@@ -1063,30 +1138,6 @@ async def trigger_run(
     Accepts: CSV, JSON, XLSX, XLS, Parquet files (max configured size)
     Rate limit: 10 requests per minute
     """
-    logger.info(f"[API] POST /run - File: {file.filename}, Mode: {mode}")
-    logger.info(f"[API] task_intent received: {task_intent}")
-    logger.info(f"[API] confidence_acknowledged received: {confidence_acknowledged}")
-    
-    # Validate mode parameter
-    if mode not in ["full"]:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid mode '{mode}'. Must be 'full'."
-        )
-    
-    try:
-        intent_payload = parse_task_intent(task_intent)
-    except TaskIntentValidationError as exc:
-        detail = str(exc)
-        if getattr(exc, 'reformulation', None):
-            detail = f"{detail} {exc.reformulation}"
-        logger.error(f"[API] Task intent validation failed: {detail}")
-        raise HTTPException(status_code=400, detail=detail)
-
-    if _parse_bool(confidence_acknowledged) is not True:
-        logger.error("[API] Confidence not acknowledged")
-        raise HTTPException(status_code=400, detail="Please acknowledge the confidence threshold (>=80%).")
-
     _validate_upload(file)
 
     file_path = _safe_upload_path(file.filename)
@@ -1096,11 +1147,7 @@ async def trigger_run(
         model_type=model_type,
         include_categoricals=include_categoricals,
         fast_mode=fast_mode,
-    ) or {}
-    run_config["task_intent"] = intent_payload
-    run_config["confidence_threshold"] = intent_payload.get("confidence_threshold")
-    run_config["confidence_acknowledged"] = True
-    run_config["mode"] = mode  # Store mode for processing
+    )
 
     try:
         logger.info(f"[API] Saving file to {file_path}")
@@ -1274,338 +1321,7 @@ async def get_enhanced_analytics(run_id: str):
 
     return enhanced_analytics
 
-
-@app.get("/run/{run_id}/recommendations", tags=["Artifacts"])
-async def get_recommendations(run_id: str):
-    """Get ML-driven recommendations based on all analysis signals.
-
-    Returns prioritized, actionable recommendations derived from:
-    - Feature importance and model artifacts
-    - Correlation analysis
-    - Business intelligence signals
-    - Time series patterns
-    - Segment/persona data
-    """
-    _validate_run_id(run_id)
-
-    run_path = DATA_DIR / "runs" / run_id
-    state = StateManager(str(run_path))
-
-    # Gather all signals
-    enhanced_analytics = state.read("enhanced_analytics") or {}
-    model_artifacts = {
-        "importance_report": state.read("importance_report"),
-        "model_fit_report": state.read("model_fit_report"),
-    }
-    personas = state.read("personas") or []
-    strategies = state.read("strategies") or []
-    time_series = state.read("time_series_analysis") or {}
-
-    # Generate recommendations
-    from core.recommendation_engine import generate_recommendations
-    recommendations = generate_recommendations(
-        enhanced_analytics=enhanced_analytics,
-        model_artifacts=model_artifacts,
-        personas=personas,
-        strategies=strategies,
-        time_series=time_series,
-    )
-
-    return recommendations
-
-
-# REMOVED: Plural route - evidence system deprecated
-async def get_evidence_sample(run_id: str, rows: int = 5):
-    """
-    Return a small sample of the source dataset (redacted) for evidence inspection.
-    """
-    _validate_run_id(run_id)
-    rows = max(1, min(rows, 10))
-    run_path = DATA_DIR / "runs" / run_id
-    state = StateManager(str(run_path))
-
-    active = state.read("active_dataset") or {}
-    dataset_path = active.get("path")
-    if not dataset_path or not Path(dataset_path).exists():
-        raise HTTPException(status_code=404, detail="Dataset not found for this run")
-
-    df = None
-    try:
-        if str(dataset_path).lower().endswith(".parquet"):
-            df = pd.read_parquet(dataset_path)
-        else:
-            df = pd.read_csv(dataset_path, nrows=rows * 2)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load dataset: {e}")
-
-    # Simple redaction: drop common sensitive columns
-    redact_cols = [c for c in df.columns if any(k in c.lower() for k in ["email", "phone", "ssn", "password"])]
-    if redact_cols:
-        df = df.drop(columns=redact_cols)
-
-    sample = df.head(rows).to_dict(orient="records")
-    return {"rows": sample, "row_count": len(sample)}
-
-
-@app.get("/run/{run_id}/performance", tags=["Run"])
-async def get_run_performance(run_id: str):
-    """Get performance profiling data for a run.
-
-    Returns timing breakdown, memory samples, and bottleneck analysis.
-    """
-    _validate_run_id(run_id)
-    run_path = DATA_DIR / "runs" / run_id
-    state = StateManager(str(run_path))
-
-    # Try to get performance data from state
-    perf_data = state.read("performance_profile")
-
-    # Also check orchestrator state for step timings
-    orch_state = state.read("orchestrator_state") or {}
-    step_states = orch_state.get("step_states", {})
-
-    # Build performance summary from step states
-    step_timings = {}
-    for step_name, step_info in step_states.items():
-        if isinstance(step_info, dict):
-            runtime = step_info.get("runtime_seconds")
-            status = step_info.get("status", "unknown")
-            if runtime is not None:
-                step_timings[step_name] = {
-                    "duration_seconds": runtime,
-                    "status": status,
-                    "success": status == "completed",
-                }
-
-    total_duration = sum(s.get("duration_seconds", 0) for s in step_timings.values())
-
-    # Calculate percentages and find bottlenecks
-    for name, data in step_timings.items():
-        if total_duration > 0:
-            data["percentage"] = round(data["duration_seconds"] / total_duration * 100, 1)
-
-    bottlenecks = sorted(
-        step_timings.items(),
-        key=lambda x: x[1].get("duration_seconds", 0),
-        reverse=True,
-    )[:5]
-
-    return {
-        "run_id": run_id,
-        "total_duration_seconds": round(total_duration, 2),
-        "step_count": len(step_timings),
-        "steps": step_timings,
-        "bottlenecks": [{"step": name, **data} for name, data in bottlenecks],
-        "cached_profile": perf_data,
-    }
-
-
-@app.get("/run/{run_id}/timeline", tags=["Run"])
-async def get_timeline_selection(run_id: str):
-    """Return the synthetic timeline selection for a run."""
-    _validate_run_id(run_id)
-    run_path = DATA_DIR / "runs" / run_id
-    state = StateManager(str(run_path))
-    payload = state.read("synthetic_timeline") or {}
-    return {
-        'column': payload.get("column"),
-        'updated_at': payload.get("updated_at")
-    }
-
-
-@app.post("/run/{run_id}/timeline", tags=["Run"])
-async def set_timeline_selection(run_id: str, selection: TimelineSelection):
-    """Persist synthetic timeline column selection for a run."""
-    _validate_run_id(run_id)
-    run_path = DATA_DIR / "runs" / run_id
-    state = StateManager(str(run_path))
-    record = {"column": selection.column, "updated_at": _iso_now()}
-    state.write("synthetic_timeline", record)
-    return record
-
-@app.get("/run/{run_id}/diagnostics", tags=["Run"])
-async def get_diagnostics(run_id: str):
-    """
-    Return Safe Mode / validation diagnostics for a run.
-    """
-    _validate_run_id(run_id)
-    run_path = DATA_DIR / "runs" / run_id
-    state = StateManager(str(run_path))
-    return _build_diagnostics_payload(state, run_path)
-
-@app.get("/run/{run_id}/identity", tags=["Run"])
-async def get_identity_card(run_id: str):
-    """Return the dataset identity card and normalized schema profile for a run."""
-    _validate_run_id(run_id)
-    run_path = DATA_DIR / "runs" / run_id
-    state = StateManager(str(run_path))
-
-    identity = _ensure_identity_card(state, run_path)
-    if not identity:
-        raise HTTPException(status_code=404, detail="Identity card not found")
-    return _build_identity_payload(state, run_path)
-
-
-@app.get("/run/{run_id}/model-artifacts", tags=["Artifacts"])
-async def get_model_artifacts(run_id: str):
-    """
-    Return model transparency artifacts (feature importances/coefficients) if available.
-    """
-    _validate_run_id(run_id)
-    run_path = DATA_DIR / "runs" / run_id
-    state = StateManager(str(run_path))
-
-    regression = state.read("regression_insights") or {}
-    enhanced = state.read("enhanced_analytics") or {}
-
-    importance_report = state.read("importance_report")
-    coefficients_report = state.read("regression_coefficients_report")
-    baseline_metrics = state.read("baseline_metrics")
-    model_fit_report = state.read("model_fit_report")
-    collinearity_report = state.read("collinearity_report")
-    leakage_report = state.read("leakage_report")
-    feature_governance_report = state.read("feature_governance_report")
-
-    feature_importance = regression.get("feature_importance") or enhanced.get("feature_importance")
-    coefficients = regression.get("coefficients") or enhanced.get("coefficients")
-
-    if not any(
-        [
-            importance_report,
-            coefficients_report,
-            baseline_metrics,
-            model_fit_report,
-            collinearity_report,
-            leakage_report,
-            feature_governance_report,
-            feature_importance,
-            coefficients,
-        ]
-    ):
-        raise HTTPException(status_code=404, detail="Model artifacts not found")
-
-    return {
-        "importance_report": importance_report,
-        "regression_coefficients_report": coefficients_report,
-        "baseline_metrics": baseline_metrics,
-        "model_fit_report": model_fit_report,
-        "collinearity_report": collinearity_report,
-        "leakage_report": leakage_report,
-        "feature_governance_report": feature_governance_report,
-        "feature_importance": feature_importance,
-        "coefficients": coefficients,
-        "shap_explanations": state.read("shap_explanations"),
-        "onnx_export": state.read("onnx_export"),
-        "drift_report": state.read("drift_report"),
-    }
-
-
-@app.get("/run/{run_id}/snapshot", tags=["Run"])
-async def get_run_snapshot(request: Request, run_id: str, lite: bool = False):
-    """Return a consolidated snapshot for Executive Pulse."""
-    _validate_run_id(run_id)
-    run_path = DATA_DIR / "runs" / run_id
-    if not run_path.exists():
-        raise HTTPException(status_code=404, detail="Run not found")
-
-    etag = _snapshot_etag(run_path, lite)
-    if_none_match = request.headers.get("if-none-match")
-    headers = {
-        "ETag": etag,
-        "Cache-Control": "private, max-age=30",
-    }
-
-    cache_key = f"{run_id}:{'lite' if lite else 'full'}"
-    if if_none_match and if_none_match == etag:
-        return Response(status_code=304, headers=headers)
-
-    redis_payload, redis_etag = _snapshot_redis_get(cache_key)
-    if redis_payload and redis_etag:
-        snapshot_metrics["redis_hit"] += 1
-        headers["ETag"] = redis_etag
-        if if_none_match and if_none_match == redis_etag:
-            return Response(status_code=304, headers=headers)
-        try:
-            return JSONResponse(content=json.loads(redis_payload), headers=headers)
-        except Exception:
-            pass
-
-    cached = snapshot_cache.get(cache_key, etag)
-    if cached is not None:
-        snapshot_metrics["memory_hit"] += 1
-        return JSONResponse(content=cached, headers=headers)
-    snapshot_metrics["miss"] += 1
-
-    try:
-        payload, payload_etag = _build_snapshot_payload(run_id, lite)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Snapshot unavailable")
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Snapshot build failed: {exc}")
-
-    snapshot_cache.set(cache_key, payload, payload_etag)
-    _snapshot_redis_set(cache_key, json.dumps(payload), payload_etag)
-    headers["ETag"] = payload_etag
-    return JSONResponse(content=payload, headers=headers)
-
-
-# REMOVED: Plural route - evidence system deprecated
-async def get_evidence(run_id: str, evidence_id: Optional[str] = None):
-    """Expose persisted evidence objects for inspection."""
-    _validate_run_id(run_id)
-    run_path = DATA_DIR / "runs" / run_id
-    state = StateManager(str(run_path))
-    registry = state.read("evidence_registry") or {}
-    if evidence_id:
-        record = registry.get(evidence_id)
-        if not record:
-            raise HTTPException(status_code=404, detail="Evidence not found")
-        return record
-    if not registry:
-        raise HTTPException(status_code=404, detail="No evidence recorded for this run")
-    return {"records": registry}
-
-
-# REMOVED: Plural route - diff feature not in scope
-async def diff_runs(run_id: str, other_run_id: str):
-    """
-    Minimal diff: compare confidence and presence of overseer/personas/strategies between two runs.
-    """
-    _validate_run_id(run_id)
-    _validate_run_id(other_run_id)
-
-    def load(run: str):
-        rp = DATA_DIR / "runs" / run
-        st = StateManager(str(rp))
-        return {
-            "confidence": st.read("confidence_report") or {},
-            "overseer": st.read("overseer_output") or {},
-            "personas": st.read("personas") or {},
-            "strategies": st.read("strategies") or {},
-        }
-
-    a = load(run_id)
-    b = load(other_run_id)
-
-    def get_conf(c):
-        return c.get("data_confidence") or c.get("confidence_score") or 0
-
-    diff = {
-        "confidence_delta": get_conf(a["confidence"]) - get_conf(b["confidence"]),
-        "segments_delta": (len(a["overseer"].get("labels") or []) - len(b["overseer"].get("labels") or [])),
-        "personas_delta": (len(a["personas"].get("personas") or []) - len(b["personas"].get("personas") or [])),
-        "strategies_delta": (len(a["strategies"].get("strategies") or []) - len(b["strategies"].get("strategies") or [])),
-    }
-    return {"run_a": run_id, "run_b": other_run_id, "diff": diff}
-
-
-# REMOVED: Plural route - PPTX export deprecated
-async def export_pptx(run_id: str):
-    """
-    Placeholder for PPTX Evidence Deck export.
-    """
-    raise HTTPException(status_code=501, detail="PPTX export not implemented yet.")
-# REMOVED: Plural route - insights available in enhanced-analytics
+@app.get("/runs/{run_id}/insights", tags=["Artifacts"])
 async def get_key_insights(run_id: str):
     """Extract and return key insights from analysis.
 
@@ -1770,7 +1486,7 @@ async def get_run_state(request: Request, run_id: str):
         logger.error(f"[404] State not found for {run_id} (File missing, Redis fallback failed)")
         raise HTTPException(status_code=404, detail=f"State not found for {run_id}")
 
-    # Ensure progress fields exist for backward compatibility
+    # Ensure progress fields exist (for backward compatibility)
     if "progress" not in state:
         sys.path.append(str(Path(__file__).parent.parent))
         from core.pipeline_map import calculate_progress
@@ -1780,7 +1496,7 @@ async def get_run_state(request: Request, run_id: str):
         )
         state.update(progress_info)
 
-    # Ensure progress is clamped to 0-100
+    # Ensure progress is clamped 0-100
     state["progress"] = max(0, min(100, state.get("progress", 0)))
 
     return state

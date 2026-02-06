@@ -1,5 +1,4 @@
-@import './styles/scrollbar.css';
-@import './styles/typography.css';
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Crimson+Pro:wght@400;500;600;700&family=Lora:wght@400;500;600;700&display=swap');
 
@@ -10,220 +9,56 @@
 
 @layer base {
   :root {
-    --font-narrative: "Merriweather", serif;
-    --font-mono: "JetBrains Mono", monospace;
-    --font-display: "Inter Tight", sans-serif;
-    --action-color: #005eb8;
-
-    /* Glass Monolith Palette */
-    --glass-charcoal: 220 15% 7%;
-    /* #0F1115 - Deep Charcoal */
-    --glass-silver: 220 10% 90%;
-    /* #E2E4E9 - Soft Silver */
-    --glass-teal: 174 72% 56%;
-    /* #2DD4BF - Teal Accent */
-    --glass-blue: 217 91% 60%;
-    /* #3B82F6 - Blue Accent */
-    --glass-charcoal-light: 220 15% 12%;
-    /* Lighter charcoal for cards */
-  }
-}
-
-@layer utilities {
-  .text-action {
-    color: var(--action-color);
-  }
-
-  .prose-narrative {
-    font-family: var(--font-narrative);
-    font-size: 1.125rem;
-    line-height: 1.8;
-    max-width: 65ch;
-    color: hsl(var(--foreground));
-  }
-
-  .prose-narrative p {
-    margin-bottom: 1.5em;
-  }
-
-  .prose-evidence {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    /* text-xs */
-  }
-}
-
-@layer base {
-  :root {
-    /* Apple/Cupertino System Palette */
-    /* Background: System Gray 6 (Light) */
-    --background: 0 0% 96.1%;
-    /* #F5F5F7 */
-    --foreground: 0 0% 0%;
-    /* #000000 */
-
-    /* Card: Pure White */
+    --background: 220 14% 96%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
-
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
-
-    /* Primary: System Blue (or Black for monochrome) */
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-
-    /* Accent: System Blue */
-    --accent: 211 100% 50%;
-    /* #0071E3 */
+    --popover-foreground: 222 47% 11%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 92%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 220 14% 94%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 217 91% 60%;
     --accent-foreground: 0 0% 100%;
-
-    /* Secondary: System Gray 5 */
-    --secondary: 0 0% 89.8%;
-    /* #E5E5EA */
-    --secondary-foreground: 0 0% 0%;
-
-    /* Muted: System Gray 4 */
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45%;
-
-    /* Destructive: System Red */
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-
-    /* Borders */
-    --border: 0 0% 89.8%;
-    /* Matches secondary usually */
-    --input: 0 0% 89.8%;
-    --ring: 211 100% 50%;
-
-    /* Radius: Apple favors large roundness (20px+) */
-    --radius: 1rem;
-
-    /* Semantic - Clean Signals */
-    --warning: 35 100% 50%;
-    /* Amber */
-    --warning-foreground: 0 0% 100%;
-    --info: 211 100% 50%;
-    /* Blue */
-    --info-foreground: 0 0% 100%;
-    --success: 142 76% 36%;
-    /* Green */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 87%;
+    --input: 220 13% 87%;
+    --ring: 217 91% 60%;
+    --radius: 0.75rem;
+    --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
-
-    /* Sidebar - Transparent/Glass */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
   }
 
-  /* Increase specificity to ensure these override :root */
-  :root.dark {
-    /* Apple Dark Mode */
-    --background: 0 0% 0%;
-    /* Pure Black */
-    --foreground: 0 0% 98%;
-
-    --card: 0 0% 11%;
-    /* #1C1C1E */
-    --card-foreground: 0 0% 98%;
-
-    --popover: 0 0% 11%;
-    --popover-foreground: 0 0% 98%;
-
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-
-    --accent: 211 100% 50%;
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 6%;
+    --secondary: 217 33% 14%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 12%;
+    --muted-foreground: 215 20% 55%;
+    --accent: 217 91% 60%;
     --accent-foreground: 0 0% 100%;
-
-    --secondary: 0 0% 17%;
-    /* #2C2C2E */
-    --secondary-foreground: 0 0% 98%;
-
-    --muted: 0 0% 17%;
-    --muted-foreground: 0 0% 63%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 0 0% 17%;
-    --input: 0 0% 17%;
-    --ring: 211 100% 50%;
-
-    --warning: 35 100% 50%;
-    --warning-foreground: 0 0% 100%;
-    --info: 211 100% 50%;
-    --info-foreground: 0 0% 100%;
-    --success: 142 70% 45%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 217 91% 60%;
+    --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
-
-    --sidebar-background: 0 0% 11%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  /* Fallback for system preference if class is missing */
-  @media (prefers-color-scheme: dark) {
-    :root {
-      /* Apple Dark Mode */
-      --background: 0 0% 0%;
-      /* Pure Black */
-      --foreground: 0 0% 98%;
-
-      --card: 0 0% 11%;
-      /* #1C1C1E */
-      --card-foreground: 0 0% 98%;
-
-      --popover: 0 0% 11%;
-      --popover-foreground: 0 0% 98%;
-
-      --primary: 0 0% 98%;
-      --primary-foreground: 0 0% 9%;
-
-      --accent: 211 100% 50%;
-      --accent-foreground: 0 0% 100%;
-
-      --secondary: 0 0% 17%;
-      /* #2C2C2E */
-      --secondary-foreground: 0 0% 98%;
-
-      --muted: 0 0% 17%;
-      --muted-foreground: 0 0% 63%;
-
-      --destructive: 0 62.8% 30.6%;
-      --destructive-foreground: 0 0% 98%;
-
-      --border: 0 0% 17%;
-      --input: 0 0% 17%;
-      --ring: 211 100% 50%;
-
-      --warning: 35 100% 50%;
-      --warning-foreground: 0 0% 100%;
-      --info: 211 100% 50%;
-      --info-foreground: 0 0% 100%;
-      --success: 142 70% 45%;
-      --success-foreground: 0 0% 100%;
-
-      --sidebar-background: 0 0% 11%;
-      --sidebar-foreground: 240 4.8% 95.9%;
-      --sidebar-primary: 224.3 76.3% 48%;
-      --sidebar-primary-foreground: 0 0% 100%;
-      --sidebar-accent: 240 3.7% 15.9%;
-      --sidebar-accent-foreground: 240 4.8% 95.9%;
-      --sidebar-border: 240 3.7% 15.9%;
-      --sidebar-ring: 217.2 91.2% 59.8%;
-    }
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
   }
 }
 
@@ -233,7 +68,7 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', system-ui, sans-serif;
   }
 
@@ -242,236 +77,4 @@
   .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
-
-  .font-serif {
-    font-family: 'Crimson Pro', Georgia, serif;
-  }
-}
-
-@layer utilities {
-
-  /* Navy scale */
-  .text-navy-800 {
-    color: hsl(var(--navy-800));
-  }
-
-  .text-navy-900 {
-    color: hsl(var(--navy-900));
-  }
-
-  .bg-navy-50 {
-    background-color: hsl(var(--navy-50));
-  }
-
-  .bg-navy-100 {
-    background-color: hsl(var(--navy-100));
-  }
-
-  .bg-navy-900 {
-    background-color: hsl(var(--navy-900));
-  }
-
-  /* Teal/Emerald scale */
-  .text-teal-400 {
-    color: hsl(var(--teal-400));
-  }
-
-  .text-teal-500 {
-    color: hsl(var(--teal-500));
-  }
-
-  .text-teal-600 {
-    color: hsl(var(--teal-600));
-  }
-
-  .bg-teal-50 {
-    background-color: hsl(var(--teal-50));
-  }
-
-  .bg-teal-100 {
-    background-color: hsl(var(--teal-100));
-  }
-
-  .bg-teal-500 {
-    background-color: hsl(var(--teal-500));
-  }
-
-  .border-teal-500 {
-    border-color: hsl(var(--teal-500));
-  }
-
-  /* Copper/Terracotta scale */
-  .text-copper-400 {
-    color: hsl(var(--copper-400));
-  }
-
-  .text-copper-600 {
-    color: hsl(var(--copper-600));
-  }
-
-  .bg-copper-50 {
-    background-color: hsl(var(--copper-50));
-  }
-
-  .bg-copper-100 {
-    background-color: hsl(var(--copper-100));
-  }
-
-  .bg-copper-400 {
-    background-color: hsl(var(--copper-400));
-  }
-
-  .border-copper-400 {
-    border-color: hsl(var(--copper-400));
-  }
-
-  /* Consultant gradient (navy to teal) */
-  .gradient-consultant {
-    background: linear-gradient(135deg, hsl(var(--navy-900)) 0%, hsl(var(--teal-500)) 100%);
-  }
-
-  /* Meridian brand gradient - navy to teal with depth */
-  .gradient-meridian {
-    background: linear-gradient(135deg, hsl(var(--navy-900)) 0%, hsl(var(--teal-600)) 100%);
-  }
-
-  /* Primary glow effect */
-  .glow-primary {
-    box-shadow:
-      0 4px 12px hsl(var(--teal-500) / 0.25),
-      0 2px 4px hsl(var(--navy-900) / 0.1);
-  }
-
-  /* Teal accent glow */
-  .glow-accent {
-    box-shadow: 0 4px 16px hsl(var(--teal-500) / 0.3);
-  }
-
-  /* Selection colors */
-  .selection-copper ::selection {
-    background-color: hsl(var(--copper-100));
-    color: hsl(var(--copper-600));
-  }
-
-  /* Soft shadows */
-  .shadow-soft {
-    box-shadow:
-      0 1px 2px hsl(220 30% 12% / 0.03),
-      0 4px 8px hsl(220 30% 12% / 0.04),
-      0 12px 24px hsl(220 30% 12% / 0.05);
-  }
-
-  .shadow-soft-lg {
-    box-shadow:
-      0 2px 4px hsl(220 30% 12% / 0.02),
-      0 8px 16px hsl(220 30% 12% / 0.04),
-      0 24px 48px hsl(220 30% 12% / 0.06);
-  }
-}
-
-@layer components {
-
-  /* Glass card */
-  .glass-card {
-    @apply bg-card/90 backdrop-blur-xl border border-border/50 shadow-soft;
-  }
-
-  /* Report prose styling */
-  .prose-report {
-    @apply prose prose-slate dark:prose-invert max-w-none;
-    @apply prose-headings:font-serif prose-headings:font-bold prose-headings:text-navy-900 prose-headings:tracking-tight;
-    @apply prose-p:text-muted-foreground prose-p:leading-relaxed;
-    @apply prose-a:text-copper-600 prose-a:no-underline hover:prose-a:underline;
-    @apply prose-strong:text-foreground prose-strong:font-semibold;
-    @apply prose-code:text-copper-600 prose-code:bg-muted/50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded;
-  }
-
-  /* Consultant report section */
-  .report-section {
-    @apply py-16 md:py-24 border-b border-border last:border-0;
-  }
-}
-
-/* Animations */
-@keyframes float {
-
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-@keyframes fade-in-up {
-  0% {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes scale-in {
-  0% {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-.animate-fade-in-up {
-  animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-scale-in {
-  animation: scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-shimmer {
-  animation: shimmer 2s ease-in-out infinite;
-}
-
-/* Stagger delays */
-.stagger-1 {
-  animation-delay: 0.05s;
-}
-
-.stagger-2 {
-  animation-delay: 0.1s;
-}
-
-.stagger-3 {
-  animation-delay: 0.15s;
-}
-
-.stagger-4 {
-  animation-delay: 0.2s;
-}
-
-.stagger-5 {
-  animation-delay: 0.25s;
 }
