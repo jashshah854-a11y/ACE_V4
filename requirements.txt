@@ -13,3 +13,5 @@ requests
 joblib
 openai
 python-dotenv
+redis
+slowapi

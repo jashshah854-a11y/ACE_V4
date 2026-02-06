@@ -15,6 +15,7 @@ joblib
 openai
 python-dotenv
 altair
+redis
 # PDF Report Generation
 weasyprint
 markdown
