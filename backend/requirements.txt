@@ -14,10 +14,6 @@ joblib
 openai
 python-dotenv
 altair
-# Columnar IO and fast ingest
-duckdb
-polars
-pyarrow
 # PDF Report Generation
 weasyprint
 markdown

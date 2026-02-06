@@ -27,18 +27,10 @@ export function ExecutiveBrief({
     recommendedAction,
     className,
 }: ExecutiveBriefProps) {
-    // Safe defaults
-    const safePurpose = purpose || "Analysis pending";
-    const safeKeyFindings = Array.isArray(keyFindings) && keyFindings.length > 0 
-        ? keyFindings.filter(f => f && typeof f === 'string')
-        : ["No key findings available"];
-    const safeConfidenceVerdict = confidenceVerdict || "Confidence assessment pending";
-    const safeRecommendedAction = recommendedAction || "Review the analysis for next steps";
-
     // Determine confidence level for styling
-    const isHighConfidence = safeConfidenceVerdict.toLowerCase().includes("high");
-    const isLowConfidence = safeConfidenceVerdict.toLowerCase().includes("low") ||
-        safeConfidenceVerdict.toLowerCase().includes("insufficient");
+    const isHighConfidence = confidenceVerdict.toLowerCase().includes("high");
+    const isLowConfidence = confidenceVerdict.toLowerCase().includes("low") ||
+        confidenceVerdict.toLowerCase().includes("insufficient");
 
     return (
         <Card className={cn("border-2 border-primary/20 bg-gradient-to-br from-background to-muted/20", className)}>
@@ -48,7 +40,7 @@ export function ExecutiveBrief({
                     <div>
                         <h2 className="text-2xl font-bold tracking-tight mb-2">Executive Summary</h2>
                         <p className="text-base text-muted-foreground leading-relaxed">
-                            {safePurpose}
+                            {purpose}
                         </p>
                     </div>
                 </div>
@@ -62,7 +54,7 @@ export function ExecutiveBrief({
                         <h3 className="font-semibold text-lg">Key Findings</h3>
                     </div>
                     <ul className="space-y-2">
-                        {safeKeyFindings.map((finding, index) => (
+                        {keyFindings.map((finding, index) => (
                             <li key={index} className="flex items-start gap-3">
                                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-sm font-medium">
                                     {index + 1}
@@ -93,7 +85,7 @@ export function ExecutiveBrief({
                             !isHighConfidence && !isLowConfidence && "bg-blue-50 dark:bg-blue-950/20 border-blue-600 text-blue-900 dark:text-blue-100"
                         )}
                     >
-                        {safeConfidenceVerdict}
+                        {confidenceVerdict}
                     </p>
                 </div>
 
@@ -106,7 +98,7 @@ export function ExecutiveBrief({
                     </div>
                     <div className="bg-primary/5 border border-primary/20 rounded-md p-4">
                         <p className="text-base font-medium leading-relaxed text-foreground">
-                            {safeRecommendedAction}
+                            {recommendedAction}
                         </p>
                     </div>
                 </div>

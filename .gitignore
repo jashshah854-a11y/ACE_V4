@@ -1,16 +1,3 @@
-# OS / editor artifacts
-.DS_Store
-Thumbs.db
-.cursor/
-.idea
-.vscode/*
-!.vscode/extensions.json
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
 # Logs
 logs
 *.log
@@ -19,55 +6,21 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-*.tmp
-*.swp
-*.swo
 
-# Node artifacts
 node_modules
 dist
 dist-ssr
 *.local
-ACE_V3_Source/node_modules/
-ACE_V3_Source/dist/
-ACE_V3_Source/dist-ssr/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 .vercel
-
-# Python environments and caches
-venv/
-.venv/
-ENV/
-env/
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.egg-info/
-.pytest_cache/
-ACE_V3_Source/venv/
-ACE_V3_Source/.pytest_cache/
-
-# Project data and cache directories
-ACE_V3_Source/data/cache/
-ACE_V3_Source/data/runs/
-ACE_V3_Source/data/uploads/
-ACE_V3_Source/backend/data/cache/
-ACE_V3_Source/backend/data/runs/
-ACE_V3_Source/backend/data/uploads/
-ACE_V3_Source/backend/data/stress_100mb.csv
-
-# Archives and legacy snapshots
-archive/
-
-# Environment files (keep .env.example checked in)
 .env
-.env.local
-.env.development
-.env.production
-.env.test
-!.env.example
-
-# Binaries and installers
-*.exe
-*.dll
-*.pdb

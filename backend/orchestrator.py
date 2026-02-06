@@ -19,7 +19,9 @@ from core.run_utils import create_run_folder
 from core.state_manager import StateManager
 from core.data_guardrails import is_agent_allowed, append_limitation
 from core.insights import validate_insights
-from core.governance import rebuild_governance_artifacts, should_block_agent, render_governed_report, INSIGHT_AGENTS
+from core.identity_card import build_identity_card, save_identity_card
+from core.task_contract import build_task_contract, save_task_contract
+from core.confidence import compute_data_confidence
 from core.data_loader import calculate_file_timeout
 from agents.data_sanitizer import DataSanitizer
 from ace_v4.performance.config import PerformanceConfig
@@ -63,6 +65,7 @@ def initialize_state(run_id, state_path, data_path):
     from core.pipeline_map import calculate_progress
 
     steps = {}
+    # Add ingestion as first step
     steps["ingestion"] = {
         "name": "ingestion",
         "description": "Data ingestion and sanitization",
@@ -95,6 +98,7 @@ def initialize_state(run_id, state_path, data_path):
         ]
     }
 
+    # Initialize progress fields
     progress_info = calculate_progress("ingestion", [])
     state.update(progress_info)
 
@@ -122,6 +126,7 @@ def mark_step_running(state, step):
     state["status"] = "running"
     state["current_step"] = step
 
+    # Calculate and update progress
     progress_info = calculate_progress(step, state.get("steps_completed", []))
     state.update(progress_info)
 
@@ -150,6 +155,7 @@ def finalize_step(state, step, success, stdout, stderr):
     if step not in target_list:
         target_list.append(step)
 
+    # Recalculate progress after step completion
     progress_info = calculate_progress(state.get("current_step", step), state.get("steps_completed", []))
     state.update(progress_info)
 
@@ -289,11 +295,8 @@ def run_agent(agent_name, run_path):
         return False, "", f"Agent execution failed. Please check server logs."
 
 def orchestrate_new_run(data_path, run_config=None, run_id=None):
-    run_config = run_config or {}
-    if "task_intent" not in run_config and not os.getenv("ACE_ALLOW_UNSCOPED"):
-        raise ValueError("Task Contract missing. Provide task_intent payload or set ACE_ALLOW_UNSCOPED=1 for legacy runs.")
     print("=== ACE V3 ORCHESTRATOR START ===")
-    
+
     # 1. Create Run
     run_id, run_path = create_run_folder(run_id=run_id)
     state_manager = StateManager(run_path)
@@ -301,52 +304,109 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
     config = PerformanceConfig()
     print(f"[RUN] Run ID: {run_id}")
     print(f"[RUN] Run Path: {run_path}")
-    
-    # 2. Ingest Data (fast vs full). Respect fast_mode in run_config; default to fast for large files.
+
+    # 2. Initialize State with ingestion step
+    state_path = os.path.join(run_path, "orchestrator_state.json")
+
+    # 3. Sanitize Data (Step 0 - Pre-pipeline)
+    # We do this here to ensure the run folder has the clean data before the pipeline starts
     if not os.path.exists(data_path):
         print(f"[ERROR] Data file not found: {data_path}")
         shutil.rmtree(run_path, ignore_errors=True)
         return None, None
 
     file_size_mb = os.path.getsize(data_path) / (1024 * 1024)
-    fast_override = None
-    if run_config and "fast_mode" in run_config:
-        fast_override = bool(run_config.get("fast_mode"))
-    fast_mode = fast_override if fast_override is not None else file_size_mb >= 25
-    print(f"Preparing dataset ({file_size_mb:.2f} MB): {data_path} | fast_mode={fast_mode}")
+    print(f"Preparing dataset ({file_size_mb:.2f} MB): {data_path}")
+
+    # Initialize state before ingestion
+    state = initialize_state(run_id, state_path, data_path)
+
+    # Mark ingestion as running
+    mark_step_running(state, "ingestion")
+    save_state(state_path, state)
 
     try:
-        manifest_path, ingestion_meta = prepare_run_data(
-            data_path, run_path, progress=progress, config=config, fast_mode=fast_mode
-        )
-        state_manager.write("ingestion_meta", ingestion_meta)
+        if file_size_mb >= config.large_file_size_mb:
+            cleaned_path, ingestion_meta = prepare_run_data(
+                data_path, run_path, progress=progress, config=config
+            )
+            state_manager.write("ingestion_meta", ingestion_meta)
+            state_manager.write(
+                "active_dataset",
+                {"path": cleaned_path, "source": data_path, "strategy": "stream"},
+            )
+            print(f"Streamed dataset to {cleaned_path}")
+        else:
+            import pandas as pd
 
-        with open(manifest_path, "r", encoding="utf-8") as f:
-            manifest = json.load(f)
+            raw_df = pd.read_csv(data_path)
+            sanitizer = DataSanitizer()
+            clean_df, clean_report = sanitizer.sanitize(raw_df)
+            
+            cleaned_path = state_manager.get_file_path("cleaned_uploaded.csv")
+            clean_df.to_csv(cleaned_path, index=False)
+            state_manager.write("sanitizer_report", clean_report)
+            state_manager.write(
+                "active_dataset",
+                {"path": cleaned_path, "source": data_path, "strategy": "sanitize"},
+            )
+            print(f"Data sanitized. Clean file: {cleaned_path}")
 
-        active_path = manifest.get("parquet_path") or manifest.get("source_path")
-        state_manager.write(
-            "active_dataset",
-            {
-                "path": active_path,
-                "source": manifest.get("source_path"),
-                "strategy": "fast" if manifest.get("fast_mode_used") else "full",
-                "manifest": str(manifest_path),
-            },
-        )
-        print(f"Dataset manifest ready: {manifest_path}")
+            # Profile and drift artifacts for small/normal files
+            artifacts_dir = Path(run_path) / "artifacts"
+            artifacts_dir.mkdir(parents=True, exist_ok=True)
+
+            current_profile = profile_dataframe(clean_df.head(5000))
+            schema_profile_path = artifacts_dir / "schema_profile.json"
+            save_json(schema_profile_path, current_profile)
+
+            baseline_path = artifacts_dir / "baseline_profile.json"
+            if baseline_path.exists():
+                with open(baseline_path, "r", encoding="utf-8") as f:
+                    baseline_profile = json.load(f)
+            else:
+                baseline_profile = current_profile
+                save_json(baseline_path, baseline_profile)
+
+            drift_report = compute_drift_report(baseline_profile, current_profile)
+            drift_report_path = artifacts_dir / "drift_report.json"
+            save_json(drift_report_path, drift_report)
+
+            state_manager.write(
+                "ingestion_meta",
+                {
+                    "rows": len(clean_df),
+                    "schema_profile": str(schema_profile_path),
+                    "drift_report": str(drift_report_path),
+                    "drift_status": drift_report.get("status", "none"),
+                    "strategy": "sanitize",
+                },
+            )
+            progress.update(
+                "ingestion",
+                {
+                    "status": "completed",
+                    "rows_processed": len(clean_df),
+                    "strategy": "sanitize",
+                },
+            )
+
+        # Mark ingestion as completed
+        state = load_state(state_path)
+        finalize_step(state, "ingestion", True, "", "")
+        state["current_step"] = PIPELINE_SEQUENCE[0]
+        state["next_step"] = PIPELINE_SEQUENCE[0]
+        save_state(state_path, state)
 
     except Exception as e:
-        print(f"Ingestion failed: {e}")
+        print(f"Sanitization failed: {e}")
         shutil.rmtree(run_path, ignore_errors=True)
         return None, None
 
-    # 3. Init State
-    state_path = os.path.join(run_path, "orchestrator_state.json")
-    state = initialize_state(run_id, state_path, manifest.get("source_path", data_path))
-    state["start_epoch"] = time.time()
+    # 4. Update state with artifacts
+    state = load_state(state_path)
     state["artifacts"] = {
-        "dataset_manifest": os.path.basename(manifest_path),
+        "cleaned_dataset": os.path.basename(cleaned_path),
         "sanitizer_report": "sanitizer_report.json"
     }
     # Persist ingestion meta if present
@@ -360,21 +420,55 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
         if intake_meta.get("fusion_report_path"):
             state["artifacts"]["fusion_report"] = intake_meta.get("fusion_report_path")
 
-    state["data_path"] = active_path
+    state["data_path"] = cleaned_path
     if run_config:
         state["run_config"] = run_config
         state_manager.write("run_config", run_config)
-        if run_config.get("task_intent"):
-            state_manager.write("task_intent", run_config["task_intent"])
-    # Default mode handling
-    run_mode = "strict"
-    if run_config and run_config.get("mode") in {"strict", "exploratory"}:
-        run_mode = run_config["mode"]
-    state["run_mode"] = run_mode
-    state_manager.write("run_mode", run_mode)
 
-    # Build governance artifacts (identity card, task contract, confidence)
-    rebuild_governance_artifacts(state_manager)
+    # Build identity card, task contract, and confidence
+    ingestion_meta = state_manager.read("ingestion_meta") or {}
+    schema_profile_path = ingestion_meta.get("schema_profile")
+    drift_report_path = ingestion_meta.get("drift_report")
+    data_type = state_manager.read("data_type_identification") or state_manager.read("data_type") or {}
+
+    schema_profile = {}
+    drift_report = {}
+    if schema_profile_path and Path(schema_profile_path).exists():
+        with open(schema_profile_path, "r", encoding="utf-8") as f:
+            schema_profile = json.load(f)
+    if drift_report_path and Path(drift_report_path).exists():
+        with open(drift_report_path, "r", encoding="utf-8") as f:
+            drift_report = json.load(f)
+
+    identity_card = build_identity_card(schema_profile, data_type, drift_report, source_path=data_path)
+    card_path = Path(run_path) / "artifacts" / "dataset_identity_card.json"
+    save_identity_card(card_path, identity_card)
+    state_manager.write("dataset_identity_card", identity_card)
+
+    validation_report = state_manager.read("data_validation_report") or {}
+    # If not yet validated, proceed later; otherwise build contract now
+    target_col = validation_report.get("target_column")
+    has_target = bool(target_col)
+    target_is_binary = False
+    if has_target and target_col and target_col in schema_profile.get("columns", {}):
+        # heuristic for binary
+        target_is_binary = validation_report.get("checks", {}).get("variance", {}).get("detail", "").startswith("usable")
+
+    task_contract = build_task_contract(
+        identity_card,
+        validation_report,
+        ingestion_meta.get("drift_status", "none"),
+        has_target=has_target,
+        target_is_binary=target_is_binary,
+    )
+    contract_path = Path(run_path) / "artifacts" / "task_contract.json"
+    save_task_contract(contract_path, task_contract)
+    state_manager.write("task_contract", task_contract)
+
+    confidence = compute_data_confidence(identity_card, validation_report, ingestion_meta.get("drift_status", "none"))
+    conf_path = Path(run_path) / "artifacts" / "confidence_report.json"
+    save_json(conf_path, confidence)
+    state_manager.write("confidence_report", confidence)
     save_state(state_path, state)
     return run_id, run_path
 
@@ -409,34 +503,6 @@ def main_loop(run_path):
             break
 
         current = state["current_step"]
-
-        # Fast-mode runtime budget: if elapsed > 60s, skip remaining heavy steps and jump to expositor
-        run_config = state_manager.read("run_config") or {}
-        ingestion_meta = state_manager.read("ingestion_meta") or {}
-        fast_mode_flag = run_config.get("fast_mode")
-        fast_mode = bool(fast_mode_flag) if fast_mode_flag is not None else bool(ingestion_meta.get("fast_mode"))
-        start_epoch = state.get("start_epoch")
-        if fast_mode and start_epoch:
-            elapsed = time.time() - start_epoch
-            if elapsed > 60 and current != "expositor":
-                heavy_steps = {"overseer", "regression", "sentry", "personas", "fabricator"}
-                for step in PIPELINE_SEQUENCE:
-                    if step == "expositor":
-                        continue
-                    if step in state.get("steps_completed", []):
-                        continue
-                    if step in heavy_steps or PIPELINE_SEQUENCE.index(step) >= PIPELINE_SEQUENCE.index(current):
-                        step_state = state["steps"].setdefault(step, {"name": step})
-                        if step_state.get("status") not in {"completed", "skipped", "failed"}:
-                            step_state["status"] = "skipped"
-                            step_state["message"] = "Skipped due to fast-mode time budget"
-                            state["steps"][step] = step_state
-                            state.setdefault("failed_steps", []).append(step)
-                update_history(state, f"Fast-mode budget exceeded ({elapsed:.1f}s); jumping to expositor")
-                state["current_step"] = "expositor"
-                state["next_step"] = "expositor"
-                save_state(state_path, state)
-                continue
 
         # Honor validation guardrails (skip blocked agents rather than hallucinate)
         validation_report = state_manager.read("validation_report") or {}
@@ -479,39 +545,6 @@ def main_loop(run_path):
         mark_step_running(state, current)
         save_state(state_path, state)
 
-        # Ensure governance spine present before insight agents run
-        if current in INSIGHT_AGENTS:
-            if not state_manager.read("dataset_identity_card") or not state_manager.read("task_contract"):
-                rebuild_governance_artifacts(state_manager)
-            if not state_manager.read("dataset_identity_card"):
-                update_history(state, f"{current} blocked: missing identity card")
-                append_limitation(state_manager, "Identity card missing; cannot proceed.", agent=current, severity="error")
-                finalize_step(state, current, False, "", "Missing identity card")
-                state["status"] = "complete_with_errors"
-                state["next_step"] = "blocked"
-                save_state(state_path, state)
-                continue
-
-            blocked, reason = should_block_agent(current, state_manager)
-            if blocked:
-                step_state = state["steps"].setdefault(current, {"name": current})
-                step_state["status"] = "skipped"
-                step_state["message"] = reason
-                state["steps_completed"].append(current)
-                state["steps"][current] = step_state
-                append_limitation(state_manager, f"{current} blocked: {reason}", agent=current, severity="error")
-                update_history(state, f"{current} skipped due to governance: {reason}")
-                # mark pipeline as limited
-                state["status"] = "complete_with_errors"
-                idx = PIPELINE_SEQUENCE.index(current)
-                if idx + 1 < len(PIPELINE_SEQUENCE):
-                    state["current_step"] = PIPELINE_SEQUENCE[idx + 1]
-                    state["next_step"] = PIPELINE_SEQUENCE[idx + 1]
-                else:
-                    state["next_step"] = "complete"
-                save_state(state_path, state)
-                continue
-
         attempts = 0
         success = False
         stdout = ""
@@ -537,21 +570,12 @@ def main_loop(run_path):
 
         finalize_step(state, current, success, stdout, stderr)
 
-        # Refresh governance artifacts after type identification or validation updates
-        if success and current in {"type_identifier", "validator"}:
-            try:
-                rebuild_governance_artifacts(StateManager(run_path))
-            except Exception as e:
-                update_history(state, f"Governance rebuild failed after {current}: {e}")
-
         # Guard: Check validation before allowing insight-generating agents
         if current in ["overseer", "regression", "personas", "fabricator"]:
             from core.data_guardrails import check_validation_passed
             state_mgr = StateManager(run_path)
             can_proceed, reason = check_validation_passed(state_mgr)
-            # Allow exploratory mode to continue with limitations
-            run_mode = state_mgr.read("run_mode") or "strict"
-            if not can_proceed and run_mode != "exploratory":
+            if not can_proceed:
                 state["status"] = "complete_with_errors"
                 state["next_step"] = "blocked"
                 update_history(state, f"Agent '{current}' blocked: {reason}", returncode=1)
@@ -559,8 +583,6 @@ def main_loop(run_path):
                 append_limitation(state_mgr, f"Cannot run {current}: {reason}", agent=current, severity="error")
                 save_state(state_path, state)
                 continue
-            elif not can_proceed and run_mode == "exploratory":
-                update_history(state, f"Validation failed but continuing (exploratory): {reason}", returncode=0)
         
         # Guard: Check domain constraints before running agents
         if current in ["overseer", "regression", "personas"]:
@@ -583,12 +605,10 @@ def main_loop(run_path):
             constraints = get_domain_constraints(data_type)
             state_mgr.write(f"{current}_domain_constraints", constraints)
         
-        # Guard: if validation failed, stop pipeline unless force_run is set
+        # Guard: if validation failed, stop pipeline and record limitation
         if current == "validator":
             validation = StateManager(run_path).read("data_validation_report") or {}
-            run_cfg = StateManager(run_path).read("run_config") or {}
-            force_run = bool(run_cfg.get("force_run"))
-            if not validation.get("can_proceed", False) and not force_run:
+            if not validation.get("can_proceed", False):
                 state["status"] = "complete_with_errors"
                 state["next_step"] = "blocked"
                 update_history(state, "Data validation failed; pipeline blocked", returncode=1)
@@ -596,8 +616,6 @@ def main_loop(run_path):
                 _record_final_status(run_path, "complete_with_errors", reason="data_validation_block")
                 # Don't break - allow pipeline to continue but mark as limited
                 continue
-            elif not validation.get("can_proceed", False) and force_run:
-                update_history(state, "Validation failed but continuing due to force_run", returncode=0)
 
         if success:
             idx = PIPELINE_SEQUENCE.index(current)
@@ -656,11 +674,6 @@ def main_loop(run_path):
                     append_limitation(StateManager(run_path), "Insights missing evidence; narrative must not assert unsupported claims.", agent="expositor", severity="error")
                     state["status"] = "complete_with_errors"
                     save_state(state_path, state)
-            # Render governed report with enforced contract/evidence
-            try:
-                render_governed_report(StateManager(run_path), insights_path)
-            except Exception as e:
-                update_history(state, f"Governed report rendering failed: {e}")
             save_state(state_path, state)
         
         time.sleep(POLL_TIME)

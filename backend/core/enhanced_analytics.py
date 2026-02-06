@@ -11,30 +11,21 @@ Provides:
 
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Optional, Tuple, Any, TYPE_CHECKING
+from typing import Dict, List, Optional, Tuple, Any
 from scipy import stats
 from scipy.stats import pearsonr, spearmanr, chi2_contingency
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import cross_val_score
 import warnings
 
 warnings.filterwarnings('ignore')
-
-from .analyst_core import ModelSelector, ModelGovernanceError
-from .explainability import persist_evidence
-
-if TYPE_CHECKING:  # pragma: no cover
-    from .state_manager import StateManager
 
 
 class EnhancedAnalytics:
     """Advanced analytics engine for comprehensive data analysis"""
 
-    def __init__(
-        self,
-        df: pd.DataFrame,
-        schema_map: Optional[Dict] = None,
-        state_manager: Optional["StateManager"] = None,
-    ):
+    def __init__(self, df: pd.DataFrame, schema_map: Optional[Dict] = None):
         """
         Initialize with dataframe and optional schema map
 
@@ -46,7 +37,6 @@ class EnhancedAnalytics:
         self.schema_map = schema_map
         self.numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
         self.categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
-        self.state_manager = state_manager
 
     def compute_correlation_matrix(self) -> Dict[str, Any]:
         """
@@ -174,16 +164,26 @@ class EnhancedAnalytics:
         }
 
     def compute_feature_importance(self, target_col: Optional[str] = None) -> Dict[str, Any]:
-        """Compute feature importance via white-box models enforced by governance."""
+        """
+        Compute feature importance using Random Forest
+
+        Args:
+            target_col: Target column for supervised importance. If None, attempts to infer.
+
+        Returns:
+            Feature importance rankings
+        """
         if len(self.numeric_cols) < 2:
             return {"available": False, "reason": "Insufficient features"}
 
+        # Auto-detect target if not provided
         if target_col is None:
             target_col = self._infer_target_column()
 
         if target_col is None or target_col not in self.df.columns:
             return {"available": False, "reason": "No valid target column"}
 
+        # Prepare features and target
         feature_cols = [col for col in self.numeric_cols if col != target_col]
         X = self.df[feature_cols].fillna(self.df[feature_cols].mean())
         y = self.df[target_col].fillna(self.df[target_col].mean())
@@ -191,40 +191,43 @@ class EnhancedAnalytics:
         if len(X) < 10:
             return {"available": False, "reason": "Insufficient samples"}
 
+        # Determine task type
         is_regression = len(y.unique()) > 10
-        selector = ModelSelector()
-        try:
-            selector.ensure_supervised_allowed(len(X), len(feature_cols))
-        except ModelGovernanceError as exc:
-            return {"available": False, "reason": str(exc), "downgraded": True}
 
-        model = selector.get_regressor() if is_regression else selector.get_classifier()
         try:
+            if is_regression:
+                model = RandomForestRegressor(n_estimators=100, random_state=42, max_depth=10)
+            else:
+                model = RandomForestClassifier(n_estimators=100, random_state=42, max_depth=10)
+
             model.fit(X, y)
-        except Exception as exc:
-            return {"available": False, "reason": f"Model training failed: {exc}"}
 
-        importances = [entry.as_dict() for entry in model.get_feature_importance()]
-        evidence = model.get_evidence().to_payload()
-        confidence_interval = model.get_confidence_interval()
-        artifacts = model.serialize_artifacts()
-        evidence_id = None
-        if self.state_manager is not None:
-            evidence_id = persist_evidence(self.state_manager, evidence, scope="feature_importance")
+            # Get feature importance
+            importances = model.feature_importances_
+            feature_importance = sorted(
+                zip(feature_cols, importances),
+                key=lambda x: x[1],
+                reverse=True
+            )
 
-        return {
-            "available": True,
-            "target": target_col,
-            "task_type": "regression" if is_regression else "classification",
-            "feature_importance": importances[:15],
-            "total_features": len(feature_cols),
-            "confidence_interval": confidence_interval,
-            "confidence": evidence["confidence_level"],
-            "evidence": evidence,
-            "evidence_id": evidence_id,
-            "coefficients": artifacts.get("coefficients") if isinstance(artifacts, dict) else None,
-            "insights": self._generate_importance_insights([(imp["feature"], imp["importance"]) for imp in importances], target_col),
-        }
+            # Cross-validation score
+            cv_scores = cross_val_score(model, X, y, cv=min(5, len(X) // 2), scoring='r2' if is_regression else 'accuracy')
+
+            return {
+                "available": True,
+                "target": target_col,
+                "task_type": "regression" if is_regression else "classification",
+                "feature_importance": [
+                    {"feature": feat, "importance": float(imp), "rank": idx + 1}
+                    for idx, (feat, imp) in enumerate(feature_importance)
+                ],
+                "cv_score_mean": float(cv_scores.mean()),
+                "cv_score_std": float(cv_scores.std()),
+                "top_features": [feat for feat, _ in feature_importance[:5]],
+                "insights": self._generate_importance_insights(feature_importance, target_col)
+            }
+        except Exception as e:
+            return {"available": False, "reason": f"Model training failed: {str(e)}"}
 
     def compute_business_intelligence(self, cluster_labels: Optional[np.ndarray] = None) -> Dict[str, Any]:
         """
@@ -236,7 +239,7 @@ class EnhancedAnalytics:
         Returns:
             Business metrics and insights
         """
-        metrics = {"evidence": {}}
+        metrics = {}
 
         # Try to find value-related columns
         value_col = self._find_column_by_role(['revenue', 'value', 'amount', 'sales', 'total'])
@@ -244,7 +247,6 @@ class EnhancedAnalytics:
 
         if value_col:
             values = self.df[value_col].fillna(0)
-            metrics["evidence"]["value_column"] = value_col
 
             metrics['value_metrics'] = {
                 "total_value": float(values.sum()),
@@ -286,7 +288,6 @@ class EnhancedAnalytics:
 
             segment_values.sort(key=lambda x: x['total_value'], reverse=True)
             metrics['segment_value'] = segment_values
-            metrics["evidence"]["segment_value_column"] = value_col
 
         # Churn risk proxy (if we have activity/engagement metrics)
         activity_col = self._find_column_by_role(['activity', 'engagement', 'visits', 'sessions', 'transactions'])
@@ -301,12 +302,10 @@ class EnhancedAnalytics:
                 "at_risk_count": at_risk_count,
                 "at_risk_percentage": float(at_risk_count / len(self.df) * 100),
                 "avg_activity": float(activity.mean()),
-                "low_activity_threshold": float(low_activity_threshold),
-                "activity_column": activity_col
+                "low_activity_threshold": float(low_activity_threshold)
             }
-            metrics["evidence"]["churn_activity_column"] = activity_col
 
-        if len([k for k in metrics.keys() if k != "evidence"]) == 0:
+        if not metrics:
             return {"available": False, "reason": "Insufficient business-related columns"}
 
         metrics['available'] = True
@@ -536,12 +535,8 @@ class EnhancedAnalytics:
         return insights
 
 
-def run_enhanced_analytics(
-    df: pd.DataFrame,
-    schema_map: Optional[Dict] = None,
-    cluster_labels: Optional[np.ndarray] = None,
-    state_manager: Optional["StateManager"] = None,
-) -> Dict[str, Any]:
+def run_enhanced_analytics(df: pd.DataFrame, schema_map: Optional[Dict] = None,
+                          cluster_labels: Optional[np.ndarray] = None) -> Dict[str, Any]:
     """
     Run complete enhanced analytics suite
 
@@ -553,7 +548,7 @@ def run_enhanced_analytics(
     Returns:
         Comprehensive analytics results
     """
-    analytics = EnhancedAnalytics(df, schema_map, state_manager=state_manager)
+    analytics = EnhancedAnalytics(df, schema_map)
 
     return {
         "correlation_analysis": analytics.compute_correlation_matrix(),

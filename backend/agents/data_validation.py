@@ -7,8 +7,6 @@ import pandas as pd
 sys.path.append(str(Path(__file__).parent.parent))
 
 from core.state_manager import StateManager
-from core.data_loader import smart_load_dataset
-from ace_v4.performance.config import PerformanceConfig
 
 
 MIN_SAMPLE_SIZE = 50
@@ -53,23 +51,14 @@ def main():
 
     run_path = sys.argv[1]
     state = StateManager(run_path)
-    dataset_info = state.read("active_dataset") or {}
-    data_path = dataset_info.get("path") or state.get_file_path("cleaned_uploaded.csv")
+    data_path = state.get_file_path("cleaned_uploaded.csv")
 
-    if not data_path or not Path(data_path).exists():
+    if not Path(data_path).exists():
         state.write("data_validation_report", {"can_proceed": False, "reason": "missing_dataset"})
         print("[DATA_VALIDATION] Missing dataset.")
         sys.exit(1)
 
-    run_config = state.read("run_config") or {}
-    ingestion_meta = state.read("ingestion_meta") or {}
-    fast_mode = bool(run_config.get("fast_mode", ingestion_meta.get("fast_mode", False)))
-    df = smart_load_dataset(
-        data_path,
-        config=PerformanceConfig(),
-        fast_mode=fast_mode,
-        prefer_parquet=True,
-    )
+    df = pd.read_csv(data_path)
 
     report: Dict[str, Any] = {
         "row_count": len(df),

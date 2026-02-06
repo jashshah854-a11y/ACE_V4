@@ -1,14 +1,11 @@
-import { motion } from "framer-motion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Users, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 interface Segment {
     name: string;
-    displayName?: string;
-    segmentType?: {
-        label: string;
-        icon: string;
-        colorClass: string;
-    };
     size: number;
     sizePercent: number;
     avgValue: number;
@@ -24,164 +21,132 @@ interface SegmentOverviewTableProps {
 }
 
 export function SegmentOverviewTable({ segments, totalCustomers, className }: SegmentOverviewTableProps) {
-    // Don't render if no meaningful data
-    if (!segments || segments.length === 0) return null;
-
-    // Filter and validate segments
-    const validSegments = segments.filter(s => 
-        s && 
-        s.name &&
-        typeof s.size === 'number' &&
-        typeof s.avgValue === 'number'
-    );
-
-    if (validSegments.length === 0) return null;
-
-    const riskConfig: Record<string, { bg: string; text: string; label: string }> = {
-        low: { bg: "bg-success/10", text: "text-success", label: "Low" },
-        medium: { bg: "bg-warning/10", text: "text-warning", label: "Medium" },
-        high: { bg: "bg-destructive/10", text: "text-destructive", label: "High" }
+    const riskConfig = {
+        low: { color: "text-green-600", bg: "bg-green-100 dark:bg-green-900/30", label: "Low Risk" },
+        medium: { color: "text-yellow-600", bg: "bg-yellow-100 dark:bg-yellow-900/30", label: "Medium Risk" },
+        high: { color: "text-red-600", bg: "bg-red-100 dark:bg-red-900/30", label: "High Risk" }
     };
 
-    const defaultRisk = { bg: "bg-muted/10", text: "text-muted-foreground", label: "Unknown" };
-
-    const actionConfig: Record<string, { bg: string; text: string }> = {
-        Retain: { bg: "bg-primary", text: "Retain" },
-        Upsell: { bg: "bg-success", text: "Grow" },
-        "Re-engage": { bg: "bg-warning", text: "Win Back" },
-        Monitor: { bg: "bg-muted-foreground", text: "Monitor" },
-        Acquire: { bg: "bg-accent", text: "Acquire" }
+    const actionConfig = {
+        Retain: { color: "bg-blue-500", icon: TrendingUp },
+        Upsell: { color: "bg-green-500", icon: TrendingUp },
+        "Re-engage": { color: "bg-orange-500", icon: TrendingDown },
+        Monitor: { color: "bg-slate-500", icon: Minus },
+        Acquire: { color: "bg-purple-500", icon: TrendingUp }
     };
 
-    const defaultAction = { bg: "bg-muted", text: "—" };
-
-    const avgValue = validSegments.reduce((sum, s) => sum + (s.avgValue || 0), 0) / validSegments.length || 1;
-    const sortedSegments = [...validSegments].sort((a, b) => (b.avgValue || 0) - (a.avgValue || 0));
+    const avgValue = segments.reduce((sum, s) => sum + s.avgValue, 0) / segments.length;
+    const sortedSegments = [...segments].sort((a, b) => b.avgValue - a.avgValue);
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className={cn("bg-card border border-border rounded-sm shadow-soft overflow-hidden", className)}
+            className={className}
         >
-            {/* Header */}
-            <div className="px-6 py-5 border-b border-border bg-muted/30">
-                <h3 className="font-serif text-xl font-semibold text-navy-900">
-                    Customer Segments
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                    {segments.length} segments identified · {totalCustomers.toLocaleString()} total customers
-                </p>
-            </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-primary" />
+                        Segment Overview
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground mt-2">
+                        Quick reference for all {segments.length} identified segments with recommended actions
+                    </p>
+                </CardHeader>
+                <CardContent>
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b border-border">
+                                    <th className="text-left py-3 px-4 font-semibold text-sm">Segment</th>
+                                    <th className="text-right py-3 px-4 font-semibold text-sm">Size</th>
+                                    <th className="text-right py-3 px-4 font-semibold text-sm">Value Index</th>
+                                    <th className="text-center py-3 px-4 font-semibold text-sm">Risk</th>
+                                    <th className="text-left py-3 px-4 font-semibold text-sm">Key Behavior</th>
+                                    <th className="text-center py-3 px-4 font-semibold text-sm">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sortedSegments.map((segment, idx) => {
+                                    const risk = riskConfig[segment.riskLevel];
+                                    const valueIndex = (segment.avgValue / avgValue * 100).toFixed(0);
+                                    const action = actionConfig[segment.recommendedAction];
+                                    const ActionIcon = action.icon;
 
-            {/* Table */}
-            <div className="overflow-x-auto">
-                <table className="w-full">
-                    <thead>
-                        <tr className="border-b border-border bg-muted/20">
-                            <th className="text-left py-3.5 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                Segment
-                            </th>
-                            <th className="text-right py-3.5 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                Size
-                            </th>
-                            <th className="text-right py-3.5 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                Avg Value
-                            </th>
-                            <th className="text-center py-3.5 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                Risk
-                            </th>
-                            <th className="text-center py-3.5 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                Strategy
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/50">
-                        {sortedSegments.map((segment, idx) => {
-                            const risk = riskConfig[segment.riskLevel] || defaultRisk;
-                            const action = actionConfig[segment.recommendedAction] || defaultAction;
-                            const valueIndex = avgValue > 0 ? Math.round(((segment.avgValue || 0) / avgValue) * 100) : 0;
-
-                            return (
-                                <motion.tr
-                                    key={segment.name}
-                                    initial={{ opacity: 0, x: -8 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: idx * 0.05, duration: 0.3 }}
-                                    className="hover:bg-muted/20 transition-colors"
-                                >
-                                    <td className="py-4 px-6">
-                                        <div className="flex items-center gap-3">
-                                            {idx === 0 && (
-                                                <span className="text-teal-500 text-lg" title="Highest Value">
-                                                    ★
-                                                </span>
-                                            )}
-                                            <div>
-                                                <span className="font-medium text-foreground">
-                                                    {segment.displayName || segment.name}
-                                                </span>
-                                                {segment.segmentType && (
-                                                    <span className="ml-2 text-xs text-muted-foreground">
-                                                        {segment.segmentType.icon}
+                                    return (
+                                        <motion.tr
+                                            key={segment.name}
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: idx * 0.05 }}
+                                            className="border-b border-border/50 hover:bg-muted/30 transition-colors"
+                                        >
+                                            <td className="py-3 px-4">
+                                                <div className="flex items-center gap-2">
+                                                    {idx === 0 && (
+                                                        <span className="text-yellow-500" title="Highest Value">
+                                                            ⭐
+                                                        </span>
+                                                    )}
+                                                    <span className="font-medium">{segment.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-4 text-right">
+                                                <div className="text-sm">
+                                                    <div className="font-semibold">{segment.size.toLocaleString()}</div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {segment.sizePercent.toFixed(1)}%
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-4 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <span className={cn(
+                                                        "font-semibold text-sm",
+                                                        parseInt(valueIndex) > 120 ? "text-green-600" :
+                                                        parseInt(valueIndex) > 80 ? "text-blue-600" :
+                                                        "text-orange-600"
+                                                    )}>
+                                                        {valueIndex}
                                                     </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="py-4 px-6 text-right">
-                                        <div className="tabular-nums">
-                                            <span className="font-semibold text-foreground">
-                                                {segment.size.toLocaleString()}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground ml-1">
-                                                ({segment.sizePercent.toFixed(0)}%)
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td className="py-4 px-6 text-right">
-                                        <div className="tabular-nums">
-                                            <span className="font-semibold text-teal-500">
-                                                ${segment.avgValue.toLocaleString()}
-                                            </span>
-                                            <div className="text-xs text-muted-foreground">
-                                                {valueIndex}% of avg
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="py-4 px-6 text-center">
-                                        <span className={cn(
-                                            "inline-flex px-2.5 py-1 rounded text-xs font-medium",
-                                            risk.bg, risk.text
-                                        )}>
-                                            {risk.label}
-                                        </span>
-                                    </td>
-                                    <td className="py-4 px-6 text-center">
-                                        <span className={cn(
-                                            "inline-flex px-3 py-1.5 rounded text-xs font-medium text-white",
-                                            action.bg
-                                        )}>
-                                            {action.text}
-                                        </span>
-                                    </td>
-                                </motion.tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
+                                                    <span className="text-xs text-muted-foreground">/ 100</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-4 text-center">
+                                                <Badge variant="outline" className={cn("text-xs", risk.color, risk.bg)}>
+                                                    {risk.label}
+                                                </Badge>
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <span className="text-sm text-muted-foreground">
+                                                    {segment.keyBehavior}
+                                                </span>
+                                            </td>
+                                            <td className="py-3 px-4 text-center">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <div className={cn("p-1.5 rounded", action.color)}>
+                                                        <ActionIcon className="h-3 w-3 text-white" />
+                                                    </div>
+                                                    <span className="text-sm font-medium">{segment.recommendedAction}</span>
+                                                </div>
+                                            </td>
+                                        </motion.tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
 
-            {/* Footer Legend */}
-            <div className="px-6 py-4 border-t border-border bg-muted/10">
-                <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-                    <span><strong className="text-foreground">Retain:</strong> Keep loyal customers</span>
-                    <span><strong className="text-foreground">Grow:</strong> Increase wallet share</span>
-                    <span><strong className="text-foreground">Win Back:</strong> Re-engage at-risk</span>
-                    <span><strong className="text-foreground">Monitor:</strong> Track trends</span>
-                </div>
-            </div>
+                    <div className="mt-4 p-3 bg-muted/30 rounded-lg text-xs text-muted-foreground">
+                        <p>
+                            <strong>Value Index:</strong> Relative customer value (100 = average).{" "}
+                            <strong>Actions:</strong> Retain = keep loyal, Upsell = grow value, Re-engage = win back, Monitor = watch trends, Acquire = target similar prospects.
+                        </p>
+                    </div>
+                </CardContent>
+            </Card>
         </motion.div>
     );
 }

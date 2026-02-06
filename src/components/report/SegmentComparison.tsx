@@ -1,14 +1,11 @@
 import { motion } from "framer-motion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ArrowRight, TrendingUp, TrendingDown, Users, DollarSign, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Segment {
     name: string;
-    displayName?: string;
-    segmentType?: {
-        label: string;
-        icon: string;
-        colorClass: string;
-    };
     size: number;
     sizePercent: number;
     avgValue: number;
@@ -24,205 +21,140 @@ interface SegmentComparisonProps {
 }
 
 export function SegmentComparison({ segments, totalCustomers, className }: SegmentComparisonProps) {
-    // Don't render if no meaningful data
-    if (!segments || segments.length === 0) return null;
-
-    // Filter out segments with missing required fields
-    const validSegments = segments.filter(s => 
-        s && 
-        typeof s.avgValue === 'number' && 
-        typeof s.size === 'number' &&
-        s.name
-    );
-
-    if (validSegments.length === 0) return null;
-
-    const sortedSegments = [...validSegments].sort((a, b) => (b.avgValue || 0) - (a.avgValue || 0));
-    const maxValue = Math.max(...validSegments.map(s => s.avgValue || 0), 1);
-    const maxSize = Math.max(...validSegments.map(s => s.size || 0), 1);
-
-    const riskStyles: Record<string, string> = {
-        low: "border-success/30 bg-success/5",
-        medium: "border-warning/30 bg-warning/5",
-        high: "border-destructive/30 bg-destructive/5"
+    const riskConfig = {
+        low: { color: "text-green-600 dark:text-green-400", bg: "bg-green-50 dark:bg-green-950/20", label: "Low Risk" },
+        medium: { color: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-50 dark:bg-yellow-950/20", label: "Medium Risk" },
+        high: { color: "text-red-600 dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/20", label: "High Risk" }
     };
 
-    const riskLabels: Record<string, { text: string; color: string }> = {
-        low: { text: "Low Risk", color: "text-success" },
-        medium: { text: "Moderate", color: "text-warning" },
-        high: { text: "At Risk", color: "text-destructive" }
-    };
-
-    // Default risk for segments without riskLevel
-    const defaultRisk = { text: "Unknown", color: "text-muted-foreground" };
+    const sortedSegments = [...segments].sort((a, b) => b.avgValue - a.avgValue);
+    const maxValue = Math.max(...segments.map(s => s.avgValue));
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className={cn("bg-card border border-border rounded-sm shadow-soft overflow-hidden", className)}
+            transition={{ delay: 0.4, duration: 0.5 }}
+            className={className}
         >
-            {/* Header */}
-            <div className="px-6 py-5 border-b border-border bg-muted/30">
-                <h3 className="font-serif text-xl font-semibold text-navy-900">
-                    Segment Deep Dive
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                    Detailed comparison of key characteristics and strategic recommendations
-                </p>
-            </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-primary" />
+                        Segment Comparison Matrix
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground mt-2">
+                        Compare key characteristics across all {segments.length} identified customer segments
+                    </p>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-6">
+                        {sortedSegments.map((segment, index) => {
+                            const risk = riskConfig[segment.riskLevel];
+                            const valuePercent = (segment.avgValue / maxValue) * 100;
 
-            {/* Segment Cards */}
-            <div className="p-6 space-y-4">
-                {sortedSegments.map((segment, index) => {
-                    const valuePercent = ((segment.avgValue || 0) / maxValue) * 100;
-                    const sizePercent = ((segment.size || 0) / maxSize) * 100;
-                    const risk = riskLabels[segment.riskLevel] || defaultRisk;
-                    const riskStyle = riskStyles[segment.riskLevel] || "border-muted/30 bg-muted/5";
-                    const displayName = segment.displayName || segment.name || `Segment ${index + 1}`;
+                            return (
+                                <motion.div
+                                    key={segment.name}
+                                    layout
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="p-4 rounded-lg border-2 border-border hover:border-primary/50 transition-colors"
+                                >
+                                    <div className="space-y-4">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <h4 className="text-lg font-semibold text-foreground">
+                                                        {segment.name}
+                                                    </h4>
+                                                    {index === 0 && (
+                                                        <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
+                                                            Highest Value
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                <p className="text-sm text-muted-foreground">{segment.keyTrait}</p>
+                                            </div>
+                                            <Badge variant="outline" className={cn(risk.color, risk.bg)}>
+                                                {risk.label}
+                                            </Badge>
+                                        </div>
 
-                    return (
-                        <motion.div
-                            key={segment.name || index}
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 + index * 0.08, duration: 0.4 }}
-                            className={cn(
-                                "p-5 rounded-sm border-l-4 transition-all duration-300 hover:shadow-soft",
-                                riskStyle
-                            )}
-                        >
-                            {/* Segment Header */}
-                            <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                                    {index === 0 && (
-                                        <span className="text-teal-500 text-xl">★</span>
-                                    )}
-                                    <div>
-                                        <h4 className="font-serif text-lg font-semibold text-navy-900">
-                                            {displayName}
-                                        </h4>
-                                        {segment.segmentType && (
-                                            <span className="text-xs text-muted-foreground">
-                                                {segment.segmentType.icon} {segment.segmentType.label}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                                <span className={cn("text-xs font-medium px-2 py-1 rounded", risk.color)}>
-                                    {risk.text}
-                                </span>
-                            </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                                                    <Users className="h-3 w-3" />
+                                                    <span>Segment Size</span>
+                                                </div>
+                                                <div className="font-bold text-lg text-foreground">
+                                                    {segment.size.toLocaleString()}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {segment.sizePercent.toFixed(1)}% of total
+                                                </div>
+                                                <div className="h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
+                                                    <div
+                                                        className="h-full bg-blue-500"
+                                                        style={{ width: `${segment.sizePercent}%` }}
+                                                    />
+                                                </div>
+                                            </div>
 
-                            {/* Key Trait */}
-                            {segment.keyTrait && segment.keyTrait !== "Identified from behavioral patterns" && (
-                                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                                    {segment.keyTrait}
-                                </p>
-                            )}
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                                                    <DollarSign className="h-3 w-3" />
+                                                    <span>Avg Customer Value</span>
+                                                </div>
+                                                <div className="font-bold text-lg text-foreground">
+                                                    ${segment.avgValue.toLocaleString()}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {((segment.avgValue / maxValue) * 100).toFixed(0)}% of top segment
+                                                </div>
+                                                <div className="h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
+                                                    <div
+                                                        className={cn(
+                                                            "h-full",
+                                                            valuePercent > 80 ? "bg-green-500" :
+                                                                valuePercent > 50 ? "bg-yellow-500" : "bg-orange-500"
+                                                        )}
+                                                        style={{ width: `${valuePercent}%` }}
+                                                    />
+                                                </div>
+                                            </div>
 
-                            {/* Metrics Grid */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {/* Size */}
-                                <div className="space-y-2">
-                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">
-                                        Customers
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                                                    <AlertTriangle className="h-3 w-3" />
+                                                    <span>Key Differentiator</span>
+                                                </div>
+                                                <div className="text-sm text-foreground font-medium leading-relaxed">
+                                                    {segment.differentiator}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="font-semibold text-lg text-foreground tabular-nums">
-                                        {segment.size.toLocaleString()}
-                                    </div>
-                                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                                        <motion.div
-                                            initial={{ width: 0 }}
-                                            animate={{ width: `${sizePercent}%` }}
-                                            transition={{ duration: 0.6, delay: 0.2 + index * 0.05 }}
-                                            className="h-full bg-primary/60 rounded-full"
-                                        />
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                        {segment.sizePercent.toFixed(1)}% of total
-                                    </div>
-                                </div>
-
-                                {/* Value */}
-                                <div className="space-y-2">
-                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">
-                                        Avg Value
-                                    </div>
-                                    <div className="font-semibold text-lg text-teal-500 tabular-nums">
-                                        ${segment.avgValue.toLocaleString()}
-                                    </div>
-                                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                                        <motion.div
-                                            initial={{ width: 0 }}
-                                            animate={{ width: `${valuePercent}%` }}
-                                            transition={{ duration: 0.6, delay: 0.25 + index * 0.05 }}
-                                            className={cn(
-                                                "h-full rounded-full",
-                                                valuePercent > 80 ? "bg-teal-500" :
-                                                valuePercent > 50 ? "bg-accent" : "bg-warning"
-                                            )}
-                                        />
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                        {Math.round(valuePercent)}% of top segment
-                                    </div>
-                                </div>
-
-                                {/* Share of Revenue */}
-                                <div className="space-y-2">
-                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">
-                                        Revenue Share
-                                    </div>
-                                    <div className="font-semibold text-lg text-foreground tabular-nums">
-                                        {((segment.size * segment.avgValue) / segments.reduce((sum, s) => sum + s.size * s.avgValue, 0) * 100).toFixed(1)}%
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                        Contribution to total
-                                    </div>
-                                </div>
-
-                                {/* Differentiator */}
-                                <div className="space-y-2">
-                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">
-                                        Key Insight
-                                    </div>
-                                    <div className="text-sm text-foreground leading-relaxed">
-                                        {segment.differentiator && segment.differentiator !== "Unique spending and engagement patterns"
-                                            ? segment.differentiator
-                                            : index === 0 ? "Highest lifetime value" 
-                                            : segment.riskLevel === 'high' ? "Needs re-engagement"
-                                            : "Growth opportunity"}
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
-                    );
-                })}
-            </div>
-
-            {/* Strategic Summary */}
-            <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="px-6 py-5 border-t border-border bg-navy-50"
-            >
-                <div className="flex items-start gap-3">
-                    <span className="text-teal-500 text-lg">💡</span>
-                    <div>
-                        <h5 className="font-serif font-semibold text-navy-900 mb-1">
-                            Strategic Recommendation
-                        </h5>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                            Prioritize retention for top-value segments while developing targeted 
-                            win-back campaigns for at-risk customers. Focus acquisition efforts 
-                            on profiles matching your highest-value segments.
-                        </p>
+                                </motion.div>
+                            );
+                        })}
                     </div>
-                </div>
-            </motion.div>
+
+                    <div className="mt-6 p-4 rounded-lg bg-muted/30 border border-border">
+                        <div className="flex items-start gap-3">
+                            <TrendingUp className="h-5 w-5 text-primary mt-0.5" />
+                            <div>
+                                <h5 className="font-semibold text-sm mb-1">Segment Strategy Recommendation</h5>
+                                <p className="text-sm text-muted-foreground">
+                                    Focus retention efforts on high-value segments while developing targeted
+                                    acquisition strategies for under-represented profitable segments.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
         </motion.div>
     );
 }

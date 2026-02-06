@@ -16,9 +16,14 @@ export interface RunState {
   run_id: string;
   status: RunStatus;
   current_step?: string;
+  current_stage?: string;
   next_step?: string;
   progress?: number;
+  stage_progress?: number;
   steps?: Record<string, PipelineStep>;
+  steps_completed?: string[];
+  completed_steps?: number;
+  total_steps?: number;
   error?: string;
   started_at?: string;
   completed_at?: string;
@@ -29,16 +34,6 @@ export interface RunResponse {
   run_path: string;
   message: string;
   status: string;
-}
-
-export interface TaskIntentPayload {
-  primaryQuestion: string;
-  decisionContext: string;
-  requiredOutputType: "diagnostic" | "descriptive" | "predictive";
-  successCriteria: string;
-  constraints: string;
-  confidenceThreshold: number;
-  confidenceAcknowledged: boolean;
 }
 
 export interface ApiError {
@@ -57,21 +52,9 @@ export interface InsightsResponse {
   };
 }
 
-export async function submitRun(file: File, taskIntent: TaskIntentPayload): Promise<RunResponse> {
+export async function submitRun(file: File): Promise<RunResponse> {
   const formData = new FormData();
   formData.append("file", file);
-  formData.append(
-    "task_intent",
-    JSON.stringify({
-      primary_question: taskIntent.primaryQuestion,
-      decision_context: taskIntent.decisionContext,
-      required_output_type: taskIntent.requiredOutputType,
-      success_criteria: taskIntent.successCriteria,
-      constraints: taskIntent.constraints,
-      confidence_threshold: taskIntent.confidenceThreshold,
-    })
-  );
-  formData.append("confidence_acknowledged", taskIntent.confidenceAcknowledged ? "true" : "false");
 
   const response = await fetch(`${API_BASE}/run`, {
     method: "POST",
@@ -91,6 +74,7 @@ export async function submitRun(file: File, taskIntent: TaskIntentPayload): Prom
 
   return response.json();
 }
+
 export async function getRunState(runId: string): Promise<RunState> {
   const response = await fetch(`${API_BASE}/runs/${runId}/state`);
 

@@ -26,8 +26,6 @@ from jobs.queue import enqueue, get_job
 from jobs.models import JobStatus
 from jobs.progress import ProgressTracker
 from core.config import settings
-from core.task_contract import parse_task_intent, TaskIntentValidationError
-import pandas as pd
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -43,7 +41,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Secure CORS middleware configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.allowed_origins_list,
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "Accept"],
@@ -261,10 +259,7 @@ class RunResponse(BaseModel):
 @app.post("/run", response_model=RunResponse, tags=["Execution"])
 @limiter.limit("10/minute")
 async def trigger_run(
-    request: Request,
     file: UploadFile = File(...),
-    task_intent: str = Form(...),
-    confidence_acknowledged: str = Form(...),
     target_column: Optional[str] = Form(None),
     feature_whitelist: Optional[str] = Form(None),
     model_type: Optional[str] = Form(None),
@@ -278,17 +273,6 @@ async def trigger_run(
     Accepts: CSV, JSON, XLSX, XLS, Parquet files (max configured size)
     Rate limit: 10 requests per minute
     """
-    try:
-        intent_payload = parse_task_intent(task_intent)
-    except TaskIntentValidationError as exc:
-        detail = str(exc)
-        if getattr(exc, 'reformulation', None):
-            detail = f"{detail} {exc.reformulation}"
-        raise HTTPException(status_code=400, detail=detail)
-
-    if _parse_bool(confidence_acknowledged) is not True:
-        raise HTTPException(status_code=400, detail="Please acknowledge the confidence threshold (>=80%).")
-
     _validate_upload(file)
 
     file_path = _safe_upload_path(file.filename)
@@ -298,10 +282,7 @@ async def trigger_run(
         model_type=model_type,
         include_categoricals=include_categoricals,
         fast_mode=fast_mode,
-    ) or {}
-    run_config["task_intent"] = intent_payload
-    run_config["confidence_threshold"] = intent_payload.get("confidence_threshold")
-    run_config["confidence_acknowledged"] = True
+    )
 
     try:
         bytes_written = 0
@@ -441,160 +422,6 @@ async def get_enhanced_analytics(run_id: str):
 
     return enhanced_analytics
 
-@app.get("/runs/{run_id}/evidence/sample", tags=["Artifacts"])
-async def get_evidence_sample(run_id: str, rows: int = 5):
-    """
-    Return a small sample of the source dataset (redacted) for evidence inspection.
-    """
-    _validate_run_id(run_id)
-    rows = max(1, min(rows, 10))
-    run_path = DATA_DIR / "runs" / run_id
-    state = StateManager(str(run_path))
-
-    active = state.read("active_dataset") or {}
-    dataset_path = active.get("path")
-    if not dataset_path or not Path(dataset_path).exists():
-        raise HTTPException(status_code=404, detail="Dataset not found for this run")
-
-    df = None
-    try:
-        if str(dataset_path).lower().endswith(".parquet"):
-            df = pd.read_parquet(dataset_path)
-        else:
-            df = pd.read_csv(dataset_path, nrows=rows * 2)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load dataset: {e}")
-
-    # Simple redaction: drop common sensitive columns
-    redact_cols = [c for c in df.columns if any(k in c.lower() for k in ["email", "phone", "ssn", "password"])]
-    if redact_cols:
-        df = df.drop(columns=redact_cols)
-
-    sample = df.head(rows).to_dict(orient="records")
-    return {"rows": sample, "row_count": len(sample)}
-
-@app.get("/runs/{run_id}/diagnostics", tags=["Artifacts"])
-async def get_diagnostics(run_id: str):
-    """
-    Return Safe Mode / validation diagnostics for a run.
-    """
-    _validate_run_id(run_id)
-    run_path = DATA_DIR / "runs" / run_id
-    state = StateManager(str(run_path))
-
-    validation = state.read("validation_report") or {}
-    identity = state.read("dataset_identity_card") or {}
-    confidence = state.read("confidence_report") or {}
-    mode = state.read("run_mode") or "strict"
-
-    has_time = False
-    if isinstance(identity, dict):
-        cols = []
-        if "columns" in identity:
-            cols = identity.get("columns") or []
-        if "fields" in identity:
-            cols.extend([f.get("name") for f in identity.get("fields") if isinstance(f, dict) and f.get("name")])
-        cols = [c for c in cols if c]
-        has_time = any("date" in c.lower() or "time" in c.lower() for c in cols)
-
-    reasons = []
-    if validation.get("mode") == "limitations":
-        reasons.append("Validation: limitations mode")
-    if validation.get("target_column") in [None, ""]:
-        reasons.append("Validation: missing target column")
-    if not has_time:
-        reasons.append("Identity: time fields not detected")
-    if confidence.get("confidence_label") == "low":
-        reasons.append("Confidence: low")
-
-    return {
-        "mode": mode,
-        "validation": validation,
-        "identity": identity,
-        "confidence": confidence,
-        "reasons": reasons,
-    }
-
-@app.get("/runs/{run_id}/model-artifacts", tags=["Artifacts"])
-async def get_model_artifacts(run_id: str):
-    """
-    Return model transparency artifacts (feature importances/coefficients) if available.
-    """
-    _validate_run_id(run_id)
-    run_path = DATA_DIR / "runs" / run_id
-    state = StateManager(str(run_path))
-
-    regression = state.read("regression_insights") or {}
-    enhanced = state.read("enhanced_analytics") or {}
-
-    feature_importance = regression.get("feature_importance") or enhanced.get("feature_importance")
-    coefficients = regression.get("coefficients") or enhanced.get("coefficients")
-
-    if not feature_importance and not coefficients:
-        raise HTTPException(status_code=404, detail="Model artifacts not found")
-
-    return {
-        "feature_importance": feature_importance,
-        "coefficients": coefficients,
-    }
-
-
-@app.get("/runs/{run_id}/evidence", tags=["Artifacts"])
-async def get_evidence(run_id: str, evidence_id: Optional[str] = None):
-    """Expose persisted evidence objects for inspection."""
-    _validate_run_id(run_id)
-    run_path = DATA_DIR / "runs" / run_id
-    state = StateManager(str(run_path))
-    registry = state.read("evidence_registry") or {}
-    if evidence_id:
-        record = registry.get(evidence_id)
-        if not record:
-            raise HTTPException(status_code=404, detail="Evidence not found")
-        return record
-    if not registry:
-        raise HTTPException(status_code=404, detail="No evidence recorded for this run")
-    return {"records": registry}
-
-
-@app.get("/runs/{run_id}/diff/{other_run_id}", tags=["Artifacts"])
-async def diff_runs(run_id: str, other_run_id: str):
-    """
-    Minimal diff: compare confidence and presence of overseer/personas/strategies between two runs.
-    """
-    _validate_run_id(run_id)
-    _validate_run_id(other_run_id)
-
-    def load(run: str):
-        rp = DATA_DIR / "runs" / run
-        st = StateManager(str(rp))
-        return {
-            "confidence": st.read("confidence_report") or {},
-            "overseer": st.read("overseer_output") or {},
-            "personas": st.read("personas") or {},
-            "strategies": st.read("strategies") or {},
-        }
-
-    a = load(run_id)
-    b = load(other_run_id)
-
-    def get_conf(c):
-        return c.get("data_confidence") or c.get("confidence_score") or 0
-
-    diff = {
-        "confidence_delta": get_conf(a["confidence"]) - get_conf(b["confidence"]),
-        "segments_delta": (len(a["overseer"].get("labels") or []) - len(b["overseer"].get("labels") or [])),
-        "personas_delta": (len(a["personas"].get("personas") or []) - len(b["personas"].get("personas") or [])),
-        "strategies_delta": (len(a["strategies"].get("strategies") or []) - len(b["strategies"].get("strategies") or [])),
-    }
-    return {"run_a": run_id, "run_b": other_run_id, "diff": diff}
-
-
-@app.get("/runs/{run_id}/pptx", tags=["Artifacts"])
-async def export_pptx(run_id: str):
-    """
-    Placeholder for PPTX Evidence Deck export.
-    """
-    raise HTTPException(status_code=501, detail="PPTX export not implemented yet.")
 @app.get("/runs/{run_id}/insights", tags=["Artifacts"])
 async def get_key_insights(run_id: str):
     """Extract and return key insights from analysis.
@@ -710,7 +537,7 @@ async def get_run_state(request: Request, run_id: str):
     with open(state_path, "r", encoding="utf-8") as f:
         state = json.load(f)
 
-    # Ensure progress fields exist for backward compatibility
+    # Ensure progress fields exist (for backward compatibility)
     if "progress" not in state:
         sys.path.append(str(Path(__file__).parent.parent))
         from core.pipeline_map import calculate_progress
@@ -720,7 +547,7 @@ async def get_run_state(request: Request, run_id: str):
         )
         state.update(progress_info)
 
-    # Ensure progress is clamped to 0-100
+    # Ensure progress is clamped 0-100
     state["progress"] = max(0, min(100, state.get("progress", 0)))
 
     return state

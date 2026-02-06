@@ -1,6 +1,0 @@
-customer_id,income,spend,balance,region,churn
-1,75000,32000,15000,North,0
-2,56000,28000,8000,South,1
-3,91000,45000,22000,East,0
-4,48000,25000,3000,West,1
-5,67000,31000,12000,North,0

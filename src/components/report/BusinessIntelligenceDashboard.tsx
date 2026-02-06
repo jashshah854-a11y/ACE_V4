@@ -47,11 +47,6 @@ interface BusinessIntelligenceProps {
   segmentValue?: SegmentValue[];
   churnRisk?: ChurnRisk;
   insights?: string[];
-  evidence?: {
-    value_column?: string;
-    segment_value_column?: string;
-    churn_activity_column?: string;
-  };
 }
 
 export function BusinessIntelligenceDashboard({
@@ -60,7 +55,6 @@ export function BusinessIntelligenceDashboard({
   segmentValue,
   churnRisk,
   insights,
-  evidence,
 }: BusinessIntelligenceProps) {
   if (!valueMetrics && !clvProxy && !segmentValue && !churnRisk) {
     return null;
@@ -253,15 +247,6 @@ export function BusinessIntelligenceDashboard({
                   />
                 </div>
               )}
-            </div>
-          )}
-
-          {(evidence?.value_column || evidence?.segment_value_column || evidence?.churn_activity_column) && (
-            <div className="border rounded-lg p-3 bg-white/70 text-xs text-slate-700 space-y-1">
-              <div className="font-semibold text-slate-900">Evidence (source columns)</div>
-              {evidence?.value_column && <div>Value column: <code>{evidence.value_column}</code></div>}
-              {evidence?.segment_value_column && <div>Segment value column: <code>{evidence.segment_value_column}</code></div>}
-              {evidence?.churn_activity_column && <div>Churn/activity column: <code>{evidence.churn_activity_column}</code></div>}
             </div>
           )}
         </CardContent>

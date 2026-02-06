@@ -1,10 +1,5 @@
-import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
-import "./index.css";
-import { TaskProvider } from "./context/TaskContext";
+import { createRoot } from 'react-dom/client'
+import App from './App.tsx'
+import './index.css'
 
-createRoot(document.getElementById("root")!).render(
-  <TaskProvider>
-    <App />
-  </TaskProvider>
-);
+createRoot(document.getElementById("root")!).render(<App />);

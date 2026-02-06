@@ -7,7 +7,6 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { GlobalErrorOverlay } from "@/components/ui/GlobalErrorOverlay";
 import Index from "./pages/Index";
 import Reports from "./pages/Reports";
-import ExecutivePulse from "./pages/ExecutivePulse";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,9 +19,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<ExecutivePulse />} />
-            <Route path="/report/summary" element={<ExecutivePulse />} />
-            <Route path="/upload" element={<Index />} />
+            <Route path="/" element={<Index />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -5,7 +5,7 @@
 This project has been migrated from Lovable to Railway for production deployment.
 
 **Deployment Platform**: Railway
-**Repository**: <https://github.com/jashshah854-a11y/intelligent-insight-engine-9926c6ff>
+**Repository**: <https://github.com/jashshah854-a11y/ACE-V4>
 
 ## How can I edit this code?
 

@@ -3,26 +3,6 @@ import os
 from pathlib import Path
 from typing import Any, Optional
 
-
-def _json_default(obj: Any):
-    try:
-        import numpy as np  # type: ignore
-
-        if isinstance(obj, (np.integer, np.floating)):
-            return obj.item()
-        if isinstance(obj, np.bool_):
-            return bool(obj)
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-    except Exception:
-        pass
-    if isinstance(obj, set):
-        return list(obj)
-    try:
-        return str(obj)
-    except Exception:
-        return None
-
 class StateManager:
     def __init__(self, run_path: str):
         self.run_path = Path(run_path)
@@ -38,7 +18,7 @@ class StateManager:
             data = data.model_dump()
         
         with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, default=_json_default)
+            json.dump(data, f, indent=2)
 
     def read(self, name: str) -> Optional[Any]:
         """
@@ -49,14 +29,6 @@ class StateManager:
             return None
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-
-    def append(self, name: str, record: Any):
-        """Append a JSON-serializable record to a list stored under `name`."""
-        existing = self.read(name)
-        if not isinstance(existing, list):
-            existing = []
-        existing.append(record)
-        self.write(name, existing)
 
     def exists(self, name: str) -> bool:
         """
