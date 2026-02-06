@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { Loader2, ArrowLeft, FileText, Sparkles, Lightbulb, BookOpen } from "lucide-react";
+import { Loader2, ArrowLeft, FileText, Sparkles, Shield, BookOpen } from "lucide-react";
 import { motion } from "framer-motion";
 import { useSnapshot } from "@/lib/queries";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { FullReportTab } from "@/components/report/FullReportTab";
 const TABS = [
   { key: "summary", label: "Executive Summary", icon: FileText },
   { key: "insights", label: "Insights", icon: Sparkles },
-  { key: "hypotheses", label: "Hypotheses", icon: Lightbulb },
+  { key: "trust", label: "Trust & Confidence", icon: Shield },
   { key: "report", label: "Full Report", icon: BookOpen },
 ] as const;
 
@@ -48,6 +48,8 @@ export default function ReportPage() {
     );
   }
 
+  const confidenceScore = snapshot.trust?.overall_confidence ?? 0;
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <motion.div
@@ -69,23 +71,21 @@ export default function ReportPage() {
                 <code className="font-mono text-xs bg-secondary px-1.5 py-0.5 rounded">
                   {runId}
                 </code>
-                {snapshot.trust && (
-                  <span className="ml-3">
-                    Confidence:{" "}
-                    <span
-                      className={cn(
-                        "font-medium",
-                        snapshot.trust.overall_confidence >= 70
-                          ? "text-green-400"
-                          : snapshot.trust.overall_confidence >= 40
-                            ? "text-yellow-400"
-                            : "text-red-400",
-                      )}
-                    >
-                      {snapshot.trust.overall_confidence}% ({snapshot.trust.level})
-                    </span>
+                <span className="ml-3">
+                  Confidence:{" "}
+                  <span
+                    className={cn(
+                      "font-medium",
+                      confidenceScore >= 70
+                        ? "text-green-400"
+                        : confidenceScore >= 40
+                          ? "text-yellow-400"
+                          : "text-red-400",
+                    )}
+                  >
+                    {Math.round(confidenceScore)}%
                   </span>
-                )}
+                </span>
               </p>
             </div>
           </div>
@@ -119,10 +119,16 @@ export default function ReportPage() {
             <ExecutiveSummaryTab snapshot={snapshot} />
           )}
           {activeTab === "insights" && (
-            <InsightsTab insights={snapshot.deep_insights.insights} />
+            <InsightsTab
+              insights={snapshot.governed_report?.insights ?? []}
+            />
           )}
-          {activeTab === "hypotheses" && (
-            <HypothesesTab hypotheses={snapshot.hypotheses.hypotheses} />
+          {activeTab === "trust" && (
+            <HypothesesTab
+              trust={snapshot.trust}
+              governedReport={snapshot.governed_report}
+              warnings={snapshot.run_warnings}
+            />
           )}
           {activeTab === "report" && (
             <FullReportTab markdown={snapshot.report_markdown} />

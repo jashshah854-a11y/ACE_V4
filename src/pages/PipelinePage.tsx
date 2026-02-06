@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Loader2, CheckCircle2, XCircle, Clock, RotateCcw } from "lucide-react";
@@ -18,31 +18,39 @@ export default function PipelinePage() {
   const navigate = useNavigate();
   const { data: status, isLoading, error } = useRunStatus(runId);
 
-  const [localElapsed, setLocalElapsed] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
 
-  useEffect(() => {
-    if (status?.elapsed_seconds) {
-      setLocalElapsed(status.elapsed_seconds);
+  const computeElapsed = useCallback(() => {
+    if (status?.start_epoch) {
+      return Math.floor(Date.now() / 1000 - status.start_epoch);
     }
-  }, [status?.elapsed_seconds]);
+    return 0;
+  }, [status?.start_epoch]);
 
   useEffect(() => {
-    if (status?.status === "running") {
+    setElapsed(computeElapsed());
+  }, [computeElapsed]);
+
+  useEffect(() => {
+    const isRunning = status?.status === "running" || status?.status === "queued";
+    if (isRunning) {
       const interval = setInterval(() => {
-        setLocalElapsed((prev) => prev + 1);
+        setElapsed(computeElapsed());
       }, 1000);
       return () => clearInterval(interval);
     }
-  }, [status?.status]);
+  }, [status?.status, computeElapsed]);
+
+  const isComplete = status?.status === "completed" || status?.status === "complete";
 
   useEffect(() => {
-    if (status?.status === "completed") {
+    if (isComplete) {
       const timer = setTimeout(() => {
         navigate(`/report/${runId}`, { replace: true });
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [status?.status, runId, navigate]);
+  }, [isComplete, runId, navigate]);
 
   if (isLoading) {
     return (
@@ -69,8 +77,7 @@ export default function PipelinePage() {
     );
   }
 
-  const progress = status.progress_pct ?? 0;
-  const isComplete = status.status === "completed";
+  const progress = status.progress ?? 0;
   const isFailed = status.status === "failed";
 
   return (
@@ -98,20 +105,26 @@ export default function PipelinePage() {
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="w-4 h-4" />
-            <span className="font-mono">{formatElapsed(localElapsed)}</span>
+            <span className="font-mono">{formatElapsed(elapsed)}</span>
           </div>
         </div>
 
-        <p className="text-sm text-muted-foreground mb-6">
+        <p className="text-sm text-muted-foreground mb-1">
           Run{" "}
           <code className="font-mono text-xs bg-secondary px-1.5 py-0.5 rounded">
             {runId}
           </code>
         </p>
+        {status.current_stage && !isComplete && (
+          <p className="text-sm text-blue-400 mb-6">{status.current_stage}</p>
+        )}
+        {!status.current_stage && <div className="mb-6" />}
 
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2 text-sm">
-            <span className="text-muted-foreground">Progress</span>
+            <span className="text-muted-foreground">
+              {status.completed_steps}/{status.total_steps} steps
+            </span>
             <span
               className={cn(
                 "font-bold",

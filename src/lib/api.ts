@@ -1,6 +1,5 @@
 import type {
-  UploadResponse,
-  AnalyzeResponse,
+  RunResponse,
   RunStatus,
   Snapshot,
   RunsListResponse,
@@ -9,43 +8,24 @@ import type {
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-export async function uploadDataset(file: File): Promise<UploadResponse> {
+export async function submitRun(
+  file: File,
+  taskIntent: TaskIntent,
+  mode = "full",
+): Promise<RunResponse> {
   const formData = new FormData();
   formData.append("file", file);
-  const res = await fetch(`${API_BASE}/upload`, {
+  formData.append("task_intent", JSON.stringify(taskIntent));
+  formData.append("confidence_acknowledged", "true");
+  formData.append("mode", mode);
+
+  const res = await fetch(`${API_BASE}/run`, {
     method: "POST",
     body: formData,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "Upload failed");
-  }
-  return res.json();
-}
-
-export async function startAnalysis(
-  runId: string,
-  taskIntent?: TaskIntent,
-): Promise<AnalyzeResponse> {
-  const res = await fetch(`${API_BASE}/analyze`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      run_id: runId,
-      fast_mode: false,
-      task_intent: taskIntent ?? {
-        primary_question:
-          "What key insights and patterns can we discover in this dataset that would inform business decisions?",
-        decisions_to_drive:
-          "Strategic planning and operational improvements",
-        audience: "Business executives and analysts",
-        time_horizon: "Quarterly review",
-      },
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "Failed to start analysis");
+    throw new Error(err.detail || "Run submission failed");
   }
   return res.json();
 }

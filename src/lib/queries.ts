@@ -8,7 +8,7 @@ export function useRunStatus(runId: string | undefined) {
     enabled: !!runId,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      if (status === "completed" || status === "failed") return false;
+      if (status === "completed" || status === "complete" || status === "failed") return false;
       return 2000;
     },
   });

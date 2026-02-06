@@ -3,56 +3,52 @@ import { useNavigate } from "react-router-dom";
 import { Loader2, ArrowRight, Zap, Shield, BarChart3 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { DropZone } from "@/components/upload/DropZone";
-import { uploadDataset, startAnalysis } from "@/lib/api";
-import type { UploadResponse } from "@/lib/types";
+import { submitRun } from "@/lib/api";
+import type { TaskIntent } from "@/lib/types";
 import { toast } from "sonner";
+
+const DEFAULT_INTENT: TaskIntent = {
+  primary_question:
+    "Identify key patterns, anomalies, and actionable insights to optimize business strategy",
+  decision_context:
+    "Strategic planning and operational improvement based on data-driven evidence",
+  success_criteria:
+    "Clear metrics, prioritized recommendations, and confidence-scored insights",
+  required_output_type: "descriptive",
+};
 
 export default function UploadPage() {
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
-  const [uploadResult, setUploadResult] = useState<UploadResponse | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isStarting, setIsStarting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [question, setQuestion] = useState("");
 
-  const handleFileSelect = async (selected: File) => {
+  const handleFileSelect = (selected: File) => {
     setFile(selected);
-    setUploadResult(null);
-    setIsUploading(true);
-    try {
-      const result = await uploadDataset(selected);
-      setUploadResult(result);
-      toast.success(
-        `Uploaded ${result.filename}: ${result.row_count.toLocaleString()} rows, ${result.column_count} columns`,
-      );
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Upload failed");
-      setFile(null);
-    } finally {
-      setIsUploading(false);
-    }
   };
 
-  const handleStartAnalysis = async () => {
-    if (!uploadResult) return;
-    setIsStarting(true);
+  const handleSubmit = async () => {
+    if (!file) return;
+    setIsSubmitting(true);
     try {
-      await startAnalysis(uploadResult.run_id);
-      navigate(`/pipeline/${uploadResult.run_id}`);
+      const intent: TaskIntent = {
+        ...DEFAULT_INTENT,
+        ...(question.trim() && { primary_question: question.trim() }),
+      };
+      const result = await submitRun(file, intent);
+      toast.success(`Run ${result.run_id} queued`);
+      navigate(`/pipeline/${result.run_id}`);
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to start analysis",
-      );
-      setIsStarting(false);
+      toast.error(err instanceof Error ? err.message : "Submission failed");
+      setIsSubmitting(false);
     }
   };
 
   const handleFileClear = () => {
     setFile(null);
-    setUploadResult(null);
   };
-
-  const isBusy = isUploading || isStarting;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] px-4">
@@ -67,66 +63,44 @@ export default function UploadPage() {
         </h1>
         <p className="text-lg text-muted-foreground mb-10 max-w-lg mx-auto">
           Transform raw data into executive-quality intelligence reports using
-          our 19-agent AI pipeline.
+          our 20-agent AI pipeline.
         </p>
 
         <DropZone
           file={file}
           onFileSelect={handleFileSelect}
           onFileClear={handleFileClear}
-          disabled={isBusy}
+          disabled={isSubmitting}
         />
 
-        {isUploading && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mt-6 flex items-center justify-center gap-2 text-sm text-muted-foreground"
-          >
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Uploading and profiling dataset...</span>
-          </motion.div>
-        )}
-
-        {uploadResult && !isUploading && (
+        {file && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-6 space-y-4"
+            className="mt-6 space-y-4 max-w-xl mx-auto"
           >
-            <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
-              <span>
-                <span className="text-foreground font-medium">
-                  {uploadResult.row_count.toLocaleString()}
-                </span>{" "}
-                rows
-              </span>
-              <span className="w-1 h-1 rounded-full bg-border" />
-              <span>
-                <span className="text-foreground font-medium">
-                  {uploadResult.column_count}
-                </span>{" "}
-                columns
-              </span>
-              <span className="w-1 h-1 rounded-full bg-border" />
-              <span>
-                Run{" "}
-                <code className="font-mono text-xs bg-secondary px-1.5 py-0.5 rounded">
-                  {uploadResult.run_id.substring(0, 8)}
-                </code>
-              </span>
+            <div>
+              <label className="block text-sm text-muted-foreground text-left mb-1.5">
+                What question should ACE answer? (optional)
+              </label>
+              <Input
+                placeholder="e.g. What drives customer churn in this dataset?"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                disabled={isSubmitting}
+              />
             </div>
 
             <Button
               size="lg"
-              onClick={handleStartAnalysis}
-              disabled={isStarting}
+              onClick={handleSubmit}
+              disabled={isSubmitting}
               className="bg-blue-600 hover:bg-blue-500 text-white px-8"
             >
-              {isStarting ? (
+              {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Starting Analysis...
+                  Submitting...
                 </>
               ) : (
                 <>
@@ -147,7 +121,7 @@ export default function UploadPage() {
           {[
             {
               icon: Zap,
-              title: "19 AI Agents",
+              title: "20 AI Agents",
               desc: "Statistical analysis and LLM interpretation working in concert",
             },
             {

@@ -29,6 +29,7 @@ import { PIPELINE_STEPS } from "@/lib/types";
 import type { LucideIcon } from "lucide-react";
 
 const STEP_ICONS: Record<string, LucideIcon> = {
+  ingestion: Database,
   type_identifier: Fingerprint,
   scanner: ScanSearch,
   interpreter: Brain,
@@ -62,7 +63,7 @@ export function StepList({
   status,
 }: StepListProps) {
   const isFailed = status === "failed";
-  const isDone = status === "completed";
+  const isDone = status === "completed" || status === "complete";
 
   return (
     <div className="space-y-1">
