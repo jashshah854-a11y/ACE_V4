@@ -1127,7 +1127,6 @@ async def preview_dataset(request: Request, file: UploadFile = File(...)):
 
 
 @app.post("/run", response_model=RunResponse, tags=["Execution"])
-@limiter.limit("10/minute")
 async def trigger_run(
     file: UploadFile = File(...),
     target_column: Optional[str] = Form(None),
@@ -1141,7 +1140,6 @@ async def trigger_run(
     Returns the Run ID (job identifier).
 
     Accepts: CSV, JSON, XLSX, XLS, Parquet files (max configured size)
-    Rate limit: 10 requests per minute
     """
     _validate_upload(file)
 
