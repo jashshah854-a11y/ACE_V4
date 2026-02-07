@@ -1129,6 +1129,7 @@ async def preview_dataset(request: Request, file: UploadFile = File(...)):
 @app.post("/run", response_model=RunResponse, tags=["Execution"])
 @limiter.limit("10/minute")
 async def trigger_run(
+    request: Request,
     file: UploadFile = File(...),
     target_column: Optional[str] = Form(None),
     feature_whitelist: Optional[str] = Form(None),
