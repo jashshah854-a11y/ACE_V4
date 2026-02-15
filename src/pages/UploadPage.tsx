@@ -86,8 +86,9 @@ export default function UploadPage() {
     try {
       const result = await previewDataset(selected);
       setPreview(result);
-    } catch {
-      toast.error("Could not analyze dataset structure");
+    } catch (err) {
+      console.error("[ACE] Preview failed:", err);
+      toast.error(err instanceof Error ? err.message : "Could not analyze dataset structure");
     } finally {
       setIsPreviewing(false);
     }
