@@ -222,7 +222,7 @@ class DeepInsightAgent:
             context_parts.append(f"""
 ## Anomalies Detected
 - Total Count: {anomalies['anomaly_count']:,}
-- Percentage: {anomalies['anomaly_count'] / row_count * 100:.1f}% of data
+- Percentage: {anomalies['anomaly_count'] / max(row_count, 1) * 100:.1f}% of data
 - Key Drivers: {json.dumps(dict(list(anomalies.get('drivers', {}).items())[:5]))}
 """)
             # Include examples
