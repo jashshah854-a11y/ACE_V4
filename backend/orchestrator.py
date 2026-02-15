@@ -1215,13 +1215,29 @@ def main_loop(run_path):
                     state["status"] = "complete"
                     update_history(state, "Pipeline completed successfully")
         else:
-            print(f"[WARN] Step {current} failed repeatedly. Aborting pipeline.")
-            state["status"] = "complete_with_errors"
-            state["next_step"] = "failed"
-            update_history(state, f"{current} failed after {attempts} attempts")
-            save_state(state_path, state)
-            _record_final_status(run_path, "complete_with_errors", step=current)
-            break
+            # Critical agents that must succeed for a valid report
+            critical_agents = {"expositor", "scanner", "ingestion"}
+            if current in critical_agents:
+                print(f"[WARN] Critical step {current} failed repeatedly. Aborting pipeline.")
+                state["status"] = "complete_with_errors"
+                state["next_step"] = "failed"
+                update_history(state, f"{current} failed after {attempts} attempts")
+                save_state(state_path, state)
+                _record_final_status(run_path, "complete_with_errors", step=current)
+                break
+            else:
+                # Non-critical agent: skip and continue
+                print(f"[WARN] Step {current} failed after {attempts} attempts. Skipping and continuing.")
+                update_history(state, f"{current} failed after {attempts} attempts - skipped")
+                if current in PIPELINE_SEQUENCE:
+                    idx = PIPELINE_SEQUENCE.index(current)
+                    if idx + 1 < len(PIPELINE_SEQUENCE):
+                        state["current_step"] = PIPELINE_SEQUENCE[idx + 1]
+                        state["next_step"] = PIPELINE_SEQUENCE[idx + 1]
+                    else:
+                        state["status"] = "complete_with_errors"
+                        state["next_step"] = "complete"
+                        update_history(state, "Pipeline completed with errors")
 
         save_state(state_path, state)
         

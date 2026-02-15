@@ -42,9 +42,9 @@ class TimeSeriesAgent:
             return smart_load_dataset(candidate, config=config, fast_mode=fast_mode, prefer_parquet=True)
 
         default_path = self.state.get_file_path("cleaned_uploaded.csv")
-        if Path(default_path).exists():
+        if default_path and Path(default_path).exists():
             return smart_load_dataset(default_path, config=config, fast_mode=fast_mode, prefer_parquet=True)
-        raise FileNotFoundError("Active dataset not found for time series agent")
+        raise FileNotFoundError(f"Active dataset not found (path={default_path})")
 
     def run(self):
         log_launch("Analyzing time series patterns...")
@@ -132,7 +132,9 @@ def main():
     try:
         agent.run()
     except Exception as exc:
-        print(f"[ERROR] Time series agent failed: {exc}")
+        import traceback
+        print(f"[ERROR] Time series agent failed: {exc}", flush=True)
+        traceback.print_exc(file=sys.stderr)
         sys.exit(1)
 
 
