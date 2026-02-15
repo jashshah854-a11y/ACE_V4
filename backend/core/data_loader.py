@@ -65,7 +65,7 @@ def calculate_file_timeout(data_path: str, config: Optional[PerformanceConfig] =
     """
     config = config or PerformanceConfig()
 
-    if not Path(data_path).exists():
+    if not data_path or not Path(data_path).exists():
         return config.base_timeout_seconds
 
     file_size_mb = os.path.getsize(data_path) / (1024 * 1024)

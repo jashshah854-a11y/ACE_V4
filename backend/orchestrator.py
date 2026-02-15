@@ -454,7 +454,7 @@ def calculate_agent_timeout(run_path, agent_name):
     try:
         state = StateManager(run_path)
         data_path = state.get_file_path("cleaned_uploaded.csv")
-        if os.path.exists(data_path):
+        if data_path and os.path.exists(data_path):
             file_size_mb = os.path.getsize(data_path) / (1024 * 1024)
             # Add 2 seconds per MB, more for compute-intensive agents
             intensive_agents = ["overseer", "regression", "sentry", "personas"]

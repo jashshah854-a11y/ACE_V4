@@ -60,7 +60,7 @@ class Overseer:
         if not data_path:
             data_path = self.state.get_file_path("cleaned_uploaded.csv")
 
-        if not Path(data_path).exists():
+        if not data_path or not Path(data_path).exists():
             raise ValueError(f"Dataset not found at {data_path}")
 
         try:
