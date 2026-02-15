@@ -7,6 +7,7 @@ import pandas as pd
 sys.path.append(str(Path(__file__).parent.parent))
 
 from core.state_manager import StateManager
+from core.datetime_utils import coerce_datetime
 
 
 MIN_SAMPLE_SIZE = 50
