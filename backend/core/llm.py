@@ -17,11 +17,21 @@ try:
 except ImportError:
     genai = None
 
+# Explicitly pass the API key so it works regardless of env var naming
+_gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 try:
-    client = genai.Client() if genai else None  # reads GEMINI_API_KEY
-except Exception:
+    if genai and _gemini_key:
+        client = genai.Client(api_key=_gemini_key)
+    elif genai:
+        client = genai.Client()  # fallback to auto-detect
+    else:
+        client = None
+except Exception as _e:
     client = None
-    print("Warning: Gemini API Key not found. Using mock responses.")
+    print(f"Warning: Gemini client init failed: {_e}. Using mock responses.")
+
+if client is None:
+    print(f"[LLM] No Gemini client. GEMINI_API_KEY set: {bool(os.getenv('GEMINI_API_KEY'))}, GOOGLE_API_KEY set: {bool(os.getenv('GOOGLE_API_KEY'))}")
 
 MODEL_NAME = "gemini-2.0-flash"
 
