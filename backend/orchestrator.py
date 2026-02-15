@@ -408,9 +408,9 @@ def mark_step_running(state, step):
     state.update(progress_info)
 
     update_history(state, f"{step} started")
-    run_path = state.get("run_path")
-    if run_path:
-        update_step_status(run_path, step, "running")
+    _rp = state.get("run_path")
+    if _rp:
+        update_step_status(_rp, step, "running")
 
 
 def finalize_step(state, step, success, stdout, stderr):
@@ -441,9 +441,9 @@ def finalize_step(state, step, success, stdout, stderr):
 
     event = "completed" if success else "failed"
     update_history(state, f"{step} {event}", returncode=0 if success else 1)
-    run_path = state.get("run_path")
-    if run_path:
-        update_step_status(run_path, step, "success" if success else "failed")
+    _rp = state.get("run_path")
+    if _rp:
+        update_step_status(_rp, step, "success" if success else "failed")
 
 
 def calculate_agent_timeout(run_path, agent_name):
@@ -955,9 +955,9 @@ def main_loop(run_path):
         if eligibility["status"] != "eligible":
             step_state = state["steps"].setdefault(current, {"name": current})
             step_state["status"] = "not_applicable" if eligibility["status"] == "not_applicable" else "skipped"
-            run_path = state.get("run_path")
-            if run_path:
-                update_step_status(run_path, current, "skipped")
+            _rp = state.get("run_path") or run_path
+            if _rp:
+                update_step_status(_rp, current, "skipped")
             step_state["eligibility_status"] = eligibility["status"]
             step_state["reason_code"] = eligibility.get("reason_code")
             step_state["message"] = eligibility.get("message") or "Agent not applicable for this run."
@@ -1007,9 +1007,9 @@ def main_loop(run_path):
                 # Non-drift block OR drift blocking is enabled - SKIP
                 step_state = state["steps"].setdefault(current, {"name": current})
                 step_state["status"] = "skipped"
-                run_path = state.get("run_path")
-                if run_path:
-                    update_step_status(run_path, current, "skipped")
+                _rp = state.get("run_path") or run_path
+                if _rp:
+                    update_step_status(_rp, current, "skipped")
                 step_state["message"] = "Skipped by validation guard"
                 state["steps"][current] = step_state
                 state["steps_completed"].append(current)
@@ -1154,9 +1154,9 @@ def main_loop(run_path):
                 # Skip this agent and continue to next step instead of blocking
                 step_state = state["steps"].setdefault(current, {"name": current})
                 step_state["status"] = "skipped"
-                run_path = state.get("run_path")
-                if run_path:
-                    update_step_status(run_path, current, "skipped")
+                _rp = state.get("run_path") or run_path
+                if _rp:
+                    update_step_status(_rp, current, "skipped")
                 step_state["message"] = reason
                 state["steps"][current] = step_state
                 state["steps_completed"].append(current)
