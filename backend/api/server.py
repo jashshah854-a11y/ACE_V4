@@ -15,6 +15,7 @@ import logging
 import threading
 import hashlib
 import time
+import pandas as pd
 from pathlib import Path
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
