@@ -14,7 +14,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from utils.logging import log_launch, log_ok, log_warn
 from core.state_manager import StateManager
-from core.analytics import run_universal_clustering
+from core.analytics import run_universal_clustering, fallback_segmentation
 from core.schema import SchemaMap, ensure_schema_map
 from core.auto_features import auto_feature_groups
 from core.data_quality import compute_data_quality
