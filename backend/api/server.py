@@ -1228,6 +1228,18 @@ async def trigger_run(
         "state": state,
     }
 
+@app.get("/run/{run_id}/snapshot", tags=["Artifacts"])
+@limiter.limit("30/minute")
+async def get_snapshot(request: Request, run_id: str, lite: bool = False):
+    """Return the full snapshot payload for a completed run."""
+    _validate_run_id(run_id)
+    try:
+        payload, etag = _build_snapshot_payload(run_id, lite=lite)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Run not found or not yet complete")
+    return JSONResponse(content=payload, headers={"ETag": etag})
+
+
 @app.get("/run/{run_id}/report", tags=["Artifacts"])
 @limiter.limit("30/minute")
 async def get_report(request: Request, run_id: str, format: str = "markdown"):
