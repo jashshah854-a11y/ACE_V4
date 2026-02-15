@@ -521,10 +521,10 @@ def run_agent(agent_name, run_path):
     # Calculate dynamic timeout based on data file size
     state_manager = StateManager(run_path)
     dataset_info = state_manager.read("active_dataset") or {}
-    data_path = dataset_info.get("path") or state_manager.get_file_path("cleaned_uploaded.csv")
+    data_path = dataset_info.get("path") or state_manager.get_file_path("cleaned_uploaded.csv") or ""
 
     config = PerformanceConfig()
-    timeout = calculate_file_timeout(data_path, config)
+    timeout = calculate_file_timeout(data_path, config) if data_path else config.base_timeout_seconds
     print(f"[DEBUG] Calculated timeout for {agent_name}: {timeout}s ({timeout/60:.1f} min)")
 
     # Ensure PYTHONPATH includes the backend directory so agents can import 'core'
