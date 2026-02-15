@@ -61,6 +61,7 @@ from core.run_manifest import initialize_manifest, compute_dataset_fingerprint, 
 from core.structured_logging import log_step_event
 from core.run_health import build_run_health_summary
 from core.invariants import run_invariants
+from core.agent_eligibility import resolve_agent_eligibility
 
 POLL_TIME = 0.5  # seconds
 MAX_STEP_ATTEMPTS = 3
