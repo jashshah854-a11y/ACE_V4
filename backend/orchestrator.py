@@ -844,6 +844,15 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
     conf_path = Path(run_path) / "artifacts" / "confidence_report.json"
     save_json(conf_path, confidence)
     state_manager.write("confidence_report", confidence)
+
+    # Initialize run manifest so trust_evaluation can read it later
+    import hashlib as _hashlib
+    _file_hash = _hashlib.sha256(Path(cleaned_path).read_bytes()).hexdigest() if Path(cleaned_path).exists() else "unknown"
+    _columns = list((schema_profile.get("columns") or {}).keys())
+    _row_count = ingestion_meta.get("rows", 0)
+    _ds_fingerprint = compute_dataset_fingerprint(_file_hash, _columns, _row_count)
+    initialize_manifest(run_path, run_id, _ds_fingerprint)
+
     save_state(state_path, state)
     return run_id, run_path
 

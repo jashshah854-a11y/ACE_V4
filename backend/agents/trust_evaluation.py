@@ -9,7 +9,8 @@ from core.run_manifest import _read_manifest
 def main(run_path: str) -> None:
     manifest = _read_manifest(run_path)
     if not manifest:
-        raise RuntimeError("Run manifest missing; cannot compute trust.")
+        # Manifest may not have been initialized; build a minimal one so trust can still run
+        manifest = {"steps": {}, "artifacts": {}, "warnings": [], "trust": None}
     state_manager = StateManager(run_path)
     manifest = dict(manifest)
     data_profile = state_manager.read("data_profile") or {}
