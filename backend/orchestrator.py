@@ -1097,6 +1097,11 @@ def main_loop(run_path):
                 time.sleep(RETRY_BACKOFF)
 
         finalize_step(state, current, success, stdout, stderr)
+        # Promote _pending artifacts (e.g. data_profile_pending → data_profile)
+        try:
+            _finalize_metadata_artifacts(state_manager, current, success)
+        except Exception as exc:
+            logger.warning(f"[Orchestrator] Metadata promotion for {current}: {exc}")
         if current == "regression":
             try:
                 _sync_regression_status(state, state_manager)

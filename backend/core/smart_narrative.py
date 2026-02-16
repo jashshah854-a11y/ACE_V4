@@ -13,8 +13,11 @@ from dataclasses import dataclass
 # Use the same google-genai SDK as llm.py for consistency
 try:
     from google import genai
-    # Client reads GEMINI_API_KEY from environment automatically
-    client = genai.Client()
+    _gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if _gemini_key:
+        client = genai.Client(api_key=_gemini_key)
+    else:
+        client = genai.Client()
     GENAI_AVAILABLE = True
 except ImportError:
     genai = None
