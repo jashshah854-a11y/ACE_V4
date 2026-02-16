@@ -39,11 +39,11 @@ class ScannerAgent:
             if data_profile is None:
                 df = smart_load_dataset(data_path, config=PerformanceConfig())
                 data_profile = build_data_profile(df)
-            validated = apply_artifact_validation("data_profile", data_profile)
-            if validated:
-                self.state.write("data_profile_pending", validated)
+            validation = apply_artifact_validation("data_profile", data_profile)
+            if validation and validation.get("valid"):
+                self.state.write("data_profile_pending", data_profile)
                 if not cached:
-                    save_cache(cache_key, validated)
+                    save_cache(cache_key, data_profile)
             else:
                 print("[SCANNER WARNING] Data profile failed validation; artifact discarded", flush=True)
         except Exception as exc:

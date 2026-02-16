@@ -44,8 +44,8 @@ class TypeIdentifier:
         if not isinstance(data_profile, dict):
             data_profile = build_data_profile(df)
             validated_profile = apply_artifact_validation("data_profile", data_profile)
-            if validated_profile:
-                self.state.write("data_profile_pending", validated_profile)
+            if validated_profile and validated_profile.get("valid"):
+                self.state.write("data_profile_pending", data_profile)
 
         analysis_intent = self.state.read("analysis_intent") or {}
         manifest = read_manifest(self.state.run_path) or {}
@@ -57,10 +57,10 @@ class TypeIdentifier:
         if classification is None:
             classification = classify_dataset_profile(data_profile, analysis_intent=analysis_intent)
         validated_classification = apply_artifact_validation("dataset_classification", classification)
-        if validated_classification:
-            self.state.write("dataset_classification_pending", validated_classification)
+        if validated_classification and validated_classification.get("valid"):
+            self.state.write("dataset_classification_pending", classification)
             if not cached_classification:
-                save_cache(cache_key, validated_classification)
+                save_cache(cache_key, classification)
         log_ok(f"Data type identified: {result['primary_type']} ({result['confidence_label']})")
 
     def _resolve_dataset_path(self) -> str:
