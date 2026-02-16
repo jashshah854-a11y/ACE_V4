@@ -212,7 +212,8 @@ def _build_diagnostics_payload(state: StateManager, run_path: Path) -> Dict[str,
     schema_scan = state.read("schema_scan_output")
     if not isinstance(schema_scan, dict):
         schema_scan = {}
-    warnings = state.get_warnings()
+    manifest_data = _load_json_file(Path(run_path) / "run_manifest.json") if run_path else {}
+    warnings = (manifest_data or {}).get("warnings", [])
 
     return {
         "mode": mode,
@@ -237,7 +238,12 @@ def _build_snapshot_payload(run_id: str, lite: bool) -> tuple[Dict[str, Any], st
     state = StateManager(str(run_path))
     manifest = _load_json_file(run_path / "run_manifest.json")
     if not manifest:
-        raise FileNotFoundError("Run manifest not found")
+        # Manifest may not exist for older runs; build a minimal fallback
+        report_exists = (run_path / "final_report.md").exists()
+        if not report_exists and not any(run_path.iterdir()):
+            raise FileNotFoundError("Run not found or not yet complete")
+        manifest = {"steps": {}, "artifacts": {}, "warnings": [], "trust": None,
+                    "render_policy": {"allow_report": report_exists}, "view_policies": {}}
 
     diagnostics = _build_diagnostics_payload(state, run_path)
     identity_payload = _build_identity_payload(state, run_path)
