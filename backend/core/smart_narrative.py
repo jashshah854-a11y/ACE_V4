@@ -103,7 +103,7 @@ def _extract_context(snapshot: Dict[str, Any]) -> Dict[str, Any]:
             "column_count": id_data.get("column_count", 0),
             "columns": list(id_data.get("columns", {}).keys())[:20],  # Top 20 columns
             "quality_score": id_data.get("quality_score", 0),
-            "data_type": id_data.get("data_type", {}).get("primary_type", "unknown"),
+            "data_type": (id_data.get("data_type") or {}).get("primary_type", "unknown"),
         }
 
         # Column stats
@@ -225,7 +225,7 @@ def _extract_context(snapshot: Dict[str, Any]) -> Dict[str, Any]:
                 "date_range": time_series.get("date_range"),
                 "trend": ts_data.get("trend", {}),
                 "change_points": ts_data.get("change_points", {}),
-                "seasonality": ts_data.get("seasonality", {}).get("has_seasonality", False),
+                "seasonality": (ts_data.get("seasonality") or {}).get("has_seasonality", False),
             }
 
     return context
@@ -372,7 +372,7 @@ def generate_narrative_for_run(state_manager) -> Dict[str, Any]:
         "row_count": data_profile.get("row_count", 0),
         "column_count": data_profile.get("column_count", 0),
         "columns": columns_data,
-        "quality_score": enhanced_analytics.get("quality_score", 0) or enhanced_analytics.get("quality_metrics", {}).get("overall_completeness", 0) / 100,
+        "quality_score": enhanced_analytics.get("quality_score", 0) or (enhanced_analytics.get("quality_metrics") or {}).get("overall_completeness", 0) / 100,
         "data_type": data_type,
     }
     
