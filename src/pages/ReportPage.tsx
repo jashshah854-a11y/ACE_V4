@@ -50,7 +50,8 @@ export default function ReportPage() {
     );
   }
 
-  const confidenceScore = snapshot.trust?.overall_confidence ?? 0;
+  const trust = snapshot.trust ?? { overall_confidence: 0 };
+  const confidenceScore = trust.overall_confidence ?? 0;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">

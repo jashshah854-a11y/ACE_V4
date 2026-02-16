@@ -8,7 +8,9 @@ interface Props {
 }
 
 export function ExecutiveSummaryTab({ snapshot }: Props) {
-  const { smart_narrative, curated_kpis, trust } = snapshot;
+  const smart_narrative = snapshot.smart_narrative ?? {} as Record<string, any>;
+  const curated_kpis = snapshot.curated_kpis ?? {} as Record<string, any>;
+  const trust = snapshot.trust ?? { overall_confidence: 0 };
   const warningCount = smart_narrative.warnings?.length ?? 0;
   const recs = smart_narrative.recommendations ?? [];
 

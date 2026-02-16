@@ -28,8 +28,10 @@ function statusBg(status: string) {
 }
 
 export function TrustTab({ trust, governedReport, warnings }: Props) {
-  const components = trust.components ?? {};
-  const caps = trust.applied_caps ?? [];
+  const safeTrust = trust ?? { overall_confidence: 0, components: {}, applied_caps: [] };
+  const safeGovReport = governedReport ?? { limitations: [] };
+  const components = safeTrust.components ?? {};
+  const caps = safeTrust.applied_caps ?? [];
 
   return (
     <div className="space-y-8">
@@ -49,20 +51,20 @@ export function TrustTab({ trust, governedReport, warnings }: Props) {
         </div>
         <div className="flex items-end gap-2">
           <span className="text-4xl font-bold">
-            {Math.round(trust.overall_confidence)}%
+            {Math.round(safeTrust.overall_confidence)}%
           </span>
         </div>
         <div className="h-3 bg-secondary rounded-full overflow-hidden mt-4">
           <div
             className={cn(
               "h-full rounded-full transition-all",
-              trust.overall_confidence >= 70
+              safeTrust.overall_confidence >= 70
                 ? "bg-green-500"
-                : trust.overall_confidence >= 40
+                : safeTrust.overall_confidence >= 40
                   ? "bg-yellow-500"
                   : "bg-red-500",
             )}
-            style={{ width: `${trust.overall_confidence}%` }}
+            style={{ width: `${safeTrust.overall_confidence}%` }}
           />
         </div>
       </motion.div>
@@ -122,11 +124,11 @@ export function TrustTab({ trust, governedReport, warnings }: Props) {
         </div>
       )}
 
-      {governedReport.limitations && governedReport.limitations.length > 0 && (
+      {safeGovReport.limitations && safeGovReport.limitations.length > 0 && (
         <div>
           <h3 className="text-lg font-semibold mb-4">Limitations</h3>
           <ul className="space-y-2">
-            {governedReport.limitations.map((lim, i) => (
+            {safeGovReport.limitations.map((lim, i) => (
               <li key={i} className="text-sm text-foreground/80 flex items-start gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground mt-2 shrink-0" />
                 {lim}
