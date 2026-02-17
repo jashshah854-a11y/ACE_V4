@@ -222,6 +222,35 @@ export interface RunsListResponse {
   has_more: boolean;
 }
 
+// ── Insight Lens (Ask AI) ──────────────────────────────────────
+
+export interface EvidenceRef {
+  section: string;
+  key: string;
+  label: string;
+  value: string;
+}
+
+export interface InsightLensMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  evidence?: EvidenceRef[];
+  timestamp: number;
+}
+
+export interface InsightLensRequest {
+  question: string;
+  active_tab: string;
+}
+
+export interface InsightLensResponse {
+  answer: string;
+  evidence: EvidenceRef[];
+}
+
+// ── Pipeline ───────────────────────────────────────────────────
+
 export const PIPELINE_STEPS = [
   { key: "ingestion", label: "Data ingestion" },
   { key: "type_identifier", label: "Detecting data types" },

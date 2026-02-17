@@ -4,12 +4,13 @@ import { motion } from "framer-motion";
 import { useSnapshot } from "@/lib/queries";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ExecutiveSummaryTab } from "@/components/report/ExecutiveSummaryTab";
 import { InsightsTab } from "@/components/report/InsightsTab";
 import { HypothesesTab } from "@/components/report/HypothesesTab";
 import { TrustTab } from "@/components/report/TrustTab";
 import { FullReportTab } from "@/components/report/FullReportTab";
+import { InsightLens } from "@/components/report/insight-lens/InsightLens";
 
 const TABS = [
   { key: "summary", label: "Executive Summary", icon: FileText },
@@ -25,6 +26,22 @@ export default function ReportPage() {
   const { runId } = useParams<{ runId: string }>();
   const { data: snapshot, isLoading, error } = useSnapshot(runId);
   const [activeTab, setActiveTab] = useState<TabKey>("summary");
+
+  // Handle Insight Lens evidence navigation (must be before early returns)
+  const handleInsightNavigate = useCallback(
+    (e: Event) => {
+      const detail = (e as CustomEvent).detail as { tab: string; section: string; key: string };
+      if (detail.tab && TABS.some((t) => t.key === detail.tab)) {
+        setActiveTab(detail.tab as TabKey);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    window.addEventListener("insight-lens:navigate", handleInsightNavigate);
+    return () => window.removeEventListener("insight-lens:navigate", handleInsightNavigate);
+  }, [handleInsightNavigate]);
 
   if (isLoading) {
     return (
@@ -144,6 +161,8 @@ export default function ReportPage() {
           )}
         </div>
       </motion.div>
+
+      <InsightLens runId={runId!} activeTab={activeTab} snapshot={snapshot} />
     </div>
   );
 }

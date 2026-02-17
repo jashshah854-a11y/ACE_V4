@@ -1248,6 +1248,40 @@ async def get_snapshot(request: Request, run_id: str, lite: bool = False):
     return JSONResponse(content=payload, headers={"ETag": etag})
 
 
+@app.post("/run/{run_id}/ask", tags=["Artifacts"])
+@limiter.limit("10/minute")
+async def ask_about_run(request: Request, run_id: str):
+    """Insight Lens: ask an AI question about a completed analysis run."""
+    _validate_run_id(run_id)
+
+    body = await request.json()
+    question = body.get("question", "").strip()
+    active_tab = body.get("active_tab", "summary")
+
+    if not question:
+        raise HTTPException(status_code=400, detail="Question is required")
+    if len(question) > 1000:
+        raise HTTPException(status_code=400, detail="Question too long (max 1000 chars)")
+
+    try:
+        payload, _ = _build_snapshot_payload(run_id, lite=False)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Run not found or not yet complete")
+
+    from core.insight_lens import ask_insight_lens
+
+    try:
+        result = ask_insight_lens(question, payload, active_tab)
+    except Exception as e:
+        logger.error(f"Insight Lens error for run {run_id}: {e}")
+        result = {
+            "answer": "Unable to analyze right now. The AI service may be temporarily unavailable.",
+            "evidence": [],
+        }
+
+    return JSONResponse(content=result)
+
+
 @app.get("/run/{run_id}/report", tags=["Artifacts"])
 @limiter.limit("30/minute")
 async def get_report(request: Request, run_id: str, format: str = "markdown"):

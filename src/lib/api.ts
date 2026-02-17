@@ -5,6 +5,8 @@ import type {
   Snapshot,
   RunsListResponse,
   TaskIntent,
+  InsightLensRequest,
+  InsightLensResponse,
 } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -57,6 +59,27 @@ export async function getSnapshot(runId: string): Promise<Snapshot> {
   const res = await fetch(`${API_BASE}/run/${runId}/snapshot`);
   if (!res.ok) {
     throw new Error(`Snapshot fetch failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function askInsightLens(
+  runId: string,
+  question: string,
+  context: { activeTab: string },
+): Promise<InsightLensResponse> {
+  const body: InsightLensRequest = {
+    question,
+    active_tab: context.activeTab,
+  };
+  const res = await fetch(`${API_BASE}/run/${runId}/ask`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "Insight Lens request failed");
   }
   return res.json();
 }
