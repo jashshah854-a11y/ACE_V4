@@ -1,10 +1,12 @@
-import { useState, useCallback } from "react";
-import { askInsightLens } from "@/lib/api";
-import type { InsightLensMessage } from "@/lib/types";
+import { useState, useCallback, useRef } from "react";
+import { askInsightLensStream } from "@/lib/api";
+import type { InsightLensMessage, EvidenceRef } from "@/lib/types";
 
 export function useInsightLens(runId: string, activeTab: string) {
   const [messages, setMessages] = useState<InsightLensMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);
+  const [streamingContent, setStreamingContent] = useState("");
+  const streamBuffer = useRef("");
 
   const ask = useCallback(
     async (question: string) => {
@@ -16,17 +18,49 @@ export function useInsightLens(runId: string, activeTab: string) {
       };
       setMessages((prev) => [...prev, userMsg]);
       setIsThinking(true);
+      setStreamingContent("");
+      streamBuffer.current = "";
 
       try {
-        const res = await askInsightLens(runId, question, { activeTab });
-        const assistantMsg: InsightLensMessage = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: res.answer,
-          evidence: res.evidence,
-          timestamp: Date.now(),
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
+        await askInsightLensStream(
+          runId,
+          question,
+          { activeTab },
+          // onToken — accumulate streaming text
+          (token: string) => {
+            streamBuffer.current += token;
+            setStreamingContent(streamBuffer.current);
+            // Once we have some content, switch from shimmer to streaming
+            setIsThinking(false);
+          },
+          // onComplete — finalize with parsed answer + evidence
+          (answer: string, evidence: EvidenceRef[]) => {
+            const assistantMsg: InsightLensMessage = {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content: answer,
+              evidence,
+              timestamp: Date.now(),
+            };
+            setMessages((prev) => [...prev, assistantMsg]);
+            setStreamingContent("");
+            streamBuffer.current = "";
+            setIsThinking(false);
+          },
+          // onError
+          (errorMsg: string) => {
+            const errMessage: InsightLensMessage = {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content: errorMsg,
+              timestamp: Date.now(),
+            };
+            setMessages((prev) => [...prev, errMessage]);
+            setStreamingContent("");
+            streamBuffer.current = "";
+            setIsThinking(false);
+          },
+        );
       } catch (err) {
         const errorMsg: InsightLensMessage = {
           id: crypto.randomUUID(),
@@ -38,7 +72,8 @@ export function useInsightLens(runId: string, activeTab: string) {
           timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, errorMsg]);
-      } finally {
+        setStreamingContent("");
+        streamBuffer.current = "";
         setIsThinking(false);
       }
     },
@@ -47,7 +82,9 @@ export function useInsightLens(runId: string, activeTab: string) {
 
   const clear = useCallback(() => {
     setMessages([]);
+    setStreamingContent("");
+    streamBuffer.current = "";
   }, []);
 
-  return { messages, isThinking, ask, clear };
+  return { messages, isThinking, streamingContent, ask, clear };
 }

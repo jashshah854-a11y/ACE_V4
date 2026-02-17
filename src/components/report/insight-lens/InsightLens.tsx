@@ -30,7 +30,7 @@ export function InsightLens({ runId, activeTab, snapshot }: Props) {
   const triggerRef = useRef<DOMRect | null>(null);
   const threadRef = useRef<HTMLDivElement>(null);
 
-  const { messages, isThinking, ask, clear } = useInsightLens(runId, activeTab);
+  const { messages, isThinking, streamingContent, ask, clear } = useInsightLens(runId, activeTab);
   const suggestions = useSuggestions(activeTab, snapshot);
 
   const open = useCallback((rect?: DOMRect) => {
@@ -60,7 +60,7 @@ export function InsightLens({ runId, activeTab, snapshot }: Props) {
     if (threadRef.current) {
       threadRef.current.scrollTop = threadRef.current.scrollHeight;
     }
-  }, [messages, isThinking]);
+  }, [messages, isThinking, streamingContent]);
 
   const handleSubmit = (question: string) => {
     setPrefill(undefined);
@@ -120,7 +120,14 @@ export function InsightLens({ runId, activeTab, snapshot }: Props) {
               onNavigateEvidence={handleNavigateEvidence}
             />
           ))}
-          {isThinking && (
+          {streamingContent && (
+            <InsightLensAnswer
+              message={{ id: "streaming", role: "assistant", content: streamingContent, timestamp: 0 }}
+              isStreaming
+              onNavigateEvidence={handleNavigateEvidence}
+            />
+          )}
+          {isThinking && !streamingContent && (
             <InsightLensAnswer
               message={{ id: "thinking", role: "assistant", content: "", timestamp: 0 }}
               isThinking

@@ -7,6 +7,7 @@ import { User, Sparkles } from "lucide-react";
 interface Props {
   message: InsightLensMessage;
   isThinking?: boolean;
+  isStreaming?: boolean;
   onNavigateEvidence: (section: string, key: string) => void;
 }
 
@@ -25,7 +26,7 @@ function ThinkingShimmer() {
   );
 }
 
-export function InsightLensAnswer({ message, isThinking, onNavigateEvidence }: Props) {
+export function InsightLensAnswer({ message, isThinking, isStreaming, onNavigateEvidence }: Props) {
   if (isThinking) return <ThinkingShimmer />;
 
   const isUser = message.role === "user";
@@ -50,10 +51,18 @@ export function InsightLensAnswer({ message, isThinking, onNavigateEvidence }: P
           <p className="text-sm text-foreground">{message.content}</p>
         ) : (
           <>
-            <div className="prose prose-sm prose-invert max-w-none text-sm [&>p]:my-1.5 [&>ul]:my-1.5 [&>ol]:my-1.5">
-              <ReactMarkdown>{message.content}</ReactMarkdown>
-            </div>
-            {message.evidence && message.evidence.length > 0 && (
+            {isStreaming ? (
+              // Streaming: show raw text as it arrives (JSON fragments, not markdown yet)
+              <div className="text-sm text-muted-foreground whitespace-pre-wrap font-mono">
+                {message.content}
+                <span className="inline-block w-1.5 h-4 ml-0.5 bg-blue-400 animate-pulse" />
+              </div>
+            ) : (
+              <div className="prose prose-sm prose-invert max-w-none text-sm [&>p]:my-1.5 [&>ul]:my-1.5 [&>ol]:my-1.5">
+                <ReactMarkdown>{message.content}</ReactMarkdown>
+              </div>
+            )}
+            {!isStreaming && message.evidence && message.evidence.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-3">
                 {message.evidence.map((ev, i) => (
                   <EvidenceRefBadge

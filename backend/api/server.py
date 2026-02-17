@@ -1251,27 +1251,43 @@ async def get_snapshot(request: Request, run_id: str, lite: bool = False):
 @app.post("/run/{run_id}/ask", tags=["Artifacts"])
 @limiter.limit("10/minute")
 async def ask_about_run(request: Request, run_id: str):
-    """Insight Lens: ask an AI question about a completed analysis run."""
+    """Insight Lens: ask an AI question about a completed analysis run.
+
+    Supports two modes:
+    - Default: returns JSON response
+    - stream=true: returns Server-Sent Events for progressive rendering
+    """
     _validate_run_id(run_id)
 
     body = await request.json()
     question = body.get("question", "").strip()
     active_tab = body.get("active_tab", "summary")
+    stream = body.get("stream", False)
 
     if not question:
         raise HTTPException(status_code=400, detail="Question is required")
     if len(question) > 1000:
         raise HTTPException(status_code=400, detail="Question too long (max 1000 chars)")
 
+    from core.insight_lens import load_lens_context, ask_insight_lens, ask_insight_lens_stream
+
+    # Lazy-load only the sections needed for this tab (much faster than full snapshot)
+    run_path = str(DATA_DIR / "runs" / run_id)
     try:
-        payload, _ = _build_snapshot_payload(run_id, lite=False)
+        context_data = load_lens_context(run_path, active_tab)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Run not found or not yet complete")
 
-    from core.insight_lens import ask_insight_lens
+    if stream:
+        from starlette.responses import StreamingResponse
+        return StreamingResponse(
+            ask_insight_lens_stream(question, context_data, active_tab),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
     try:
-        result = ask_insight_lens(question, payload, active_tab)
+        result = ask_insight_lens(question, context_data, active_tab)
     except Exception as e:
         logger.error(f"Insight Lens error for run {run_id}: {e}")
         result = {

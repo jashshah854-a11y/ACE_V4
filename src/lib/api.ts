@@ -84,6 +84,63 @@ export async function askInsightLens(
   return res.json();
 }
 
+export async function askInsightLensStream(
+  runId: string,
+  question: string,
+  context: { activeTab: string },
+  onToken: (text: string) => void,
+  onComplete: (answer: string, evidence: import("./types").EvidenceRef[]) => void,
+  onError: (msg: string) => void,
+): Promise<void> {
+  const body = {
+    question,
+    active_tab: context.activeTab,
+    stream: true,
+  };
+  const res = await fetch(`${API_BASE}/run/${runId}/ask`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "Insight Lens request failed");
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) {
+    throw new Error("Streaming not supported");
+  }
+
+  const decoder = new TextDecoder();
+  let partial = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    partial += decoder.decode(value, { stream: true });
+    const lines = partial.split("\n");
+    partial = lines.pop() ?? "";
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      try {
+        const event = JSON.parse(line.slice(6));
+        if (event.type === "token") {
+          onToken(event.content);
+        } else if (event.type === "complete") {
+          onComplete(event.answer, event.evidence ?? []);
+        } else if (event.type === "error") {
+          onError(event.content);
+        }
+      } catch {
+        // Skip malformed SSE lines
+      }
+    }
+  }
+}
+
 export async function getAllRuns(
   limit = 20,
   offset = 0,

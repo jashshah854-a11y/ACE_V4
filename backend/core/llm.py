@@ -10,7 +10,7 @@ Features:
 import json
 import time
 import os
-from typing import Optional
+from typing import Generator, Optional
 
 try:
     from google import genai
@@ -301,3 +301,48 @@ def call_gemini(
         if parse_json:
             return {"error": str(e)}
         return f"ERROR: {e}"
+
+
+def call_gemini_stream(
+    prompt: str,
+    temperature: float = 0.3,
+    max_tokens: int = 1024,
+) -> Generator[str, None, None]:
+    """
+    Stream Gemini response token-by-token.
+
+    Yields text chunks as they arrive from the API.
+    Falls back to single-shot if streaming is unavailable.
+    """
+    if client is None:
+        yield "MOCK: No API client available."
+        return
+
+    config = {
+        "temperature": temperature,
+        "max_output_tokens": max_tokens,
+        "response_mime_type": "application/json",
+    }
+
+    try:
+        response = client.models.generate_content_stream(
+            model=MODEL_NAME,
+            contents=prompt,
+            config=config,
+        )
+        for chunk in response:
+            if chunk.text:
+                yield chunk.text
+    except AttributeError:
+        # SDK version doesn't support streaming — fall back to synchronous
+        print("[LLM] Streaming not available, falling back to synchronous call")
+        result = call_gemini(prompt, temperature=temperature, max_tokens=max_tokens, parse_json=False)
+        yield result
+    except Exception as e:
+        print(f"[LLM] Gemini stream error: {e}")
+        # Fall back to synchronous on any streaming error
+        try:
+            result = call_gemini(prompt, temperature=temperature, max_tokens=max_tokens, parse_json=False)
+            yield result
+        except Exception:
+            yield json.dumps({"answer": f"Error: {e}", "evidence": []})
