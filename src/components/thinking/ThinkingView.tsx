@@ -168,7 +168,7 @@ export function ThinkingView({
                     <div className="w-3 h-3 rounded-full bg-green-500/80" />
                 </div>
                 <span className="text-[hsl(var(--lab-silver))] font-[family-name:var(--font-lab)] text-sm ml-2">
-                    ACE Intelligence Engine
+                    ACE — Automated Curiosity Engine
                 </span>
             </div>
 

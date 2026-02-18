@@ -129,7 +129,7 @@ export default function UploadPage() {
         className="w-full max-w-2xl text-center"
       >
         <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-3">
-          <span className="text-blue-500">ACE</span> Intelligence Engine
+          <span className="text-blue-500">ACE</span> Automated Curiosity Engine
         </h1>
         <p className="text-lg text-muted-foreground mb-10 max-w-lg mx-auto">
           Transform raw data into executive-quality intelligence reports using

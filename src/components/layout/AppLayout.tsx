@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
-import { Database, Upload, FileText, History } from "lucide-react";
+import { Database, Upload, History } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AceLogo } from "@/components/ui/AceLogo";
 
 const NAV_ITEMS = [
   { to: "/", label: "Upload", icon: Upload },
@@ -14,18 +15,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background flex flex-col">
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center group-hover:bg-blue-500 transition-colors">
-              <Database className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-lg font-bold tracking-tight leading-none">
-                ACE
-              </span>
-              <span className="text-[10px] text-muted-foreground leading-none tracking-widest uppercase">
-                Intelligence Engine
-              </span>
-            </div>
+          <Link to="/" className="flex items-center group">
+            <AceLogo size="sm" mode="full" />
           </Link>
 
           <nav className="flex items-center gap-1">
@@ -60,8 +51,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-border/50 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
-            <Database className="w-3.5 h-3.5" />
-            <span>ACE v4 -- Automated Curiosity Engine</span>
+            <AceLogo size="sm" mode="icon" />
+            <span>ACE v4 — Automated Curiosity Engine</span>
           </div>
           <span>20-Agent AI Pipeline</span>
         </div>
