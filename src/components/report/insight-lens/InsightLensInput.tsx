@@ -46,8 +46,8 @@ export function InsightLensInput({ onSubmit, isThinking, prefill }: Props) {
         type="button"
         onClick={handleSubmit}
         disabled={!value.trim() || isThinking}
-        className="shrink-0 p-1.5 rounded-lg bg-blue-600 text-white disabled:opacity-40
-          hover:bg-blue-500 transition-colors"
+        className="shrink-0 p-1.5 rounded-lg bg-teal-600 text-white disabled:opacity-40
+          hover:bg-teal-500 transition-colors"
       >
         {isThinking ? (
           <Loader2 className="w-4 h-4 animate-spin" />

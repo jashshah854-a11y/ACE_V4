@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Database, Upload, History } from "lucide-react";
+import { Upload, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AceLogo } from "@/components/ui/AceLogo";
 
@@ -61,9 +61,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-border/50 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 shrink-0">
-              <AceLogo size="sm" mode="icon" />
-            </div>
+            <AceLogo size="sm" mode="icon" />
             <span>ACE v4 — Automated Curiosity Engine</span>
           </div>
           <span>20-Agent AI Pipeline</span>

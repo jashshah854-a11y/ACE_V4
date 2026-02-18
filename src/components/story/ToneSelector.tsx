@@ -39,7 +39,7 @@ export function ToneSelector({ currentTone, onToneChange, className }: ToneSelec
                     className={cn(
                         "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200",
                         currentTone === tone.id
-                            ? "bg-white text-blue-600 shadow-sm ring-1 ring-gray-200"
+                            ? "bg-white text-teal-600 shadow-sm ring-1 ring-gray-200"
                             : "text-gray-500 hover:text-gray-700 hover:bg-gray-100/50"
                     )}
                 >

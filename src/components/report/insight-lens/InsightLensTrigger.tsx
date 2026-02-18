@@ -14,8 +14,8 @@ export function InsightLensTrigger({ onClick }: Props) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.5 }}
       className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full
-        bg-gradient-to-r from-blue-600 to-violet-600 text-white text-sm font-medium
-        shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40
+        bg-gradient-to-r from-teal-600 to-violet-600 text-white text-sm font-medium
+        shadow-lg shadow-teal-500/25 hover:shadow-teal-500/40
         transition-shadow duration-300 group"
       style={{
         animation: "insight-pulse 3s ease-in-out infinite",

@@ -117,7 +117,7 @@ function RunCard({ runId }: { runId: string }) {
       isComplete
         ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
         : isRunning
-          ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+          ? "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300"
           : isFailed
             ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
             : "bg-muted text-muted-foreground";

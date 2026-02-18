@@ -77,7 +77,7 @@ export function DatasetPulse({
 
     // Status indicator
     const statusConfig = {
-        running: { color: 'bg-blue-500', label: 'Processing', pulse: true },
+        running: { color: 'bg-teal-500', label: 'Processing', pulse: true },
         completed: { color: 'bg-green-500', label: 'Complete', pulse: false },
         failed: { color: 'bg-red-500', label: 'Failed', pulse: false },
     };

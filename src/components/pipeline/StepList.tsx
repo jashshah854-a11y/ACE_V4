@@ -82,7 +82,7 @@ export function StepList({
             transition={{ delay: index * 0.03 }}
             className={cn(
               "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-              isActive && "bg-blue-500/10 border border-blue-500/20",
+              isActive && "bg-teal-500/10 border border-teal-500/20",
               isFailedStep && "bg-red-500/10 border border-red-500/20",
               isCompleted && !isActive && "opacity-60",
             )}
@@ -90,7 +90,7 @@ export function StepList({
             <div
               className={cn(
                 "w-7 h-7 rounded-md flex items-center justify-center shrink-0",
-                isActive && "bg-blue-600 text-white",
+                isActive && "bg-teal-600 text-white",
                 isFailedStep && "bg-red-600 text-white",
                 isCompleted && !isActive && "bg-green-600/10 text-green-500",
                 isPending && !isFailedStep && "bg-secondary text-muted-foreground",
@@ -112,7 +112,7 @@ export function StepList({
                 <p
                   className={cn(
                     "text-sm font-medium",
-                    isActive && "text-blue-400",
+                    isActive && "text-teal-400",
                     isFailedStep && "text-red-400",
                     isPending && !isFailedStep && "text-muted-foreground",
                   )}
@@ -127,7 +127,7 @@ export function StepList({
               <span
                 className={cn(
                   "text-[10px] font-medium uppercase tracking-wider shrink-0",
-                  isActive && "text-blue-400",
+                  isActive && "text-teal-400",
                   isFailedStep && "text-red-400",
                   isCompleted && !isActive && "text-green-500",
                   isPending && !isFailedStep && "text-muted-foreground/50",

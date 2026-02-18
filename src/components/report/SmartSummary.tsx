@@ -87,7 +87,7 @@ export function SmartSummary({ snapshot, analytics, artifacts }: SmartSummaryPro
         {llmNarrative.data_story && (
           <section className="rounded-2xl border bg-card p-6">
             <div className="flex items-center gap-3 mb-4">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
+              <BarChart3 className="h-5 w-5 text-teal-600" />
               <h3 className="text-lg font-semibold">The Data Story</h3>
             </div>
             <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -194,7 +194,7 @@ function HeuristicInsightsContent({ insights }: { insights: Insight }) {
       {insights.identity && (
         <section className="rounded-2xl border bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <Database className="h-5 w-5 text-blue-600" />
+            <Database className="h-5 w-5 text-teal-600" />
             <h3 className="text-lg font-semibold">Dataset Overview</h3>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -283,7 +283,7 @@ function HeuristicInsightsContent({ insights }: { insights: Insight }) {
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500"
+                      className="h-full bg-gradient-to-r from-teal-500 to-indigo-500 rounded-full transition-all duration-500"
                       style={{ width: `${Math.max(2, item.pct)}%` }}
                     />
                   </div>
@@ -364,7 +364,7 @@ function MetricIcon({ type }: { type?: string }) {
     case 'trending-down':
       return <TrendingDown className="h-5 w-5 text-rose-600" />;
     default:
-      return <BarChart3 className="h-5 w-5 text-blue-600" />;
+      return <BarChart3 className="h-5 w-5 text-teal-600" />;
   }
 }
 
@@ -375,7 +375,7 @@ function SectionIcon({ type }: { type?: string }) {
     case 'trend':
       return <TrendingUp className="h-5 w-5 text-emerald-600" />;
     case 'analysis':
-      return <BarChart3 className="h-5 w-5 text-blue-600" />;
+      return <BarChart3 className="h-5 w-5 text-teal-600" />;
     default:
       return <Activity className="h-5 w-5 text-purple-600" />;
   }

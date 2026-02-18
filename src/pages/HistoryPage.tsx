@@ -25,7 +25,7 @@ export default function HistoryPage() {
             </p>
           </div>
           <Link to="/">
-            <Button className="bg-blue-600 hover:bg-blue-500 text-white">
+            <Button className="bg-teal-600 hover:bg-teal-500 text-white">
               New Analysis
             </Button>
           </Link>
@@ -68,8 +68,8 @@ export default function HistoryPage() {
                     className="flex items-center justify-between px-5 py-4 hover:bg-secondary/50 transition-colors group"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center shrink-0 group-hover:bg-blue-500/10 transition-colors">
-                        <FileText className="w-4 h-4 text-muted-foreground group-hover:text-blue-500 transition-colors" />
+                      <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center shrink-0 group-hover:bg-teal-500/10 transition-colors">
+                        <FileText className="w-4 h-4 text-muted-foreground group-hover:text-teal-500 transition-colors" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium font-mono truncate">

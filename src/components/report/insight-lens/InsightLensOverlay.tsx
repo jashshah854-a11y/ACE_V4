@@ -39,7 +39,7 @@ export function InsightLensOverlay({ isOpen, onClose, triggerRect, children }: P
             onClick={onClose}
           >
             <motion.div
-              className="absolute rounded-full bg-blue-500/10"
+              className="absolute rounded-full bg-teal-500/10"
               style={{ left: rippleOrigin.x, top: rippleOrigin.y, x: "-50%", y: "-50%" }}
               initial={{ width: 0, height: 0, opacity: 0.6 }}
               animate={{ width: "300vmax", height: "300vmax", opacity: 0 }}

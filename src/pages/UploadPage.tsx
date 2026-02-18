@@ -129,7 +129,7 @@ export default function UploadPage() {
         className="w-full max-w-2xl text-center"
       >
         <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-3">
-          <span className="text-blue-500">ACE</span> Automated Curiosity Engine
+          <span className="text-teal-500">ACE</span> Automated Curiosity Engine
         </h1>
         <p className="text-lg text-muted-foreground mb-10 max-w-lg mx-auto">
           Transform raw data into executive-quality intelligence reports using
@@ -195,7 +195,7 @@ export default function UploadPage() {
             {suggestedQuestions.length > 0 && (
               <div className="text-left">
                 <div className="flex items-center gap-1.5 mb-2">
-                  <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                  <Sparkles className="w-3.5 h-3.5 text-teal-400" />
                   <span className="text-xs text-muted-foreground">
                     Suggested questions
                   </span>
@@ -207,7 +207,7 @@ export default function UploadPage() {
                       type="button"
                       onClick={() => setQuestion(q)}
                       disabled={isSubmitting}
-                      className="text-xs px-3 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/5 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500/50 transition-colors text-left disabled:opacity-50"
+                      className="text-xs px-3 py-1.5 rounded-full border border-teal-500/30 bg-teal-500/5 text-teal-400 hover:bg-teal-500/10 hover:border-teal-500/50 transition-colors text-left disabled:opacity-50"
                     >
                       {q}
                     </button>
@@ -220,7 +220,7 @@ export default function UploadPage() {
               size="lg"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="bg-blue-600 hover:bg-blue-500 text-white px-8 mt-2"
+              className="bg-teal-600 hover:bg-teal-500 text-white px-8 mt-2"
             >
               {isSubmitting ? (
                 <>
@@ -264,7 +264,7 @@ export default function UploadPage() {
               key={feature.title}
               className="rounded-xl border border-border/50 bg-card/50 p-5 text-left"
             >
-              <feature.icon className="w-5 h-5 text-blue-500 mb-3" />
+              <feature.icon className="w-5 h-5 text-teal-500 mb-3" />
               <h3 className="text-sm font-semibold mb-1">{feature.title}</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 {feature.desc}

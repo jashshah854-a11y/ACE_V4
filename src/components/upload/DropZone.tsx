@@ -77,8 +77,8 @@ export function DropZone({
             className="rounded-xl border border-border bg-card p-6"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-blue-600/10 flex items-center justify-center shrink-0">
-                <FileSpreadsheet className="w-6 h-6 text-blue-500" />
+              <div className="w-12 h-12 rounded-lg bg-teal-600/10 flex items-center justify-center shrink-0">
+                <FileSpreadsheet className="w-6 h-6 text-teal-500" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{file.name}</p>
@@ -109,8 +109,8 @@ export function DropZone({
             className={cn(
               "relative rounded-xl border-2 border-dashed cursor-pointer transition-all duration-200 p-12 text-center group",
               isDragging
-                ? "border-blue-500 bg-blue-500/5"
-                : "border-border hover:border-blue-500/50 hover:bg-card/50",
+                ? "border-teal-500 bg-teal-500/5"
+                : "border-border hover:border-teal-500/50 hover:bg-card/50",
               disabled && "opacity-50 cursor-not-allowed",
             )}
           >
@@ -127,14 +127,14 @@ export function DropZone({
                 className={cn(
                   "w-16 h-16 rounded-2xl flex items-center justify-center transition-colors",
                   isDragging
-                    ? "bg-blue-500/10"
-                    : "bg-secondary group-hover:bg-blue-500/10",
+                    ? "bg-teal-500/10"
+                    : "bg-secondary group-hover:bg-teal-500/10",
                 )}
               >
                 {isDragging ? (
-                  <FileUp className="w-8 h-8 text-blue-500" />
+                  <FileUp className="w-8 h-8 text-teal-500" />
                 ) : (
-                  <Upload className="w-8 h-8 text-muted-foreground group-hover:text-blue-500 transition-colors" />
+                  <Upload className="w-8 h-8 text-muted-foreground group-hover:text-teal-500 transition-colors" />
                 )}
               </div>
               <div>

@@ -73,7 +73,7 @@ export function ExplanationBlock({
             {/* Optional: Data notes */}
             {notes && (
                 <div className="flex items-start gap-2 pt-2 border-t border-border/40">
-                    <Info className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" />
+                    <Info className="w-4 h-4 mt-0.5 text-teal-500 shrink-0" />
                     <div>
                         <span className="font-semibold text-foreground">Data notes: </span>
                         <span className="text-muted-foreground">{replaceTokens(notes)}</span>

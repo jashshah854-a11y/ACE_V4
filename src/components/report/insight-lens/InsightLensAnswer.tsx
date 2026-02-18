@@ -13,7 +13,7 @@ interface Props {
 function ThinkingShimmer() {
   return (
     <div className="flex items-start gap-3 px-5 py-3">
-      <div className="shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center">
+      <div className="shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-teal-600 to-violet-600 flex items-center justify-center">
         <Sparkles className="w-3.5 h-3.5 text-white" />
       </div>
       <div className="flex-1 space-y-2 pt-1">
@@ -40,7 +40,7 @@ export function InsightLensAnswer({ message, isThinking, onNavigateEvidence }: P
         className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${
           isUser
             ? "bg-secondary text-secondary-foreground"
-            : "bg-gradient-to-br from-blue-600 to-violet-600 text-white"
+            : "bg-gradient-to-br from-teal-600 to-violet-600 text-white"
         }`}
       >
         {isUser ? <User className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}

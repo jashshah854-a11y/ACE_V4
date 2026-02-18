@@ -18,7 +18,7 @@ export const ZoneBLoader = () => {
                     <motion.div
                         animate={{ opacity: [0.3, 0.6, 0.3] }}
                         transition={{ repeat: Infinity, duration: 2 }}
-                        className="h-2 w-24 bg-blue-500/20 rounded mb-4"
+                        className="h-2 w-24 bg-teal-500/20 rounded mb-4"
                     />
                     <motion.div
                         animate={{ opacity: [0.5, 0.8, 0.5] }}
@@ -61,7 +61,7 @@ export const ZoneBLoader = () => {
                         <motion.div
                             animate={{ scale: [1, 1.1, 1], opacity: [0.2, 0.5, 0.2] }}
                             transition={{ repeat: Infinity, duration: 3 }}
-                            className="h-10 w-10 rounded-full bg-blue-500/10"
+                            className="h-10 w-10 rounded-full bg-teal-500/10"
                         />
                     </div>
                 </div>

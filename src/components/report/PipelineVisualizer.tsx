@@ -73,7 +73,7 @@ export function PipelineVisualizer({ runState, className }: PipelineVisualizerPr
                                 <div className={cn(
                                     "absolute left-0 top-0 w-12 h-12 rounded-full border-4 border-background flex items-center justify-center transition-colors duration-500",
                                     step.status === "completed" ? "bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400" :
-                                        step.status === "running" ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" :
+                                        step.status === "running" ? "bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400" :
                                             step.status === "failed" ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" :
                                                 "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500"
                                 )}>
@@ -91,12 +91,12 @@ export function PipelineVisualizer({ runState, className }: PipelineVisualizerPr
                                     <div className="flex items-center justify-between">
                                         <h4 className={cn(
                                             "font-semibold text-base",
-                                            step.status === "running" ? "text-blue-600 dark:text-blue-400" : "text-foreground"
+                                            step.status === "running" ? "text-teal-600 dark:text-teal-400" : "text-foreground"
                                         )}>
                                             {label}
                                         </h4>
                                         {step.status === "running" && (
-                                            <span className="text-xs font-mono text-blue-600 dark:text-blue-400 animate-pulse bg-blue-100/50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full">
+                                            <span className="text-xs font-mono text-teal-600 dark:text-teal-400 animate-pulse bg-teal-100/50 dark:bg-teal-900/20 px-2 py-0.5 rounded-full">
                                                 ACTIVE
                                             </span>
                                         )}
@@ -119,7 +119,7 @@ export function PipelineVisualizer({ runState, className }: PipelineVisualizerPr
                                                 initial={{ width: "0%" }}
                                                 animate={{ width: "100%" }}
                                                 transition={{ duration: 20, ease: "linear", repeat: Infinity }} // Simulated progress
-                                                className="h-full bg-blue-500 rounded-full"
+                                                className="h-full bg-teal-500 rounded-full"
                                             />
                                         </div>
                                     )}

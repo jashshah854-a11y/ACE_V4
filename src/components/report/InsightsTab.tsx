@@ -13,7 +13,7 @@ interface Props {
 function impactColor(score: number) {
   if (score >= 80) return { text: "text-red-400", bg: "bg-red-500/10" };
   if (score >= 60) return { text: "text-yellow-400", bg: "bg-yellow-500/10" };
-  return { text: "text-blue-400", bg: "bg-blue-500/10" };
+  return { text: "text-teal-400", bg: "bg-teal-500/10" };
 }
 
 export function InsightsTab({ deepInsights, govInsights, insights }: Props) {
@@ -39,11 +39,11 @@ export function InsightsTab({ deepInsights, govInsights, insights }: Props) {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-6"
+            className="rounded-xl border border-teal-500/20 bg-teal-500/5 p-6"
           >
             <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="w-5 h-5 text-blue-400" />
-              <span className="text-xs font-medium text-blue-400 uppercase tracking-wider">
+              <TrendingUp className="w-5 h-5 text-teal-400" />
+              <span className="text-xs font-medium text-teal-400 uppercase tracking-wider">
                 Headline Finding
               </span>
             </div>
@@ -85,7 +85,7 @@ export function InsightsTab({ deepInsights, govInsights, insights }: Props) {
                   <p className="text-xs text-foreground/60 mb-2">
                     <span className="font-medium text-foreground/70">Why it matters:</span> {insight.why_it_matters}
                   </p>
-                  <p className="text-xs text-blue-400">
+                  <p className="text-xs text-teal-400">
                     <span className="font-medium">Recommendation:</span> {insight.recommendation}
                   </p>
                 </motion.div>
@@ -132,7 +132,7 @@ export function InsightsTab({ deepInsights, govInsights, insights }: Props) {
                   transition={{ delay: i * 0.1 }}
                   className="flex items-start gap-4 rounded-xl border border-border bg-card p-4"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 text-sm font-bold">
+                  <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center shrink-0 text-sm font-bold">
                     {i + 1}
                   </div>
                   <div>
@@ -142,7 +142,7 @@ export function InsightsTab({ deepInsights, govInsights, insights }: Props) {
                       <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">
                         {rec.priority}
                       </span>
-                      <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400">
+                      <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400">
                         {rec.impact}
                       </span>
                     </div>

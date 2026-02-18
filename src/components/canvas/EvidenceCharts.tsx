@@ -43,7 +43,7 @@ export function BusinessPulseChart({ metrics, className }: BusinessPulseChartPro
                     icon={TrendingUp}
                     label="Avg Value"
                     value={`$${(metrics.avg_value || 0).toLocaleString()}`}
-                    color="text-blue-400"
+                    color="text-teal-400"
                 />
                 <MetricCard
                     icon={Users}
@@ -190,8 +190,8 @@ function DriverBar({ driver, rank }: DriverBarProps) {
 
     // Color gradient based on rank
     const getColor = (rank: number) => {
-        if (rank <= 3) return 'from-cyan-400 to-blue-400';
-        if (rank <= 6) return 'from-blue-400 to-purple-400';
+        if (rank <= 3) return 'from-cyan-400 to-teal-400';
+        if (rank <= 6) return 'from-teal-400 to-purple-400';
         return 'from-purple-400 to-pink-400';
     };
 

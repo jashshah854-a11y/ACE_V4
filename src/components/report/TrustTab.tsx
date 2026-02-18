@@ -41,7 +41,7 @@ export function TrustTab({ trust, governedReport, warnings }: Props) {
         className="rounded-xl border border-border bg-card p-6"
       >
         <div className="flex items-center gap-3 mb-4">
-          <Shield className="w-6 h-6 text-blue-500" />
+          <Shield className="w-6 h-6 text-teal-500" />
           <div>
             <h3 className="text-lg font-semibold">Overall Confidence</h3>
             <p className="text-sm text-muted-foreground">

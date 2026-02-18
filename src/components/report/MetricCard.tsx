@@ -9,7 +9,7 @@ interface MetricCardProps {
 }
 
 const COLOR_MAP = {
-  blue: "bg-blue-500/10 text-blue-500",
+  blue: "bg-teal-500/10 text-teal-500",
   green: "bg-green-500/10 text-green-500",
   yellow: "bg-yellow-500/10 text-yellow-500",
   red: "bg-red-500/10 text-red-500",

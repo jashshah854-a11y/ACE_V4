@@ -131,7 +131,7 @@ export function RunMonitoringPanel({ runId }: RunMonitoringPanelProps) {
           {/* Signal Summary */}
           <div className="flex flex-wrap gap-2 mb-4">
             {recommendations.signal_summary.n_features > 0 && (
-              <span className="px-2 py-1 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-400 text-xs">
+              <span className="px-2 py-1 rounded-full bg-teal-500/10 text-teal-700 dark:text-teal-400 text-xs">
                 {recommendations.signal_summary.n_features} features analyzed
               </span>
             )}
@@ -198,7 +198,7 @@ function PriorityBadge({ priority }: { priority: string }) {
   const config = {
     Critical: { icon: AlertTriangle, color: "text-rose-600", bg: "bg-rose-100 dark:bg-rose-900/30" },
     High: { icon: TrendingUp, color: "text-amber-600", bg: "bg-amber-100 dark:bg-amber-900/30" },
-    Medium: { icon: Target, color: "text-blue-600", bg: "bg-blue-100 dark:bg-blue-900/30" },
+    Medium: { icon: Target, color: "text-teal-600", bg: "bg-teal-100 dark:bg-teal-900/30" },
     Low: { icon: CheckCircle2, color: "text-muted-foreground", bg: "bg-muted" },
   }[priority] || { icon: CheckCircle2, color: "text-muted-foreground", bg: "bg-muted" };
 

@@ -19,7 +19,7 @@ export function ExecutiveSummaryTab({ snapshot }: Props) {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-6"
+        className="rounded-xl border border-teal-500/20 bg-teal-500/5 p-6"
       >
         <p className="text-xl font-semibold leading-snug text-foreground">
           {smart_narrative.executive_summary}
@@ -80,7 +80,7 @@ export function ExecutiveSummaryTab({ snapshot }: Props) {
                 transition={{ delay: i * 0.05 }}
                 className="flex items-start gap-3 rounded-xl border border-border bg-card p-4"
               >
-                <div className="w-6 h-6 rounded-md bg-blue-600/10 text-blue-500 flex items-center justify-center shrink-0 text-xs font-bold mt-0.5">
+                <div className="w-6 h-6 rounded-md bg-teal-600/10 text-teal-500 flex items-center justify-center shrink-0 text-xs font-bold mt-0.5">
                   {i + 1}
                 </div>
                 <p className="text-sm text-foreground/90 leading-relaxed">
@@ -104,7 +104,7 @@ export function ExecutiveSummaryTab({ snapshot }: Props) {
                 transition={{ delay: i * 0.1 }}
                 className="flex items-start gap-4 rounded-xl border border-border bg-card p-4"
               >
-                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 text-sm font-bold">
+                <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center shrink-0 text-sm font-bold">
                   P{i + 1}
                 </div>
                 <div className="pt-0.5">

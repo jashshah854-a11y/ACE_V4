@@ -15,7 +15,7 @@ export function DecisionTrackingDisclosure({ onAcknowledge }: DecisionTrackingDi
     return (
         <div className="fixed bottom-4 right-4 max-w-md bg-card border border-border rounded-lg shadow-lg p-4 z-50">
             <div className="flex items-start gap-3">
-                <Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                <Info className="h-5 w-5 text-teal-500 mt-0.5 flex-shrink-0" />
                 <div className="flex-1 space-y-2">
                     <p className="text-sm text-foreground">
                         <strong>ACE remembers your interactions</strong> to provide context in future reports.

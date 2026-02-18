@@ -11,7 +11,7 @@ export const ZoneALoader = () => {
                         <motion.div
                             animate={{ opacity: [0.1, 0.3, 0.1], scale: [1, 1.2, 1] }}
                             transition={{ repeat: Infinity, duration: 2, delay: i * 0.2 }}
-                            className="absolute inset-0 rounded-full bg-blue-500/20 blur-sm"
+                            className="absolute inset-0 rounded-full bg-teal-500/20 blur-sm"
                         />
                         {/* Core Node */}
                         <div className="w-10 h-10 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center relative z-10">
@@ -35,7 +35,7 @@ export const ZoneALoader = () => {
             {/* Connecting Spine Line - Shimmering */}
             <div className="absolute top-10 bottom-10 left-1/2 w-px -ml-[0.5px] bg-slate-900 -z-10 overflow-hidden">
                 <motion.div
-                    className="absolute top-0 left-0 w-full h-[30%] bg-gradient-to-b from-transparent via-blue-500/30 to-transparent"
+                    className="absolute top-0 left-0 w-full h-[30%] bg-gradient-to-b from-transparent via-teal-500/30 to-transparent"
                     animate={{ top: ['-100%', '200%'] }}
                     transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
                 />

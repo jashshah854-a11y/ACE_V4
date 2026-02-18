@@ -68,8 +68,8 @@ export function EvidenceLineageModal({
             </div>
           </div>
           {sourceNotes && (
-            <div className="rounded-xl border border-blue-500/40 bg-blue-500/5 p-4 text-sm text-blue-900 dark:text-blue-100">
-              <p className="text-[11px] uppercase tracking-widest text-blue-500">
+            <div className="rounded-xl border border-teal-500/40 bg-teal-500/5 p-4 text-sm text-teal-900 dark:text-teal-100">
+              <p className="text-[11px] uppercase tracking-widest text-teal-500">
                 Notes
               </p>
               <p className="mt-1 text-foreground">{sourceNotes}</p>

@@ -18,7 +18,7 @@ export function InsightCard({ insight }: { insight: GovInsight }) {
       )}
       <div className="flex flex-wrap gap-2">
         {insight.confidence && (
-          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 capitalize">
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 capitalize">
             {String(insight.confidence)}
           </span>
         )}

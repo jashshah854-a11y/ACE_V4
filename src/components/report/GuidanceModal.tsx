@@ -62,7 +62,7 @@ export function GuidanceModal({
             case "warning":
                 return "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200";
             default:
-                return "border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200";
+                return "border-teal-200 bg-teal-50 text-teal-900 dark:border-teal-800 dark:bg-teal-950 dark:text-teal-200";
         }
     };
 
@@ -98,7 +98,7 @@ export function GuidanceModal({
                 {/* Content */}
                 <div className="space-y-4 p-6">
                     {guidanceEntries.length === 0 ? (
-                        <Alert className="border-blue-200 bg-blue-50">
+                        <Alert className="border-teal-200 bg-teal-50">
                             <Info className="h-4 w-4" />
                             <AlertDescription>
                                 No specific issues detected. If you're seeing this message in Safe Mode,

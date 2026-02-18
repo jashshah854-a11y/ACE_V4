@@ -93,7 +93,7 @@ export default function PipelinePage() {
             ) : isFailed ? (
               <XCircle className="w-6 h-6 text-destructive" />
             ) : (
-              <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+              <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
             )}
             <h1 className="text-xl font-bold">
               {isComplete
@@ -116,7 +116,7 @@ export default function PipelinePage() {
           </code>
         </p>
         {status.current_stage && !isComplete && (
-          <p className="text-sm text-blue-400 mb-6">{status.current_stage}</p>
+          <p className="text-sm text-teal-400 mb-6">{status.current_stage}</p>
         )}
         {!status.current_stage && <div className="mb-6" />}
 
@@ -130,7 +130,7 @@ export default function PipelinePage() {
                 "font-bold",
                 isComplete && "text-green-500",
                 isFailed && "text-destructive",
-                !isComplete && !isFailed && "text-blue-500",
+                !isComplete && !isFailed && "text-teal-500",
               )}
             >
               {Math.round(progress)}%
@@ -142,7 +142,7 @@ export default function PipelinePage() {
                 "h-full rounded-full",
                 isComplete && "bg-green-500",
                 isFailed && "bg-destructive",
-                !isComplete && !isFailed && "bg-blue-600",
+                !isComplete && !isFailed && "bg-teal-600",
               )}
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
@@ -180,7 +180,7 @@ export default function PipelinePage() {
               </Button>
               <Button
                 onClick={() => window.location.reload()}
-                className="bg-blue-600 hover:bg-blue-500 text-white"
+                className="bg-teal-600 hover:bg-teal-500 text-white"
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
                 Retry

@@ -24,8 +24,8 @@ export function InsightLensSuggestions({ suggestions, onSelect }: Props) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.05 }}
           className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium
-            bg-secondary text-secondary-foreground hover:bg-blue-500/20 hover:text-blue-400
-            border border-border hover:border-blue-500/40
+            bg-secondary text-secondary-foreground hover:bg-teal-500/20 hover:text-teal-400
+            border border-border hover:border-teal-500/40
             transition-colors whitespace-nowrap"
         >
           {s.label}

@@ -12,7 +12,7 @@ const TYPE_CONFIG = {
   charitable: { label: "Charitable", color: "text-green-400", bg: "bg-green-500/10", border: "border-green-500/20", icon: Eye },
   suspicious: { label: "Suspicious", color: "text-yellow-400", bg: "bg-yellow-500/10", border: "border-yellow-500/20", icon: AlertTriangle },
   wild: { label: "Wild", color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20", icon: Zap },
-  unknown: { label: "Unknown", color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20", icon: Brain },
+  unknown: { label: "Unknown", color: "text-teal-400", bg: "bg-teal-500/10", border: "border-teal-500/20", icon: Brain },
 };
 
 function HypothesisCard({ h, index }: { h: Hypothesis; index: number }) {
@@ -224,7 +224,7 @@ export function HypothesesTab({ hypotheses }: Props) {
       {unknown.length > 0 && (
         <div>
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Brain className="w-5 h-5 text-blue-400" />
+            <Brain className="w-5 h-5 text-teal-400" />
             Other Theories ({unknown.length})
           </h3>
           <div className="space-y-3">

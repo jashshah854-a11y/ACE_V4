@@ -47,7 +47,7 @@ export function VarianceBridgeChart({ data }: VarianceBridgeChartProps) {
               </div>
               <div className="relative h-3 rounded-full bg-muted overflow-hidden">
                 <div
-                  className="absolute inset-y-0 rounded-full bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500"
+                  className="absolute inset-y-0 rounded-full bg-gradient-to-r from-sky-500 via-teal-500 to-indigo-500"
                   style={{ left: `${Math.min(95, (step.start / total) * 100)}%`, width: `${width}%` }}
                 />
               </div>

@@ -30,7 +30,7 @@ export function BusinessPulse({ data, onViewEvidence }: BusinessPulseProps) {
             <div className="flex flex-col md:flex-row gap-6 items-start justify-between">
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight text-primary flex items-center gap-2">
-                        <Activity className="w-6 h-6 text-blue-500" />
+                        <Activity className="w-6 h-6 text-teal-500" />
                         Business Signals
                     </h2>
                     <p className="text-muted-foreground mt-1">
@@ -51,8 +51,8 @@ export function BusinessPulse({ data, onViewEvidence }: BusinessPulseProps) {
                     )}
 
                     {insights && insights.length > 0 && (
-                        <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 max-w-xl text-sm text-blue-900 shadow-sm">
-                            <SparklesIcon className="w-4 h-4 inline mr-2 text-blue-600" />
+                        <div className="bg-teal-50/50 border border-teal-100 rounded-xl p-4 max-w-xl text-sm text-teal-900 shadow-sm">
+                            <SparklesIcon className="w-4 h-4 inline mr-2 text-teal-600" />
                             <span className="font-medium">{insights[0]}</span>
                         </div>
                     )}
@@ -129,7 +129,7 @@ export function BusinessPulse({ data, onViewEvidence }: BusinessPulseProps) {
                                         <span className="text-sm font-semibold">{formatPercent(seg.value_contribution_pct)}</span>
                                         <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
                                             <div
-                                                className="h-full bg-blue-500 rounded-full"
+                                                className="h-full bg-teal-500 rounded-full"
                                                 style={{ width: `${seg.value_contribution_pct}%` }}
                                             />
                                         </div>

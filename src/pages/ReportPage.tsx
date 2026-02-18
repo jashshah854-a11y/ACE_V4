@@ -123,7 +123,7 @@ export default function ReportPage() {
                 className={cn(
                   "flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
                   isActive
-                    ? "border-blue-500 text-blue-400"
+                    ? "border-teal-500 text-teal-400"
                     : "border-transparent text-muted-foreground hover:text-foreground hover:border-border",
                 )}
               >
