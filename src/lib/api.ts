@@ -88,7 +88,6 @@ export async function askInsightLensStream(
   runId: string,
   question: string,
   context: { activeTab: string },
-  onToken: (text: string) => void,
   onComplete: (answer: string, evidence: import("./types").EvidenceRef[]) => void,
   onError: (msg: string) => void,
 ): Promise<void> {
@@ -127,9 +126,7 @@ export async function askInsightLensStream(
       if (!line.startsWith("data: ")) continue;
       try {
         const event = JSON.parse(line.slice(6));
-        if (event.type === "token") {
-          onToken(event.content);
-        } else if (event.type === "complete") {
+        if (event.type === "complete") {
           onComplete(event.answer, event.evidence ?? []);
         } else if (event.type === "error") {
           onError(event.content);

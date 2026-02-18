@@ -309,19 +309,24 @@ def call_gemini_stream(
     max_tokens: int = 1024,
 ) -> Generator[str, None, None]:
     """
-    Stream Gemini response token-by-token.
+    Stream Gemini response, buffering internally.
 
-    Yields text chunks as they arrive from the API.
-    Falls back to single-shot if streaming is unavailable.
+    NOTE: Do NOT use response_mime_type="application/json" with streaming —
+    it causes Gemini 500 errors. We request plain text and parse JSON ourselves.
+
+    Yields text chunks as they arrive. Caller is responsible for JSON parsing
+    of the accumulated buffer.
+
+    Falls back to single synchronous call if streaming is unavailable.
     """
     if client is None:
-        yield "MOCK: No API client available."
+        yield json.dumps({"answer": "No AI client available.", "evidence": []})
         return
 
+    # No JSON mode here — streaming + JSON mode is incompatible with some SDK versions
     config = {
         "temperature": temperature,
         "max_output_tokens": max_tokens,
-        "response_mime_type": "application/json",
     }
 
     try:
@@ -340,9 +345,10 @@ def call_gemini_stream(
         yield result
     except Exception as e:
         print(f"[LLM] Gemini stream error: {e}")
-        # Fall back to synchronous on any streaming error
+        # Fall back to synchronous
         try:
             result = call_gemini(prompt, temperature=temperature, max_tokens=max_tokens, parse_json=False)
             yield result
-        except Exception:
-            yield json.dumps({"answer": f"Error: {e}", "evidence": []})
+        except Exception as e2:
+            print(f"[LLM] Gemini fallback also failed: {e2}")
+            raise RuntimeError(f"Gemini unavailable: {e}") from e2

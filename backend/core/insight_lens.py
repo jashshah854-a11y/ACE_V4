@@ -245,11 +245,17 @@ def ask_insight_lens_stream(
     active_tab: str,
 ) -> Generator[str, None, None]:
     """
-    Stream an Insight Lens answer as Server-Sent Events.
+    Run Insight Lens over SSE, sending a single complete event when done.
+
+    We buffer the full Gemini response server-side before sending — this avoids:
+    - Raw JSON token display on the frontend
+    - Incompatibility between JSON mode and streaming
+
+    The SSE connection keeps the request alive (no timeout) while Gemini thinks.
+    Frontend shows a shimmer until the complete event arrives.
 
     Yields SSE-formatted strings:
-      data: {"type":"token","content":"..."}
-      data: {"type":"complete","evidence":[...]}
+      data: {"type":"complete","answer":"...","evidence":[...]}
       data: {"type":"error","content":"..."}
     """
     context = _extract_context(snapshot, active_tab)
@@ -267,12 +273,12 @@ Respond with JSON only."""
     try:
         from core.llm import call_gemini_stream
 
+        # Buffer all chunks — do NOT yield tokens (raw JSON looks terrible)
         buffer = ""
         for chunk in call_gemini_stream(prompt, temperature=0.2, max_tokens=1024):
             buffer += chunk
-            yield f"data: {json.dumps({'type': 'token', 'content': chunk})}\n\n"
 
-        # Parse the complete response for evidence
+        # Clean markdown fences if present
         text = buffer.strip()
         if text.startswith("```"):
             text = "\n".join(text.split("\n")[1:])
@@ -285,16 +291,18 @@ Respond with JSON only."""
             answer = parsed.get("answer", text)
             evidence = _validate_evidence(parsed.get("evidence", []))
         except json.JSONDecodeError:
+            # Gemini returned plain text instead of JSON — use it as-is
             answer = text
             evidence = []
 
         yield f"data: {json.dumps({'type': 'complete', 'answer': answer, 'evidence': evidence})}\n\n"
 
-    except ImportError:
-        # Streaming not available — fall back to non-streaming
-        result = ask_insight_lens(question, snapshot, active_tab)
-        yield f"data: {json.dumps({'type': 'complete', 'answer': result['answer'], 'evidence': result['evidence']})}\n\n"
-
     except Exception as e:
         logger.error(f"Insight Lens stream error: {e}")
-        yield f"data: {json.dumps({'type': 'error', 'content': 'Unable to analyze right now. Please try again.'})}\n\n"
+        # Try synchronous fallback before giving up
+        try:
+            result = ask_insight_lens(question, snapshot, active_tab)
+            yield f"data: {json.dumps({'type': 'complete', 'answer': result['answer'], 'evidence': result['evidence']})}\n\n"
+        except Exception as e2:
+            logger.error(f"Insight Lens fallback error: {e2}")
+            yield f"data: {json.dumps({'type': 'error', 'content': 'Unable to analyze right now. Please try again in a moment.'})}\n\n"
