@@ -63,7 +63,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <Database className="w-3.5 h-3.5" />
             <span>ACE v4 -- Automated Curiosity Engine</span>
           </div>
-          <span>19-Agent AI Pipeline</span>
+          <span>20-Agent AI Pipeline</span>
         </div>
       </footer>
     </div>
