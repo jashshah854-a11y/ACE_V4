@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2dd4bf"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+    <radialGradient id="core" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#2dd4bf"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Orbit ring 1 -->
+  <ellipse cx="50" cy="50" rx="42" ry="16" fill="none" stroke="url(#g1)" stroke-width="2" opacity="0.7"/>
+  <!-- Orbit ring 2 -->
+  <ellipse cx="50" cy="50" rx="42" ry="16" fill="none" stroke="url(#g1)" stroke-width="2" opacity="0.7" transform="rotate(60 50 50)"/>
+  <!-- Orbit ring 3 -->
+  <ellipse cx="50" cy="50" rx="42" ry="16" fill="none" stroke="url(#g1)" stroke-width="2" opacity="0.7" transform="rotate(-60 50 50)"/>
+
+  <!-- Orbiting dots -->
+  <circle cx="92" cy="50" r="6" fill="#2dd4bf" filter="url(#glow)"/>
+  <circle cx="92" cy="50" r="6" fill="#0891b2" filter="url(#glow)" transform="rotate(60 50 50)"/>
+  <circle cx="92" cy="50" r="6" fill="#14b8a6" filter="url(#glow)" transform="rotate(-60 50 50)"/>
+
+  <!-- Center core -->
+  <circle cx="50" cy="50" r="11" fill="url(#core)" filter="url(#glow)"/>
+</svg>
