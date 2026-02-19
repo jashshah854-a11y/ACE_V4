@@ -7,6 +7,7 @@ import traceback
 import threading
 import shutil
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed as cf_as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -68,23 +69,28 @@ MAX_STEP_ATTEMPTS = 3
 RETRY_BACKOFF = 2
 GOVERNANCE_REFRESH_STEPS = {"scanner", "type_identifier", "interpreter", "validator"}
 TIME_BUDGETS = {
-    "scanner": 120,
-    "type_identifier": 90,
-    "validator": 120,
-    "overseer": 300,
-    "regression": 420,
-    "personas": 300,
-    "fabricator": 300,
-    "raw_data_sampler": 60,       # Quick data sampling
-    "deep_insight": 180,          # LLM calls for insight synthesis
-    "dot_connector": 120,         # Connection analysis
-    "hypothesis_engine": 180,     # Bold hypothesis generation
-    "so_what_deepener": 120,      # Implication deepening
-    "story_framer": 120,          # Narrative framing
-    "executive_narrator": 180,    # 3-pass LLM narrative generation
-    "expositor": 180,
-    "trust_evaluation": 90,
+    "scanner":            300,    # was 120
+    "type_identifier":    180,    # was 90
+    "interpreter":        300,    # new (was missing)
+    "validator":          300,    # was 120
+    "overseer":           900,    # was 300
+    "regression":        1800,    # was 420 — CPU-bound, needs 30 min on large data
+    "time_series":        600,    # new (was missing — caused the hang)
+    "sentry":             600,    # new (was missing)
+    "personas":           900,    # was 300
+    "fabricator":         900,    # was 300
+    "raw_data_sampler":   300,    # was 60
+    "deep_insight":       600,    # was 180
+    "dot_connector":      600,    # was 120
+    "hypothesis_engine":  600,    # was 180
+    "so_what_deepener":   600,    # was 120
+    "story_framer":       600,    # was 120
+    "executive_narrator": 600,    # was 180
+    "expositor":          600,    # was 180
+    "trust_evaluation":   300,    # was 90
 }
+
+ANALYSIS_PARALLEL_GROUP = ["overseer", "regression", "time_series", "sentry"]
 
 
 def _record_final_status(run_path: str, status: str, **extra):
@@ -452,8 +458,8 @@ def finalize_step(state, step, success, stdout, stderr):
 
 def calculate_agent_timeout(run_path, agent_name):
     """Calculate dynamic timeout based on dataset size and agent type."""
-    base_timeout = 900  # 15 minutes base timeout
-    
+    base_timeout = 1800  # 30 minutes base timeout
+
     # Try to determine data size
     try:
         state = StateManager(run_path)
@@ -464,12 +470,12 @@ def calculate_agent_timeout(run_path, agent_name):
             intensive_agents = ["overseer", "regression", "sentry", "personas"]
             multiplier = 3 if agent_name in intensive_agents else 2
             size_timeout = int(file_size_mb * multiplier)
-            total_timeout = min(base_timeout + size_timeout, 1800)  # Cap at 30 minutes
+            total_timeout = min(base_timeout + size_timeout, 3600)  # Cap at 60 minutes
             print(f"[TIMEOUT] {agent_name}: {total_timeout}s (file: {file_size_mb:.1f}MB)")
             return total_timeout
     except Exception as e:
         print(f"[TIMEOUT] Could not calculate dynamic timeout: {e}")
-    
+
     return base_timeout
 
 def run_agent(agent_name, run_path):
@@ -721,9 +727,10 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
             _ext = Path(data_path).suffix.lower()
             if _ext in {".xls", ".xlsx"}:
                 _xl = pd.ExcelFile(data_path)
-                _sheet = _xl.sheet_names[0]
+                _requested = run_config.get("sheet_name") if run_config else None
+                _sheet = _requested if _requested and _requested in _xl.sheet_names else _xl.sheet_names[0]
                 if len(_xl.sheet_names) > 1:
-                    print(f"[INGEST] Excel file has {len(_xl.sheet_names)} sheets: {_xl.sheet_names}. Reading first sheet: '{_sheet}'")
+                    print(f"[INGEST] Reading sheet '{_sheet}' ({len(_xl.sheet_names)} sheets available: {_xl.sheet_names})")
                 raw_df = _xl.parse(_sheet)
             elif _ext == ".parquet":
                 raw_df = pd.read_parquet(data_path)
@@ -872,6 +879,127 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
 
     save_state(state_path, state)
     return run_id, run_path
+
+
+def _execute_analysis_stage(run_path, state, state_path, state_manager):
+    """Execute overseer, regression, time_series, and sentry in parallel subprocesses."""
+    print(f"[PARALLEL] Entering analysis stage", flush=True)
+
+    validation_report = state_manager.read("validation_report") or {}
+    blocked = set(validation_report.get("blocked_agents") or [])
+    analysis_intent = state_manager.read("analysis_intent") or {}
+
+    from core.config import ENABLE_DRIFT_BLOCKING
+
+    eligible_agents = []
+    for agent in ANALYSIS_PARALLEL_GROUP:
+        # Resume safety: skip already-completed agents
+        if agent in state.get("steps_completed", []):
+            print(f"[PARALLEL] {agent}: already completed, skipping", flush=True)
+            continue
+
+        # Eligibility check
+        eligibility = resolve_agent_eligibility(agent, analysis_intent)
+        if eligibility["status"] != "eligible":
+            step_state = state["steps"].setdefault(agent, {"name": agent})
+            step_state["status"] = "not_applicable" if eligibility["status"] == "not_applicable" else "skipped"
+            step_state["eligibility_status"] = eligibility["status"]
+            step_state["reason_code"] = eligibility.get("reason_code")
+            step_state["message"] = eligibility.get("message") or "Agent not applicable for this run."
+            state["steps"][agent] = step_state
+            if agent not in state["steps_completed"]:
+                state["steps_completed"].append(agent)
+            update_step_status(run_path, agent, "skipped")
+            print(f"[PARALLEL] {agent}: not eligible ({eligibility['status']}), skipping", flush=True)
+            continue
+
+        # Blocked check
+        if agent in blocked:
+            drift_notes = [note for note in validation_report.get("notes", []) if "drift" in note.lower()]
+            if drift_notes and not ENABLE_DRIFT_BLOCKING:
+                # Drift block disabled — allow
+                eligible_agents.append(agent)
+            else:
+                step_state = state["steps"].setdefault(agent, {"name": agent})
+                step_state["status"] = "skipped"
+                step_state["message"] = "Skipped by validation guard"
+                state["steps"][agent] = step_state
+                if agent not in state["steps_completed"]:
+                    state["steps_completed"].append(agent)
+                update_step_status(run_path, agent, "skipped")
+                print(f"[PARALLEL] {agent}: blocked by validation guard, skipping", flush=True)
+                continue
+        else:
+            eligible_agents.append(agent)
+
+    if not eligible_agents:
+        print(f"[PARALLEL] No eligible agents in analysis group", flush=True)
+        save_state(state_path, state)
+        return
+
+    print(f"[PARALLEL] Launching analysis stage: {eligible_agents}", flush=True)
+
+    # Mark all eligible agents as running in one save
+    for agent in eligible_agents:
+        step_state = state["steps"].setdefault(agent, {"name": agent})
+        step_state["eligibility_status"] = "eligible"
+        step_state["status"] = "running"
+        step_state["started_at"] = iso_now()
+        step_state["_start_epoch"] = time.time()
+        state["steps"][agent] = step_state
+    state["status"] = "running"
+    save_state(state_path, state)
+
+    # Launch all agents concurrently as isolated subprocesses
+    future_to_agent = {}
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        for agent in eligible_agents:
+            future = executor.submit(run_agent, agent, run_path)
+            future_to_agent[future] = agent
+
+        results = {}
+        for future in cf_as_completed(future_to_agent):
+            agent = future_to_agent[future]
+            try:
+                success, stdout, stderr = future.result()
+            except Exception as exc:
+                success, stdout, stderr = False, "", str(exc)
+            results[agent] = (success, stdout, stderr)
+            print(f"[PARALLEL] {agent} finished (success={success})", flush=True)
+
+    # Process results sequentially — safe, no concurrent state writes
+    state = load_state(state_path) or state
+    for agent in eligible_agents:
+        success, stdout, stderr = results[agent]
+        finalize_step(state, agent, success, stdout, stderr)
+
+        try:
+            _finalize_metadata_artifacts(state_manager, agent, success)
+        except Exception as exc:
+            logger.warning(f"[Orchestrator] Metadata promotion for {agent}: {exc}")
+
+        if agent == "regression":
+            try:
+                _sync_regression_status(state, state_manager)
+                _finalize_regression_artifacts(state_manager, success)
+            except Exception as exc:
+                update_history(state, f"Regression artifact promotion warning: {exc}", returncode=0)
+                logger.warning(f"[Orchestrator] Regression promotion issue (non-fatal): {exc}")
+                if state.get("status") not in ("failed",):
+                    state["status"] = "running"
+
+        # Post-agent domain guardrail for overseer/regression
+        if agent in ["overseer", "regression"]:
+            from core.data_guardrails import check_validation_passed
+            state_mgr = StateManager(run_path)
+            can_proceed, reason = check_validation_passed(state_mgr)
+            if not can_proceed:
+                state["status"] = "complete_with_errors"
+                update_history(state, f"Agent '{agent}' post-run guardrail: {reason}", returncode=1)
+                append_limitation(state_mgr, f"Cannot continue after {agent}: {reason}", agent=agent, severity="error")
+
+    save_state(state_path, state)
+    print(f"[PARALLEL] Analysis stage complete", flush=True)
 
 
 def launch_pipeline_async(data_path, run_config=None):
@@ -1082,6 +1210,21 @@ def main_loop(run_path):
                 state["next_step"] = PIPELINE_SEQUENCE[idx]
             save_state(state_path, state)
             continue
+
+        # --- PARALLEL ANALYSIS STAGE ---
+        if current == ANALYSIS_PARALLEL_GROUP[0]:
+            _execute_analysis_stage(run_path, state, state_path, state_manager)
+            state = load_state(state_path)
+            group_end_idx = PIPELINE_SEQUENCE.index(ANALYSIS_PARALLEL_GROUP[-1])
+            if group_end_idx + 1 < len(PIPELINE_SEQUENCE):
+                state["current_step"] = PIPELINE_SEQUENCE[group_end_idx + 1]
+                state["next_step"]    = PIPELINE_SEQUENCE[group_end_idx + 1]
+            else:
+                state["status"]    = "complete"
+                state["next_step"] = "complete"
+            save_state(state_path, state)
+            continue
+        # --- END PARALLEL ANALYSIS STAGE ---
 
         # Run the agent
         step_state = state["steps"].setdefault(current, {"name": current})

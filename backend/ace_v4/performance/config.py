@@ -8,7 +8,7 @@ class PerformanceConfig:
     large_row_count: int = 1_000_000
 
     # CSV read options
-    chunk_size: int = 100_000
+    chunk_size: int = 250_000    # fewer I/O passes on large files
     sample_rows_for_type_inference: int = 10_000
 
     # For agents: max rows to sample for analysis (prevents memory exhaustion)
@@ -21,5 +21,5 @@ class PerformanceConfig:
     memory_soft_limit_mb: int = 4_000
 
     # Timeout calculation
-    base_timeout_seconds: int = 600
-    timeout_per_mb: int = 5
+    base_timeout_seconds: int = 1800
+    timeout_per_mb: int = 10

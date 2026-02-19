@@ -64,8 +64,8 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = 600
     
     # Agent Execution Tuning
-    base_agent_timeout: int = 600
-    timeout_per_mb: int = 5
+    base_agent_timeout: int = 1800
+    timeout_per_mb: int = 10
 
     # Governance
     quality_threshold: float = QUALITY_THRESHOLD
