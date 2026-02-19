@@ -91,6 +91,7 @@ TIME_BUDGETS = {
 }
 
 ANALYSIS_PARALLEL_GROUP = ["overseer", "regression", "time_series", "sentry"]
+POST_ANALYSIS_PARALLEL_GROUP = ["fabricator", "raw_data_sampler", "deep_insight"]
 
 
 def _record_final_status(run_path: str, status: str, **extra):
@@ -881,6 +882,99 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
     return run_id, run_path
 
 
+def _execute_simple_parallel_group(agents, run_path, state, state_path, state_manager):
+    """Execute a group of independent agents in parallel subprocesses (no special artifact hooks)."""
+    print(f"[PARALLEL] Entering group: {agents}", flush=True)
+
+    validation_report = state_manager.read("validation_report") or {}
+    blocked = set(validation_report.get("blocked_agents") or [])
+    analysis_intent = state_manager.read("analysis_intent") or {}
+
+    from core.config import ENABLE_DRIFT_BLOCKING
+
+    eligible_agents = []
+    for agent in agents:
+        if agent in state.get("steps_completed", []):
+            print(f"[PARALLEL] {agent}: already completed, skipping", flush=True)
+            continue
+
+        eligibility = resolve_agent_eligibility(agent, analysis_intent)
+        if eligibility["status"] != "eligible":
+            step_state = state["steps"].setdefault(agent, {"name": agent})
+            step_state["status"] = "not_applicable" if eligibility["status"] == "not_applicable" else "skipped"
+            step_state["eligibility_status"] = eligibility["status"]
+            step_state["reason_code"] = eligibility.get("reason_code")
+            step_state["message"] = eligibility.get("message") or "Agent not applicable for this run."
+            state["steps"][agent] = step_state
+            if agent not in state["steps_completed"]:
+                state["steps_completed"].append(agent)
+            update_step_status(run_path, agent, "skipped")
+            print(f"[PARALLEL] {agent}: not eligible ({eligibility['status']}), skipping", flush=True)
+            continue
+
+        if agent in blocked:
+            drift_notes = [note for note in validation_report.get("notes", []) if "drift" in note.lower()]
+            if drift_notes and not ENABLE_DRIFT_BLOCKING:
+                eligible_agents.append(agent)
+            else:
+                step_state = state["steps"].setdefault(agent, {"name": agent})
+                step_state["status"] = "skipped"
+                step_state["message"] = "Skipped by validation guard"
+                state["steps"][agent] = step_state
+                if agent not in state["steps_completed"]:
+                    state["steps_completed"].append(agent)
+                update_step_status(run_path, agent, "skipped")
+                print(f"[PARALLEL] {agent}: blocked by validation guard, skipping", flush=True)
+                continue
+        else:
+            eligible_agents.append(agent)
+
+    if not eligible_agents:
+        print(f"[PARALLEL] No eligible agents in group {agents}", flush=True)
+        save_state(state_path, state)
+        return
+
+    print(f"[PARALLEL] Launching group: {eligible_agents}", flush=True)
+
+    for agent in eligible_agents:
+        step_state = state["steps"].setdefault(agent, {"name": agent})
+        step_state["eligibility_status"] = "eligible"
+        step_state["status"] = "running"
+        step_state["started_at"] = iso_now()
+        step_state["_start_epoch"] = time.time()
+        state["steps"][agent] = step_state
+    state["status"] = "running"
+    save_state(state_path, state)
+
+    future_to_agent = {}
+    with ThreadPoolExecutor(max_workers=len(eligible_agents)) as executor:
+        for agent in eligible_agents:
+            future = executor.submit(run_agent, agent, run_path)
+            future_to_agent[future] = agent
+
+        results = {}
+        for future in cf_as_completed(future_to_agent):
+            agent = future_to_agent[future]
+            try:
+                success, stdout, stderr = future.result()
+            except Exception as exc:
+                success, stdout, stderr = False, "", str(exc)
+            results[agent] = (success, stdout, stderr)
+            print(f"[PARALLEL] {agent} finished (success={success})", flush=True)
+
+    state = load_state(state_path) or state
+    for agent in eligible_agents:
+        success, stdout, stderr = results[agent]
+        finalize_step(state, agent, success, stdout, stderr)
+        try:
+            _finalize_metadata_artifacts(state_manager, agent, success)
+        except Exception as exc:
+            logger.warning(f"[Orchestrator] Metadata promotion for {agent}: {exc}")
+
+    save_state(state_path, state)
+    print(f"[PARALLEL] Group {agents} complete", flush=True)
+
+
 def _execute_analysis_stage(run_path, state, state_path, state_manager):
     """Execute overseer, regression, time_series, and sentry in parallel subprocesses."""
     print(f"[PARALLEL] Entering analysis stage", flush=True)
@@ -1225,6 +1319,21 @@ def main_loop(run_path):
             save_state(state_path, state)
             continue
         # --- END PARALLEL ANALYSIS STAGE ---
+
+        # --- PARALLEL POST-ANALYSIS STAGE ---
+        if current == POST_ANALYSIS_PARALLEL_GROUP[0]:
+            _execute_simple_parallel_group(POST_ANALYSIS_PARALLEL_GROUP, run_path, state, state_path, state_manager)
+            state = load_state(state_path)
+            group_end_idx = PIPELINE_SEQUENCE.index(POST_ANALYSIS_PARALLEL_GROUP[-1])
+            if group_end_idx + 1 < len(PIPELINE_SEQUENCE):
+                state["current_step"] = PIPELINE_SEQUENCE[group_end_idx + 1]
+                state["next_step"]    = PIPELINE_SEQUENCE[group_end_idx + 1]
+            else:
+                state["status"]    = "complete"
+                state["next_step"] = "complete"
+            save_state(state_path, state)
+            continue
+        # --- END PARALLEL POST-ANALYSIS STAGE ---
 
         # Run the agent
         step_state = state["steps"].setdefault(current, {"name": current})

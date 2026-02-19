@@ -2,6 +2,7 @@ import json
 import os
 import re
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
@@ -171,10 +172,10 @@ def prepare_run_data(
     drift_report_path = artifacts_dir / "drift_report.json"
     save_json(drift_report_path, drift_report)
 
-    # Coercion/parse health on sample (object columns)
-    coercion = {}
-    object_cols = sample_df.select_dtypes(include=["object"]).columns
-    for col in object_cols:
+    # Coercion/parse health on sample (object columns) — parallelized per column
+    object_cols = list(sample_df.select_dtypes(include=["object"]).columns)
+
+    def _coerce_col(col: str) -> tuple:
         series = sample_df[col].astype(str)
         numeric_coerced = pd.to_numeric(series, errors="coerce")
         num_rate = 1 - numeric_coerced.isna().mean()
@@ -193,10 +194,16 @@ def prepare_run_data(
                     dt_coerced = _coerce_datetime(dt_candidates)
                     dt_rate = 1 - dt_coerced.isna().mean()
 
-        coercion[col] = {
+        return col, {
             "numeric_parse_rate": round(float(num_rate), 3),
             "datetime_parse_rate": round(float(dt_rate), 3) if dt_rate is not None else None,
         }
+
+    if object_cols:
+        with ThreadPoolExecutor(max_workers=min(8, len(object_cols))) as pool:
+            coercion = dict(pool.map(_coerce_col, object_cols))
+    else:
+        coercion = {}
 
     coercion_path = artifacts_dir / "coercion_report.json"
     save_json(coercion_path, {"columns": coercion})
