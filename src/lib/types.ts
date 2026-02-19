@@ -18,6 +18,7 @@ export interface DatasetPreview {
     has_numeric_columns: boolean;
   };
   warnings?: string[];
+  sheets?: string[];
 }
 
 export interface TaskIntent {

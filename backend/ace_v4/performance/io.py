@@ -7,14 +7,14 @@ import pandas as pd
 from .config import PerformanceConfig
 
 
-def _read_file(path: str, nrows: Optional[int] = None, **kwargs) -> pd.DataFrame:
+def _read_file(path: str, nrows: Optional[int] = None, sheet_name: Optional[str] = None, **kwargs) -> pd.DataFrame:
     """Read any supported file format into a DataFrame."""
     ext = Path(path).suffix.lower()
     if ext in {".xls", ".xlsx"}:
         xl = pd.ExcelFile(path)
-        sheet = xl.sheet_names[0]
+        sheet = sheet_name if sheet_name and sheet_name in xl.sheet_names else xl.sheet_names[0]
         if len(xl.sheet_names) > 1:
-            print(f"[IO] Excel file has {len(xl.sheet_names)} sheets: {xl.sheet_names}. Reading first: '{sheet}'")
+            print(f"[IO] Excel file has {len(xl.sheet_names)} sheets: {xl.sheet_names}. Reading: '{sheet}'")
         return xl.parse(sheet, nrows=nrows)
     elif ext == ".parquet":
         df = pd.read_parquet(path)
@@ -45,10 +45,11 @@ class ChunkedCSVReader:
     def sample_for_types(
         self,
         path: str,
-        read_kwargs: Optional[Dict[str, Any]] = None
+        read_kwargs: Optional[Dict[str, Any]] = None,
+        sheet_name: Optional[str] = None,
     ) -> pd.DataFrame:
         nrows = self.config.sample_rows_for_type_inference
-        return _read_file(path, nrows=nrows)
+        return _read_file(path, nrows=nrows, sheet_name=sheet_name)
 
     def infer_dtypes(self, sample: pd.DataFrame) -> Dict[str, Any]:
         inferred = {}
@@ -67,12 +68,13 @@ class ChunkedCSVReader:
     def iter_chunks(
         self,
         path: str,
-        read_kwargs: Optional[Dict[str, Any]] = None
+        read_kwargs: Optional[Dict[str, Any]] = None,
+        sheet_name: Optional[str] = None,
     ) -> Iterator[pd.DataFrame]:
         ext = Path(path).suffix.lower()
         # Excel and Parquet don't support native chunked reading — load fully, yield in slices
         if ext in {".xls", ".xlsx", ".parquet"}:
-            df = _read_file(path)
+            df = _read_file(path, sheet_name=sheet_name)
             chunk_size = self.config.chunk_size
             for start in range(0, len(df), chunk_size):
                 yield df.iloc[start:start + chunk_size].copy()
