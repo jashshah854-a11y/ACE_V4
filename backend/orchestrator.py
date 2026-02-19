@@ -718,7 +718,19 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
         else:
             import pandas as pd
 
-            raw_df = pd.read_csv(data_path)
+            _ext = Path(data_path).suffix.lower()
+            if _ext in {".xls", ".xlsx"}:
+                _xl = pd.ExcelFile(data_path)
+                _sheet = _xl.sheet_names[0]
+                if len(_xl.sheet_names) > 1:
+                    print(f"[INGEST] Excel file has {len(_xl.sheet_names)} sheets: {_xl.sheet_names}. Reading first sheet: '{_sheet}'")
+                raw_df = _xl.parse(_sheet)
+            elif _ext == ".parquet":
+                raw_df = pd.read_parquet(data_path)
+            elif _ext in {".tsv", ".txt"}:
+                raw_df = pd.read_csv(data_path, sep="\t", on_bad_lines="warn", engine="python")
+            else:
+                raw_df = pd.read_csv(data_path, on_bad_lines="warn", engine="python")
             sanitizer = DataSanitizer()
             clean_df, clean_report = sanitizer.sanitize(raw_df)
             
