@@ -1420,7 +1420,6 @@ def main_loop(run_path):
                 state["status"] = "complete_with_errors"
                 state["next_step"] = "blocked"
                 update_history(state, f"Agent '{current}' blocked: {reason}", returncode=1)
-                from core.data_guardrails import append_limitation
                 append_limitation(state_mgr, f"Cannot run {current}: {reason}", agent=current, severity="error")
                 save_state(state_path, state)
                 continue
