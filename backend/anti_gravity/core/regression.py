@@ -730,8 +730,11 @@ def compute_regression_insights(
     }
     importance_report["features"].sort(key=lambda item: item["importance"], reverse=True)
 
+    # Always compute a linear explainability layer regardless of the selected model type.
+    # Uses OLS (via lstsq + pinv) so it is robust to near-singular matrices.
+    # Adds F-statistic and per-feature p-values for every regression run.
     coefficient_report = None
-    if not is_classification and collinearity_decision != "suppress_coefficients" and normalized_model in {"linear", "ridge"}:
+    if not is_classification:
         try:
             standardized, means, stds = _standardize_frame(X_train)
             X_mat = np.column_stack([np.ones(len(standardized)), standardized.values])
@@ -739,25 +742,39 @@ def compute_regression_insights(
             beta, _, _, _ = np.linalg.lstsq(X_mat, y_vec, rcond=None)
             predictions = X_mat @ beta
             residuals = y_vec - predictions
-            dof = max(1, len(y_vec) - X_mat.shape[1])
+            n = len(y_vec)
+            p_count = X_mat.shape[1] - 1  # number of predictors (excluding intercept)
+            dof = max(1, n - p_count - 1)
             mse = np.sum(residuals ** 2) / dof
-            cov = mse * np.linalg.inv(X_mat.T @ X_mat)
-            se = np.sqrt(np.diag(cov))
-            t_stats = beta / se
-            p_values = 2 * (1 - stats.t.cdf(np.abs(t_stats), df=dof))
+            # Use pinv for robustness with collinear or near-singular matrices
+            XtX = X_mat.T @ X_mat
+            cov = mse * np.linalg.pinv(XtX)
+            se = np.sqrt(np.maximum(np.diag(cov), 0.0))
+            t_stats = np.where(se > 1e-12, beta / se, 0.0)
+            p_values = np.clip(2 * (1 - stats.t.cdf(np.abs(t_stats), df=dof)), 0.0, 1.0)
             ci_low = beta - stats.t.ppf(0.975, df=dof) * se
             ci_high = beta + stats.t.ppf(0.975, df=dof) * se
+            # F-statistic for overall model significance
+            ss_res = float(np.sum(residuals ** 2))
+            ss_tot = float(np.sum((y_vec - y_vec.mean()) ** 2))
+            r2_linear = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
+            f_stat = ((ss_tot - ss_res) / p_count) / (ss_res / dof) if p_count > 0 and ss_res > 0 else 0.0
+            f_pvalue = float(np.clip(1 - stats.f.cdf(f_stat, p_count, dof), 0.0, 1.0))
             coefficient_report = {
                 "method": "standardized_linear_coefficients",
-                "n_used": int(len(y_vec)),
+                "n_used": int(n),
+                "f_statistic": round(float(f_stat), 3),
+                "f_pvalue": round(f_pvalue, 6),
+                "r2_linear": round(r2_linear, 4),
+                "collinearity_caution": collinearity_decision != "standard",
                 "features": [
                     {
                         "feature": "intercept" if idx == 0 else model_feature_names[idx - 1],
-                        "beta": float(beta[idx]),
-                        "standard_error": float(se[idx]),
-                        "p_value": float(p_values[idx]),
-                        "ci_low": float(ci_low[idx]),
-                        "ci_high": float(ci_high[idx]),
+                        "beta": round(float(beta[idx]), 4),
+                        "standard_error": round(float(se[idx]), 4),
+                        "p_value": round(float(p_values[idx]), 6),
+                        "ci_low": round(float(ci_low[idx]), 4),
+                        "ci_high": round(float(ci_high[idx]), 4),
                     }
                     for idx in range(len(beta))
                 ],

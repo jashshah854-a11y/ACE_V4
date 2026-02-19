@@ -36,6 +36,7 @@ class Expositor:
         importance_report = self.state.read("importance_report") or {}
         collinearity_report = self.state.read("collinearity_report") or {}
         leakage_report = self.state.read("leakage_report") or {}
+        regression_coefficients_report = self.state.read("regression_coefficients_report") or {}
         personas_data = self.state.read("personas") or {}
         strategies_data = self.state.read("strategies") or {}
         data_type = self.state.read("data_type") or {}
@@ -134,15 +135,12 @@ class Expositor:
 
         # Data Type Identification
         lines.append("## Data Type Identification")
-        lines.append(
-            f"- **Primary Type:** {data_type.get('primary_type', 'unknown')} "
-            f"(signal: {data_type.get('confidence_label', 'unknown')})"
-        )
+        primary_type = (data_type.get("primary_type") or "unknown").replace("_", " ").title()
+        confidence = (data_type.get("confidence_label") or "unknown").lower()
+        lines.append(f"- **Dataset Type:** {primary_type} (detection confidence: {confidence})")
         if data_type.get("secondary_types"):
-            lines.append(f"- **Secondary Signals:** {', '.join(data_type['secondary_types'])}")
-        if data_type.get("notes"):
-            for note in data_type["notes"]:
-                lines.append(f"- {note}")
+            secondary = ", ".join(t.replace("_", " ").title() for t in data_type["secondary_types"])
+            lines.append(f"- **Also detected:** {secondary}")
         lines.append("")
 
         # Domain Context
@@ -202,7 +200,10 @@ class Expositor:
             lines.append("Regression skipped due to validation guard.")
             lines.append("")
         elif regression:
-            lines.extend(self._regression_section(regression))
+            lines.extend(self._regression_section(
+                regression, model_fit, importance_report,
+                collinearity_report, leakage_report, regression_coefficients_report,
+            ))
 
         # Business Intelligence
         if enhanced_analytics and enhanced_analytics.get("business_intelligence", {}).get("available") and "fabricator" not in blocked_agents:
@@ -353,7 +354,9 @@ class Expositor:
         lines.append("")
         return lines
     
-    def _regression_section(self, regression, model_fit, importance_report, collinearity_report, leakage_report):
+    def _regression_section(self, regression, model_fit, importance_report, collinearity_report, leakage_report, coefficients_report=None):
+        import math
+
         lines = []
         lines.append("## Outcome Modeling")
         status = regression.get("status")
@@ -364,65 +367,140 @@ class Expositor:
             return lines
 
         target = (model_fit or {}).get("target_column") or regression.get("target_column", "value metric")
+        target_type = regression.get("target_type", "continuous")
         metrics = (model_fit or {}).get("metrics", {})
         baseline = (model_fit or {}).get("baseline_metrics", {})
         split = (model_fit or {}).get("dataset_split", {})
-        detail_bits = []
+        model_name = (model_fit or {}).get("model") or regression.get("model", "auto")
 
-        if "r2" in metrics and metrics.get("r2") is not None:
-            detail_bits.append(f"Holdout R2 {metrics.get('r2'):.2f}")
-        if "accuracy" in metrics and metrics.get("accuracy") is not None:
-            detail_bits.append(f"Holdout accuracy {metrics.get('accuracy'):.2f}")
-        if "rmse" in metrics and baseline.get("rmse") is not None:
-            detail_bits.append(f"RMSE {metrics.get('rmse'):.2f} vs baseline {baseline.get('rmse'):.2f}")
-        if "mae" in metrics and baseline.get("mae") is not None:
-            detail_bits.append(f"MAE {metrics.get('mae'):.2f} vs baseline {baseline.get('mae'):.2f}")
-        if "accuracy" in metrics and baseline.get("accuracy") is not None:
-            detail_bits.append(f"Baseline accuracy {baseline.get('accuracy'):.2f}")
-
-        summary = f"- **Target:** `{target}`"
-        if detail_bits:
-            summary += " (" + ", ".join(detail_bits) + ")"
-        lines.append(summary)
-
+        lines.append(f"**Target:** `{target}` ({target_type})")
+        lines.append(f"**Model:** {model_name.replace('_', ' ').title()}")
         if split:
-            lines.append(f"- **Split:** {split.get('train_rows', 'n/a')} train / {split.get('test_rows', 'n/a')} test")
+            tr = split.get('train_rows', 'n/a')
+            te = split.get('test_rows', 'n/a')
+            lines.append(f"**Split:** {tr:,} train / {te:,} test rows" if isinstance(tr, int) else f"**Split:** {tr} train / {te} test")
+        lines.append("")
+
+        # R2 / accuracy with plain-English explanation
+        r2 = metrics.get("r2")
+        accuracy = metrics.get("accuracy")
+        f1 = metrics.get("f1")
+        auc = metrics.get("auc")
+        if r2 is not None:
+            pct = int(round(r2 * 100))
+            quality = "strong" if r2 >= 0.75 else ("moderate" if r2 >= 0.5 else ("weak" if r2 > 0 else "poor"))
+            lines.append(f"The model explains **{pct}% of {target} variance** (R2 = {r2:.3f}) -- a {quality} predictive fit.")
+        elif accuracy is not None:
+            lines.append(f"Model accuracy: **{accuracy:.1%}** on holdout data.")
+            if f1 is not None:
+                lines.append(f"F1 score: {f1:.3f}")
+            if auc is not None:
+                lines.append(f"AUC: {auc:.3f}")
+
+        # Error metrics in original units
+        rmse = metrics.get("rmse")
+        mae = metrics.get("mae")
+        baseline_rmse = baseline.get("rmse")
+        baseline_mae = baseline.get("mae")
+        if rmse is not None:
+            rmse_str = f"{rmse:,.0f}" if rmse >= 10 else f"{rmse:.4f}"
+            b_str = f" (baseline {baseline_rmse:,.0f})" if baseline_rmse else ""
+            lines.append(f"**RMSE:** {rmse_str}{b_str}")
+        if mae is not None:
+            mae_str = f"{mae:,.0f}" if mae >= 10 else f"{mae:.4f}"
+            b_str = f" (baseline {baseline_mae:,.0f})" if baseline_mae else ""
+            lines.append(f"**MAE:** {mae_str}{b_str}")
+        lines.append("")
+
+        # Overall F-statistic and model significance
+        coeff = coefficients_report if isinstance(coefficients_report, dict) and coefficients_report else None
+        if coeff:
+            f_stat = coeff.get("f_statistic")
+            f_pvalue = coeff.get("f_pvalue")
+            if f_stat is not None and f_pvalue is not None:
+                if f_pvalue < 0.001:
+                    sig_str = "*** (p < 0.001)"
+                elif f_pvalue < 0.01:
+                    sig_str = "** (p < 0.01)"
+                elif f_pvalue < 0.05:
+                    sig_str = "* (p < 0.05)"
+                else:
+                    sig_str = f"(p = {f_pvalue:.3f}, not significant)"
+                lines.append(f"**Overall model significance:** F = {f_stat:,.1f}, {sig_str}")
+                lines.append("The model as a whole is statistically significant -- the predictors collectively explain a real pattern, not random chance.")
+                lines.append("")
 
         if regression.get("narrative"):
-            lines.append(f"- **Interpretation:** {regression['narrative']}")
+            lines.append(f"**Interpretation:** {regression['narrative']}")
+            lines.append("")
 
+        # Collinearity note
         if collinearity_report and isinstance(collinearity_report, dict):
             max_vif = collinearity_report.get("max_vif")
-            if isinstance(max_vif, (int, float)) and max_vif >= 10:
-                lines.append(f"- **Collinearity:** max VIF {max_vif:.1f} (coefficients downgraded).")
+            if isinstance(max_vif, (int, float)):
+                if math.isinf(max_vif):
+                    lines.append("**Collinearity note:** Perfect multicollinearity detected (two features are exact linear combinations of each other). Use importance rankings for decisions; individual coefficient values are unreliable.")
+                    lines.append("")
+                elif max_vif >= 10:
+                    lines.append(f"**Collinearity note:** High multicollinearity detected (max VIF {max_vif:.1f}). Permutation importance rankings are more reliable than individual coefficient magnitudes.")
+                    lines.append("")
 
+        # Leakage
         if leakage_report and isinstance(leakage_report, dict):
             target_pairs = leakage_report.get("flagged_target_pairs") or []
             if target_pairs:
-                lines.append("- **Leakage risk:** Near-perfect target correlations detected; predictive claims suppressed.")
+                lines.append("**Leakage risk:** Near-perfect correlations with the target detected. Predictive language is suppressed.")
+                lines.append("")
 
-        method = (importance_report or {}).get("method") if isinstance(importance_report, dict) else None
-        if method:
-            lines.append(f"- **Driver method:** {method.replace('_', ' ').title()}")
-
+        # Top predictive drivers table
         drivers = (importance_report or {}).get("features") if isinstance(importance_report, dict) else None
         if drivers:
+            lines.append("**Top predictive drivers** (permutation importance -- how much model accuracy drops when each feature is removed):")
             lines.append("")
-            lines.append("Top predictive drivers:")
-            for driver in drivers[:5]:
-                feat = driver.get("feature", "feature")
+            lines.append("| Rank | Feature | Importance | 95% CI |")
+            lines.append("| :--- | :--- | :--- | :--- |")
+            for rank, driver in enumerate(drivers[:10], start=1):
+                feat = driver.get("feature", "")
                 imp = driver.get("importance")
                 ci_low = driver.get("ci_low")
                 ci_high = driver.get("ci_high")
                 if imp is not None:
-                    if ci_low is not None and ci_high is not None:
-                        lines.append(f"- {feat}: {imp:.1f} (95% CI {ci_low:.1f}-{ci_high:.1f})")
-                    else:
-                        lines.append(f"- {feat}: {imp:.1f}")
-                else:
-                    lines.append(f"- {feat}")
+                    ci_str = f"{ci_low:.1f}-{ci_high:.1f}" if (ci_low is not None and ci_high is not None) else "n/a"
+                    lines.append(f"| {rank} | {feat} | {imp:.1f}% | {ci_str} |")
+            lines.append("")
 
-        lines.append("")
+        # Coefficient table with p-values and significance stars
+        if coeff:
+            features = coeff.get("features", [])
+            coef_rows = [f for f in features if f.get("feature") != "intercept"]
+            coef_rows = sorted(coef_rows, key=lambda x: abs(x.get("beta", 0)), reverse=True)
+            if coef_rows:
+                caution = coeff.get("collinearity_caution", False)
+                lines.append("**Statistical significance of predictors** (standardized coefficients -- each Beta shows the effect of a 1 standard deviation change in the feature):")
+                if caution:
+                    lines.append("*Collinearity is present. Treat individual betas with caution; significance and importance rankings are still informative.*")
+                lines.append("")
+                lines.append("| Feature | Beta | Std Err | p-value | Sig |")
+                lines.append("| :--- | :---: | :---: | :---: | :---: |")
+                for row in coef_rows[:15]:
+                    feat = row.get("feature", "")
+                    beta = row.get("beta", 0)
+                    se = row.get("standard_error", 0)
+                    pv = row.get("p_value", 1.0)
+                    if pv < 0.001:
+                        sig = "***"
+                    elif pv < 0.01:
+                        sig = "**"
+                    elif pv < 0.05:
+                        sig = "*"
+                    else:
+                        sig = ""
+                    pv_str = "<0.001" if pv < 0.001 else f"{pv:.3f}"
+                    lines.append(f"| {feat} | {beta:+.3f} | {se:.3f} | {pv_str} | {sig} |")
+                lines.append("")
+                lines.append("Significance levels: *** p < 0.001, ** p < 0.01, * p < 0.05. Features with no stars are not statistically significant at p < 0.05.")
+                lines.append("")
+
         return lines
 
     def _personas_section(self, personas, strategies):
@@ -653,7 +731,7 @@ class Expositor:
         lines.append("")
 
         target = fi.get("target_column", "outcome")
-        method = fi.get("method", "unknown method")
+        method = fi.get("method") or "permutation_importance"
         scoring = fi.get("scoring", "")
         split = fi.get("dataset_split", {})
 
