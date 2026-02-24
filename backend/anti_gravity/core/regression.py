@@ -578,7 +578,7 @@ def compute_regression_insights(
 
             for name, clf in candidates.items():
                 try:
-                    scores = cross_val_score(clf, X_train_imputed, y_train, cv=cv_folds, scoring=scoring, n_jobs=-1)
+                    scores = cross_val_score(clf, X_train_imputed, y_train, cv=cv_folds, scoring=scoring, n_jobs=1)
                     mean_score = float(scores.mean())
                     model_selection_info[name] = {"cv_score": round(mean_score, 4), "cv_std": round(float(scores.std()), 4)}
                     if mean_score > best_score:
@@ -658,7 +658,7 @@ def compute_regression_insights(
 
             for name, reg in reg_candidates.items():
                 try:
-                    scores = cross_val_score(reg, X_train_imputed, y_train, cv=cv_folds, scoring="r2", n_jobs=-1)
+                    scores = cross_val_score(reg, X_train_imputed, y_train, cv=cv_folds, scoring="r2", n_jobs=1)
                     mean_score = float(scores.mean())
                     model_selection_info[name] = {"cv_score": round(mean_score, 4), "cv_std": round(float(scores.std()), 4)}
                     if mean_score > best_reg_score:
