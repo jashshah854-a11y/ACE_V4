@@ -1,0 +1,10 @@
+.pytest_basetemp/
+_pytest_tmp2/
+node_modules/
+archive/
+__pycache__/
+*.pyc
+.git/
+dist/
+test_datasets/
+data/
