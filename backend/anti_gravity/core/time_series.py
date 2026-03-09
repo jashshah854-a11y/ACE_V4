@@ -455,7 +455,7 @@ def _simple_forecast(
             trend=trend_type,
             seasonal="add" if use_seasonal else None,
             seasonal_periods=seasonal_period if use_seasonal else None,
-        ).fit(optimized=False)
+        ).fit()
 
         forecast = model.forecast(horizon)
         fitted = model.fittedvalues

@@ -398,7 +398,9 @@ CRITICAL INSTRUCTIONS:
         ctx_snippet = context[:1500]
 
         def _refine_one(insight: Dict) -> Insight:
-            prompt = f"""Given this insight:
+            recommendation = ""
+            try:
+                prompt = f"""Given this insight:
 Title: {insight.get('title', '')}
 Finding: {insight.get('finding', '')}
 Category: {insight.get('category', '')}
@@ -414,10 +416,11 @@ Return JSON:
   "recommendation": "Specific action to take with who/what/when..."
 }}
 """
-            rec_result = call_gemini(prompt, temperature=0.2, max_tokens=300, parse_json=True)
-            recommendation = ""
-            if isinstance(rec_result, dict):
-                recommendation = rec_result.get("recommendation", "")
+                rec_result = call_gemini(prompt, temperature=0.2, max_tokens=300, parse_json=True)
+                if isinstance(rec_result, dict):
+                    recommendation = rec_result.get("recommendation", "")
+            except Exception as exc:
+                log_warn(f"Recommendation generation failed for {insight.get('title', 'Insight')!r}: {exc}")
             return Insight(
                 title=insight.get("title", "Insight"),
                 finding=insight.get("finding", ""),
