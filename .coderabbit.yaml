@@ -10,6 +10,6 @@ reviews:
     enabled: true
     base_branches:
       - "main"
-      - "review/**"
+      - "review/.*"
 chat:
   auto_reply: true
