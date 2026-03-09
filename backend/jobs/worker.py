@@ -15,7 +15,7 @@ from jobs.progress import ProgressTracker
 from jobs.redis_queue import RedisJobQueue  # Changed from SQLite queue
 from orchestrator import orchestrate_new_run, main_loop
 
-POLL_INTERVAL = 2.0
+POLL_INTERVAL = 0.5   # jobs picked up 4× faster after queuing
 HEARTBEAT_INTERVAL = 30  # Send heartbeat every 30 seconds during processing
 
 

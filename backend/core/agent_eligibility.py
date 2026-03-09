@@ -25,12 +25,6 @@ def resolve_agent_eligibility(agent: str, analysis_intent: Optional[Dict[str, An
     agent_name = (agent or "").lower()
 
     if agent_name in TARGET_DEPENDENT_AGENTS:
-        if intent == "exploratory":
-            return {
-                "status": "not_applicable",
-                "reason_code": "intent_exploratory",
-                "message": "Predictive agent not applicable for exploratory intent.",
-            }
         if intent in {"predictive", "causal", "automation"} and not target_detected:
             return {
                 "status": "not_applicable",

@@ -169,7 +169,7 @@ class NarrativeEngine:
         summary = f"**{name}** ({size:,} records, {pct:.1f}% of total)"
         
         if avg_value is not None:
-            summary += f" — Average value: {self._format_number(avg_value, prefix='$')}"
+            summary += f" - Average value: {self._format_number(avg_value, prefix='$')}"
         
         return {
             "name": name,

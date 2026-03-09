@@ -140,12 +140,7 @@ class RegressionAgent:
             }
             self.state.write("drift_report", drift_report)
             if result.has_significant_drift:
-                log_warn(f"Drift detected (score={result.drift_score:.0%})")
-                self.state.add_warning(
-                    "DATA_DRIFT",
-                    result.summary,
-                    details={"drift_score": result.drift_score},
-                )
+                log_warn(f"[REGRESSION] DATA_DRIFT: {result.summary} (score={result.drift_score:.0%})")
             else:
                 log_ok(f"No significant drift (score={result.drift_score:.0%})")
         except Exception as e:
@@ -224,11 +219,7 @@ class RegressionAgent:
         for warning in insights.get("warnings", []):
             warning_type = warning.get("type")
             if warning_type:
-                self.state.add_warning(
-                    warning_type,
-                    warning.get("note") or f"{warning_type}: {warning.get('metric')}",
-                    details=warning,
-                )
+                log_warn(f"[REGRESSION] {warning_type}: {warning.get('note') or warning.get('metric')}")
 
         self.state.write("regression_insights_pending", insights)
         for name, payload in artifact_payloads.items():
@@ -244,11 +235,7 @@ class RegressionAgent:
             for warning in validated_payload.get("warnings", []):
                 warning_type = warning.get("type")
                 if warning_type:
-                    self.state.add_warning(
-                        warning_type,
-                        warning.get("note") or f"{warning_type}: {warning.get('metric')}",
-                        details=warning,
-                    )
+                    log_warn(f"[REGRESSION:{name}] {warning_type}: {warning.get('note') or warning.get('metric')}")
             self.state.write(f"{name}_pending", validated_payload)
 
         # SHAP, ONNX export, and drift detection (non-blocking)

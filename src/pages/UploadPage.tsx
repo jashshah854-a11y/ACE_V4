@@ -77,18 +77,37 @@ export default function UploadPage() {
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [question, setQuestion] = useState("");
+  const [selectedSheet, setSelectedSheet] = useState("");
 
   const handleFileSelect = async (selected: File) => {
     setFile(selected);
     setPreview(null);
     setQuestion("");
+    setSelectedSheet("");
     setIsPreviewing(true);
     try {
       const result = await previewDataset(selected);
       setPreview(result);
+      if (result.sheets && result.sheets.length > 1) {
+        setSelectedSheet(result.sheets[0]);
+      }
     } catch (err) {
       console.error("[ACE] Preview failed:", err);
       toast.error(err instanceof Error ? err.message : "Could not analyze dataset structure");
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
+
+  const handleSheetChange = async (sheet: string) => {
+    if (!file) return;
+    setSelectedSheet(sheet);
+    setIsPreviewing(true);
+    try {
+      const result = await previewDataset(file, sheet);
+      setPreview(result);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not reload sheet preview");
     } finally {
       setIsPreviewing(false);
     }
@@ -102,7 +121,7 @@ export default function UploadPage() {
         ...DEFAULT_INTENT,
         ...(question.trim() && { primary_question: question.trim() }),
       };
-      const result = await submitRun(file, intent);
+      const result = await submitRun(file, intent, "full", selectedSheet || undefined);
       toast.success(`Run ${result.run_id} queued`);
       navigate(`/pipeline/${result.run_id}`);
     } catch (err) {
@@ -115,6 +134,7 @@ export default function UploadPage() {
     setFile(null);
     setPreview(null);
     setQuestion("");
+    setSelectedSheet("");
   };
 
   const suggestedQuestions = preview ? generateSuggestedQuestions(preview) : [];
@@ -151,6 +171,26 @@ export default function UploadPage() {
           >
             <Loader2 className="w-4 h-4 animate-spin" />
             <span>Analyzing dataset structure...</span>
+          </motion.div>
+        )}
+
+        {file && preview && preview.sheets && preview.sheets.length > 1 && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 flex items-center gap-3 max-w-xl mx-auto"
+          >
+            <label className="text-sm text-muted-foreground whitespace-nowrap">Sheet:</label>
+            <select
+              value={selectedSheet}
+              onChange={(e) => handleSheetChange(e.target.value)}
+              disabled={isBusy}
+              className="flex-1 rounded-md border border-teal-500/40 bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-teal-500 disabled:opacity-50"
+            >
+              {preview.sheets.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
           </motion.div>
         )}
 

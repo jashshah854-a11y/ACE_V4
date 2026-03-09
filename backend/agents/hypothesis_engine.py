@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 from typing import Dict, Any, List
 from dataclasses import dataclass, asdict
+from concurrent.futures import ThreadPoolExecutor
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -61,29 +62,32 @@ class HypothesisEngine:
         # Build context
         context = self._build_context(insights, connections, raw_samples)
         
-        # Generate hypotheses for top findings
-        log_info("Generating hypotheses for top findings...")
+        # Generate hypotheses for findings and connections in parallel (all independent)
+        log_info("Generating hypotheses (parallel)...")
         all_hypotheses = []
         red_flags = []
-        
-        for insight in insights[:6]:  # Top 6 findings
-            hyps = self._generate_hypotheses_for_finding(insight, context)
-            all_hypotheses.extend(hyps)
-            
-            # Collect red flags
-            for h in hyps:
-                if h.is_red_flag:
-                    red_flags.append(h)
-        
-        # Generate hypotheses for connections
-        log_info("Generating hypotheses for connections...")
-        for conn in connections[:3]:
-            hyps = self._generate_hypotheses_for_connection(conn, context)
-            all_hypotheses.extend(hyps)
-            
-            for h in hyps:
-                if h.is_red_flag:
-                    red_flags.append(h)
+
+        with ThreadPoolExecutor(max_workers=9) as pool:
+            insight_futures = [
+                pool.submit(self._generate_hypotheses_for_finding, ins, context)
+                for ins in insights[:6]
+            ]
+            conn_futures = [
+                pool.submit(self._generate_hypotheses_for_connection, conn, context)
+                for conn in connections[:3]
+            ]
+            for f in insight_futures:
+                hyps = f.result()
+                all_hypotheses.extend(hyps)
+                for h in hyps:
+                    if h.is_red_flag:
+                        red_flags.append(h)
+            for f in conn_futures:
+                hyps = f.result()
+                all_hypotheses.extend(hyps)
+                for h in hyps:
+                    if h.is_red_flag:
+                        red_flags.append(h)
         
         # Rank hypotheses by boldness and confidence
         ranked = self._rank_hypotheses(all_hypotheses)

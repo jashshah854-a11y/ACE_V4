@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 from typing import Dict, Any, List
 from dataclasses import dataclass, asdict
+from concurrent.futures import ThreadPoolExecutor
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -73,15 +74,15 @@ class DeepInsightAgent:
         # 3. Build comprehensive context for LLM
         context = self._build_context()
         
-        # 4. Generate insights via multi-pass LLM
-        log_info("Generating insights (Pass 1: Raw extraction)...")
-        raw_insights = self._generate_insights_pass1(context, domain)
-        
+        # 4 & 5. Generate insights and curiosity pass concurrently (both read same context)
+        log_info("Generating insights (Pass 1 + Curiosity pass in parallel)...")
+        with ThreadPoolExecutor(max_workers=2) as _pool:
+            _f_raw = _pool.submit(self._generate_insights_pass1, context, domain)
+            _f_cur = _pool.submit(self._curiosity_pass, context, domain)
+            raw_insights = _f_raw.result()
+            curiosity_insights = _f_cur.result()
+
         log_info(f"Generated {len(raw_insights)} raw insights")
-        
-        # 5. CURIOSITY PASS: Look for unexpected patterns
-        log_info("Curiosity pass: Looking for unexpected patterns...")
-        curiosity_insights = self._curiosity_pass(context, domain)
         log_info(f"Found {len(curiosity_insights)} curiosity insights")
         
         # Merge raw and curiosity insights (deduplicated by title)
@@ -393,12 +394,11 @@ CRITICAL INSTRUCTIONS:
         return []
     
     def _refine_insights_pass2(self, raw_insights: List[Dict], context: str) -> List[Insight]:
-        """Second pass: Refine and add specific recommendations."""
-        refined = []
-        
-        for insight in raw_insights[:8]:
-            # Generate specific recommendation for this insight
-            prompt = f"""Given this insight: 
+        """Second pass: Refine and add specific recommendations (parallel per-insight LLM calls)."""
+        ctx_snippet = context[:1500]
+
+        def _refine_one(insight: Dict) -> Insight:
+            prompt = f"""Given this insight:
 Title: {insight.get('title', '')}
 Finding: {insight.get('finding', '')}
 Category: {insight.get('category', '')}
@@ -407,7 +407,7 @@ Generate ONE specific, actionable recommendation.
 Be concrete - what EXACTLY should someone do? Who? By when?
 
 Context for reference:
-{context[:1500]}
+{ctx_snippet}
 
 Return JSON:
 {{
@@ -418,8 +418,7 @@ Return JSON:
             recommendation = ""
             if isinstance(rec_result, dict):
                 recommendation = rec_result.get("recommendation", "")
-            
-            refined.append(Insight(
+            return Insight(
                 title=insight.get("title", "Insight"),
                 finding=insight.get("finding", ""),
                 why_it_matters=insight.get("why_it_matters", ""),
@@ -428,8 +427,11 @@ Return JSON:
                 impact_score=insight.get("impact_score", 50),
                 category=insight.get("category", "pattern"),
                 recommendation=recommendation,
-            ))
-        
+            )
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            refined = list(pool.map(_refine_one, raw_insights[:8]))
+
         return refined
     
     def _rank_insights(self, insights: List[Insight]) -> List[Insight]:

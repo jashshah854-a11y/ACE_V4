@@ -170,7 +170,7 @@ def validate_dataset(df: pd.DataFrame, run_config: Dict, schema_map: Optional[Di
     if target_col:
         series = pd.to_numeric(df[target_col], errors="coerce")
         usable = series.dropna()
-        var_ok = len(usable) >= 10 and usable.std(ddof=0) > 0 and usable.nunique() >= 3
+        var_ok = bool(len(usable) >= 10 and usable.std(ddof=0) > 0 and usable.nunique() >= 3)
         checks["variance"] = {
             "ok": var_ok,
             "detail": f"usable={len(usable)}, std={series.std(ddof=0):.4f} unique={series.nunique()}",

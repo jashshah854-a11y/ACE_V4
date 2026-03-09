@@ -439,6 +439,10 @@ def _simple_forecast(
     try:
         from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
+        # Skip fitting if series is degenerate (would cause optimizer to hang)
+        if series.std() < 1e-6 or series.dropna().nunique() < 3:
+            return {"status": "skipped", "reason": "Degenerate series (constant or near-constant)"}
+
         values = series.values.astype(float)
         n = len(values)
 
@@ -451,7 +455,7 @@ def _simple_forecast(
             trend=trend_type,
             seasonal="add" if use_seasonal else None,
             seasonal_periods=seasonal_period if use_seasonal else None,
-        ).fit(optimized=True)
+        ).fit(optimized=False)
 
         forecast = model.forecast(horizon)
         fitted = model.fittedvalues

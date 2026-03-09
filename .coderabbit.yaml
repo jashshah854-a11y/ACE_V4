@@ -1,0 +1,15 @@
+language: "en-US"
+tone_instructions: >
+  Be concise. Focus on Python backend correctness, FastAPI security,
+  Supabase/Railway integration, and React frontend quality.
+reviews:
+  profile: "assertive"
+  high_level_summary: true
+  poem: false
+  auto_review:
+    enabled: true
+    base_branches:
+      - "main"
+      - "review/**"
+chat:
+  auto_reply: true
