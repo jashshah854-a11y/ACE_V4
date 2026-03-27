@@ -68,26 +68,23 @@ class HypothesisEngine:
         red_flags = []
 
         with ThreadPoolExecutor(max_workers=9) as pool:
-            insight_futures = [
-                pool.submit(self._generate_hypotheses_for_finding, ins, context)
+            insight_futures = {
+                pool.submit(self._generate_hypotheses_for_finding, ins, context): ins.get("title", "Untitled")
                 for ins in insights[:6]
-            ]
-            conn_futures = [
-                pool.submit(self._generate_hypotheses_for_connection, conn, context)
+            }
+            conn_futures = {
+                pool.submit(self._generate_hypotheses_for_connection, conn, context): str(conn)[:40]
                 for conn in connections[:3]
-            ]
-            for f in insight_futures:
-                hyps = f.result()
-                all_hypotheses.extend(hyps)
-                for h in hyps:
-                    if h.is_red_flag:
-                        red_flags.append(h)
-            for f in conn_futures:
-                hyps = f.result()
-                all_hypotheses.extend(hyps)
-                for h in hyps:
-                    if h.is_red_flag:
-                        red_flags.append(h)
+            }
+            for f, label in {**insight_futures, **conn_futures}.items():
+                try:
+                    hyps = f.result()
+                    all_hypotheses.extend(hyps)
+                    for h in hyps:
+                        if h.is_red_flag:
+                            red_flags.append(h)
+                except Exception as exc:
+                    log_warn(f"Hypothesis generation failed for {label!r}: {exc}")
         
         # Rank hypotheses by boldness and confidence
         ranked = self._rank_hypotheses(all_hypotheses)

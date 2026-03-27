@@ -427,7 +427,10 @@ class Expositor:
                 else:
                     sig_str = f"(p = {f_pvalue:.3f}, not significant)"
                 lines.append(f"**Overall model significance:** F = {f_stat:,.1f}, {sig_str}")
-                lines.append("The model as a whole is statistically significant -- the predictors collectively explain a real pattern, not random chance.")
+                if f_pvalue < 0.05:
+                    lines.append("The model as a whole is statistically significant -- the predictors collectively explain a real pattern, not random chance.")
+                else:
+                    lines.append("The model as a whole is not statistically significant -- the observed fit may be consistent with random noise.")
                 lines.append("")
 
         if regression.get("narrative"):
