@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
 import { Database, BarChart3, Shield, AlertTriangle, TrendingUp, Lightbulb, Target } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { MetricCard } from "./MetricCard";
 import type { Snapshot } from "@/lib/types";
 
@@ -71,9 +73,11 @@ export function ExecutiveSummaryTab({ snapshot }: Props) {
         className="rounded-xl border border-teal-500/20 bg-teal-500/5 p-6"
       >
         {narrativeText ? (
-          <p className="text-xl font-semibold leading-snug text-foreground whitespace-pre-line">
-            {narrativeText}
-          </p>
+          <div className="prose prose-lg prose-slate dark:prose-invert max-w-none [&>p]:text-lg [&>p]:leading-relaxed [&>p]:text-foreground [&>p:first-child]:text-xl [&>p:first-child]:font-semibold [&>h2]:text-lg [&>h2]:font-bold [&>h2]:mt-4 [&>h2]:mb-2 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:text-foreground/80 [&>li]:text-sm">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {narrativeText}
+            </ReactMarkdown>
+          </div>
         ) : (
           <p className="text-base text-foreground/50 italic">
             Executive narrative is being generated — check back after the pipeline completes.
