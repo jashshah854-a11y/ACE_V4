@@ -11,8 +11,9 @@ class PerformanceConfig:
     chunk_size: int = 250_000    # fewer I/O passes on large files
     sample_rows_for_type_inference: int = 10_000
 
-    # For agents: max rows to sample for analysis (prevents memory exhaustion)
-    max_analysis_rows: int = 100_000
+    # For agents: max rows to load for analysis
+    # Raised to 1M - O(n²) ops now use sampling (silhouette capped at 10K)
+    max_analysis_rows: int = 1_000_000
 
     # Parallel execution
     max_workers: int = 4
