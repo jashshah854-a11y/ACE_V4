@@ -1,29 +1,56 @@
-﻿# Exclude large files from Vercel deployment
+﻿# Backend is on Railway, not Vercel
+backend/
+data/
+test_datasets/
+tests/
+scripts/
+archive/
+docs/
+
+# Python artifacts
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.pkl
 venv/
 env/
-tests/
-test_*.py
+.pytest_basetemp/
+_pytest_tmp2/
+requirements.txt
+
+# Large/unnecessary files
 *.csv
-*.pkl
-# Exclude data JSON files but allow package.json and package-lock.json
-data/**/*.json
-backend/**/*.json
-!package.json
-!package-lock.json
-!tsconfig.json
-!vite.config.ts
-data/
 *.log
 *.md
 !README.md
-backend/anti_gravity/
-backend/dashboard/
-backend/ui/
-backend/scripts/
-backend/check_*.py
-backend/test_*.py
+
+# Config files we need
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.node.json
+!vite.config.ts
+!vercel.json
+!components.json
+!postcss.config.mjs
+!tailwind.config.ts
+!index.html
+
+# Build artifacts and misc
+dist/
+*.sh
+*.py
+Dockerfile
+docker-compose.yml
+nixpacks.toml
+railway.toml
+.railwayignore
+.dockerignore
+.coderabbit.yaml
+.cursor/
+.agent/
+run_state.json
+intent.json
+analyze_steam.py
 
