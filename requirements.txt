@@ -15,3 +15,4 @@ openai
 python-dotenv
 redis
 slowapi
+openpyxl

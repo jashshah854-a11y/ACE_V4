@@ -3,6 +3,24 @@ import os
 from pathlib import Path
 from typing import Any, Optional
 
+
+class _NumpyEncoder(json.JSONEncoder):
+    """JSON encoder that safely serializes numpy scalar types produced by pandas/sklearn agents."""
+    def default(self, obj):
+        try:
+            import numpy as np
+            if isinstance(obj, np.bool_):
+                return bool(obj)
+            if isinstance(obj, np.integer):
+                return int(obj)
+            if isinstance(obj, np.floating):
+                return float(obj)
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+        except ImportError:
+            pass
+        return super().default(obj)
+
 class StateManager:
     def __init__(self, run_path: str, redis_url: Optional[str] = None):
         self.run_path = Path(run_path)
@@ -63,7 +81,7 @@ class StateManager:
             data = data.model_dump()
         
         with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+            json.dump(data, f, indent=2, cls=_NumpyEncoder)
 
     def read(self, name: str) -> Optional[Any]:
         """

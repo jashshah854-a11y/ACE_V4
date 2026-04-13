@@ -12,7 +12,12 @@ def _get_model_path():
     return os.getenv("ACE_MODEL_PATH", "model.pkl")
 
 def _get_token():
-    return os.getenv("ACE_SERVE_TOKEN", "secret-token")
+    token = os.getenv("ACE_SERVE_TOKEN")
+    if not token:
+        raise RuntimeError(
+            "ACE_SERVE_TOKEN environment variable is required. "
+            "Set it to a strong random value before starting the serving app."
+        )
 
 API_TOKEN = _get_token()
 MODEL_PATH = _get_model_path()
@@ -33,11 +38,19 @@ app = FastAPI(title="ACE Serving", version="0.2.0", lifespan=lifespan)
 def load_model():
     global model
     # Refresh env on each call to allow test-time override
-    mpath = Path(_get_model_path())
+    mpath = Path(_get_model_path()).resolve()
     token = _get_token()
     globals()["API_TOKEN"] = token
+
+    # Security: only load .pkl files from the project directory
+    allowed_dir = Path(__file__).resolve().parent.parent
+    if not str(mpath).startswith(str(allowed_dir)):
+        raise RuntimeError(f"Model path {mpath} is outside the allowed directory {allowed_dir}")
+
     if not mpath.exists():
         return None
+    if mpath.suffix != ".pkl":
+        raise RuntimeError(f"Model path must be a .pkl file, got: {mpath.suffix}")
     try:
         with open(mpath, "rb") as f:
             model = pickle.load(f)

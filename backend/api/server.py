@@ -626,6 +626,7 @@ class DatasetIdentity(BaseModel):
     critical_gaps: list[str]
     detected_capabilities: Dict[str, bool]
     warnings: list[str]
+    sheets: List[str] = []
 
 
 def _infer_type(series):
@@ -721,7 +722,10 @@ def _generate_warnings(df):
     return warnings
 
 @app.post("/run/preview", response_model=DatasetIdentity, tags=["Execution"])
-async def preview_dataset(file: UploadFile = File(...)):
+async def preview_dataset(
+    file: UploadFile = File(...),
+    sheet_name: Optional[str] = Form(None),
+):
     """
     Sentry scan: Analyze dataset without running full pipeline.
     Returns Dataset Identity Card for user review.
@@ -757,15 +761,20 @@ async def preview_dataset(file: UploadFile = File(...)):
                 shutil.copyfileobj(file.file, buffer)
         
         logger.info(f"[PREVIEW] Reading {file_ext} file: {file.filename}")
-        
+
         # Read file based on extension
+        sheet_names: List[str] = []
         try:
             if file_ext == '.csv':
                 df = pd.read_csv(temp_path, on_bad_lines='warn', engine='python')
             elif file_ext in {'.tsv', '.txt'}:
                 df = pd.read_csv(temp_path, sep='\t', on_bad_lines='warn', engine='python')
             elif file_ext in {'.xls', '.xlsx'}:
-                df = pd.read_excel(temp_path)
+                xl = pd.ExcelFile(temp_path)
+                sheet_names = xl.sheet_names
+                _sheet = sheet_name if sheet_name and sheet_name in sheet_names else sheet_names[0]
+                logger.info(f"[PREVIEW] Excel sheets: {sheet_names}. Reading: '{_sheet}'")
+                df = xl.parse(_sheet)
             elif file_ext == '.parquet':
                 df = pd.read_parquet(temp_path)
             elif file_ext == '.json':
@@ -781,9 +790,9 @@ async def preview_dataset(file: UploadFile = File(...)):
                 df = pd.read_csv(temp_path, sep='\t')
             else:
                 raise read_error
-        
+
         logger.info(f"[PREVIEW] Successfully read {len(df)} rows, {len(df.columns)} columns")
-        
+
         # Build identity card
         identity = {
             "row_count": len(df),
@@ -793,7 +802,8 @@ async def preview_dataset(file: UploadFile = File(...)):
             "quality_score": _calculate_quality_score(df),
             "critical_gaps": _detect_gaps(df),
             "detected_capabilities": _detect_capabilities(df),
-            "warnings": _generate_warnings(df)
+            "warnings": _generate_warnings(df),
+            "sheets": sheet_names,
         }
         
         logger.info(f"[PREVIEW] Quality score: {identity['quality_score']:.2f}")
@@ -846,6 +856,7 @@ def _build_run_config(
     model_type: Optional[str] = None,
     include_categoricals: Optional[str] = None,
     fast_mode: Optional[str] = None,
+    sheet_name: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """Collect optional modeling parameters without re-reading the upload body."""
     config: Dict[str, Any] = {}
@@ -872,6 +883,9 @@ def _build_run_config(
     fast = _parse_bool(fast_mode)
     if fast is not None:
         config["fast_mode"] = fast
+
+    if sheet_name:
+        config["sheet_name"] = sheet_name
 
     return config or None
 
@@ -1142,6 +1156,7 @@ async def trigger_run(
     model_type: Optional[str] = Form(None),
     include_categoricals: Optional[str] = Form(None),
     fast_mode: Optional[str] = Form(None),
+    sheet_name: Optional[str] = Form(None),
 ):
     """
     Upload a data file and enqueue a full ACE V3 run for background processing.
@@ -1158,6 +1173,7 @@ async def trigger_run(
         model_type=model_type,
         include_categoricals=include_categoricals,
         fast_mode=fast_mode,
+        sheet_name=sheet_name,
     )
 
     try:

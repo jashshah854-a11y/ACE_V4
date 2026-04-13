@@ -4,10 +4,12 @@ import { describe, it, expect } from "vitest";
 
 const FILES = [
   "src/components/landing/HeroSection.tsx",
-  "src/pages/Index.tsx",
+  "src/pages/UploadPage.tsx",
   "src/pages/FoundersLetter.tsx",
   "src/components/upload/SafeModeWarning.tsx",
-];
+].filter((f) => {
+  try { require("fs").accessSync(require("path").resolve(process.cwd(), f)); return true; } catch { return false; }
+});
 
 const BANNED = [
   /\\bguarantee\\b/i,

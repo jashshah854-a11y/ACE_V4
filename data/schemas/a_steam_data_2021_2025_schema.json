@@ -1,0 +1,217 @@
+{
+  "dataset_info": {
+    "name": "a_steam_data_2021_2025",
+    "path": "C:\\Users\\jashs\\Projects\\ACE_V4\\data\\a_steam_data_2021_2025.csv",
+    "row_count": 65521,
+    "column_count": 10,
+    "sample_rows": [
+      {
+        "appid": 3057270,
+        "name": "Seafarer's Gambit",
+        "release_year": 2024,
+        "release_date": "5-Jul-24",
+        "genres": "Action;Adventure;Indie;RPG;Strategy",
+        "categories": "Single-player;Family Sharing",
+        "price": 3.99,
+        "recommendations": 0,
+        "developer": "Bouncy Rocket Studios",
+        "publisher": "Bouncy Rocket Studios"
+      },
+      {
+        "appid": 3822840,
+        "name": "Capitalist Misadventures",
+        "release_year": 2025,
+        "release_date": "25-Jul-25",
+        "genres": "Casual;Indie;Simulation;Strategy",
+        "categories": "Single-player;Save Anytime;Family Sharing",
+        "price": 7.99,
+        "recommendations": 0,
+        "developer": "Caramelo Studios",
+        "publisher": "Caramelo Studios"
+      },
+      {
+        "appid": 3216640,
+        "name": "The Beast and the Princess",
+        "release_year": 2025,
+        "release_date": "17-Jun-25",
+        "genres": "Adventure;Indie;Strategy",
+        "categories": "Single-player;Steam Achievements;Full controller support;Custom Volume Controls;Adjustable Difficulty;Playable without Timed Input;Steam Cloud;Steam Leaderboards;Family Sharing",
+        "price": 12.99,
+        "recommendations": 0,
+        "developer": "Libragames",
+        "publisher": "Libragames"
+      },
+      {
+        "appid": 2403620,
+        "name": "Air Twister",
+        "release_year": 2023,
+        "release_date": "10-Nov-23",
+        "genres": "Action;Adventure;Indie",
+        "categories": "Single-player;Steam Achievements;Full controller support;Steam Cloud;Family Sharing",
+        "price": 24.99,
+        "recommendations": 0,
+        "developer": "YS Net",
+        "publisher": "ININ"
+      },
+      {
+        "appid": 1538040,
+        "name": "Horde Slayer",
+        "release_year": 2021,
+        "release_date": "19-Mar-21",
+        "genres": "Action;Adventure;Casual;Indie;RPG;Early Access",
+        "categories": "Single-player;Steam Achievements;Full controller support;Steam Cloud;Family Sharing",
+        "price": 3.99,
+        "recommendations": 0,
+        "developer": "Wagner Rodrigues",
+        "publisher": "Wagner Rodrigues"
+      }
+    ]
+  },
+  "basic_types": {
+    "numeric": [
+      "appid",
+      "release_year",
+      "price",
+      "recommendations"
+    ],
+    "categorical": [
+      "genres",
+      "categories"
+    ],
+    "datetime": [
+      "release_date"
+    ],
+    "text": [
+      "name",
+      "developer",
+      "publisher"
+    ]
+  },
+  "stats": {
+    "appid": {
+      "mean": 2580607.239923078,
+      "median": 2516050.0,
+      "std": 769247.9601381125,
+      "min": 1200220.0,
+      "max": 4243930.0,
+      "skew": 0.217448839894678,
+      "missing_rate": 0.0
+    },
+    "release_year": {
+      "mean": 2023.4530913752842,
+      "median": 2024.0,
+      "std": 1.3866408467738616,
+      "min": 2021.0,
+      "max": 2025.0,
+      "skew": -0.4425664617136534,
+      "missing_rate": 0.0
+    },
+    "price": {
+      "mean": 7.204043283832664,
+      "median": 3.99,
+      "std": 16.914428651580682,
+      "min": 0.0,
+      "max": 1900.0,
+      "skew": 33.92105816896421,
+      "missing_rate": 0.0
+    },
+    "recommendations": {
+      "mean": 362.16533630439096,
+      "median": 0.0,
+      "std": 6936.837197516363,
+      "min": 0.0,
+      "max": 862487.0,
+      "skew": 69.40438354554446,
+      "missing_rate": 0.0
+    }
+  },
+  "semantic_roles": {
+    "id_fields": [],
+    "time_fields": [],
+    "income_like": [],
+    "spend_like": [
+      "price"
+    ],
+    "risk_like": [],
+    "value_like": [],
+    "activity_like": [],
+    "frequency_like": [],
+    "volume_like": [],
+    "demographic_like": [],
+    "categorical_descriptors": []
+  },
+  "role_confidence": {
+    "income_like": 0.0,
+    "spend_like": 0.9,
+    "risk_like": 0.0,
+    "value_like": 0.0,
+    "activity_like": 0.0,
+    "frequency_like": 0.0,
+    "volume_like": 0.0,
+    "demographic_like": 0.0
+  },
+  "domain_guess": {
+    "domain": "ecommerce",
+    "confidence": 0.8
+  },
+  "feature_quality_scores": {},
+  "relationships": {
+    "correlations": {
+      "appid": {
+        "release_year": 0.8199728971036561,
+        "price": -0.057501353234093576,
+        "recommendations": -0.037687817737359394
+      },
+      "release_year": {
+        "appid": 0.8199728971036561,
+        "price": 0.0029909886587746607,
+        "recommendations": -0.009443658861369716
+      },
+      "price": {
+        "appid": -0.057501353234093576,
+        "release_year": 0.0029909886587746607,
+        "recommendations": 0.060924871470682415
+      },
+      "recommendations": {
+        "appid": -0.037687817737359394,
+        "release_year": -0.009443658861369716,
+        "price": 0.060924871470682415
+      }
+    },
+    "strong_pairs": [
+      [
+        "appid",
+        "release_year"
+      ],
+      [
+        "release_year",
+        "appid"
+      ]
+    ]
+  },
+  "normalization_plan": {},
+  "feature_plan": {
+    "clustering_features": [
+      "price",
+      "recommendations",
+      "release_year"
+    ],
+    "persona_features": [
+      "price",
+      "recommendations"
+    ],
+    "risk_features": [],
+    "value_features": [],
+    "anomaly_features": [
+      "appid",
+      "release_year",
+      "price",
+      "recommendations"
+    ]
+  },
+  "warnings": {
+    "missing_numeric": false,
+    "low_row_count": false,
+    "suspected_data_issues": []
+  }
+}

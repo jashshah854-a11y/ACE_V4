@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 from typing import Dict, Any, List
 from dataclasses import dataclass, asdict
+from concurrent.futures import ThreadPoolExecutor
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -59,26 +60,32 @@ class SoWhatDeepener:
         # Domain for context
         domain = deep_insights.get("domain_detected", "general")
         
-        # Deepen top insights
-        log_info("Deepening implications for top insights...")
+        # Deepen top insights and connections in parallel (each call is independent)
+        log_info("Deepening implications (parallel)...")
         implications = []
         stark_truths = []
-        
-        for insight in insights[:5]:
-            impl = self._deepen_finding(insight, domain, red_flags)
-            if impl:
-                implications.append(impl)
-                if impl.stark_truth:
-                    stark_truths.append(impl.stark_truth)
-        
-        # Deepen connections
-        log_info("Deepening implications for connections...")
-        for conn in connections[:2]:
-            impl = self._deepen_connection(conn, domain)
-            if impl:
-                implications.append(impl)
-                if impl.stark_truth:
-                    stark_truths.append(impl.stark_truth)
+
+        with ThreadPoolExecutor(max_workers=7) as pool:
+            insight_futures = [
+                pool.submit(self._deepen_finding, ins, domain, red_flags)
+                for ins in insights[:5]
+            ]
+            conn_futures = [
+                pool.submit(self._deepen_connection, conn, domain)
+                for conn in connections[:2]
+            ]
+            for f in insight_futures:
+                impl = f.result()
+                if impl:
+                    implications.append(impl)
+                    if impl.stark_truth:
+                        stark_truths.append(impl.stark_truth)
+            for f in conn_futures:
+                impl = f.result()
+                if impl:
+                    implications.append(impl)
+                    if impl.stark_truth:
+                        stark_truths.append(impl.stark_truth)
         
         # Generate overall stark truth
         log_info("Synthesizing overall stark truth...")

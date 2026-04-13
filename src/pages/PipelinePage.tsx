@@ -1,16 +1,205 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Loader2, CheckCircle2, XCircle, Clock, RotateCcw } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  RotateCcw,
+  Brain,
+  Sparkles,
+  Zap,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StepList } from "@/components/pipeline/StepList";
 import { useRunStatus } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
+const STEP_CONTEXT: Record<string, string> = {
+  ingestion: "Sanitizing and preparing your data for analysis",
+  type_identifier: "Detecting what kind of dataset this is",
+  scanner: "Profiling every column for distributions and outliers",
+  interpreter: "Building a semantic schema map of your data",
+  validator: "Checking data quality and sufficiency",
+  overseer: "Finding natural clusters and behavioral segments",
+  regression: "Building predictive models on key outcomes",
+  time_series: "Detecting temporal patterns and trends",
+  sentry: "Hunting for anomalies and suspicious patterns",
+  personas: "Generating data-driven customer personas",
+  fabricator: "Crafting strategic recommendations",
+  raw_data_sampler: "Sampling real rows for deep LLM analysis",
+  deep_insight: "Synthesizing cross-artifact patterns with AI",
+  dot_connector: "Linking findings into a unified narrative",
+  hypothesis_engine: "Generating bold, testable hypotheses",
+  so_what_deepener: "Asking 'so what?' three levels deep",
+  story_framer: "Building the narrative arc of your data story",
+  executive_narrator: "Polishing insights for executive consumption",
+  expositor: "Assembling the final intelligence report",
+  trust_evaluation: "Scoring confidence and flagging limitations",
+};
+
+/**
+ * Relative weights for each pipeline step based on typical execution time.
+ * Heavy compute steps (clustering, regression, LLM calls) get higher weights
+ * so progress doesn't stall visually during long-running agents.
+ */
+const STEP_WEIGHTS: Record<string, number> = {
+  ingestion: 1,
+  type_identifier: 1,
+  scanner: 2,
+  interpreter: 2,
+  validator: 1,
+  overseer: 8,       // clustering is the heaviest compute step
+  regression: 6,     // model building is second heaviest
+  time_series: 4,
+  sentry: 3,
+  personas: 3,
+  fabricator: 3,
+  raw_data_sampler: 1,
+  deep_insight: 5,   // LLM synthesis
+  dot_connector: 3,
+  hypothesis_engine: 4,
+  so_what_deepener: 3,
+  story_framer: 3,
+  executive_narrator: 4,
+  expositor: 2,
+  trust_evaluation: 1,
+};
+
+const STEP_KEYS = [
+  "ingestion", "type_identifier", "scanner", "interpreter", "validator",
+  "overseer", "regression", "time_series", "sentry", "personas",
+  "fabricator", "raw_data_sampler", "deep_insight", "dot_connector",
+  "hypothesis_engine", "so_what_deepener", "story_framer",
+  "executive_narrator", "expositor", "trust_evaluation",
+];
+
+const TOTAL_WEIGHT = STEP_KEYS.reduce((sum, k) => sum + (STEP_WEIGHTS[k] ?? 1), 0);
+
+/**
+ * Compute weighted progress that accounts for step difficulty.
+ * Also interpolates within the active step so the bar never fully freezes.
+ */
+function computeWeightedProgress(
+  completedSteps: string[],
+  currentStep: string | undefined,
+  elapsedSec: number,
+): number {
+  let completedWeight = 0;
+  for (const key of STEP_KEYS) {
+    if (completedSteps.includes(key)) {
+      completedWeight += STEP_WEIGHTS[key] ?? 1;
+    }
+  }
+
+  // Intra-step interpolation: slowly fill within the active step
+  // Uses a logarithmic curve so it starts fast then slows (never reaches 100% of step)
+  let activeWeight = 0;
+  if (currentStep && !completedSteps.includes(currentStep)) {
+    const stepWeight = STEP_WEIGHTS[currentStep] ?? 1;
+    // Estimate: heavy steps take ~60-180s, light steps ~5-15s
+    const expectedDuration = stepWeight * 15; // rough seconds per weight unit
+    const stepIndex = STEP_KEYS.indexOf(currentStep);
+    const completedBeforeThis = completedSteps.filter(
+      (s) => STEP_KEYS.indexOf(s) < stepIndex,
+    ).length;
+    // Time spent on this step (approximate)
+    const avgTimePerCompleted = completedBeforeThis > 0 ? elapsedSec / completedBeforeThis : 10;
+    const estimatedStepTime = Math.max(expectedDuration, avgTimePerCompleted * stepWeight);
+    // How long have we been on this step? Use a fraction of elapsed as proxy
+    const timeOnStep = Math.max(0, elapsedSec - (completedBeforeThis * avgTimePerCompleted));
+    // Logarithmic fill: approaches 85% but never reaches 100%
+    const fill = Math.min(0.85, 1 - Math.exp(-1.5 * timeOnStep / estimatedStepTime));
+    activeWeight = stepWeight * fill;
+  }
+
+  return Math.min(99, ((completedWeight + activeWeight) / TOTAL_WEIGHT) * 100);
+}
+
+/**
+ * Smarter ETA that uses weighted remaining steps instead of linear extrapolation.
+ */
+function computeETA(
+  completedSteps: string[],
+  currentStep: string | undefined,
+  elapsedSec: number,
+): string {
+  if (elapsedSec < 3) return "calculating...";
+
+  const completedWeight = completedSteps.reduce(
+    (sum, k) => sum + (STEP_WEIGHTS[k] ?? 1), 0,
+  );
+  if (completedWeight === 0) return "calculating...";
+
+  const secsPerWeight = elapsedSec / completedWeight;
+  const remainingWeight = STEP_KEYS
+    .filter((k) => !completedSteps.includes(k))
+    .reduce((sum, k) => sum + (STEP_WEIGHTS[k] ?? 1), 0);
+
+  const etaSec = Math.round(secsPerWeight * remainingWeight);
+  if (etaSec > 600) return `~${Math.round(etaSec / 60)}m`;
+  if (etaSec > 90) return `~${Math.round(etaSec / 60)}m ${etaSec % 60}s`;
+  return `~${etaSec}s`;
+}
+
 function formatElapsed(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+function PulseRing({ progress }: { progress: number }) {
+  const radius = 54;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (progress / 100) * circumference;
+
+  return (
+    <div className="relative w-36 h-36">
+      <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
+        <circle
+          cx="60"
+          cy="60"
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="4"
+          className="text-secondary"
+        />
+        <motion.circle
+          cx="60"
+          cy="60"
+          r={radius}
+          fill="none"
+          stroke="url(#progressGradient)"
+          strokeWidth="5"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 1, ease: "easeOut" }}
+        />
+        <defs>
+          <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#14b8a6" />
+            <stop offset="100%" stopColor="#06b6d4" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-3xl font-bold text-teal-400 tabular-nums">
+          {Math.round(progress)}%
+        </span>
+      </div>
+      {progress < 100 && (
+        <motion.div
+          className="absolute inset-0 rounded-full border-2 border-teal-500/30"
+          animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        />
+      )}
+    </div>
+  );
 }
 
 export default function PipelinePage() {
@@ -47,18 +236,34 @@ export default function PipelinePage() {
     if (isComplete) {
       const timer = setTimeout(() => {
         navigate(`/report/${runId}`, { replace: true });
-      }, 1500);
+      }, 2000);
       return () => clearTimeout(timer);
     }
   }, [isComplete, runId, navigate]);
 
+  const contextMessage = useMemo(() => {
+    if (!status?.current_step) return null;
+    return STEP_CONTEXT[status.current_step] ?? null;
+  }, [status?.current_step]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span>Connecting to pipeline...</span>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center gap-4"
+        >
+          <div className="relative">
+            <Brain className="w-10 h-10 text-teal-500" />
+            <motion.div
+              className="absolute -inset-2 rounded-full border border-teal-500/30"
+              animate={{ scale: [1, 1.3, 1], opacity: [0.6, 0, 0.6] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            />
+          </div>
+          <span className="text-muted-foreground text-sm">Connecting to pipeline...</span>
+        </motion.div>
       </div>
     );
   }
@@ -77,80 +282,107 @@ export default function PipelinePage() {
     );
   }
 
-  const progress = status.progress ?? 0;
   const isFailed = status.status === "failed";
+  const completedCount = status.completed_steps ?? 0;
+  const totalCount = status.total_steps ?? 20;
+  const stepsCompleted = status.steps_completed || [];
+  const progress = isComplete
+    ? 100
+    : computeWeightedProgress(stepsCompleted, status.current_step, elapsed);
+  const eta = computeETA(stepsCompleted, status.current_step, elapsed);
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-12">
+    <div className="max-w-3xl mx-auto px-4 py-10">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
+        className="space-y-8"
       >
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-3">
-            {isComplete ? (
-              <CheckCircle2 className="w-6 h-6 text-green-500" />
-            ) : isFailed ? (
-              <XCircle className="w-6 h-6 text-destructive" />
-            ) : (
-              <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
+        {/* Hero section with ring */}
+        <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
+          <PulseRing progress={isComplete ? 100 : progress} />
+
+          <div className="flex-1 text-center sm:text-left">
+            <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
+              {isComplete ? (
+                <CheckCircle2 className="w-5 h-5 text-green-500" />
+              ) : isFailed ? (
+                <XCircle className="w-5 h-5 text-destructive" />
+              ) : (
+                <Zap className="w-5 h-5 text-teal-500" />
+              )}
+              <h1 className="text-2xl font-bold">
+                {isComplete
+                  ? "Analysis Complete"
+                  : isFailed
+                    ? "Analysis Failed"
+                    : "Analyzing Your Data"}
+              </h1>
+            </div>
+
+            <p className="text-sm text-muted-foreground mb-3">
+              Run{" "}
+              <code className="font-mono text-xs bg-secondary px-1.5 py-0.5 rounded">
+                {runId}
+              </code>
+              <span className="mx-2 text-border">|</span>
+              <Clock className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />
+              <span className="font-mono">{formatElapsed(elapsed)}</span>
+            </p>
+
+            {/* Contextual step description */}
+            <AnimatePresence mode="wait">
+              {contextMessage && !isComplete && !isFailed && (
+                <motion.div
+                  key={status.current_step}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex items-center gap-2 text-sm text-teal-400/80"
+                >
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                  <span>{contextMessage}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {status.current_stage && !isComplete && !isFailed && (
+              <p className="text-xs text-muted-foreground/60 mt-1">
+                Stage: {status.current_stage}
+              </p>
             )}
-            <h1 className="text-xl font-bold">
-              {isComplete
-                ? "Analysis Complete"
-                : isFailed
-                  ? "Analysis Failed"
-                  : "Analyzing Your Data"}
-            </h1>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="w-4 h-4" />
-            <span className="font-mono">{formatElapsed(elapsed)}</span>
           </div>
         </div>
 
-        <p className="text-sm text-muted-foreground mb-1">
-          Run{" "}
-          <code className="font-mono text-xs bg-secondary px-1.5 py-0.5 rounded">
-            {runId}
-          </code>
-        </p>
-        {status.current_stage && !isComplete && (
-          <p className="text-sm text-teal-400 mb-6">{status.current_stage}</p>
-        )}
-        {!status.current_stage && <div className="mb-6" />}
-
-        <div className="mb-8">
+        {/* Progress bar */}
+        <div>
           <div className="flex items-center justify-between mb-2 text-sm">
             <span className="text-muted-foreground">
-              {status.completed_steps}/{status.total_steps} steps
+              {completedCount}/{totalCount} agents complete
             </span>
-            <span
-              className={cn(
-                "font-bold",
-                isComplete && "text-green-500",
-                isFailed && "text-destructive",
-                !isComplete && !isFailed && "text-teal-500",
-              )}
-            >
-              {Math.round(progress)}%
-            </span>
+            {!isComplete && !isFailed && (
+              <span className="text-xs text-muted-foreground/50">
+                {eta} remaining
+              </span>
+            )}
           </div>
-          <div className="h-2.5 bg-secondary rounded-full overflow-hidden">
+          <div className="h-2 bg-secondary rounded-full overflow-hidden">
             <motion.div
               className={cn(
                 "h-full rounded-full",
                 isComplete && "bg-green-500",
                 isFailed && "bg-destructive",
-                !isComplete && !isFailed && "bg-teal-600",
+                !isComplete && !isFailed && "bg-gradient-to-r from-teal-600 to-cyan-500",
               )}
               initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
+              animate={{ width: `${isComplete ? 100 : progress}%` }}
               transition={{ duration: 0.8, ease: "easeOut" }}
             />
           </div>
         </div>
 
+        {/* Step list */}
         <div className="rounded-xl border border-border bg-card p-4">
           <StepList
             currentStep={status.current_step}
@@ -160,17 +392,23 @@ export default function PipelinePage() {
         </div>
 
         {isComplete && (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mt-6 text-center text-sm text-muted-foreground"
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center space-y-2"
           >
-            Redirecting to your report...
-          </motion.p>
+            <div className="flex items-center justify-center gap-2 text-green-500">
+              <CheckCircle2 className="w-5 h-5" />
+              <span className="font-semibold">All 20 agents finished successfully</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Redirecting to your intelligence report...
+            </p>
+          </motion.div>
         )}
 
         {isFailed && (
-          <div className="mt-6 flex flex-col items-center gap-3">
+          <div className="mt-2 flex flex-col items-center gap-3">
             <p className="text-sm text-destructive text-center">
               The pipeline encountered an error. You can retry or go back.
             </p>

@@ -400,10 +400,21 @@ def generate_narrative_for_run(state_manager) -> Dict[str, Any]:
     print(f"[SmartNarrative] Building narrative for run {run_id}")
     print(f"[SmartNarrative] Row count: {identity_payload['row_count']}, Column count: {identity_payload['column_count']}")
 
+    # If executive_narrator already produced a high-quality narrative, skip the
+    # smart_narrative generation to avoid overwriting with a potentially worse result.
+    # The frontend should prefer executive_narrative when available.
+    executive_narrative = state_manager.read("executive_narrative") or {}
+    if executive_narrative.get("markdown") and len(executive_narrative["markdown"]) > 200:
+        print(f"[SmartNarrative] Skipping -- executive_narrative already present ({len(executive_narrative['markdown'])} chars)")
+        return {}
+
     # Generate narrative
     narrative = generate_smart_narrative(snapshot, run_id)
 
-    # Save to state
-    state_manager.write("smart_narrative", narrative)
+    # Only write to state if the LLM succeeded (avoid polluting state with boilerplate fallback)
+    if narrative.get("model_used") != "fallback":
+        state_manager.write("smart_narrative", narrative)
+    else:
+        print(f"[SmartNarrative] LLM call failed; skipping fallback write to avoid showing generic text")
 
     return narrative

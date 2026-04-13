@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#020617"/>
+      <stop offset="50%" stop-color="#0a1628"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+
+    <!-- Teal accent gradient -->
+    <linearGradient id="teal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2dd4bf"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+
+    <!-- Cyan glow gradient -->
+    <linearGradient id="cyan-glow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#22d3ee" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Core radial -->
+    <radialGradient id="core" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="40%" stop-color="#2dd4bf" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#0891b2" stop-opacity="0.3"/>
+    </radialGradient>
+
+    <!-- Ambient glow -->
+    <radialGradient id="ambient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#2dd4bf" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#2dd4bf" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Dot glow filter -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Stronger glow for core -->
+    <filter id="core-glow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Soft text glow -->
+    <filter id="text-glow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Subtle grid pattern -->
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5" opacity="0.4"/>
+    </pattern>
+
+    <!-- Data stream particle -->
+    <linearGradient id="particle-trail" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2dd4bf" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#2dd4bf" stop-opacity="0.8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Base background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Subtle grid overlay -->
+  <rect width="1200" height="630" fill="url(#grid)" opacity="0.3"/>
+
+  <!-- Ambient background glow behind atom -->
+  <ellipse cx="260" cy="315" rx="220" ry="220" fill="url(#ambient)"/>
+
+  <!-- Faint horizontal scan lines for depth -->
+  <g opacity="0.04">
+    <line x1="0" y1="100" x2="1200" y2="100" stroke="#2dd4bf" stroke-width="0.5"/>
+    <line x1="0" y1="200" x2="1200" y2="200" stroke="#2dd4bf" stroke-width="0.5"/>
+    <line x1="0" y1="300" x2="1200" y2="300" stroke="#2dd4bf" stroke-width="0.5"/>
+    <line x1="0" y1="400" x2="1200" y2="400" stroke="#2dd4bf" stroke-width="0.5"/>
+    <line x1="0" y1="500" x2="1200" y2="500" stroke="#2dd4bf" stroke-width="0.5"/>
+  </g>
+
+  <!-- ========== ATOM LOGO (left side) ========== -->
+  <g transform="translate(260, 315)">
+    <!-- Orbit ring 1 -->
+    <ellipse rx="110" ry="42" fill="none" stroke="url(#teal)" stroke-width="1.8" opacity="0.5"/>
+    <!-- Orbit ring 2 -->
+    <ellipse rx="110" ry="42" fill="none" stroke="url(#teal)" stroke-width="1.8" opacity="0.5" transform="rotate(60)"/>
+    <!-- Orbit ring 3 -->
+    <ellipse rx="110" ry="42" fill="none" stroke="url(#teal)" stroke-width="1.8" opacity="0.5" transform="rotate(-60)"/>
+
+    <!-- Orbiting electron dots -->
+    <circle cx="110" cy="0" r="7" fill="#2dd4bf" filter="url(#glow)" opacity="0.9"/>
+    <circle cx="-55" cy="-95" r="7" fill="#0891b2" filter="url(#glow)" opacity="0.9"/>
+    <circle cx="-55" cy="95" r="7" fill="#14b8a6" filter="url(#glow)" opacity="0.9"/>
+
+    <!-- Small secondary electrons -->
+    <circle cx="-100" cy="18" r="4" fill="#22d3ee" filter="url(#glow)" opacity="0.6"/>
+    <circle cx="70" cy="-80" r="4" fill="#22d3ee" filter="url(#glow)" opacity="0.6"/>
+    <circle cx="30" cy="100" r="4" fill="#22d3ee" filter="url(#glow)" opacity="0.6"/>
+
+    <!-- Center core -->
+    <circle r="28" fill="url(#core)" filter="url(#core-glow)"/>
+    <!-- Inner bright point -->
+    <circle r="8" fill="white" opacity="0.9"/>
+  </g>
+
+  <!-- ========== DATA STREAM LINES (connecting atom to text) ========== -->
+  <g opacity="0.25">
+    <!-- Flowing data lines from atom to right side -->
+    <line x1="380" y1="260" x2="520" y2="260" stroke="url(#particle-trail)" stroke-width="1.5"/>
+    <line x1="400" y1="290" x2="540" y2="290" stroke="url(#particle-trail)" stroke-width="1"/>
+    <line x1="390" y1="340" x2="530" y2="340" stroke="url(#particle-trail)" stroke-width="1"/>
+    <line x1="380" y1="370" x2="520" y2="370" stroke="url(#particle-trail)" stroke-width="1.5"/>
+
+    <!-- Subtle data particles -->
+    <circle cx="480" cy="260" r="2" fill="#2dd4bf" opacity="0.8"/>
+    <circle cx="510" cy="290" r="1.5" fill="#22d3ee" opacity="0.6"/>
+    <circle cx="500" cy="340" r="1.5" fill="#22d3ee" opacity="0.6"/>
+    <circle cx="490" cy="370" r="2" fill="#2dd4bf" opacity="0.8"/>
+  </g>
+
+  <!-- ========== TYPOGRAPHY (right side) ========== -->
+
+  <!-- ACE wordmark -->
+  <text x="560" y="300" font-family="Inter, system-ui, sans-serif" font-weight="700" font-size="120" fill="white" letter-spacing="-2" filter="url(#text-glow)">ACE</text>
+
+  <!-- Teal accent bar under wordmark -->
+  <rect x="562" y="318" width="80" height="3" rx="1.5" fill="url(#teal)" opacity="0.8"/>
+
+  <!-- Subtitle -->
+  <text x="564" y="358" font-family="Inter, system-ui, sans-serif" font-weight="400" font-size="22" fill="#94a3b8" letter-spacing="5">AUTOMATED CURIOSITY ENGINE</text>
+
+  <!-- Description line -->
+  <text x="564" y="400" font-family="Inter, system-ui, sans-serif" font-weight="300" font-size="16" fill="#64748b" letter-spacing="0.5">Multi-Agent AI Analytics Pipeline</text>
+
+  <!-- ========== PIPELINE BADGE ROW ========== -->
+  <g transform="translate(564, 430)">
+    <!-- Badge: 19 Steps -->
+    <rect x="0" y="0" width="100" height="30" rx="6" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+    <text x="50" y="20" font-family="JetBrains Mono, monospace" font-size="12" fill="#2dd4bf" text-anchor="middle" letter-spacing="0.5">19 STEPS</text>
+
+    <!-- Badge: 20+ Agents -->
+    <rect x="115" y="0" width="115" height="30" rx="6" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+    <text x="172" y="20" font-family="JetBrains Mono, monospace" font-size="12" fill="#22d3ee" text-anchor="middle" letter-spacing="0.5">20+ AGENTS</text>
+
+    <!-- Badge: AI Reports -->
+    <rect x="245" y="0" width="120" height="30" rx="6" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+    <text x="305" y="20" font-family="JetBrains Mono, monospace" font-size="12" fill="#14b8a6" text-anchor="middle" letter-spacing="0.5">AI REPORTS</text>
+  </g>
+
+  <!-- ========== CORNER ACCENTS ========== -->
+  <!-- Top-left corner bracket -->
+  <path d="M 30 60 L 30 30 L 60 30" fill="none" stroke="#1e293b" stroke-width="1.5"/>
+  <!-- Top-right corner bracket -->
+  <path d="M 1140 30 L 1170 30 L 1170 60" fill="none" stroke="#1e293b" stroke-width="1.5"/>
+  <!-- Bottom-left corner bracket -->
+  <path d="M 30 570 L 30 600 L 60 600" fill="none" stroke="#1e293b" stroke-width="1.5"/>
+  <!-- Bottom-right corner bracket -->
+  <path d="M 1170 570 L 1170 600 L 1140 600" fill="none" stroke="#1e293b" stroke-width="1.5"/>
+
+  <!-- Version tag bottom-right -->
+  <text x="1150" y="590" font-family="JetBrains Mono, monospace" font-size="11" fill="#334155" text-anchor="end" letter-spacing="1">V4.0</text>
+
+  <!-- Subtle bottom border accent -->
+  <rect x="460" y="620" width="280" height="2" rx="1" fill="url(#cyan-glow)" opacity="0.4"/>
+</svg>
