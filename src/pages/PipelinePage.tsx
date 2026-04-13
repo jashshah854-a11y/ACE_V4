@@ -39,6 +39,110 @@ const STEP_CONTEXT: Record<string, string> = {
   trust_evaluation: "Scoring confidence and flagging limitations",
 };
 
+/**
+ * Relative weights for each pipeline step based on typical execution time.
+ * Heavy compute steps (clustering, regression, LLM calls) get higher weights
+ * so progress doesn't stall visually during long-running agents.
+ */
+const STEP_WEIGHTS: Record<string, number> = {
+  ingestion: 1,
+  type_identifier: 1,
+  scanner: 2,
+  interpreter: 2,
+  validator: 1,
+  overseer: 8,       // clustering is the heaviest compute step
+  regression: 6,     // model building is second heaviest
+  time_series: 4,
+  sentry: 3,
+  personas: 3,
+  fabricator: 3,
+  raw_data_sampler: 1,
+  deep_insight: 5,   // LLM synthesis
+  dot_connector: 3,
+  hypothesis_engine: 4,
+  so_what_deepener: 3,
+  story_framer: 3,
+  executive_narrator: 4,
+  expositor: 2,
+  trust_evaluation: 1,
+};
+
+const STEP_KEYS = [
+  "ingestion", "type_identifier", "scanner", "interpreter", "validator",
+  "overseer", "regression", "time_series", "sentry", "personas",
+  "fabricator", "raw_data_sampler", "deep_insight", "dot_connector",
+  "hypothesis_engine", "so_what_deepener", "story_framer",
+  "executive_narrator", "expositor", "trust_evaluation",
+];
+
+const TOTAL_WEIGHT = STEP_KEYS.reduce((sum, k) => sum + (STEP_WEIGHTS[k] ?? 1), 0);
+
+/**
+ * Compute weighted progress that accounts for step difficulty.
+ * Also interpolates within the active step so the bar never fully freezes.
+ */
+function computeWeightedProgress(
+  completedSteps: string[],
+  currentStep: string | undefined,
+  elapsedSec: number,
+): number {
+  let completedWeight = 0;
+  for (const key of STEP_KEYS) {
+    if (completedSteps.includes(key)) {
+      completedWeight += STEP_WEIGHTS[key] ?? 1;
+    }
+  }
+
+  // Intra-step interpolation: slowly fill within the active step
+  // Uses a logarithmic curve so it starts fast then slows (never reaches 100% of step)
+  let activeWeight = 0;
+  if (currentStep && !completedSteps.includes(currentStep)) {
+    const stepWeight = STEP_WEIGHTS[currentStep] ?? 1;
+    // Estimate: heavy steps take ~60-180s, light steps ~5-15s
+    const expectedDuration = stepWeight * 15; // rough seconds per weight unit
+    const stepIndex = STEP_KEYS.indexOf(currentStep);
+    const completedBeforeThis = completedSteps.filter(
+      (s) => STEP_KEYS.indexOf(s) < stepIndex,
+    ).length;
+    // Time spent on this step (approximate)
+    const avgTimePerCompleted = completedBeforeThis > 0 ? elapsedSec / completedBeforeThis : 10;
+    const estimatedStepTime = Math.max(expectedDuration, avgTimePerCompleted * stepWeight);
+    // How long have we been on this step? Use a fraction of elapsed as proxy
+    const timeOnStep = Math.max(0, elapsedSec - (completedBeforeThis * avgTimePerCompleted));
+    // Logarithmic fill: approaches 85% but never reaches 100%
+    const fill = Math.min(0.85, 1 - Math.exp(-1.5 * timeOnStep / estimatedStepTime));
+    activeWeight = stepWeight * fill;
+  }
+
+  return Math.min(99, ((completedWeight + activeWeight) / TOTAL_WEIGHT) * 100);
+}
+
+/**
+ * Smarter ETA that uses weighted remaining steps instead of linear extrapolation.
+ */
+function computeETA(
+  completedSteps: string[],
+  currentStep: string | undefined,
+  elapsedSec: number,
+): string {
+  if (elapsedSec < 3) return "calculating...";
+
+  const completedWeight = completedSteps.reduce(
+    (sum, k) => sum + (STEP_WEIGHTS[k] ?? 1), 0,
+  );
+  if (completedWeight === 0) return "calculating...";
+
+  const secsPerWeight = elapsedSec / completedWeight;
+  const remainingWeight = STEP_KEYS
+    .filter((k) => !completedSteps.includes(k))
+    .reduce((sum, k) => sum + (STEP_WEIGHTS[k] ?? 1), 0);
+
+  const etaSec = Math.round(secsPerWeight * remainingWeight);
+  if (etaSec > 600) return `~${Math.round(etaSec / 60)}m`;
+  if (etaSec > 90) return `~${Math.round(etaSec / 60)}m ${etaSec % 60}s`;
+  return `~${etaSec}s`;
+}
+
 function formatElapsed(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
@@ -178,10 +282,14 @@ export default function PipelinePage() {
     );
   }
 
-  const progress = status.progress ?? 0;
   const isFailed = status.status === "failed";
   const completedCount = status.completed_steps ?? 0;
   const totalCount = status.total_steps ?? 20;
+  const stepsCompleted = status.steps_completed || [];
+  const progress = isComplete
+    ? 100
+    : computeWeightedProgress(stepsCompleted, status.current_step, elapsed);
+  const eta = computeETA(stepsCompleted, status.current_step, elapsed);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
@@ -255,7 +363,7 @@ export default function PipelinePage() {
             </span>
             {!isComplete && !isFailed && (
               <span className="text-xs text-muted-foreground/50">
-                ~{Math.max(1, Math.round(((100 - progress) / Math.max(progress, 1)) * (elapsed || 1)))}s remaining
+                {eta} remaining
               </span>
             )}
           </div>
