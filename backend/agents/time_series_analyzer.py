@@ -102,14 +102,10 @@ class TimeSeriesAgent:
 
         self.state.write("time_series_analysis", results)
 
-        # Store insights as warnings if notable
+        # Log notable insights as warnings
         for insight in results.get("insights", []):
             if any(kw in insight.lower() for kw in ("increasing volatility", "change point", "non-stationary")):
-                self.state.add_warning(
-                    "TIME_SERIES_PATTERN",
-                    insight,
-                    details={"source": "time_series_analyzer"},
-                )
+                log_warn(f"[TIME_SERIES] Notable pattern: {insight}")
 
         n_analyzed = len(results.get("analyses", {}))
         log_ok(f"Time series analysis complete: {n_analyzed} series analyzed, {len(results.get('insights', []))} insights")

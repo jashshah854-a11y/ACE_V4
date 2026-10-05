@@ -94,6 +94,13 @@ def _extract_context(snapshot: Dict[str, Any]) -> Dict[str, Any]:
         "quality": {},
     }
 
+    task_intent = snapshot.get("task_intent")
+    if isinstance(task_intent, dict) and task_intent.get("primary_question"):
+        context["user_request"] = {
+            **task_intent,
+            "label": "User request (not evidence)",
+        }
+
     # Identity information
     identity = snapshot.get("identity", {})
     if isinstance(identity, dict):
@@ -363,6 +370,7 @@ def generate_narrative_for_run(state_manager) -> Dict[str, Any]:
     time_series = state_manager.read("time_series_analysis") or {}
     trust = state_manager.read("trust_object") or {}
     validation = state_manager.read("data_validation_report") or {}
+    task_intent = state_manager.read("task_intent") or {}
     
     # Build identity structure that _extract_context expects
     # It looks for snapshot["identity"]["identity"]["row_count"] etc.
@@ -392,6 +400,7 @@ def generate_narrative_for_run(state_manager) -> Dict[str, Any]:
         # Additional context for richer narratives
         "anomalies": anomalies,
         "time_series": time_series,
+        "task_intent": task_intent,
     }
 
     run_id = state_manager.run_path.name if hasattr(state_manager, 'run_path') else "unknown"
@@ -400,10 +409,21 @@ def generate_narrative_for_run(state_manager) -> Dict[str, Any]:
     print(f"[SmartNarrative] Building narrative for run {run_id}")
     print(f"[SmartNarrative] Row count: {identity_payload['row_count']}, Column count: {identity_payload['column_count']}")
 
+    # If executive_narrator already produced a high-quality narrative, skip the
+    # smart_narrative generation to avoid overwriting with a potentially worse result.
+    # The frontend should prefer executive_narrative when available.
+    executive_narrative = state_manager.read("executive_narrative") or {}
+    if executive_narrative.get("markdown") and len(executive_narrative["markdown"]) > 200:
+        print(f"[SmartNarrative] Skipping -- executive_narrative already present ({len(executive_narrative['markdown'])} chars)")
+        return {}
+
     # Generate narrative
     narrative = generate_smart_narrative(snapshot, run_id)
 
-    # Save to state
-    state_manager.write("smart_narrative", narrative)
+    # Only write to state if the LLM succeeded (avoid polluting state with boilerplate fallback)
+    if narrative.get("model_used") != "fallback":
+        state_manager.write("smart_narrative", narrative)
+    else:
+        print(f"[SmartNarrative] LLM call failed; skipping fallback write to avoid showing generic text")
 
     return narrative

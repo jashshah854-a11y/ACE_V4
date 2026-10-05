@@ -171,21 +171,31 @@ def run_universal_clustering(df: pd.DataFrame, schema_map):
     best_score = -1
     best_labels = None
     best_model = None
-    
+
     # If dataset is small, limit K
     max_k = min(8, len(df))
     if max_k < 3:
         max_k = 3
-    
-    print(f"   Universal Clustering on {valid_features} (K={start_k}-{max_k})...")
-    
+
+    # Performance: for large datasets, sample for silhouette and reduce n_init
+    n_rows = len(df_scaled)
+    SILHOUETTE_SAMPLE_LIMIT = 10_000
+    n_init = 3 if n_rows > 20_000 else 10
+
+    print(f"   Universal Clustering on {valid_features} (K=3-{max_k}, n={n_rows}, n_init={n_init})...")
+
     for k in range(3, max_k + 1):
         if len(df_scaled) < k:
             continue  # Not enough samples for this k
-        model = KMeans(n_clusters=k, random_state=42, n_init=10)
+        model = KMeans(n_clusters=k, random_state=42, n_init=n_init)
         labels = model.fit_predict(df_scaled)
         if len(set(labels)) < 2: continue # Skip if only 1 cluster found
-        score = silhouette_score(df_scaled, labels)
+        # Sample for silhouette on large datasets (O(n²) otherwise)
+        if n_rows > SILHOUETTE_SAMPLE_LIMIT:
+            sample_idx = np.random.RandomState(42).choice(n_rows, SILHOUETTE_SAMPLE_LIMIT, replace=False)
+            score = silhouette_score(df_scaled.iloc[sample_idx], labels[sample_idx])
+        else:
+            score = silhouette_score(df_scaled, labels)
         
         if score > best_score:
             best_score = score

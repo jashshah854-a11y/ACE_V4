@@ -18,6 +18,7 @@ export interface DatasetPreview {
     has_numeric_columns: boolean;
   };
   warnings?: string[];
+  sheets?: string[];
 }
 
 export interface TaskIntent {
@@ -196,15 +197,33 @@ export interface HypothesesData {
   boldest_hypothesis?: Hypothesis;
 }
 
+export interface ExecutiveNarrative {
+  narrative?: string;
+  markdown?: string;
+  headline?: string;
+  domain?: string;
+  insight_count?: number;
+  recommendation_count?: number;
+  data_summary?: {
+    row_count?: number;
+    column_count?: number;
+    quality_score?: number;
+    anomaly_count?: number;
+    confidence_score?: number;
+  };
+}
+
 export interface Snapshot {
   run_id: string;
   generated_at?: string;
+  task_intent?: TaskIntent | null;
   identity: IdentityBlock;
   curated_kpis: CuratedKPIs;
   trust: Trust;
   report_markdown: string;
   governed_report: GovernedReport;
   smart_narrative: SmartNarrative;
+  executive_narrative?: ExecutiveNarrative;
   enhanced_analytics: EnhancedAnalytics;
   deep_insights?: DeepInsights;
   hypotheses?: HypothesesData;

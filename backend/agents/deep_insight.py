@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 from typing import Dict, Any, List
 from dataclasses import dataclass, asdict
+from concurrent.futures import ThreadPoolExecutor
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -73,15 +74,15 @@ class DeepInsightAgent:
         # 3. Build comprehensive context for LLM
         context = self._build_context()
         
-        # 4. Generate insights via multi-pass LLM
-        log_info("Generating insights (Pass 1: Raw extraction)...")
-        raw_insights = self._generate_insights_pass1(context, domain)
-        
+        # 4 & 5. Generate insights and curiosity pass concurrently (both read same context)
+        log_info("Generating insights (Pass 1 + Curiosity pass in parallel)...")
+        with ThreadPoolExecutor(max_workers=2) as _pool:
+            _f_raw = _pool.submit(self._generate_insights_pass1, context, domain)
+            _f_cur = _pool.submit(self._curiosity_pass, context, domain)
+            raw_insights = _f_raw.result()
+            curiosity_insights = _f_cur.result()
+
         log_info(f"Generated {len(raw_insights)} raw insights")
-        
-        # 5. CURIOSITY PASS: Look for unexpected patterns
-        log_info("Curiosity pass: Looking for unexpected patterns...")
-        curiosity_insights = self._curiosity_pass(context, domain)
         log_info(f"Found {len(curiosity_insights)} curiosity insights")
         
         # Merge raw and curiosity insights (deduplicated by title)
@@ -156,6 +157,15 @@ class DeepInsightAgent:
     def _build_context(self) -> str:
         """Build comprehensive context string for LLM."""
         context_parts = []
+        task_intent = self.state.read("task_intent") or {}
+
+        if isinstance(task_intent, dict) and task_intent.get("primary_question"):
+            context_parts.append("## User Request (not evidence)")
+            context_parts.append(f"- Question: {task_intent['primary_question']}")
+            if task_intent.get("required_output_type"):
+                context_parts.append(f"- Requested output: {task_intent['required_output_type']}")
+            context_parts.append(json.dumps(task_intent, indent=2, default=str))
+            context_parts.append("- Use this to focus the analysis; do not treat it as evidence or a finding.")
         
         # Data overview
         profile = self.artifacts.get("data_profile", {})
@@ -393,12 +403,13 @@ CRITICAL INSTRUCTIONS:
         return []
     
     def _refine_insights_pass2(self, raw_insights: List[Dict], context: str) -> List[Insight]:
-        """Second pass: Refine and add specific recommendations."""
-        refined = []
-        
-        for insight in raw_insights[:8]:
-            # Generate specific recommendation for this insight
-            prompt = f"""Given this insight: 
+        """Second pass: Refine and add specific recommendations (parallel per-insight LLM calls)."""
+        ctx_snippet = context[:1500]
+
+        def _refine_one(insight: Dict) -> Insight:
+            recommendation = ""
+            try:
+                prompt = f"""Given this insight:
 Title: {insight.get('title', '')}
 Finding: {insight.get('finding', '')}
 Category: {insight.get('category', '')}
@@ -407,19 +418,19 @@ Generate ONE specific, actionable recommendation.
 Be concrete - what EXACTLY should someone do? Who? By when?
 
 Context for reference:
-{context[:1500]}
+{ctx_snippet}
 
 Return JSON:
 {{
   "recommendation": "Specific action to take with who/what/when..."
 }}
 """
-            rec_result = call_gemini(prompt, temperature=0.2, max_tokens=300, parse_json=True)
-            recommendation = ""
-            if isinstance(rec_result, dict):
-                recommendation = rec_result.get("recommendation", "")
-            
-            refined.append(Insight(
+                rec_result = call_gemini(prompt, temperature=0.2, max_tokens=300, parse_json=True)
+                if isinstance(rec_result, dict):
+                    recommendation = rec_result.get("recommendation", "")
+            except Exception as exc:
+                log_warn(f"Recommendation generation failed for {insight.get('title', 'Insight')!r}: {exc}")
+            return Insight(
                 title=insight.get("title", "Insight"),
                 finding=insight.get("finding", ""),
                 why_it_matters=insight.get("why_it_matters", ""),
@@ -428,8 +439,11 @@ Return JSON:
                 impact_score=insight.get("impact_score", 50),
                 category=insight.get("category", "pattern"),
                 recommendation=recommendation,
-            ))
-        
+            )
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            refined = list(pool.map(_refine_one, raw_insights[:8]))
+
         return refined
     
     def _rank_insights(self, insights: List[Insight]) -> List[Insight]:

@@ -11,9 +11,10 @@ import type {
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-export async function previewDataset(file: File): Promise<DatasetPreview> {
+export async function previewDataset(file: File, sheetName?: string): Promise<DatasetPreview> {
   const formData = new FormData();
   formData.append("file", file);
+  if (sheetName) formData.append("sheet_name", sheetName);
   const res = await fetch(`${API_BASE}/run/preview`, {
     method: "POST",
     body: formData,
@@ -29,12 +30,14 @@ export async function submitRun(
   file: File,
   taskIntent: TaskIntent,
   mode = "full",
+  sheetName?: string,
 ): Promise<RunResponse> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("task_intent", JSON.stringify(taskIntent));
   formData.append("confidence_acknowledged", "true");
   formData.append("mode", mode);
+  if (sheetName) formData.append("sheet_name", sheetName);
 
   const res = await fetch(`${API_BASE}/run`, {
     method: "POST",

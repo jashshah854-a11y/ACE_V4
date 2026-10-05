@@ -17,7 +17,7 @@ from .models import Job, JobStatus
 
 
 # Job timeout configuration
-JOB_TIMEOUT_MINUTES = int(os.getenv("JOB_TIMEOUT_MINUTES", "15"))  # Default 15 min
+JOB_TIMEOUT_MINUTES = int(os.getenv("JOB_TIMEOUT_MINUTES", "120"))  # Default 120 min
 CLEANUP_INTERVAL_SECONDS = 60  # Check for stuck jobs every minute
 
 
