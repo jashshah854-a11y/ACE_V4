@@ -1,4 +1,5 @@
 # ACE V4 — Autonomous Customer Engagement System
+> SESSION START: Read `PROJECT.md` in full before any task. Update it when state changes.
 
 ## What This Is
 A multi-agent AI analytics platform that accepts CSV/data uploads, runs a 19-step automated analysis pipeline (clustering, regression, anomaly detection, AI insight synthesis, narrative generation), and produces executive-grade reports. Backend is Python/FastAPI multi-agent; frontend is a React SPA that monitors pipeline progress and renders reports.

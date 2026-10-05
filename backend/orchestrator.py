@@ -50,7 +50,7 @@ from core.state_manager import StateManager
 from core.data_guardrails import is_agent_allowed_for_run, append_limitation
 from core.insights import validate_insights
 from core.identity_card import build_identity_card, save_identity_card
-from core.task_contract import build_task_contract, save_task_contract
+from core.task_contract import build_task_contract, save_task_contract, parse_task_intent
 from core.confidence import compute_data_confidence
 from core.data_loader import calculate_file_timeout
 from agents.data_sanitizer import DataSanitizer
@@ -681,6 +681,8 @@ def run_agent(agent_name, run_path):
         return False, "", f"Agent execution failed. Please check server logs."
 
 def orchestrate_new_run(data_path, run_config=None, run_id=None):
+    if run_config and run_config.get("task_intent") is not None:
+        run_config = {**run_config, "task_intent": parse_task_intent(run_config["task_intent"])}
     print("=== ACE V3 ORCHESTRATOR START ===")
 
     # 1. Create Run
@@ -824,6 +826,8 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
     if run_config:
         state["run_config"] = run_config
         state_manager.write("run_config", run_config)
+        if run_config.get("task_intent") is not None:
+            state_manager.write("task_intent", run_config["task_intent"])
 
     # Build identity card, task contract, and confidence
     ingestion_meta = state_manager.read("ingestion_meta") or {}
@@ -860,6 +864,7 @@ def orchestrate_new_run(data_path, run_config=None, run_id=None):
         ingestion_meta.get("drift_status", "none"),
         has_target=has_target,
         target_is_binary=target_is_binary,
+        user_intent=state_manager.read("task_intent"),
     )
     contract_path = Path(run_path) / "artifacts" / "task_contract.json"
     save_task_contract(contract_path, task_contract)

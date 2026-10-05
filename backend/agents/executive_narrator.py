@@ -43,6 +43,7 @@ class ExecutiveNarratorAgent:
         hypotheses = self.state.read("hypotheses") or {}
         implications = self.state.read("deep_implications") or {}
         story_narrative = self.state.read("story_narrative") or {}
+        task_intent = self.state.read("task_intent") or {}
         
         # Load data artifacts
         profile = self.state.read("data_profile") or {}
@@ -69,7 +70,7 @@ class ExecutiveNarratorAgent:
         else:
             # Fall back to original 3-pass LLM generation
             log_info("Pass 1: Generating draft narrative...")
-            draft = self._pass1_draft(insights, data_summary)
+            draft = self._pass1_draft(insights, data_summary, task_intent)
             
             log_info("Pass 2: Refining with evidence...")
             refined = self._pass2_refine(draft, insights, data_summary)
@@ -80,7 +81,7 @@ class ExecutiveNarratorAgent:
         # Build the final executive report structure
         report = self._build_report(
             polished, insights, data_summary,
-            story_narrative, implications, dot_connections
+            story_narrative, implications, dot_connections, task_intent
         )
         
         # Save artifacts
@@ -156,12 +157,22 @@ class ExecutiveNarratorAgent:
             "confidence_score": trust.get("overall_confidence", 50),
         }
     
-    def _pass1_draft(self, insights: Dict, data_summary: Dict) -> str:
+    def _pass1_draft(self, insights: Dict, data_summary: Dict, task_intent: Dict = None) -> str:
         """Pass 1: Generate initial draft narrative."""
         
         domain = insights.get("domain_detected", "business")
         insight_list = insights.get("insights", [])
         recommendations = insights.get("recommendations", [])
+        task_intent = task_intent if isinstance(task_intent, dict) else {}
+        requested_analysis = ""
+        if task_intent.get("primary_question"):
+            requested_analysis = (
+                "\nUSER REQUEST (not evidence or a finding):\n"
+                f"- Question: {task_intent['primary_question']}\n"
+                f"- Requested output: {task_intent.get('required_output_type', 'unspecified')}\n"
+                f"{json.dumps(task_intent, indent=2, default=str)}\n"
+                "Use this only to focus the report.\n"
+            )
         
         prompt = f"""You are writing an executive intelligence report for a {domain} dataset.
 
@@ -177,6 +188,7 @@ TOP INSIGHTS (ranked by impact):
 
 RECOMMENDED ACTIONS:
 {self._format_recommendations(recommendations)}
+{requested_analysis}
 
 Write a 400-500 word executive summary that:
 1. Opens with the SINGLE most important finding ("Your data reveals that...")
@@ -247,12 +259,14 @@ Return the polished final version. This should be publication-ready for C-suite 
         data_summary: Dict,
         story_narrative: Dict = None,
         implications: Dict = None,
-        dot_connections: Dict = None
+        dot_connections: Dict = None,
+        task_intent: Dict = None,
     ) -> Dict[str, Any]:
         """Build the complete report structure."""
         story_narrative = story_narrative or {}
         implications = implications or {}
         dot_connections = dot_connections or {}
+        task_intent = task_intent if isinstance(task_intent, dict) else {}
         
         domain = insights.get("domain_detected", "Business")
         
@@ -271,6 +285,19 @@ Return the polished final version. This should be publication-ready for C-suite 
         md_parts.append("")
         md_parts.append(f"*Generated: {datetime.now().strftime('%B %d, %Y at %H:%M')}*")
         md_parts.append("")
+
+        if task_intent.get("primary_question"):
+            md_parts.append("## Requested Analysis")
+            md_parts.append("")
+            quoted_question = str(task_intent["primary_question"]).replace("\n", "\n> ")
+            md_parts.append(f"> {quoted_question}")
+            if task_intent.get("required_output_type"):
+                md_parts.append(f"> Requested output: {task_intent['required_output_type']}")
+            for key, value in task_intent.items():
+                if key not in {"primary_question", "required_output_type"}:
+                    quoted_value = str(value).replace("\n", "\n> ")
+                    md_parts.append(f"> {key}: {quoted_value}")
+            md_parts.append("")
         
         # Headline insight box
         if headline_text:
@@ -340,6 +367,7 @@ Return the polished final version. This should be publication-ready for C-suite 
             "insight_count": len(insights.get("insights", [])),
             "recommendation_count": len(recs),
             "data_summary": data_summary,
+            "task_intent": task_intent,
         }
     
     def _format_insights(self, insights: List[Dict]) -> str:

@@ -38,6 +38,7 @@ if os.name == 'nt':
     os.environ["LOKY_MAX_CPU_COUNT"] = str(os.cpu_count())
 
 from core.state_manager import StateManager
+from core.task_contract import parse_task_intent
 from jobs.redis_queue import RedisJobQueue  # Changed from SQLite queue
 from jobs.models import JobStatus
 from jobs.progress import ProgressTracker
@@ -259,6 +260,7 @@ def _build_snapshot_payload(run_id: str, lite: bool) -> tuple[Dict[str, Any], st
         "run_id": run_id,
         "generated_at": _iso_now(),
         "lite": lite,
+        "task_intent": state.read("task_intent") or (state.read("run_config") or {}).get("task_intent"),
         "manifest": manifest,
         "diagnostics": diagnostics,
         "identity": identity_payload,
@@ -857,9 +859,16 @@ def _build_run_config(
     include_categoricals: Optional[str] = None,
     fast_mode: Optional[str] = None,
     sheet_name: Optional[str] = None,
+    task_intent: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """Collect optional modeling parameters without re-reading the upload body."""
     config: Dict[str, Any] = {}
+
+    if task_intent is not None:
+        try:
+            config["task_intent"] = parse_task_intent(task_intent)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     if target_column:
         config["target_column"] = target_column
@@ -1157,6 +1166,7 @@ async def trigger_run(
     include_categoricals: Optional[str] = Form(None),
     fast_mode: Optional[str] = Form(None),
     sheet_name: Optional[str] = Form(None),
+    task_intent: Optional[str] = Form(None),
 ):
     """
     Upload a data file and enqueue a full ACE V3 run for background processing.
@@ -1174,6 +1184,7 @@ async def trigger_run(
         include_categoricals=include_categoricals,
         fast_mode=fast_mode,
         sheet_name=sheet_name,
+        task_intent=task_intent,
     )
 
     try:

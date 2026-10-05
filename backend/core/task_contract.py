@@ -1,8 +1,41 @@
 import json
+import math
+from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Any, List
 
 from core.router import select_task
+
+
+def parse_task_intent(value: Any) -> Dict[str, Any]:
+    """Validate a supplied analysis request without inventing missing context."""
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except (ValueError, TypeError) as exc:
+            raise ValueError("task_intent must be valid JSON") from exc
+    if not isinstance(value, dict):
+        raise ValueError("task_intent must be a JSON object")
+    intent = deepcopy(value)
+    if "primary_question" not in intent and "question" in intent:
+        intent["primary_question"] = intent["question"]
+    intent.pop("question", None)
+    question = intent.get("primary_question")
+    if not isinstance(question, str) or not question.strip():
+        raise ValueError("task_intent.primary_question must be a non-empty string")
+    for field in ("decision_context", "success_criteria", "constraints"):
+        if field in intent and not isinstance(intent[field], str):
+            raise ValueError(f"task_intent.{field} must be a string")
+    if "required_output_type" in intent and intent["required_output_type"] not in (
+        "diagnostic", "descriptive", "predictive"
+    ):
+        raise ValueError("task_intent.required_output_type must be diagnostic, descriptive, or predictive")
+    if "confidence_threshold" in intent:
+        threshold = intent["confidence_threshold"]
+        if (isinstance(threshold, bool) or not isinstance(threshold, (int, float))
+                or not 0 <= threshold <= 100 or not math.isfinite(threshold)):
+            raise ValueError("task_intent.confidence_threshold must be a finite number from 0 to 100")
+    return intent
 
 
 def enforce_quality_failsafe(
@@ -119,6 +152,7 @@ def build_task_contract(
     drift_status: str,
     has_target: bool,
     target_is_binary: bool,
+    user_intent: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     router = select_task(identity_card.get("data_type"), has_target, target_is_binary)
     contract = {
@@ -128,7 +162,17 @@ def build_task_contract(
         "allowed_sections": [],
         "forbidden_sections": [],
         "limitations": [],
+        "is_signed": False,
     }
+    if user_intent is not None:
+        intent = parse_task_intent(user_intent)
+        contract["user_intent"] = intent
+        # Existing governance uses this flag for a supplied, validated task request.
+        contract["is_signed"] = True
+        for field in ("primary_question", "decision_context", "success_criteria",
+                      "constraints", "required_output_type", "confidence_threshold"):
+            if field in intent:
+                contract[field] = intent[field]
 
     # Gating
     if drift_status == "block":

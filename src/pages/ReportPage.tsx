@@ -11,6 +11,7 @@ import { HypothesesTab } from "@/components/report/HypothesesTab";
 import { TrustTab } from "@/components/report/TrustTab";
 import { FullReportTab } from "@/components/report/FullReportTab";
 import { InsightLens } from "@/components/report/insight-lens/InsightLens";
+import type { Snapshot } from "@/lib/types";
 
 const TABS = [
   { key: "summary", label: "Executive Summary", icon: FileText },
@@ -21,6 +22,48 @@ const TABS = [
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
+
+function OriginalAnalysisContext({
+  taskIntent,
+}: {
+  taskIntent: Snapshot["task_intent"];
+}) {
+  if (!taskIntent) {
+    return (
+      <section className="mb-6 rounded-xl border border-border bg-card/50 px-4 py-3" aria-label="Original analysis context">
+        <p className="text-sm text-muted-foreground">
+          No original question was recorded for this run.
+        </p>
+      </section>
+    );
+  }
+
+  const fields = [
+    { key: "question", label: "Original question", value: taskIntent.primary_question },
+    { key: "decision-context", label: "Decision context", value: taskIntent.decision_context },
+    { key: "success-criteria", label: "Success criteria", value: taskIntent.success_criteria },
+  ];
+
+  return (
+    <section className="mb-6 rounded-xl border border-border bg-card/50 p-4" aria-labelledby="original-analysis-context">
+      <h2 id="original-analysis-context" className="text-sm font-semibold text-foreground">
+        Original analysis context
+      </h2>
+      <dl className="mt-3 grid gap-3 md:grid-cols-3">
+        {fields.map((field) => (
+          <div key={field.key} className="min-w-0">
+            <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {field.label}
+            </dt>
+            <dd data-testid={`task-intent-${field.key}`} className="mt-1 break-words whitespace-pre-wrap text-sm leading-5 text-foreground">
+              {field.value?.trim() ? field.value : "Unknown"}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
 
 export default function ReportPage() {
   const { runId } = useParams<{ runId: string }>();
@@ -110,6 +153,8 @@ export default function ReportPage() {
             </div>
           </div>
         </div>
+
+        <OriginalAnalysisContext taskIntent={snapshot.task_intent} />
 
         <div className="flex items-center gap-1 mb-6 border-b border-border pb-px overflow-x-auto">
           {TABS.map((tab) => {

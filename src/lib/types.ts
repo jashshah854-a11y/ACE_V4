@@ -216,6 +216,7 @@ export interface ExecutiveNarrative {
 export interface Snapshot {
   run_id: string;
   generated_at?: string;
+  task_intent?: TaskIntent | null;
   identity: IdentityBlock;
   curated_kpis: CuratedKPIs;
   trust: Trust;

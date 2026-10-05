@@ -99,6 +99,15 @@ class StoryFramer:
     ) -> str:
         """Build comprehensive context for story generation."""
         parts = []
+        task_intent = self.state.read("task_intent") or {}
+
+        if isinstance(task_intent, dict) and task_intent.get("primary_question"):
+            parts.append("## User Request (not evidence)")
+            parts.append(f"- Question: {task_intent['primary_question']}")
+            if task_intent.get("required_output_type"):
+                parts.append(f"- Requested output: {task_intent['required_output_type']}")
+            parts.append(json.dumps(task_intent, indent=2, default=str))
+            parts.append("- Use this to focus the story; do not present it as a data finding.")
         
         # Dataset basics
         insights = deep_insights.get("insights", [])

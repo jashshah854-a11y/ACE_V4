@@ -157,6 +157,15 @@ class DeepInsightAgent:
     def _build_context(self) -> str:
         """Build comprehensive context string for LLM."""
         context_parts = []
+        task_intent = self.state.read("task_intent") or {}
+
+        if isinstance(task_intent, dict) and task_intent.get("primary_question"):
+            context_parts.append("## User Request (not evidence)")
+            context_parts.append(f"- Question: {task_intent['primary_question']}")
+            if task_intent.get("required_output_type"):
+                context_parts.append(f"- Requested output: {task_intent['required_output_type']}")
+            context_parts.append(json.dumps(task_intent, indent=2, default=str))
+            context_parts.append("- Use this to focus the analysis; do not treat it as evidence or a finding.")
         
         # Data overview
         profile = self.artifacts.get("data_profile", {})
